@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../planner/plan_editor_screen.dart';
+import '../settings/settings_screen.dart';
+import '../schedule/schedule_screen.dart';
+import '../navigator/navigator_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -13,41 +16,67 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  void _openSettings(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SettingsScreen(),
+      ),
+    );
+  }
+
+  void _openSchedule(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ScheduleScreen(),
+      ),
+    );
+  }
+
+  void _openNavigator(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const NavigatorScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F7FF),
       appBar: AppBar(
-        title: const Text('Disney Planner'),
+        title: const Text("Disney Planner"),
         centerTitle: true,
         backgroundColor: const Color(0xFF6A5ACD),
         foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: ListView(
           children: [
-            const SizedBox(height: 40),
+
+            const SizedBox(height: 20),
 
             const Text(
-              '🏰 東京ディズニーランド',
+              "🏰 Disney Planner",
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 30,
                 fontWeight: FontWeight.bold,
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
             const Text(
-              '最高の1日をAIと一緒に作ろう',
+              "最高の1日をAIと一緒に作ろう",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
 
             _HomeButton(
               icon: Icons.edit_calendar,
@@ -59,29 +88,29 @@ class HomeScreen extends StatelessWidget {
             _HomeButton(
               icon: Icons.auto_awesome,
               title: "AIプラン生成",
-              subtitle: "最適な1日を自動作成",
+              subtitle: "最適な1日を自動生成",
               onTap: () {},
             ),
 
             _HomeButton(
               icon: Icons.schedule,
               title: "今日の予定",
-              subtitle: "作成したプランを見る",
-              onTap: () {},
+              subtitle: "AIが作成したスケジュール",
+              onTap: () => _openSchedule(context),
             ),
 
             _HomeButton(
               icon: Icons.navigation,
               title: "当日ナビ",
-              subtitle: "現在地から次を案内",
-              onTap: () {},
+              subtitle: "リアルタイムで次の目的地を案内",
+              onTap: () => _openNavigator(context),
             ),
 
             _HomeButton(
               icon: Icons.settings,
               title: "設定",
-              subtitle: "アプリ設定",
-              onTap: () {},
+              subtitle: "AI・入園設定",
+              onTap: () => _openSettings(context),
             ),
           ],
         ),
@@ -110,8 +139,8 @@ class _HomeButton extends StatelessWidget {
       child: ListTile(
         leading: Icon(
           icon,
-          color: const Color(0xFF6A5ACD),
           size: 32,
+          color: const Color(0xFF6A5ACD),
         ),
         title: Text(
           title,
