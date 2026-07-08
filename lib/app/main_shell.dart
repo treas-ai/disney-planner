@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_icons.dart';
 import '../features/home/home_screen.dart';
 import '../features/plan_editor/plan_editor_screen.dart';
 import '../features/plan_review/plan_review_screen.dart';
@@ -50,28 +51,28 @@ class _MainShellState extends State<MainShell> {
         onDestinationSelected: _onDestinationSelected,
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+            icon: Icon(AppIcons.home),
+            selectedIcon: Icon(AppIcons.homeSelected),
             label: 'ホーム',
           ),
           NavigationDestination(
-            icon: Icon(Icons.edit_note_outlined),
-            selectedIcon: Icon(Icons.edit_note),
+            icon: Icon(AppIcons.planEditor),
+            selectedIcon: Icon(AppIcons.planEditorSelected),
             label: '編集',
           ),
           NavigationDestination(
-            icon: Icon(Icons.fact_check_outlined),
-            selectedIcon: Icon(Icons.fact_check),
+            icon: Icon(AppIcons.planReview),
+            selectedIcon: Icon(AppIcons.planReviewSelected),
             label: '確認',
           ),
           NavigationDestination(
-            icon: Icon(Icons.today_outlined),
-            selectedIcon: Icon(Icons.today),
+            icon: Icon(AppIcons.today),
+            selectedIcon: Icon(AppIcons.todaySelected),
             label: '予定',
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
+            icon: Icon(AppIcons.settings),
+            selectedIcon: Icon(AppIcons.settingsSelected),
             label: '設定',
           ),
         ],

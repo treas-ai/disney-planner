@@ -1,39 +1,50 @@
 import 'package:flutter/material.dart';
 
-class AppTheme {
-  static ThemeData get lightTheme {
-    const seedColor = Color(0xFF4F46E5);
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_radius.dart';
+import '../core/theme/app_typography.dart';
 
+class AppTheme {
+  const AppTheme._();
+
+  static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
+        seedColor: AppColors.primary,
         brightness: Brightness.light,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+      scaffoldBackgroundColor: AppColors.background,
       appBarTheme: const AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Color(0xFFF8FAFC),
-        foregroundColor: Color(0xFF0F172A),
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.textPrimary,
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: Colors.white,
+        color: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
       ),
+      textTheme: const TextTheme(
+        displayLarge: AppTypography.display,
+        headlineMedium: AppTypography.headline,
+        titleLarge: AppTypography.title,
+        bodyLarge: AppTypography.bodyLarge,
+        bodyMedium: AppTypography.body,
+        bodySmall: AppTypography.caption,
+      ),
       navigationBarTheme: NavigationBarThemeData(
-        indicatorColor: seedColor.withOpacity(0.12),
+        indicatorColor: AppColors.primary.withValues(alpha: 0.12),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const TextStyle(
-              fontSize: 12,
+            return AppTypography.caption.copyWith(
               fontWeight: FontWeight.bold,
             );
           }
-          return const TextStyle(fontSize: 12);
+          return AppTypography.caption;
         }),
       ),
     );
