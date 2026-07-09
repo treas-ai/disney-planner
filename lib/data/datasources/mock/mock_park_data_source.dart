@@ -1,8 +1,8 @@
-import '../../../domain/entities/area.dart';
-import '../../../domain/entities/park.dart';
-import '../../../domain/entities/resort.dart';
-import '../../../domain/value_objects/coordinate.dart';
-import '../../../domain/value_objects/operating_hours.dart';
+import '../../../../domain/entities/area.dart';
+import '../../../../domain/entities/park.dart';
+import '../../../../domain/entities/resort.dart';
+import '../../../../domain/value_objects/coordinate.dart';
+import '../../../../domain/value_objects/operating_hours.dart';
 
 class MockParkDataSource {
   List<Resort> getResorts() {
