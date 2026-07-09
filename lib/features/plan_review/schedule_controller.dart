@@ -1,40 +1,45 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
-import '../../data/datasources/mock/mock_facility_data_source.dart';
+import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
-import '../../domain/entities/facility.dart';
-import '../../domain/entities/plan_preference.dart';
-import '../../domain/entities/trip_settings.dart';
-import '../../domain/enums/preferred_time.dart';
-import '../../domain/enums/priority_level.dart';
-import '../../domain/enums/wait_tolerance.dart';
 import '../../domain/services/schedule_engine.dart';
 
 class ScheduleController extends ChangeNotifier {
-  ScheduleController();
+  ScheduleController(this._appState) {
+    _appState.addListener(_onAppStateChanged);
+  }
 
+  final AppState _appState;
   final ScheduleEngine _scheduleEngine = const ScheduleEngine();
 
   bool isLoading = false;
   String? errorMessage;
 
-  DaySchedule? schedule;
+  DaySchedule? get schedule => _appState.daySchedule;
 
-  Future<void> generateDemoSchedule() async {
+  bool get canGenerateSchedule {
+    return _appState.selectedFacilities.isNotEmpty;
+  }
+
+  Future<void> generateSchedule() async {
+    if (!canGenerateSchedule) {
+      errorMessage = '施設が選択されていません。施設一覧から行きたい施設を追加してください。';
+      notifyListeners();
+      return;
+    }
+
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      final facilities = _createDemoFacilities();
-      final preferences = _createDemoPreferences(facilities);
-      final settings = TripSettings.initial();
-
-      schedule = _scheduleEngine.generate(
-        settings: settings,
-        facilities: facilities,
-        preferences: preferences,
+      final schedule = _scheduleEngine.generate(
+        settings: _appState.tripSettings,
+        facilities: _appState.selectedFacilities,
+        preferences: _appState.planPreferences,
       );
+
+      _appState.updateDaySchedule(schedule);
     } catch (_) {
       errorMessage = 'スケジュール生成に失敗しました。';
     } finally {
@@ -43,31 +48,17 @@ class ScheduleController extends ChangeNotifier {
     }
   }
 
-  List<Facility> _createDemoFacilities() {
-    return MockFacilityDataSource().getFacilities();
+  void clearSchedule() {
+    _appState.clearDaySchedule();
   }
 
-  List<PlanPreference> _createDemoPreferences(List<Facility> facilities) {
-    return facilities.map((facility) {
-      final priority = facility.id.contains('soaring')
-          ? PriorityLevel.highest
-          : PriorityLevel.high;
+  void _onAppStateChanged() {
+    notifyListeners();
+  }
 
-      final preferredTime = facility.id.contains('big_band_beat')
-          ? PreferredTime.afternoon
-          : PreferredTime.anytime;
-
-      return PlanPreference(
-        id: 'demo_preference_${facility.id}',
-        facilityId: facility.id,
-        priority: priority,
-        preferredTime: preferredTime,
-        waitTolerance: WaitTolerance.medium,
-        useDpa: facility.reservation != null,
-        usePriorityPass: false,
-        memo: '',
-        createdAt: DateTime.now(),
-      );
-    }).toList();
+  @override
+  void dispose() {
+    _appState.removeListener(_onAppStateChanged);
+    super.dispose();
   }
 }

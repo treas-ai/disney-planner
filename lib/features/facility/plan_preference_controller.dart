@@ -1,138 +1,91 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
-import '../../domain/entities/facility.dart';
+import '../../app/state/app_state.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wait_tolerance.dart';
 
 class PlanPreferenceController extends ChangeNotifier {
-  final Map<String, PlanPreference> _preferencesByFacilityId = {};
-
-  List<PlanPreference> get preferences {
-    return List.unmodifiable(_preferencesByFacilityId.values);
+  PlanPreferenceController(this._appState) {
+    _appState.addListener(_onAppStateChanged);
   }
+
+  final AppState _appState;
+
+  List<PlanPreference> get preferences => _appState.planPreferences;
 
   PlanPreference? getPreference(String facilityId) {
-    return _preferencesByFacilityId[facilityId];
-  }
-
-  void ensurePreference(Facility facility) {
-    if (_preferencesByFacilityId.containsKey(facility.id)) {
-      return;
-    }
-
-    _preferencesByFacilityId[facility.id] = PlanPreference.initial(
-      facilityId: facility.id,
-    );
-
-    notifyListeners();
-  }
-
-  void removePreference(String facilityId) {
-    _preferencesByFacilityId.remove(facilityId);
-    notifyListeners();
+    return _appState.getPreference(facilityId);
   }
 
   void updatePriority({
     required String facilityId,
     required PriorityLevel priority,
   }) {
-    final current = _preferencesByFacilityId[facilityId];
-
-    if (current == null) {
-      return;
-    }
-
-    _preferencesByFacilityId[facilityId] = current.copyWith(
+    _appState.updatePreferencePriority(
+      facilityId: facilityId,
       priority: priority,
     );
-
-    notifyListeners();
   }
 
   void updatePreferredTime({
     required String facilityId,
     required PreferredTime preferredTime,
   }) {
-    final current = _preferencesByFacilityId[facilityId];
-
-    if (current == null) {
-      return;
-    }
-
-    _preferencesByFacilityId[facilityId] = current.copyWith(
+    _appState.updatePreferencePreferredTime(
+      facilityId: facilityId,
       preferredTime: preferredTime,
     );
-
-    notifyListeners();
   }
 
   void updateWaitTolerance({
     required String facilityId,
     required WaitTolerance waitTolerance,
   }) {
-    final current = _preferencesByFacilityId[facilityId];
-
-    if (current == null) {
-      return;
-    }
-
-    _preferencesByFacilityId[facilityId] = current.copyWith(
+    _appState.updatePreferenceWaitTolerance(
+      facilityId: facilityId,
       waitTolerance: waitTolerance,
     );
-
-    notifyListeners();
   }
 
   void updateUseDpa({
     required String facilityId,
     required bool value,
   }) {
-    final current = _preferencesByFacilityId[facilityId];
-
-    if (current == null) {
-      return;
-    }
-
-    _preferencesByFacilityId[facilityId] = current.copyWith(
-      useDpa: value,
+    _appState.updatePreferenceUseDpa(
+      facilityId: facilityId,
+      value: value,
     );
-
-    notifyListeners();
   }
 
   void updateUsePriorityPass({
     required String facilityId,
     required bool value,
   }) {
-    final current = _preferencesByFacilityId[facilityId];
-
-    if (current == null) {
-      return;
-    }
-
-    _preferencesByFacilityId[facilityId] = current.copyWith(
-      usePriorityPass: value,
+    _appState.updatePreferenceUsePriorityPass(
+      facilityId: facilityId,
+      value: value,
     );
-
-    notifyListeners();
   }
 
   void updateMemo({
     required String facilityId,
     required String memo,
   }) {
-    final current = _preferencesByFacilityId[facilityId];
-
-    if (current == null) {
-      return;
-    }
-
-    _preferencesByFacilityId[facilityId] = current.copyWith(
+    _appState.updatePreferenceMemo(
+      facilityId: facilityId,
       memo: memo,
     );
+  }
 
+  void _onAppStateChanged() {
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _appState.removeListener(_onAppStateChanged);
+    super.dispose();
   }
 }

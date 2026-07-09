@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_icons.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
@@ -17,19 +18,24 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late final SettingsController _controller;
+  SettingsController? _controller;
 
   @override
-  void initState() {
-    super.initState();
-    _controller = SettingsController();
-    _controller.addListener(_refresh);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_controller == null) {
+      final appState = AppStateScope.of(context);
+
+      _controller = SettingsController(appState);
+      _controller!.addListener(_refresh);
+    }
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_refresh);
-    _controller.dispose();
+    _controller?.removeListener(_refresh);
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -38,9 +44,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _selectEntryTime() async {
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
     final current = TimeOfDay(
-      hour: _controller.settings.entryTimeHour,
-      minute: _controller.settings.entryTimeMinute,
+      hour: controller.settings.entryTimeHour,
+      minute: controller.settings.entryTimeMinute,
     );
 
     final selected = await showTimePicker(
@@ -49,14 +60,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (selected != null) {
-      _controller.updateEntryTime(selected);
+      controller.updateEntryTime(selected);
     }
   }
 
   Future<void> _selectExitTime() async {
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
     final current = TimeOfDay(
-      hour: _controller.settings.exitTimeHour,
-      minute: _controller.settings.exitTimeMinute,
+      hour: controller.settings.exitTimeHour,
+      minute: controller.settings.exitTimeMinute,
     );
 
     final selected = await showTimePicker(
@@ -65,13 +81,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (selected != null) {
-      _controller.updateExitTime(selected);
+      controller.updateExitTime(selected);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final settings = _controller.settings;
+    final controller = _controller;
+
+    if (controller == null) {
+      return const AppScaffold(
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final settings = controller.settings;
 
     return AppScaffold(
       child: ListView(
@@ -83,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _ParkSettingsCard(
             settings: settings,
-            onChanged: _controller.updatePark,
+            onChanged: controller.updatePark,
           ),
           _TimeSettingsCard(
             settings: settings,
@@ -92,25 +118,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _PeopleSettingsCard(
             settings: settings,
-            onDecrease: _controller.decreasePeople,
-            onIncrease: _controller.increasePeople,
+            onDecrease: controller.decreasePeople,
+            onIncrease: controller.increasePeople,
           ),
           _ServiceSettingsCard(
             settings: settings,
-            onHappyEntryChanged: _controller.updateHappyEntry,
-            onDpaChanged: _controller.updateDpa,
-            onPriorityPassChanged: _controller.updatePriorityPass,
-            onSingleRiderChanged: _controller.updateSingleRider,
+            onHappyEntryChanged: controller.updateHappyEntry,
+            onDpaChanged: controller.updateDpa,
+            onPriorityPassChanged: controller.updatePriorityPass,
+            onSingleRiderChanged: controller.updateSingleRider,
           ),
           _MealSettingsCard(
             settings: settings,
-            onLunchChanged: _controller.updateLunch,
-            onDinnerChanged: _controller.updateDinner,
+            onLunchChanged: controller.updateLunch,
+            onDinnerChanged: controller.updateDinner,
           ),
           _ConditionSettingsCard(
             settings: settings,
-            onRainyChanged: _controller.updateRainy,
-            onChildrenChanged: _controller.updateChildren,
+            onRainyChanged: controller.updateRainy,
+            onChildrenChanged: controller.updateChildren,
           ),
         ],
       ),

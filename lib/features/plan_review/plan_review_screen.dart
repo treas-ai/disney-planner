@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_icons.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
@@ -20,19 +21,24 @@ class PlanReviewScreen extends StatefulWidget {
 }
 
 class _PlanReviewScreenState extends State<PlanReviewScreen> {
-  late final ScheduleController _controller;
+  ScheduleController? _controller;
 
   @override
-  void initState() {
-    super.initState();
-    _controller = ScheduleController();
-    _controller.addListener(_refresh);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_controller == null) {
+      final appState = AppStateScope.of(context);
+
+      _controller = ScheduleController(appState);
+      _controller!.addListener(_refresh);
+    }
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_refresh);
-    _controller.dispose();
+    _controller?.removeListener(_refresh);
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -42,17 +48,25 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final controller = _controller;
+
+    if (controller == null) {
+      return const AppScaffold(
+        child: LoadingView(message: 'プラン確認画面を準備中です...'),
+      );
+    }
+
     return AppScaffold(
       child: Builder(
         builder: (context) {
-          if (_controller.isLoading) {
+          if (controller.isLoading) {
             return const LoadingView(message: 'スケジュールを生成中です...');
           }
 
-          if (_controller.errorMessage != null) {
+          if (controller.errorMessage != null) {
             return EmptyState(
               title: '生成エラー',
-              message: _controller.errorMessage!,
+              message: controller.errorMessage!,
               icon: Icons.error_outline,
             );
           }
@@ -61,7 +75,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
             children: [
               const SectionTitle(
                 title: 'プラン確認',
-                subtitle: 'AIなしの簡易スケジュールを生成します。',
+                subtitle: '設定と選択済み施設から簡易スケジュールを生成します。',
                 icon: AppIcons.planReviewSelected,
               ),
               AppCard(
@@ -69,29 +83,48 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Schedule Engine v1',
+                      'Schedule Engine v1.1',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     const Text(
-                      '現在はデモデータを使用して、優先度・希望時間・食事設定をもとに予定を並べます。',
+                      '設定画面の来園条件と、施設一覧で選択した施設・希望条件をもとに予定を作成します。',
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    AppButton(
-                      label: 'スケジュール生成',
-                      icon: Icons.auto_awesome,
-                      onPressed: _controller.generateDemoSchedule,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            label: 'スケジュール生成',
+                            icon: Icons.auto_awesome,
+                            onPressed: controller.generateSchedule,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: AppButton(
+                            label: 'クリア',
+                            icon: Icons.delete_outline,
+                            onPressed: controller.clearSchedule,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              if (_controller.schedule == null)
+              if (!controller.canGenerateSchedule)
+                const EmptyState(
+                  title: '施設が選択されていません',
+                  message: 'プラン編集タブで行きたい施設を追加してください。',
+                )
+              else if (controller.schedule == null)
                 const EmptyState(
                   title: 'スケジュール未生成',
-                  message: 'ボタンを押すと、デモデータから1日の予定を作成します。',
+                  message: 'ボタンを押すと、選択済み施設から1日の予定を作成します。',
                 )
               else
-                _ScheduleResult(schedule: _controller.schedule!),
+                _ScheduleResult(schedule: controller.schedule!),
             ],
           );
         },

@@ -1,50 +1,38 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
+import '../../app/state/app_state.dart';
 import '../../domain/entities/facility.dart';
-import '../../domain/entities/plan_candidate.dart';
 
 class PlanBuilderController extends ChangeNotifier {
-  final List<PlanCandidate> _candidates = [];
+  PlanBuilderController(this._appState) {
+    _appState.addListener(_onAppStateChanged);
+  }
 
-  List<PlanCandidate> get candidates => List.unmodifiable(_candidates);
+  final AppState _appState;
 
-  int get selectedCount => _candidates.length;
+  int get selectedCount => _appState.selectedFacilityCount;
+
+  List<Facility> get selectedFacilities => _appState.selectedFacilities;
 
   bool isSelected(String facilityId) {
-    return _candidates.any((candidate) => candidate.facilityId == facilityId);
+    return _appState.isFacilitySelected(facilityId);
   }
 
   void addFacility(Facility facility) {
-    if (isSelected(facility.id)) {
-      return;
-    }
-
-    final candidate = PlanCandidate(
-      id: 'candidate_${facility.id}_${DateTime.now().millisecondsSinceEpoch}',
-      facilityId: facility.id,
-      addedAt: DateTime.now(),
-    );
-
-    _candidates.add(candidate);
-    notifyListeners();
+    _appState.addFacility(facility);
   }
 
   void removeFacility(String facilityId) {
-    _candidates.removeWhere(
-      (candidate) => candidate.facilityId == facilityId,
-    );
+    _appState.removeFacility(facilityId);
+  }
 
+  void _onAppStateChanged() {
     notifyListeners();
   }
 
-  void clear() {
-    _candidates.clear();
-    notifyListeners();
-  }
-
-  List<Facility> getSelectedFacilities(List<Facility> allFacilities) {
-    return allFacilities
-        .where((facility) => isSelected(facility.id))
-        .toList();
+  @override
+  void dispose() {
+    _appState.removeListener(_onAppStateChanged);
+    super.dispose();
   }
 }

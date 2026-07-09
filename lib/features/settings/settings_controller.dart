@@ -1,29 +1,41 @@
 import 'package:flutter/material.dart';
 
+import '../../app/state/app_state.dart';
 import '../../domain/entities/trip_settings.dart';
 
 class SettingsController extends ChangeNotifier {
-  TripSettings settings = TripSettings.initial();
+      SettingsController(this._appState) {
+    _appState.addListener(_onAppStateChanged);
+  }
+
+  final AppState _appState;
+
+  TripSettings get settings => _appState.tripSettings;
+
+  void _onAppStateChanged() {
+    notifyListeners();
+  }
 
   void updatePark(String parkId) {
-    settings = settings.copyWith(parkId: parkId);
-    notifyListeners();
+    _appState.updateTripSettings(settings.copyWith(parkId: parkId));
   }
 
   void updateEntryTime(TimeOfDay time) {
-    settings = settings.copyWith(
-      entryTimeHour: time.hour,
-      entryTimeMinute: time.minute,
+    _appState.updateTripSettings(
+      settings.copyWith(
+        entryTimeHour: time.hour,
+        entryTimeMinute: time.minute,
+      ),
     );
-    notifyListeners();
   }
 
   void updateExitTime(TimeOfDay time) {
-    settings = settings.copyWith(
-      exitTimeHour: time.hour,
-      exitTimeMinute: time.minute,
+    _appState.updateTripSettings(
+      settings.copyWith(
+        exitTimeHour: time.hour,
+        exitTimeMinute: time.minute,
+      ),
     );
-    notifyListeners();
   }
 
   void increasePeople() {
@@ -31,10 +43,9 @@ class SettingsController extends ChangeNotifier {
       return;
     }
 
-    settings = settings.copyWith(
-      numberOfPeople: settings.numberOfPeople + 1,
+    _appState.updateTripSettings(
+      settings.copyWith(numberOfPeople: settings.numberOfPeople + 1),
     );
-    notifyListeners();
   }
 
   void decreasePeople() {
@@ -42,49 +53,50 @@ class SettingsController extends ChangeNotifier {
       return;
     }
 
-    settings = settings.copyWith(
-      numberOfPeople: settings.numberOfPeople - 1,
+    _appState.updateTripSettings(
+      settings.copyWith(numberOfPeople: settings.numberOfPeople - 1),
     );
-    notifyListeners();
   }
 
   void updateHappyEntry(bool value) {
-    settings = settings.copyWith(hasHappyEntry: value);
-    notifyListeners();
+    _appState.updateTripSettings(settings.copyWith(hasHappyEntry: value));
   }
 
   void updateDpa(bool value) {
-    settings = settings.copyWith(canUseDpa: value);
-    notifyListeners();
+    _appState.updateTripSettings(settings.copyWith(canUseDpa: value));
   }
 
   void updatePriorityPass(bool value) {
-    settings = settings.copyWith(canUsePriorityPass: value);
-    notifyListeners();
+    _appState.updateTripSettings(
+      settings.copyWith(canUsePriorityPass: value),
+    );
   }
 
   void updateSingleRider(bool value) {
-    settings = settings.copyWith(canUseSingleRider: value);
-    notifyListeners();
+    _appState.updateTripSettings(
+      settings.copyWith(canUseSingleRider: value),
+    );
   }
 
   void updateLunch(bool value) {
-    settings = settings.copyWith(wantsLunch: value);
-    notifyListeners();
+    _appState.updateTripSettings(settings.copyWith(wantsLunch: value));
   }
 
   void updateDinner(bool value) {
-    settings = settings.copyWith(wantsDinner: value);
-    notifyListeners();
+    _appState.updateTripSettings(settings.copyWith(wantsDinner: value));
   }
 
   void updateRainy(bool value) {
-    settings = settings.copyWith(isRainy: value);
-    notifyListeners();
+    _appState.updateTripSettings(settings.copyWith(isRainy: value));
   }
 
   void updateChildren(bool value) {
-    settings = settings.copyWith(hasChildren: value);
-    notifyListeners();
+    _appState.updateTripSettings(settings.copyWith(hasChildren: value));
+  }
+
+  @override
+  void dispose() {
+    _appState.removeListener(_onAppStateChanged);
+    super.dispose();
   }
 }
