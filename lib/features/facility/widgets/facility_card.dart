@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../domain/entities/facility.dart';
 
@@ -9,9 +10,15 @@ class FacilityCard extends StatelessWidget {
   const FacilityCard({
     super.key,
     required this.facility,
+    required this.isSelected,
+    required this.onAdd,
+    required this.onRemove,
   });
 
   final Facility facility;
+  final bool isSelected;
+  final VoidCallback onAdd;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +58,15 @@ class FacilityCard extends StatelessWidget {
                   ),
             ),
           ],
+          const SizedBox(height: AppSpacing.lg),
+          Align(
+            alignment: Alignment.centerRight,
+            child: AppButton(
+              label: isSelected ? '追加済み' : '追加',
+              icon: isSelected ? Icons.check : Icons.add,
+              onPressed: isSelected ? onRemove : onAdd,
+            ),
+          ),
         ],
       ),
     );
