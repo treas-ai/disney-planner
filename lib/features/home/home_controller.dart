@@ -1,21 +1,24 @@
 import 'package:flutter/foundation.dart';
 
-import '../../data/datasources/mock/mock_facility_data_source.dart';
-import '../../data/datasources/mock/mock_park_data_source.dart';
-import '../../data/repositories/facility_repository_impl.dart';
-import '../../data/repositories/park_repository_impl.dart';
+import '../../app/dependency/service_locator.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/park.dart';
 import '../../domain/entities/resort.dart';
+import '../../domain/repositories/facility_repository.dart';
+import '../../domain/repositories/park_repository.dart';
 
 class HomeController extends ChangeNotifier {
-  HomeController() {
-    _initializeRepositories();
+  HomeController({
+    ParkRepository? parkRepository,
+    FacilityRepository? facilityRepository,
+  })  : _parkRepository = parkRepository ?? ServiceLocator.parkRepository,
+        _facilityRepository =
+            facilityRepository ?? ServiceLocator.facilityRepository {
     loadHomeData();
   }
 
-  late final ParkRepositoryImpl _parkRepository;
-  late final FacilityRepositoryImpl _facilityRepository;
+  final ParkRepository _parkRepository;
+  final FacilityRepository _facilityRepository;
 
   bool isLoading = false;
   String? errorMessage;
@@ -23,14 +26,6 @@ class HomeController extends ChangeNotifier {
   List<Resort> resorts = [];
   List<Park> parks = [];
   List<Facility> facilities = [];
-
-  void _initializeRepositories() {
-    final parkDataSource = MockParkDataSource();
-    final facilityDataSource = MockFacilityDataSource();
-
-    _parkRepository = ParkRepositoryImpl(dataSource: parkDataSource);
-    _facilityRepository = FacilityRepositoryImpl(dataSource: facilityDataSource);
-  }
 
   Future<void> loadHomeData() async {
     isLoading = true;
@@ -41,7 +36,7 @@ class HomeController extends ChangeNotifier {
       resorts = await _parkRepository.getResorts();
       parks = await _parkRepository.getParks();
       facilities = await _facilityRepository.getFacilities();
-    } catch (error) {
+    } catch (_) {
       errorMessage = 'ホームデータの読み込みに失敗しました。';
     } finally {
       isLoading = false;
