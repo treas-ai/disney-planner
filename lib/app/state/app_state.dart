@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../data/local/app_state_storage.dart';
+import '../../data/repositories/facility_repository_impl.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
@@ -7,14 +9,23 @@ import '../../domain/entities/trip_settings.dart';
 import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wait_tolerance.dart';
+import '../dependency/service_locator.dart';
 
 class AppState extends ChangeNotifier {
+  AppState({
+    AppStateStorage? storage,
+  }) : _storage = storage ?? AppStateStorage();
+
+  final AppStateStorage _storage;
+
   TripSettings tripSettings = TripSettings.initial();
 
   final List<Facility> _selectedFacilities = [];
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
 
   DaySchedule? daySchedule;
+
+  bool isRestored = false;
 
   List<Facility> get selectedFacilities {
     return List.unmodifiable(_selectedFacilities);
@@ -28,9 +39,78 @@ class AppState extends ChangeNotifier {
     return _selectedFacilities.length;
   }
 
+  Future<void> restore() async {
+    final json = await _storage.load();
+
+    if (json == null) {
+      isRestored = true;
+      notifyListeners();
+      return;
+    }
+
+    final tripSettingsJson = json['tripSettings'];
+    if (tripSettingsJson is Map<String, dynamic>) {
+      tripSettings = TripSettings.fromJson(tripSettingsJson);
+    }
+
+    final facilityIds = _readStringList(json['selectedFacilityIds']);
+    await _restoreSelectedFacilities(facilityIds);
+
+    final rawPreferences = json['planPreferences'];
+    if (rawPreferences is List) {
+      _preferencesByFacilityId.clear();
+
+      for (final item in rawPreferences) {
+        if (item is Map<String, dynamic>) {
+          final preference = PlanPreference.fromJson(item);
+
+          if (preference.facilityId.isNotEmpty) {
+            _preferencesByFacilityId[preference.facilityId] = preference;
+          }
+        }
+      }
+    }
+
+    final scheduleJson = json['daySchedule'];
+    if (scheduleJson is Map<String, dynamic>) {
+      daySchedule = DaySchedule.fromJson(scheduleJson);
+    }
+
+    isRestored = true;
+    notifyListeners();
+  }
+
+  Future<void> save() async {
+    await _storage.save(toJson());
+  }
+
+  Future<void> clearSavedState() async {
+    await _storage.clear();
+
+    tripSettings = TripSettings.initial();
+    _selectedFacilities.clear();
+    _preferencesByFacilityId.clear();
+    daySchedule = null;
+
+    notifyListeners();
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'tripSettings': tripSettings.toJson(),
+      'selectedFacilityIds': _selectedFacilities
+          .map((facility) => facility.id)
+          .toList(),
+      'planPreferences': _preferencesByFacilityId.values
+          .map((preference) => preference.toJson())
+          .toList(),
+      'daySchedule': daySchedule?.toJson(),
+    };
+  }
+
   void updateTripSettings(TripSettings settings) {
     tripSettings = settings;
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void addFacility(Facility facility) {
@@ -44,7 +124,7 @@ class AppState extends ChangeNotifier {
       facilityId: facility.id,
     );
 
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void removeFacility(String facilityId) {
@@ -54,7 +134,7 @@ class AppState extends ChangeNotifier {
 
     _preferencesByFacilityId.remove(facilityId);
 
-    notifyListeners();
+    _saveAndNotify();
   }
 
   bool isFacilitySelected(String facilityId) {
@@ -81,7 +161,7 @@ class AppState extends ChangeNotifier {
       priority: priority,
     );
 
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void updatePreferencePreferredTime({
@@ -98,7 +178,7 @@ class AppState extends ChangeNotifier {
       preferredTime: preferredTime,
     );
 
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void updatePreferenceWaitTolerance({
@@ -115,7 +195,7 @@ class AppState extends ChangeNotifier {
       waitTolerance: waitTolerance,
     );
 
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void updatePreferenceUseDpa({
@@ -132,7 +212,7 @@ class AppState extends ChangeNotifier {
       useDpa: value,
     );
 
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void updatePreferenceUsePriorityPass({
@@ -149,7 +229,7 @@ class AppState extends ChangeNotifier {
       usePriorityPass: value,
     );
 
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void updatePreferenceMemo({
@@ -166,16 +246,48 @@ class AppState extends ChangeNotifier {
       memo: memo,
     );
 
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void updateDaySchedule(DaySchedule schedule) {
     daySchedule = schedule;
-    notifyListeners();
+    _saveAndNotify();
   }
 
   void clearDaySchedule() {
     daySchedule = null;
+    _saveAndNotify();
+  }
+
+  Future<void> _restoreSelectedFacilities(List<String> facilityIds) async {
+    _selectedFacilities.clear();
+
+    final repository = ServiceLocator.facilityRepository;
+
+    if (repository is FacilityRepositoryImpl) {
+      final facilities = await repository.getFacilities();
+
+      for (final facilityId in facilityIds) {
+        for (final facility in facilities) {
+          if (facility.id == facilityId) {
+            _selectedFacilities.add(facility);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  List<String> _readStringList(dynamic value) {
+    if (value is! List) {
+      return [];
+    }
+
+    return value.whereType<String>().toList();
+  }
+
+  void _saveAndNotify() {
     notifyListeners();
+    save();
   }
 }

@@ -35,6 +35,25 @@ class TripSettings {
     );
   }
 
+  factory TripSettings.fromJson(Map<String, dynamic> json) {
+    return TripSettings(
+      parkId: json['parkId'] as String? ?? 'tokyo_disneysea',
+      entryTimeHour: json['entryTimeHour'] as int? ?? 9,
+      entryTimeMinute: json['entryTimeMinute'] as int? ?? 0,
+      exitTimeHour: json['exitTimeHour'] as int? ?? 21,
+      exitTimeMinute: json['exitTimeMinute'] as int? ?? 0,
+      numberOfPeople: json['numberOfPeople'] as int? ?? 1,
+      hasHappyEntry: json['hasHappyEntry'] as bool? ?? false,
+      canUseDpa: json['canUseDpa'] as bool? ?? true,
+      canUsePriorityPass: json['canUsePriorityPass'] as bool? ?? true,
+      canUseSingleRider: json['canUseSingleRider'] as bool? ?? false,
+      wantsLunch: json['wantsLunch'] as bool? ?? true,
+      wantsDinner: json['wantsDinner'] as bool? ?? true,
+      isRainy: json['isRainy'] as bool? ?? false,
+      hasChildren: json['hasChildren'] as bool? ?? false,
+    );
+  }
+
   final String parkId;
 
   final int entryTimeHour;
@@ -64,6 +83,25 @@ class TripSettings {
   String get exitTimeLabel {
     return '${exitTimeHour.toString().padLeft(2, '0')}:'
         '${exitTimeMinute.toString().padLeft(2, '0')}';
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'parkId': parkId,
+      'entryTimeHour': entryTimeHour,
+      'entryTimeMinute': entryTimeMinute,
+      'exitTimeHour': exitTimeHour,
+      'exitTimeMinute': exitTimeMinute,
+      'numberOfPeople': numberOfPeople,
+      'hasHappyEntry': hasHappyEntry,
+      'canUseDpa': canUseDpa,
+      'canUsePriorityPass': canUsePriorityPass,
+      'canUseSingleRider': canUseSingleRider,
+      'wantsLunch': wantsLunch,
+      'wantsDinner': wantsDinner,
+      'isRainy': isRainy,
+      'hasChildren': hasChildren,
+    };
   }
 
   TripSettings copyWith({

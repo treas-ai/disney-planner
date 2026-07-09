@@ -31,6 +31,30 @@ class PlanPreference {
     );
   }
 
+  factory PlanPreference.fromJson(Map<String, dynamic> json) {
+    return PlanPreference(
+      id: json['id'] as String? ?? '',
+      facilityId: json['facilityId'] as String? ?? '',
+      priority: PriorityLevel.values.firstWhere(
+        (priority) => priority.name == json['priority'],
+        orElse: () => PriorityLevel.medium,
+      ),
+      preferredTime: PreferredTime.values.firstWhere(
+        (time) => time.name == json['preferredTime'],
+        orElse: () => PreferredTime.anytime,
+      ),
+      waitTolerance: WaitTolerance.values.firstWhere(
+        (tolerance) => tolerance.name == json['waitTolerance'],
+        orElse: () => WaitTolerance.medium,
+      ),
+      useDpa: json['useDpa'] as bool? ?? false,
+      usePriorityPass: json['usePriorityPass'] as bool? ?? false,
+      memo: json['memo'] as String? ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+    );
+  }
+
   final String id;
   final String facilityId;
   final PriorityLevel priority;
@@ -40,6 +64,20 @@ class PlanPreference {
   final bool usePriorityPass;
   final String memo;
   final DateTime createdAt;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'facilityId': facilityId,
+      'priority': priority.name,
+      'preferredTime': preferredTime.name,
+      'waitTolerance': waitTolerance.name,
+      'useDpa': useDpa,
+      'usePriorityPass': usePriorityPass,
+      'memo': memo,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
 
   PlanPreference copyWith({
     String? id,

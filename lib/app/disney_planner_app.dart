@@ -19,6 +19,11 @@ class _DisneyPlannerAppState extends State<DisneyPlannerApp> {
   void initState() {
     super.initState();
     _appState = AppState();
+    _restoreAppState();
+  }
+
+  Future<void> _restoreAppState() async {
+    await _appState.restore();
   }
 
   @override
@@ -35,7 +40,29 @@ class _DisneyPlannerAppState extends State<DisneyPlannerApp> {
         title: 'Disney Planner',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const MainShell(),
+        home: AnimatedBuilder(
+          animation: _appState,
+          builder: (context, _) {
+            if (!_appState.isRestored) {
+              return const _RestoreLoadingScreen();
+            }
+
+            return const MainShell();
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _RestoreLoadingScreen extends StatelessWidget {
+  const _RestoreLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Text('データを復元中です...'),
       ),
     );
   }
