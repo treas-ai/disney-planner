@@ -37,10 +37,7 @@ class PlanPreferenceEditor extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            facility.name,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text(facility.name, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<PriorityLevel>(
             initialValue: preference.priority,
@@ -71,10 +68,8 @@ class PlanPreferenceEditor extends StatelessWidget {
             ),
             items: PreferredTime.values
                 .map(
-                  (time) => DropdownMenuItem(
-                    value: time,
-                    child: Text(time.label),
-                  ),
+                  (time) =>
+                      DropdownMenuItem(value: time, child: Text(time.label)),
                 )
                 .toList(),
             onChanged: (value) {

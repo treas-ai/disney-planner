@@ -1,8 +1,8 @@
-import '../entities/area.dart';
-import '../entities/park.dart';
-import '../entities/resort.dart';
+import '../../domain/entities/area.dart';
+import '../../domain/entities/park.dart';
+import '../../domain/entities/resort.dart';
 
-abstract class ParkRepository {
+abstract interface class ParkDataSource {
   Future<List<Resort>> getResorts();
 
   Future<Resort?> getResortById(String resortId);
@@ -12,6 +12,8 @@ abstract class ParkRepository {
   Future<List<Park>> getParksByResortId(String resortId);
 
   Future<Park?> getParkById(String parkId);
+
+  Future<List<Area>> getAreas();
 
   Future<List<Area>> getAreasByParkId(String parkId);
 

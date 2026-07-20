@@ -11,9 +11,9 @@ class HomeController extends ChangeNotifier {
   HomeController({
     ParkRepository? parkRepository,
     FacilityRepository? facilityRepository,
-  })  : _parkRepository = parkRepository ?? ServiceLocator.parkRepository,
-        _facilityRepository =
-            facilityRepository ?? ServiceLocator.facilityRepository {
+  }) : _parkRepository = parkRepository ?? ServiceLocator.parkRepository,
+       _facilityRepository =
+           facilityRepository ?? ServiceLocator.facilityRepository {
     loadHomeData();
   }
 

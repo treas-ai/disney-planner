@@ -5,11 +5,7 @@ enum PriorityLevel {
   high('高', 4, '★★★★☆'),
   highest('最高', 5, '★★★★★');
 
-  const PriorityLevel(
-    this.label,
-    this.value,
-    this.stars,
-  );
+  const PriorityLevel(this.label, this.value, this.stars);
 
   final String label;
   final int value;

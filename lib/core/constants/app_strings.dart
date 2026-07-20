@@ -6,6 +6,5 @@ class AppStrings {
   static const String versionStatus = 'Repository Integration';
 
   static const String nextStepTitle = '次にやること';
-  static const String nextStepDescription =
-      'v0.6で施設一覧と施設詳細の土台を作成します。';
+  static const String nextStepDescription = 'v0.6で施設一覧と施設詳細の土台を作成します。';
 }

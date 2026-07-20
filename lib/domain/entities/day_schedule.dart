@@ -16,11 +16,12 @@ class DaySchedule {
       parkId: json['parkId'] as String? ?? '',
       items: rawItems is List
           ? rawItems
-              .whereType<Map<String, dynamic>>()
-              .map(ScheduleItem.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(ScheduleItem.fromJson)
+                .toList()
           : [],
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+      createdAt:
+          DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
     );
   }

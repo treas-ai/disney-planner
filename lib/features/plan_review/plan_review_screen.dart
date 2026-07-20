@@ -51,9 +51,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     final controller = _controller;
 
     if (controller == null) {
-      return const AppScaffold(
-        child: LoadingView(message: 'プラン確認画面を準備中です...'),
-      );
+      return const AppScaffold(child: LoadingView(message: 'プラン確認画面を準備中です...'));
     }
 
     return AppScaffold(
@@ -87,9 +85,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    const Text(
-                      '設定画面の来園条件と、施設一覧で選択した施設・希望条件をもとに予定を作成します。',
-                    ),
+                    const Text('設定画面の来園条件と、施設一覧で選択した施設・希望条件をもとに予定を作成します。'),
                     const SizedBox(height: AppSpacing.lg),
                     Row(
                       children: [
@@ -134,9 +130,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
 }
 
 class _ScheduleResult extends StatelessWidget {
-  const _ScheduleResult({
-    required this.schedule,
-  });
+  const _ScheduleResult({required this.schedule});
 
   final DaySchedule schedule;
 
@@ -146,10 +140,7 @@ class _ScheduleResult extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '生成結果',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('生成結果', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.md),
           for (final item in schedule.items) _ScheduleItemTile(item: item),
         ],
@@ -159,9 +150,7 @@ class _ScheduleResult extends StatelessWidget {
 }
 
 class _ScheduleItemTile extends StatelessWidget {
-  const _ScheduleItemTile({
-    required this.item,
-  });
+  const _ScheduleItemTile({required this.item});
 
   final ScheduleItem item;
 
@@ -174,9 +163,9 @@ class _ScheduleItemTile extends StatelessWidget {
         children: [
           Text(
             item.timeRangeLabel,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(

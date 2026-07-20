@@ -15,9 +15,7 @@ class PlanPreference {
     required this.createdAt,
   });
 
-  factory PlanPreference.initial({
-    required String facilityId,
-  }) {
+  factory PlanPreference.initial({required String facilityId}) {
     return PlanPreference(
       id: 'preference_${facilityId}_${DateTime.now().millisecondsSinceEpoch}',
       facilityId: facilityId,
@@ -50,7 +48,8 @@ class PlanPreference {
       useDpa: json['useDpa'] as bool? ?? false,
       usePriorityPass: json['usePriorityPass'] as bool? ?? false,
       memo: json['memo'] as String? ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+      createdAt:
+          DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
     );
   }

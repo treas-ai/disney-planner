@@ -18,9 +18,7 @@ class TodayPlanScreen extends StatelessWidget {
             subtitle: '採用済みプランを当日に確認する画面です。',
             icon: AppIcons.todaySelected,
           ),
-          AppCard(
-            child: Text('v1.0で採用済みプランを表示予定です。'),
-          ),
+          AppCard(child: Text('v1.0で採用済みプランを表示予定です。')),
         ],
       ),
     );

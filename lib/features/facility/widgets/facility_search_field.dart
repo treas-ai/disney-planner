@@ -4,10 +4,7 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 
 class FacilitySearchField extends StatelessWidget {
-  const FacilitySearchField({
-    super.key,
-    required this.onChanged,
-  });
+  const FacilitySearchField({super.key, required this.onChanged});
 
   final ValueChanged<String> onChanged;
 

@@ -12,9 +12,8 @@ import '../../domain/enums/wait_tolerance.dart';
 import '../dependency/service_locator.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({
-    AppStateStorage? storage,
-  }) : _storage = storage ?? AppStateStorage();
+  AppState({AppStateStorage? storage})
+    : _storage = storage ?? AppStateStorage();
 
   final AppStateStorage _storage;
 
@@ -128,9 +127,7 @@ class AppState extends ChangeNotifier {
   }
 
   void removeFacility(String facilityId) {
-    _selectedFacilities.removeWhere(
-      (facility) => facility.id == facilityId,
-    );
+    _selectedFacilities.removeWhere((facility) => facility.id == facilityId);
 
     _preferencesByFacilityId.remove(facilityId);
 
@@ -138,9 +135,7 @@ class AppState extends ChangeNotifier {
   }
 
   bool isFacilitySelected(String facilityId) {
-    return _selectedFacilities.any(
-      (facility) => facility.id == facilityId,
-    );
+    return _selectedFacilities.any((facility) => facility.id == facilityId);
   }
 
   PlanPreference? getPreference(String facilityId) {
@@ -157,9 +152,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    _preferencesByFacilityId[facilityId] = current.copyWith(
-      priority: priority,
-    );
+    _preferencesByFacilityId[facilityId] = current.copyWith(priority: priority);
 
     _saveAndNotify();
   }
@@ -208,9 +201,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    _preferencesByFacilityId[facilityId] = current.copyWith(
-      useDpa: value,
-    );
+    _preferencesByFacilityId[facilityId] = current.copyWith(useDpa: value);
 
     _saveAndNotify();
   }
@@ -242,9 +233,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    _preferencesByFacilityId[facilityId] = current.copyWith(
-      memo: memo,
-    );
+    _preferencesByFacilityId[facilityId] = current.copyWith(memo: memo);
 
     _saveAndNotify();
   }

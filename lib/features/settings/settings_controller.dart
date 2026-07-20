@@ -4,7 +4,7 @@ import '../../app/state/app_state.dart';
 import '../../domain/entities/trip_settings.dart';
 
 class SettingsController extends ChangeNotifier {
-      SettingsController(this._appState) {
+  SettingsController(this._appState) {
     _appState.addListener(_onAppStateChanged);
   }
 
@@ -22,19 +22,13 @@ class SettingsController extends ChangeNotifier {
 
   void updateEntryTime(TimeOfDay time) {
     _appState.updateTripSettings(
-      settings.copyWith(
-        entryTimeHour: time.hour,
-        entryTimeMinute: time.minute,
-      ),
+      settings.copyWith(entryTimeHour: time.hour, entryTimeMinute: time.minute),
     );
   }
 
   void updateExitTime(TimeOfDay time) {
     _appState.updateTripSettings(
-      settings.copyWith(
-        exitTimeHour: time.hour,
-        exitTimeMinute: time.minute,
-      ),
+      settings.copyWith(exitTimeHour: time.hour, exitTimeMinute: time.minute),
     );
   }
 
@@ -67,15 +61,11 @@ class SettingsController extends ChangeNotifier {
   }
 
   void updatePriorityPass(bool value) {
-    _appState.updateTripSettings(
-      settings.copyWith(canUsePriorityPass: value),
-    );
+    _appState.updateTripSettings(settings.copyWith(canUsePriorityPass: value));
   }
 
   void updateSingleRider(bool value) {
-    _appState.updateTripSettings(
-      settings.copyWith(canUseSingleRider: value),
-    );
+    _appState.updateTripSettings(settings.copyWith(canUseSingleRider: value));
   }
 
   void updateLunch(bool value) {

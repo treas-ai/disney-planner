@@ -6,10 +6,9 @@ import '../../domain/enums/facility_category.dart';
 import '../../domain/repositories/facility_repository.dart';
 
 class FacilityController extends ChangeNotifier {
-  FacilityController({
-    FacilityRepository? facilityRepository,
-  }) : _facilityRepository =
-            facilityRepository ?? ServiceLocator.facilityRepository {
+  FacilityController({FacilityRepository? facilityRepository})
+    : _facilityRepository =
+          facilityRepository ?? ServiceLocator.facilityRepository {
     loadFacilities();
   }
 
@@ -32,7 +31,8 @@ class FacilityController extends ChangeNotifier {
 
       final keyword = searchKeyword.trim().toLowerCase();
 
-      final matchesKeyword = keyword.isEmpty ||
+      final matchesKeyword =
+          keyword.isEmpty ||
           facility.name.toLowerCase().contains(keyword) ||
           (facility.description?.toLowerCase().contains(keyword) ?? false) ||
           facility.category.label.toLowerCase().contains(keyword);

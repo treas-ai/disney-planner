@@ -40,9 +40,7 @@ class AppTheme {
         indicatorColor: AppColors.primary.withValues(alpha: 0.12),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppTypography.caption.copyWith(
-              fontWeight: FontWeight.bold,
-            );
+            return AppTypography.caption.copyWith(fontWeight: FontWeight.bold);
           }
           return AppTypography.caption;
         }),

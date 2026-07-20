@@ -1,55 +1,35 @@
 import '../../domain/entities/facility.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/repositories/facility_repository.dart';
-import '../datasources/mock/mock_facility_data_source.dart';
+import '../datasources/facility_data_source.dart';
 
 class FacilityRepositoryImpl implements FacilityRepository {
-  const FacilityRepositoryImpl({
-    required this.dataSource,
-  });
+  const FacilityRepositoryImpl({required this.dataSource});
 
-  final MockFacilityDataSource dataSource;
+  final FacilityDataSource dataSource;
 
   @override
-  Future<List<Facility>> getFacilities() async {
+  Future<List<Facility>> getFacilities() {
     return dataSource.getFacilities();
   }
 
   @override
-  Future<List<Facility>> getFacilitiesByParkId(String parkId) async {
-    final facilities = dataSource.getFacilities();
-
-    return facilities.where((facility) => facility.parkId == parkId).toList();
+  Future<List<Facility>> getFacilitiesByParkId(String parkId) {
+    return dataSource.getFacilitiesByParkId(parkId);
   }
 
   @override
-  Future<List<Facility>> getFacilitiesByAreaId(String areaId) async {
-    final facilities = dataSource.getFacilities();
-
-    return facilities.where((facility) => facility.areaId == areaId).toList();
+  Future<List<Facility>> getFacilitiesByAreaId(String areaId) {
+    return dataSource.getFacilitiesByAreaId(areaId);
   }
 
   @override
-  Future<List<Facility>> getFacilitiesByCategory(
-    FacilityCategory category,
-  ) async {
-    final facilities = dataSource.getFacilities();
-
-    return facilities
-        .where((facility) => facility.category == category)
-        .toList();
+  Future<List<Facility>> getFacilitiesByCategory(FacilityCategory category) {
+    return dataSource.getFacilitiesByCategory(category);
   }
 
   @override
-  Future<Facility?> getFacilityById(String facilityId) async {
-    final facilities = dataSource.getFacilities();
-
-    for (final facility in facilities) {
-      if (facility.id == facilityId) {
-        return facility;
-      }
-    }
-
-    return null;
+  Future<Facility?> getFacilityById(String facilityId) {
+    return dataSource.getFacilityById(facilityId);
   }
 }

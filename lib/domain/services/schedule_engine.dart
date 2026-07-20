@@ -253,34 +253,21 @@ class ScheduleEngine {
     );
   }
 
-  _ScheduleTime _addMinutes(
-    int hour,
-    int minute,
-    int additionalMinutes,
-  ) {
+  _ScheduleTime _addMinutes(int hour, int minute, int additionalMinutes) {
     final totalMinutes = hour * 60 + minute + additionalMinutes;
 
-    return _ScheduleTime(
-      hour: totalMinutes ~/ 60,
-      minute: totalMinutes % 60,
-    );
+    return _ScheduleTime(hour: totalMinutes ~/ 60, minute: totalMinutes % 60);
   }
 
   _ScheduleTime _normalizeTime(int hour, int minute) {
     final totalMinutes = hour * 60 + minute;
 
-    return _ScheduleTime(
-      hour: totalMinutes ~/ 60,
-      minute: totalMinutes % 60,
-    );
+    return _ScheduleTime(hour: totalMinutes ~/ 60, minute: totalMinutes % 60);
   }
 }
 
 class _ScheduleTime {
-  const _ScheduleTime({
-    required this.hour,
-    required this.minute,
-  });
+  const _ScheduleTime({required this.hour, required this.minute});
 
   final int hour;
   final int minute;

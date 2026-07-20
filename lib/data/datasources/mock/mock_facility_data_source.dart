@@ -5,9 +5,13 @@ import '../../../domain/enums/reservation_type.dart';
 import '../../../domain/value_objects/coordinate.dart';
 import '../../../domain/value_objects/reservation.dart';
 import '../../../domain/value_objects/wait_time.dart';
+import '../facility_data_source.dart';
 
-class MockFacilityDataSource {
-  List<Facility> getFacilities() {
+class MockFacilityDataSource implements FacilityDataSource {
+  const MockFacilityDataSource();
+
+  @override
+  Future<List<Facility>> getFacilities() async {
     final now = DateTime.now();
 
     return [
@@ -55,7 +59,7 @@ class MockFacilityDataSource {
         coordinate: const Coordinate(latitude: 35.6278, longitude: 139.8860),
         reservation: const Reservation(type: ReservationType.entryRequest),
         priority: PriorityLevel.high,
-        description: 'ブロードウェイ・ミュージックシアターで公演される人気ショーです。',
+        description: 'ブロードウェイ・ミュージックシアターで公演されるショーです。',
       ),
       Facility(
         id: 'tds_magellans',
@@ -69,5 +73,43 @@ class MockFacilityDataSource {
         description: 'メディテレーニアンハーバーにある高級感のあるレストランです。',
       ),
     ];
+  }
+
+  @override
+  Future<List<Facility>> getFacilitiesByParkId(String parkId) async {
+    final facilities = await getFacilities();
+
+    return facilities.where((facility) => facility.parkId == parkId).toList();
+  }
+
+  @override
+  Future<List<Facility>> getFacilitiesByAreaId(String areaId) async {
+    final facilities = await getFacilities();
+
+    return facilities.where((facility) => facility.areaId == areaId).toList();
+  }
+
+  @override
+  Future<List<Facility>> getFacilitiesByCategory(
+    FacilityCategory category,
+  ) async {
+    final facilities = await getFacilities();
+
+    return facilities
+        .where((facility) => facility.category == category)
+        .toList();
+  }
+
+  @override
+  Future<Facility?> getFacilityById(String facilityId) async {
+    final facilities = await getFacilities();
+
+    for (final facility in facilities) {
+      if (facility.id == facilityId) {
+        return facility;
+      }
+    }
+
+    return null;
   }
 }

@@ -26,11 +26,7 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 48,
-              color: AppColors.textSecondary,
-            ),
+            Icon(icon, size: 48, color: AppColors.textSecondary),
             const SizedBox(height: AppSpacing.lg),
             Text(
               title,

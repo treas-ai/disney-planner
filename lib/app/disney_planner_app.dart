@@ -60,10 +60,6 @@ class _RestoreLoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text('データを復元中です...'),
-      ),
-    );
+    return const Scaffold(body: Center(child: Text('データを復元中です...')));
   }
 }

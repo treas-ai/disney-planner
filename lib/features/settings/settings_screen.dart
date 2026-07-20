@@ -91,9 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (controller == null) {
       return const AppScaffold(
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -145,10 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
 class _ParkSettingsCard extends StatelessWidget {
-  const _ParkSettingsCard({
-    required this.settings,
-    required this.onChanged,
-  });
+  const _ParkSettingsCard({required this.settings, required this.onChanged});
 
   final TripSettings settings;
   final ValueChanged<String> onChanged;
@@ -159,10 +154,7 @@ class _ParkSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'パーク設定',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('パーク設定', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<String>(
             initialValue: settings.parkId,
@@ -209,10 +201,7 @@ class _TimeSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '時間設定',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('時間設定', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -296,10 +285,7 @@ class _ServiceSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'サービス利用設定',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('サービス利用設定', style: Theme.of(context).textTheme.titleLarge),
           SwitchListTile(
             title: const Text('Happy Entry'),
             value: settings.hasHappyEntry,
@@ -343,10 +329,7 @@ class _MealSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '食事設定',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('食事設定', style: Theme.of(context).textTheme.titleLarge),
           SwitchListTile(
             title: const Text('昼食あり'),
             value: settings.wantsLunch,
@@ -380,10 +363,7 @@ class _ConditionSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '条件設定',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('条件設定', style: Theme.of(context).textTheme.titleLarge),
           SwitchListTile(
             title: const Text('雨'),
             value: settings.isRainy,

@@ -113,10 +113,7 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'データ概要',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('データ概要', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.md),
           Text('リゾート数：$resortCount'),
           Text('パーク数：$parkCount'),
@@ -128,9 +125,7 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _ParkListCard extends StatelessWidget {
-  const _ParkListCard({
-    required this.parks,
-  });
+  const _ParkListCard({required this.parks});
 
   final List<Park> parks;
 
@@ -140,10 +135,7 @@ class _ParkListCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'パーク一覧',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('パーク一覧', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.md),
           for (final park in parks) ...[
             Text('・${park.name}'),
@@ -156,9 +148,7 @@ class _ParkListCard extends StatelessWidget {
 }
 
 class _FacilityListCard extends StatelessWidget {
-  const _FacilityListCard({
-    required this.facilities,
-  });
+  const _FacilityListCard({required this.facilities});
 
   final List<Facility> facilities;
 
@@ -168,10 +158,7 @@ class _FacilityListCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '代表施設',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('代表施設', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.md),
           for (final facility in facilities) ...[
             Text('・${facility.name}（${facility.category.label}）'),

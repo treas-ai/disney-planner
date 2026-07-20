@@ -25,13 +25,7 @@ class _MainShellState extends State<MainShell> {
     SettingsScreen(),
   ];
 
-  final List<String> _titles = const [
-    'ホーム',
-    'プラン編集',
-    'プラン確認',
-    '今日の予定',
-    '設定',
-  ];
+  final List<String> _titles = const ['ホーム', 'プラン編集', 'プラン確認', '今日の予定', '設定'];
 
   void _onDestinationSelected(int index) {
     setState(() {
@@ -42,9 +36,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-      ),
+      appBar: AppBar(title: Text(_titles[_currentIndex])),
       body: _screens[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,

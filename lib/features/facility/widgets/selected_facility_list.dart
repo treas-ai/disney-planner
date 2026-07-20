@@ -21,9 +21,9 @@ class SelectedFacilityList extends StatelessWidget {
       return AppCard(
         child: Text(
           'まだ施設が選択されていません。',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
         ),
       );
     }
@@ -32,10 +32,7 @@ class SelectedFacilityList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '選択済み施設',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('選択済み施設', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.md),
           for (final facility in selectedFacilities)
             Padding(
@@ -43,10 +40,7 @@ class SelectedFacilityList extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      facility.name,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: Text(facility.name, overflow: TextOverflow.ellipsis),
                   ),
                   IconButton(
                     tooltip: '削除',

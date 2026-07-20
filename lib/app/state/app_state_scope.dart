@@ -21,7 +21,8 @@ class AppStateScope extends InheritedNotifier<AppState> {
   }
 
   static AppState read(BuildContext context) {
-    final element = context.getElementForInheritedWidgetOfExactType<AppStateScope>();
+    final element = context
+        .getElementForInheritedWidgetOfExactType<AppStateScope>();
     final widget = element?.widget;
 
     assert(

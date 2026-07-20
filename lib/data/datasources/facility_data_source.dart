@@ -1,7 +1,7 @@
-import '../entities/facility.dart';
-import '../enums/facility_category.dart';
+import '../../domain/entities/facility.dart';
+import '../../domain/enums/facility_category.dart';
 
-abstract class FacilityRepository {
+abstract interface class FacilityDataSource {
   Future<List<Facility>> getFacilities();
 
   Future<List<Facility>> getFacilitiesByParkId(String parkId);

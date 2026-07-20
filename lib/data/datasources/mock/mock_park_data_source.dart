@@ -1,25 +1,40 @@
-import '../../../../domain/entities/area.dart';
-import '../../../../domain/entities/park.dart';
-import '../../../../domain/entities/resort.dart';
-import '../../../../domain/value_objects/coordinate.dart';
-import '../../../../domain/value_objects/operating_hours.dart';
+import '../../../domain/entities/area.dart';
+import '../../../domain/entities/park.dart';
+import '../../../domain/entities/resort.dart';
+import '../../../domain/value_objects/coordinate.dart';
+import '../../../domain/value_objects/operating_hours.dart';
+import '../park_data_source.dart';
 
-class MockParkDataSource {
-  List<Resort> getResorts() {
+class MockParkDataSource implements ParkDataSource {
+  const MockParkDataSource();
+
+  @override
+  Future<List<Resort>> getResorts() async {
     return const [
       Resort(
         id: 'tokyo_disney_resort',
         name: '東京ディズニーリゾート',
         country: 'Japan',
-        parkIds: [
-          'tokyo_disneyland',
-          'tokyo_disneysea',
-        ],
+        parkIds: ['tokyo_disneyland', 'tokyo_disneysea'],
       ),
     ];
   }
 
-  List<Park> getParks() {
+  @override
+  Future<Resort?> getResortById(String resortId) async {
+    final resorts = await getResorts();
+
+    for (final resort in resorts) {
+      if (resort.id == resortId) {
+        return resort;
+      }
+    }
+
+    return null;
+  }
+
+  @override
+  Future<List<Park>> getParks() async {
     final today = DateTime.now();
 
     return [
@@ -61,7 +76,28 @@ class MockParkDataSource {
     ];
   }
 
-  List<Area> getAreas() {
+  @override
+  Future<List<Park>> getParksByResortId(String resortId) async {
+    final parks = await getParks();
+
+    return parks.where((park) => park.resortId == resortId).toList();
+  }
+
+  @override
+  Future<Park?> getParkById(String parkId) async {
+    final parks = await getParks();
+
+    for (final park in parks) {
+      if (park.id == parkId) {
+        return park;
+      }
+    }
+
+    return null;
+  }
+
+  @override
+  Future<List<Area>> getAreas() async {
     return const [
       Area(
         id: 'tdl_world_bazaar',
@@ -142,5 +178,25 @@ class MockParkDataSource {
         coordinate: Coordinate(latitude: 35.6312, longitude: 139.8822),
       ),
     ];
+  }
+
+  @override
+  Future<List<Area>> getAreasByParkId(String parkId) async {
+    final areas = await getAreas();
+
+    return areas.where((area) => area.parkId == parkId).toList();
+  }
+
+  @override
+  Future<Area?> getAreaById(String areaId) async {
+    final areas = await getAreas();
+
+    for (final area in areas) {
+      if (area.id == areaId) {
+        return area;
+      }
+    }
+
+    return null;
   }
 }

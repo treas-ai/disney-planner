@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 
-enum AppButtonSize {
-  small,
-  medium,
-  large,
-}
+enum AppButtonSize { small, medium, large }
 
 class AppButton extends StatelessWidget {
   const AppButton({
@@ -61,10 +57,6 @@ class AppButton extends StatelessWidget {
       );
     }
 
-    return FilledButton(
-      onPressed: onPressed,
-      style: style,
-      child: Text(label),
-    );
+    return FilledButton(onPressed: onPressed, style: style, child: Text(label));
   }
 }

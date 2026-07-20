@@ -1,8 +1,5 @@
 class OperatingHours {
-  const OperatingHours({
-    required this.open,
-    required this.close,
-  });
+  const OperatingHours({required this.open, required this.close});
 
   final DateTime open;
   final DateTime close;

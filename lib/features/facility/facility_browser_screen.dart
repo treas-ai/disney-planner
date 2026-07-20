@@ -82,9 +82,7 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
     if (facilityController == null ||
         planBuilderController == null ||
         planPreferenceController == null) {
-      return const AppScaffold(
-        child: LoadingView(message: '施設画面を準備中です...'),
-      );
+      return const AppScaffold(child: LoadingView(message: '施設画面を準備中です...'));
     }
 
     return AppScaffold(
@@ -131,16 +129,14 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
               ),
               if (selectedFacilities.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
-                Text(
-                  '希望条件',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('希望条件', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: AppSpacing.md),
                 for (final facility in selectedFacilities)
                   Builder(
                     builder: (context) {
-                      final preference =
-                          planPreferenceController.getPreference(facility.id);
+                      final preference = planPreferenceController.getPreference(
+                        facility.id,
+                      );
 
                       if (preference == null) {
                         return const SizedBox.shrink();

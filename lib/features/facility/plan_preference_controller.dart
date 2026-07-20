@@ -49,14 +49,8 @@ class PlanPreferenceController extends ChangeNotifier {
     );
   }
 
-  void updateUseDpa({
-    required String facilityId,
-    required bool value,
-  }) {
-    _appState.updatePreferenceUseDpa(
-      facilityId: facilityId,
-      value: value,
-    );
+  void updateUseDpa({required String facilityId, required bool value}) {
+    _appState.updatePreferenceUseDpa(facilityId: facilityId, value: value);
   }
 
   void updateUsePriorityPass({
@@ -69,14 +63,8 @@ class PlanPreferenceController extends ChangeNotifier {
     );
   }
 
-  void updateMemo({
-    required String facilityId,
-    required String memo,
-  }) {
-    _appState.updatePreferenceMemo(
-      facilityId: facilityId,
-      memo: memo,
-    );
+  void updateMemo({required String facilityId, required String memo}) {
+    _appState.updatePreferenceMemo(facilityId: facilityId, memo: memo);
   }
 
   void _onAppStateChanged() {
