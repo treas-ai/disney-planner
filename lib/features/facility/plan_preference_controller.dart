@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
 import '../../domain/entities/plan_preference.dart';
+import '../../domain/enums/meal_preference.dart';
 import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wait_tolerance.dart';
@@ -13,7 +14,9 @@ class PlanPreferenceController extends ChangeNotifier {
 
   final AppState _appState;
 
-  List<PlanPreference> get preferences => _appState.planPreferences;
+  List<PlanPreference> get preferences {
+    return _appState.planPreferences;
+  }
 
   PlanPreference? getPreference(String facilityId) {
     return _appState.getPreference(facilityId);
@@ -46,6 +49,16 @@ class PlanPreferenceController extends ChangeNotifier {
     _appState.updatePreferenceWaitTolerance(
       facilityId: facilityId,
       waitTolerance: waitTolerance,
+    );
+  }
+
+  void updateMealPreference({
+    required String facilityId,
+    required MealPreference mealPreference,
+  }) {
+    _appState.updatePreferenceMealPreference(
+      facilityId: facilityId,
+      mealPreference: mealPreference,
     );
   }
 

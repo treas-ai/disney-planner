@@ -10,7 +10,9 @@ class SettingsController extends ChangeNotifier {
 
   final AppState _appState;
 
-  TripSettings get settings => _appState.tripSettings;
+  TripSettings get settings {
+    return _appState.tripSettings;
+  }
 
   void _onAppStateChanged() {
     notifyListeners();
@@ -66,6 +68,10 @@ class SettingsController extends ChangeNotifier {
 
   void updateSingleRider(bool value) {
     _appState.updateTripSettings(settings.copyWith(canUseSingleRider: value));
+  }
+
+  void updateBreakfast(bool value) {
+    _appState.updateTripSettings(settings.copyWith(wantsBreakfast: value));
   }
 
   void updateLunch(bool value) {

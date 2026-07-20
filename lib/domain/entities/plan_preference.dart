@@ -1,3 +1,4 @@
+import '../enums/meal_preference.dart';
 import '../enums/preferred_time.dart';
 import '../enums/priority_level.dart';
 import '../enums/wait_tolerance.dart';
@@ -9,6 +10,7 @@ class PlanPreference {
     required this.priority,
     required this.preferredTime,
     required this.waitTolerance,
+    required this.mealPreference,
     required this.useDpa,
     required this.usePriorityPass,
     required this.memo,
@@ -22,6 +24,7 @@ class PlanPreference {
       priority: PriorityLevel.medium,
       preferredTime: PreferredTime.anytime,
       waitTolerance: WaitTolerance.medium,
+      mealPreference: MealPreference.flexible,
       useDpa: false,
       usePriorityPass: false,
       memo: '',
@@ -45,6 +48,10 @@ class PlanPreference {
         (tolerance) => tolerance.name == json['waitTolerance'],
         orElse: () => WaitTolerance.medium,
       ),
+      mealPreference: MealPreference.values.firstWhere(
+        (preference) => preference.name == json['mealPreference'],
+        orElse: () => MealPreference.flexible,
+      ),
       useDpa: json['useDpa'] as bool? ?? false,
       usePriorityPass: json['usePriorityPass'] as bool? ?? false,
       memo: json['memo'] as String? ?? '',
@@ -59,6 +66,7 @@ class PlanPreference {
   final PriorityLevel priority;
   final PreferredTime preferredTime;
   final WaitTolerance waitTolerance;
+  final MealPreference mealPreference;
   final bool useDpa;
   final bool usePriorityPass;
   final String memo;
@@ -71,6 +79,7 @@ class PlanPreference {
       'priority': priority.name,
       'preferredTime': preferredTime.name,
       'waitTolerance': waitTolerance.name,
+      'mealPreference': mealPreference.name,
       'useDpa': useDpa,
       'usePriorityPass': usePriorityPass,
       'memo': memo,
@@ -84,6 +93,7 @@ class PlanPreference {
     PriorityLevel? priority,
     PreferredTime? preferredTime,
     WaitTolerance? waitTolerance,
+    MealPreference? mealPreference,
     bool? useDpa,
     bool? usePriorityPass,
     String? memo,
@@ -95,6 +105,7 @@ class PlanPreference {
       priority: priority ?? this.priority,
       preferredTime: preferredTime ?? this.preferredTime,
       waitTolerance: waitTolerance ?? this.waitTolerance,
+      mealPreference: mealPreference ?? this.mealPreference,
       useDpa: useDpa ?? this.useDpa,
       usePriorityPass: usePriorityPass ?? this.usePriorityPass,
       memo: memo ?? this.memo,

@@ -101,6 +101,7 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
           }
 
           final filteredFacilities = facilityController.filteredFacilities;
+
           final selectedFacilities = planBuilderController.selectedFacilities;
 
           return ListView(
@@ -120,7 +121,8 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: Text(
-                  '表示件数：${filteredFacilities.length}件 / 選択済み：${planBuilderController.selectedCount}件',
+                  '表示件数：${filteredFacilities.length}件 / '
+                  '選択済み：${planBuilderController.selectedCount}件',
                 ),
               ),
               SelectedFacilityList(
@@ -161,6 +163,12 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
                           planPreferenceController.updateWaitTolerance(
                             facilityId: facility.id,
                             waitTolerance: waitTolerance,
+                          );
+                        },
+                        onMealPreferenceChanged: (mealPreference) {
+                          planPreferenceController.updateMealPreference(
+                            facilityId: facility.id,
+                            mealPreference: mealPreference,
                           );
                         },
                         onUseDpaChanged: (value) {

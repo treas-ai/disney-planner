@@ -6,6 +6,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
+import '../../core/widgets/loading_view.dart';
 import '../../core/widgets/section_title.dart';
 import '../../domain/entities/trip_settings.dart';
 import 'settings_controller.dart';
@@ -14,7 +15,9 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<SettingsScreen> createState() {
+    return _SettingsScreenState();
+  }
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
@@ -45,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _selectEntryTime() async {
     final controller = _controller;
+
     if (controller == null) {
       return;
     }
@@ -66,6 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _selectExitTime() async {
     final controller = _controller;
+
     if (controller == null) {
       return;
     }
@@ -90,9 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final controller = _controller;
 
     if (controller == null) {
-      return const AppScaffold(
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const AppScaffold(child: LoadingView(message: '設定画面を準備中です...'));
     }
 
     final settings = controller.settings;
@@ -102,7 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           const SectionTitle(
             title: '設定',
-            subtitle: 'AIプラン生成に使う来園条件を設定します。',
+            subtitle: 'プラン生成に使う来園条件を設定します。',
             icon: AppIcons.settingsSelected,
           ),
           _ParkSettingsCard(
@@ -128,6 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _MealSettingsCard(
             settings: settings,
+            onBreakfastChanged: controller.updateBreakfast,
             onLunchChanged: controller.updateLunch,
             onDinnerChanged: controller.updateDinner,
           ),
@@ -251,10 +255,12 @@ class _PeopleSettingsCard extends StatelessWidget {
             ),
           ),
           IconButton(
+            tooltip: '人数を減らす',
             onPressed: onDecrease,
             icon: const Icon(Icons.remove_circle_outline),
           ),
           IconButton(
+            tooltip: '人数を増やす',
             onPressed: onIncrease,
             icon: const Icon(Icons.add_circle_outline),
           ),
@@ -315,11 +321,13 @@ class _ServiceSettingsCard extends StatelessWidget {
 class _MealSettingsCard extends StatelessWidget {
   const _MealSettingsCard({
     required this.settings,
+    required this.onBreakfastChanged,
     required this.onLunchChanged,
     required this.onDinnerChanged,
   });
 
   final TripSettings settings;
+  final ValueChanged<bool> onBreakfastChanged;
   final ValueChanged<bool> onLunchChanged;
   final ValueChanged<bool> onDinnerChanged;
 
@@ -330,6 +338,12 @@ class _MealSettingsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('食事設定', style: Theme.of(context).textTheme.titleLarge),
+          SwitchListTile(
+            title: const Text('朝食あり'),
+            subtitle: const Text('入園後から10:00までを朝食枠として扱います。'),
+            value: settings.wantsBreakfast,
+            onChanged: onBreakfastChanged,
+          ),
           SwitchListTile(
             title: const Text('昼食あり'),
             value: settings.wantsLunch,

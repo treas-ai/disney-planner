@@ -4,6 +4,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../domain/entities/facility.dart';
 import '../../../domain/entities/plan_preference.dart';
+import '../../../domain/enums/facility_category.dart';
+import '../../../domain/enums/meal_preference.dart';
 import '../../../domain/enums/preferred_time.dart';
 import '../../../domain/enums/priority_level.dart';
 import '../../../domain/enums/wait_tolerance.dart';
@@ -16,6 +18,7 @@ class PlanPreferenceEditor extends StatelessWidget {
     required this.onPriorityChanged,
     required this.onPreferredTimeChanged,
     required this.onWaitToleranceChanged,
+    required this.onMealPreferenceChanged,
     required this.onUseDpaChanged,
     required this.onUsePriorityPassChanged,
     required this.onMemoChanged,
@@ -27,9 +30,14 @@ class PlanPreferenceEditor extends StatelessWidget {
   final ValueChanged<PriorityLevel> onPriorityChanged;
   final ValueChanged<PreferredTime> onPreferredTimeChanged;
   final ValueChanged<WaitTolerance> onWaitToleranceChanged;
+  final ValueChanged<MealPreference> onMealPreferenceChanged;
   final ValueChanged<bool> onUseDpaChanged;
   final ValueChanged<bool> onUsePriorityPassChanged;
   final ValueChanged<String> onMemoChanged;
+
+  bool get _isRestaurant {
+    return facility.category == FacilityCategory.restaurant;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +86,28 @@ class PlanPreferenceEditor extends StatelessWidget {
               }
             },
           ),
+          if (_isRestaurant) ...[
+            const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<MealPreference>(
+              initialValue: preference.mealPreference,
+              decoration: const InputDecoration(
+                labelText: '食事利用',
+                helperText: '予約時間が登録されている場合は、予約時間を優先します。',
+                border: OutlineInputBorder(),
+              ),
+              items: MealPreference.values
+                  .map(
+                    (meal) =>
+                        DropdownMenuItem(value: meal, child: Text(meal.label)),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  onMealPreferenceChanged(value);
+                }
+              },
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<WaitTolerance>(
             initialValue: preference.waitTolerance,
@@ -111,7 +141,9 @@ class PlanPreferenceEditor extends StatelessWidget {
             onChanged: onUsePriorityPassChanged,
           ),
           const SizedBox(height: AppSpacing.md),
-          TextField(
+          TextFormField(
+            key: ValueKey('${facility.id}_${preference.memo}'),
+            initialValue: preference.memo,
             decoration: const InputDecoration(
               labelText: 'メモ',
               border: OutlineInputBorder(),

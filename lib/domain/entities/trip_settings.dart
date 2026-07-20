@@ -10,6 +10,7 @@ class TripSettings {
     required this.canUseDpa,
     required this.canUsePriorityPass,
     required this.canUseSingleRider,
+    required this.wantsBreakfast,
     required this.wantsLunch,
     required this.wantsDinner,
     required this.isRainy,
@@ -28,6 +29,7 @@ class TripSettings {
       canUseDpa: true,
       canUsePriorityPass: true,
       canUseSingleRider: false,
+      wantsBreakfast: false,
       wantsLunch: true,
       wantsDinner: true,
       isRainy: false,
@@ -47,6 +49,7 @@ class TripSettings {
       canUseDpa: json['canUseDpa'] as bool? ?? true,
       canUsePriorityPass: json['canUsePriorityPass'] as bool? ?? true,
       canUseSingleRider: json['canUseSingleRider'] as bool? ?? false,
+      wantsBreakfast: json['wantsBreakfast'] as bool? ?? false,
       wantsLunch: json['wantsLunch'] as bool? ?? true,
       wantsDinner: json['wantsDinner'] as bool? ?? true,
       isRainy: json['isRainy'] as bool? ?? false,
@@ -69,6 +72,7 @@ class TripSettings {
   final bool canUsePriorityPass;
   final bool canUseSingleRider;
 
+  final bool wantsBreakfast;
   final bool wantsLunch;
   final bool wantsDinner;
 
@@ -97,6 +101,7 @@ class TripSettings {
       'canUseDpa': canUseDpa,
       'canUsePriorityPass': canUsePriorityPass,
       'canUseSingleRider': canUseSingleRider,
+      'wantsBreakfast': wantsBreakfast,
       'wantsLunch': wantsLunch,
       'wantsDinner': wantsDinner,
       'isRainy': isRainy,
@@ -115,6 +120,7 @@ class TripSettings {
     bool? canUseDpa,
     bool? canUsePriorityPass,
     bool? canUseSingleRider,
+    bool? wantsBreakfast,
     bool? wantsLunch,
     bool? wantsDinner,
     bool? isRainy,
@@ -131,6 +137,7 @@ class TripSettings {
       canUseDpa: canUseDpa ?? this.canUseDpa,
       canUsePriorityPass: canUsePriorityPass ?? this.canUsePriorityPass,
       canUseSingleRider: canUseSingleRider ?? this.canUseSingleRider,
+      wantsBreakfast: wantsBreakfast ?? this.wantsBreakfast,
       wantsLunch: wantsLunch ?? this.wantsLunch,
       wantsDinner: wantsDinner ?? this.wantsDinner,
       isRainy: isRainy ?? this.isRainy,

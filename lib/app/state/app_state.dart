@@ -1,21 +1,25 @@
 import 'package:flutter/foundation.dart';
 
 import '../../data/local/app_state_storage.dart';
-import '../../data/repositories/facility_repository_impl.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/enums/meal_preference.dart';
 import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wait_tolerance.dart';
+import '../../domain/repositories/facility_repository.dart';
 import '../dependency/service_locator.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({AppStateStorage? storage})
-    : _storage = storage ?? AppStateStorage();
+  AppState({AppStateStorage? storage, FacilityRepository? facilityRepository})
+    : _storage = storage ?? AppStateStorage(),
+      _facilityRepository =
+          facilityRepository ?? ServiceLocator.facilityRepository;
 
   final AppStateStorage _storage;
+  final FacilityRepository _facilityRepository;
 
   TripSettings tripSettings = TripSettings.initial();
 
@@ -39,48 +43,75 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> restore() async {
-    final json = await _storage.load();
+    try {
+      final json = await _storage.load();
 
-    if (json == null) {
-      isRestored = true;
-      notifyListeners();
-      return;
-    }
+      if (json == null) {
+        return;
+      }
 
-    final tripSettingsJson = json['tripSettings'];
-    if (tripSettingsJson is Map<String, dynamic>) {
-      tripSettings = TripSettings.fromJson(tripSettingsJson);
-    }
+      final tripSettingsJson = json['tripSettings'];
 
-    final facilityIds = _readStringList(json['selectedFacilityIds']);
-    await _restoreSelectedFacilities(facilityIds);
+      if (tripSettingsJson is Map<String, dynamic>) {
+        tripSettings = TripSettings.fromJson(tripSettingsJson);
+      }
 
-    final rawPreferences = json['planPreferences'];
-    if (rawPreferences is List) {
-      _preferencesByFacilityId.clear();
+      final facilityIds = _readStringList(json['selectedFacilityIds']);
 
-      for (final item in rawPreferences) {
-        if (item is Map<String, dynamic>) {
+      await _restoreSelectedFacilities(facilityIds);
+
+      final rawPreferences = json['planPreferences'];
+
+      if (rawPreferences is List) {
+        _preferencesByFacilityId.clear();
+
+        for (final item in rawPreferences) {
+          if (item is! Map<String, dynamic>) {
+            continue;
+          }
+
           final preference = PlanPreference.fromJson(item);
 
-          if (preference.facilityId.isNotEmpty) {
-            _preferencesByFacilityId[preference.facilityId] = preference;
+          if (preference.facilityId.isEmpty) {
+            continue;
           }
+
+          if (!isFacilitySelected(preference.facilityId)) {
+            continue;
+          }
+
+          _preferencesByFacilityId[preference.facilityId] = preference;
         }
       }
-    }
 
-    final scheduleJson = json['daySchedule'];
-    if (scheduleJson is Map<String, dynamic>) {
-      daySchedule = DaySchedule.fromJson(scheduleJson);
-    }
+      _createMissingPreferences();
 
-    isRestored = true;
-    notifyListeners();
+      final scheduleJson = json['daySchedule'];
+
+      if (scheduleJson is Map<String, dynamic>) {
+        daySchedule = DaySchedule.fromJson(scheduleJson);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('AppStateの復元に失敗しました: $error');
+      debugPrintStack(stackTrace: stackTrace);
+
+      tripSettings = TripSettings.initial();
+      _selectedFacilities.clear();
+      _preferencesByFacilityId.clear();
+      daySchedule = null;
+    } finally {
+      isRestored = true;
+      notifyListeners();
+    }
   }
 
   Future<void> save() async {
-    await _storage.save(toJson());
+    try {
+      await _storage.save(toJson());
+    } catch (error, stackTrace) {
+      debugPrint('AppStateの保存に失敗しました: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   Future<void> clearSavedState() async {
@@ -191,6 +222,23 @@ class AppState extends ChangeNotifier {
     _saveAndNotify();
   }
 
+  void updatePreferenceMealPreference({
+    required String facilityId,
+    required MealPreference mealPreference,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+
+    if (current == null) {
+      return;
+    }
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      mealPreference: mealPreference,
+    );
+
+    _saveAndNotify();
+  }
+
   void updatePreferenceUseDpa({
     required String facilityId,
     required bool value,
@@ -251,19 +299,21 @@ class AppState extends ChangeNotifier {
   Future<void> _restoreSelectedFacilities(List<String> facilityIds) async {
     _selectedFacilities.clear();
 
-    final repository = ServiceLocator.facilityRepository;
+    for (final facilityId in facilityIds) {
+      final facility = await _facilityRepository.getFacilityById(facilityId);
 
-    if (repository is FacilityRepositoryImpl) {
-      final facilities = await repository.getFacilities();
-
-      for (final facilityId in facilityIds) {
-        for (final facility in facilities) {
-          if (facility.id == facilityId) {
-            _selectedFacilities.add(facility);
-            break;
-          }
-        }
+      if (facility != null) {
+        _selectedFacilities.add(facility);
       }
+    }
+  }
+
+  void _createMissingPreferences() {
+    for (final facility in _selectedFacilities) {
+      _preferencesByFacilityId.putIfAbsent(
+        facility.id,
+        () => PlanPreference.initial(facilityId: facility.id),
+      );
     }
   }
 

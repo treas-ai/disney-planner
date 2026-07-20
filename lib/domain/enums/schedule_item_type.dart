@@ -1,6 +1,7 @@
 enum ScheduleItemType {
   entry('入園'),
   facility('施設'),
+  breakfast('朝食'),
   lunch('昼食'),
   dinner('夕食'),
   breakTime('休憩'),
