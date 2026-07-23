@@ -1,15 +1,26 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import '../master_data/master_data_loader.dart';
+import 'migrations/migration_v2.dart';
+import 'migrations/migration_v3.dart';
+import 'migrations/migration_v4.dart';
+import 'migrations/migration_v5.dart';
+import 'migrations/migration_v6.dart';
+import 'migrations/migration_v7.dart';
 
 class AppDatabase {
   AppDatabase._();
 
   static const String databaseName = 'disney_planner.db';
-  static const int databaseVersion = 1;
+
+  static const int databaseVersion = 7;
 
   static Database? _database;
+
   static bool _databaseFactoryInitialized = false;
 
   static Future<Database> get instance async {
@@ -22,6 +33,7 @@ class AppDatabase {
     _initializeDatabaseFactory();
 
     final databaseDirectory = await getDatabasesPath();
+
     final databasePath = path.join(databaseDirectory, databaseName);
 
     _database = await openDatabase(
@@ -30,6 +42,7 @@ class AppDatabase {
       onConfigure: _onConfigure,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onOpen: _onOpen,
     );
 
     return _database!;
@@ -55,7 +68,12 @@ class AppDatabase {
   static Future<void> _onCreate(Database database, int version) async {
     await database.transaction((transaction) async {
       await _createTables(transaction);
-      await _insertInitialData(transaction);
+
+      await _insertResort(transaction);
+
+      const loader = MasterDataLoader();
+
+      await loader.importAll(transaction);
     });
   }
 
@@ -64,16 +82,67 @@ class AppDatabase {
     int oldVersion,
     int newVersion,
   ) async {
-    // v1.3ではデータベースVersion 1のみを使用します。
-    //
-    // 将来Version 2以降へ変更する場合は、次のように
-    // oldVersionを確認してMigrationを追加します。
-    //
-    // if (oldVersion < 2) {
-    //   await database.execute(
-    //     'ALTER TABLE facilities ADD COLUMN image_url TEXT',
-    //   );
-    // }
+    if (oldVersion < 2) {
+      await MigrationV2.migrate(database);
+    }
+
+    if (oldVersion < 3) {
+      await MigrationV3.migrate(database);
+    }
+
+    if (oldVersion < 4) {
+      await MigrationV4.migrate(database);
+    }
+
+    if (oldVersion < 5) {
+      await MigrationV5.migrate(database);
+    }
+
+    if (oldVersion < 6) {
+      await MigrationV6.migrate(database);
+    }
+
+    if (oldVersion < 7) {
+      await MigrationV7.migrate(database);
+    }
+  }
+
+  static Future<void> _onOpen(Database database) async {
+    try {
+      const loader = MasterDataLoader();
+
+      await database.transaction((transaction) async {
+        await loader.importAll(transaction);
+      });
+
+      final totalRows = await database.rawQuery('''
+        SELECT COUNT(*) AS count
+        FROM facilities
+        ''');
+
+      final linkRows = await database.rawQuery('''
+        SELECT COUNT(*) AS count
+        FROM facilities
+        WHERE official_url IS NOT NULL
+           OR menu_url IS NOT NULL
+        ''');
+
+      final totalCount = totalRows.first['count'] as int? ?? 0;
+
+      final linkCount = linkRows.first['count'] as int? ?? 0;
+
+      debugPrint(
+        'マスターデータ同期完了：'
+        '全施設$totalCount件、'
+        '公式リンク設定済み$linkCount件',
+      );
+    } catch (error, stackTrace) {
+      debugPrint('マスターデータ同期に失敗しました: $error');
+
+      debugPrintStack(stackTrace: stackTrace);
+
+      rethrow;
+    }
   }
 
   static Future<void> _createTables(DatabaseExecutor database) async {
@@ -95,6 +164,9 @@ class AppDatabase {
         close_hour INTEGER NOT NULL,
         close_minute INTEGER NOT NULL,
         status TEXT NOT NULL,
+        country TEXT NOT NULL DEFAULT 'Japan',
+        timezone TEXT NOT NULL DEFAULT 'Asia/Tokyo',
+
         FOREIGN KEY (resort_id)
           REFERENCES resorts (id)
           ON DELETE CASCADE
@@ -108,6 +180,8 @@ class AppDatabase {
         name TEXT NOT NULL,
         latitude REAL NOT NULL,
         longitude REAL NOT NULL,
+        display_order INTEGER NOT NULL DEFAULT 0,
+
         FOREIGN KEY (park_id)
           REFERENCES parks (id)
           ON DELETE CASCADE
@@ -121,22 +195,104 @@ class AppDatabase {
         area_id TEXT NOT NULL,
         name TEXT NOT NULL,
         category TEXT NOT NULL,
+
         latitude REAL NOT NULL,
         longitude REAL NOT NULL,
+
         open_hour INTEGER,
         open_minute INTEGER,
         close_hour INTEGER,
         close_minute INTEGER,
+
         priority TEXT NOT NULL,
         status TEXT NOT NULL,
         description TEXT,
+
         reservation_type TEXT,
         reservation_time TEXT,
+
         wait_minutes INTEGER,
         wait_updated_at TEXT,
+
+        duration_minutes INTEGER
+          NOT NULL DEFAULT 60,
+
+        is_indoor INTEGER
+          NOT NULL DEFAULT 0,
+
+        supports_dpa INTEGER
+          NOT NULL DEFAULT 0,
+
+        supports_priority_pass INTEGER
+          NOT NULL DEFAULT 0,
+
+        supports_standby_pass INTEGER
+          NOT NULL DEFAULT 0,
+
+        supports_single_rider INTEGER
+          NOT NULL DEFAULT 0,
+
+        requires_entry_request INTEGER
+          NOT NULL DEFAULT 0,
+
+        requires_reservation INTEGER
+          NOT NULL DEFAULT 0,
+
+        is_seasonal INTEGER
+          NOT NULL DEFAULT 0,
+
+        is_operating INTEGER
+          NOT NULL DEFAULT 1,
+
+        min_height REAL,
+        target_age TEXT,
+
+        display_order INTEGER
+          NOT NULL DEFAULT 0,
+
+        ride_type TEXT,
+        thrill_level INTEGER,
+
+        is_water_ride INTEGER
+          NOT NULL DEFAULT 0,
+
+        is_dark_ride INTEGER
+          NOT NULL DEFAULT 0,
+
+        is_table_service INTEGER
+          NOT NULL DEFAULT 0,
+
+        supports_mobile_order INTEGER
+          NOT NULL DEFAULT 0,
+
+        supports_priority_seating INTEGER
+          NOT NULL DEFAULT 0,
+
+        reservation_required INTEGER
+          NOT NULL DEFAULT 0,
+
+        shop_type TEXT
+          NOT NULL DEFAULT 'none',
+
+        restaurant_type TEXT
+          NOT NULL DEFAULT 'none',
+
+        representative_menu TEXT,
+        popcorn_flavor TEXT,
+        menu_note TEXT,
+
+        is_show_restaurant INTEGER
+          NOT NULL DEFAULT 0,
+
+        show_name TEXT,
+
+        official_url TEXT,
+        menu_url TEXT,
+
         FOREIGN KEY (park_id)
           REFERENCES parks (id)
           ON DELETE CASCADE,
+
         FOREIGN KEY (area_id)
           REFERENCES areas (id)
           ON DELETE CASCADE
@@ -154,6 +310,14 @@ class AppDatabase {
       ''');
 
     await database.execute('''
+      CREATE INDEX index_areas_display_order
+      ON areas (
+        park_id,
+        display_order
+      )
+      ''');
+
+    await database.execute('''
       CREATE INDEX index_facilities_park_id
       ON facilities (park_id)
       ''');
@@ -167,273 +331,71 @@ class AppDatabase {
       CREATE INDEX index_facilities_category
       ON facilities (category)
       ''');
+
+    await database.execute('''
+      CREATE INDEX index_facilities_display_order
+      ON facilities (
+        park_id,
+        area_id,
+        display_order
+      )
+      ''');
+
+    await database.execute('''
+      CREATE INDEX index_facilities_operating
+      ON facilities (
+        park_id,
+        is_operating
+      )
+      ''');
+
+    await database.execute('''
+      CREATE INDEX index_facilities_shop_type
+      ON facilities (
+        park_id,
+        shop_type
+      )
+      ''');
+
+    await database.execute('''
+      CREATE INDEX index_facilities_restaurant_type
+      ON facilities (
+        park_id,
+        restaurant_type
+      )
+      ''');
+
+    await database.execute('''
+      CREATE INDEX index_facilities_mobile_order
+      ON facilities (
+        park_id,
+        supports_mobile_order
+      )
+      ''');
+
+    await database.execute('''
+      CREATE INDEX index_facilities_priority_seating
+      ON facilities (
+        park_id,
+        supports_priority_seating
+      )
+      ''');
+
+    await database.execute('''
+      CREATE INDEX index_facilities_show_restaurant
+      ON facilities (
+        park_id,
+        is_show_restaurant
+      )
+      ''');
   }
 
-  static Future<void> _insertInitialData(DatabaseExecutor database) async {
-    await _insertResorts(database);
-    await _insertParks(database);
-    await _insertAreas(database);
-    await _insertFacilities(database);
-  }
-
-  static Future<void> _insertResorts(DatabaseExecutor database) async {
-    await database.insert('resorts', {
+  static Future<void> _insertResort(DatabaseExecutor database) async {
+    await database.insert('resorts', const {
       'id': 'tokyo_disney_resort',
       'name': '東京ディズニーリゾート',
       'country': 'Japan',
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
-  }
-
-  static Future<void> _insertParks(DatabaseExecutor database) async {
-    final parks = [
-      {
-        'id': 'tokyo_disneyland',
-        'resort_id': 'tokyo_disney_resort',
-        'name': '東京ディズニーランド',
-        'open_hour': 9,
-        'open_minute': 0,
-        'close_hour': 21,
-        'close_minute': 0,
-        'status': 'open',
-      },
-      {
-        'id': 'tokyo_disneysea',
-        'resort_id': 'tokyo_disney_resort',
-        'name': '東京ディズニーシー',
-        'open_hour': 9,
-        'open_minute': 0,
-        'close_hour': 21,
-        'close_minute': 0,
-        'status': 'open',
-      },
-    ];
-
-    for (final park in parks) {
-      await database.insert(
-        'parks',
-        park,
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
-    }
-  }
-
-  static Future<void> _insertAreas(DatabaseExecutor database) async {
-    final areas = [
-      {
-        'id': 'tdl_world_bazaar',
-        'park_id': 'tokyo_disneyland',
-        'name': 'ワールドバザール',
-        'latitude': 35.6329,
-        'longitude': 139.8804,
-      },
-      {
-        'id': 'tdl_adventureland',
-        'park_id': 'tokyo_disneyland',
-        'name': 'アドベンチャーランド',
-        'latitude': 35.6321,
-        'longitude': 139.8810,
-      },
-      {
-        'id': 'tdl_westernland',
-        'park_id': 'tokyo_disneyland',
-        'name': 'ウエスタンランド',
-        'latitude': 35.6324,
-        'longitude': 139.8796,
-      },
-      {
-        'id': 'tdl_fantasyland',
-        'park_id': 'tokyo_disneyland',
-        'name': 'ファンタジーランド',
-        'latitude': 35.6332,
-        'longitude': 139.8786,
-      },
-      {
-        'id': 'tdl_tomorrowland',
-        'park_id': 'tokyo_disneyland',
-        'name': 'トゥモローランド',
-        'latitude': 35.6334,
-        'longitude': 139.8817,
-      },
-      {
-        'id': 'tds_mediterranean_harbor',
-        'park_id': 'tokyo_disneysea',
-        'name': 'メディテレーニアンハーバー',
-        'latitude': 35.6267,
-        'longitude': 139.8850,
-      },
-      {
-        'id': 'tds_american_waterfront',
-        'park_id': 'tokyo_disneysea',
-        'name': 'アメリカンウォーターフロント',
-        'latitude': 35.6277,
-        'longitude': 139.8861,
-      },
-      {
-        'id': 'tds_port_discovery',
-        'park_id': 'tokyo_disneysea',
-        'name': 'ポートディスカバリー',
-        'latitude': 35.6293,
-        'longitude': 139.8868,
-      },
-      {
-        'id': 'tds_lost_river_delta',
-        'park_id': 'tokyo_disneysea',
-        'name': 'ロストリバーデルタ',
-        'latitude': 35.6301,
-        'longitude': 139.8847,
-      },
-      {
-        'id': 'tds_arabian_coast',
-        'park_id': 'tokyo_disneysea',
-        'name': 'アラビアンコースト',
-        'latitude': 35.6288,
-        'longitude': 139.8832,
-      },
-      {
-        'id': 'tds_mermaid_lagoon',
-        'park_id': 'tokyo_disneysea',
-        'name': 'マーメイドラグーン',
-        'latitude': 35.6280,
-        'longitude': 139.8827,
-      },
-      {
-        'id': 'tds_mysterious_island',
-        'park_id': 'tokyo_disneysea',
-        'name': 'ミステリアスアイランド',
-        'latitude': 35.6278,
-        'longitude': 139.8841,
-      },
-      {
-        'id': 'tds_fantasy_springs',
-        'park_id': 'tokyo_disneysea',
-        'name': 'ファンタジースプリングス',
-        'latitude': 35.6312,
-        'longitude': 139.8822,
-      },
-    ];
-
-    for (final area in areas) {
-      await database.insert(
-        'areas',
-        area,
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
-    }
-  }
-
-  static Future<void> _insertFacilities(DatabaseExecutor database) async {
-    final initialTimestamp = DateTime.now().toIso8601String();
-
-    final facilities = [
-      {
-        'id': 'tdl_beauty_and_the_beast',
-        'park_id': 'tokyo_disneyland',
-        'area_id': 'tdl_fantasyland',
-        'name': '美女と野獣“魔法のものがたり”',
-        'category': 'attraction',
-        'latitude': 35.6331,
-        'longitude': 139.8788,
-        'open_hour': null,
-        'open_minute': null,
-        'close_hour': null,
-        'close_minute': null,
-        'priority': 'high',
-        'status': 'open',
-        'description': '映画「美女と野獣」の世界を体験できる大型アトラクションです。',
-        'reservation_type': 'dpa',
-        'reservation_time': null,
-        'wait_minutes': 80,
-        'wait_updated_at': initialTimestamp,
-      },
-      {
-        'id': 'tdl_grand_emporium',
-        'park_id': 'tokyo_disneyland',
-        'area_id': 'tdl_world_bazaar',
-        'name': 'グランドエンポーリアム',
-        'category': 'shop',
-        'latitude': 35.6329,
-        'longitude': 139.8802,
-        'open_hour': null,
-        'open_minute': null,
-        'close_hour': null,
-        'close_minute': null,
-        'priority': 'medium',
-        'status': 'open',
-        'description': '東京ディズニーランド最大級のショップです。',
-        'reservation_type': null,
-        'reservation_time': null,
-        'wait_minutes': 0,
-        'wait_updated_at': initialTimestamp,
-      },
-      {
-        'id': 'tds_soaring',
-        'park_id': 'tokyo_disneysea',
-        'area_id': 'tds_mediterranean_harbor',
-        'name': 'ソアリン：ファンタスティック・フライト',
-        'category': 'attraction',
-        'latitude': 35.6268,
-        'longitude': 139.8855,
-        'open_hour': null,
-        'open_minute': null,
-        'close_hour': null,
-        'close_minute': null,
-        'priority': 'highest',
-        'status': 'open',
-        'description': '空を飛ぶような体験ができる東京ディズニーシーの人気アトラクションです。',
-        'reservation_type': 'dpa',
-        'reservation_time': null,
-        'wait_minutes': 95,
-        'wait_updated_at': initialTimestamp,
-      },
-      {
-        'id': 'tds_big_band_beat',
-        'park_id': 'tokyo_disneysea',
-        'area_id': 'tds_american_waterfront',
-        'name': 'ビッグバンドビート',
-        'category': 'show',
-        'latitude': 35.6278,
-        'longitude': 139.8860,
-        'open_hour': null,
-        'open_minute': null,
-        'close_hour': null,
-        'close_minute': null,
-        'priority': 'high',
-        'status': 'open',
-        'description': 'ブロードウェイ・ミュージックシアターで公演されるショーです。',
-        'reservation_type': 'entryRequest',
-        'reservation_time': null,
-        'wait_minutes': null,
-        'wait_updated_at': null,
-      },
-      {
-        'id': 'tds_magellans',
-        'park_id': 'tokyo_disneysea',
-        'area_id': 'tds_mediterranean_harbor',
-        'name': 'マゼランズ',
-        'category': 'restaurant',
-        'latitude': 35.6269,
-        'longitude': 139.8848,
-        'open_hour': null,
-        'open_minute': null,
-        'close_hour': null,
-        'close_minute': null,
-        'priority': 'medium',
-        'status': 'open',
-        'description': 'メディテレーニアンハーバーにある高級感のあるレストランです。',
-        'reservation_type': 'standby',
-        'reservation_time': null,
-        'wait_minutes': null,
-        'wait_updated_at': null,
-      },
-    ];
-
-    for (final facility in facilities) {
-      await database.insert(
-        'facilities',
-        facility,
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
-    }
   }
 
   static Future<void> close() async {
@@ -444,6 +406,7 @@ class AppDatabase {
     }
 
     await database.close();
+
     _database = null;
   }
 
@@ -451,9 +414,11 @@ class AppDatabase {
     _initializeDatabaseFactory();
 
     final databaseDirectory = await getDatabasesPath();
+
     final databasePath = path.join(databaseDirectory, databaseName);
 
     await close();
+
     await deleteDatabase(databasePath);
   }
 }

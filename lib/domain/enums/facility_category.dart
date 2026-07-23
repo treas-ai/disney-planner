@@ -1,8 +1,11 @@
 enum FacilityCategory {
   attraction('アトラクション'),
   show('ショー'),
+  parade('パレード'),
   restaurant('レストラン'),
-  shop('ショップ');
+  greeting('グリーティング'),
+  shop('ショップ'),
+  service('サービス');
 
   const FacilityCategory(this.label);
 

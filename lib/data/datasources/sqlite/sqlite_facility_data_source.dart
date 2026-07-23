@@ -7,13 +7,20 @@ import '../facility_data_source.dart';
 class SQLiteFacilityDataSource implements FacilityDataSource {
   const SQLiteFacilityDataSource();
 
+  static const String _serviceCategoryName = 'service';
+
   @override
   Future<List<Facility>> getFacilities() async {
     final database = await AppDatabase.instance;
 
-    final rows = await database.query('facilities', orderBy: 'name ASC');
+    final rows = await database.query(
+      'facilities',
+      where: 'category != ?',
+      whereArgs: const [_serviceCategoryName],
+      orderBy: 'park_id ASC, area_id ASC, display_order ASC, name ASC',
+    );
 
-    return rows.map(FacilityModel.fromMap).toList();
+    return rows.map(FacilityModel.fromMap).toList(growable: false);
   }
 
   @override
@@ -22,12 +29,15 @@ class SQLiteFacilityDataSource implements FacilityDataSource {
 
     final rows = await database.query(
       'facilities',
-      where: 'park_id = ?',
-      whereArgs: [parkId],
-      orderBy: 'name ASC',
+      where: '''
+        park_id = ?
+        AND category != ?
+      ''',
+      whereArgs: [parkId, _serviceCategoryName],
+      orderBy: 'area_id ASC, display_order ASC, name ASC',
     );
 
-    return rows.map(FacilityModel.fromMap).toList();
+    return rows.map(FacilityModel.fromMap).toList(growable: false);
   }
 
   @override
@@ -36,12 +46,15 @@ class SQLiteFacilityDataSource implements FacilityDataSource {
 
     final rows = await database.query(
       'facilities',
-      where: 'area_id = ?',
-      whereArgs: [areaId],
-      orderBy: 'name ASC',
+      where: '''
+        area_id = ?
+        AND category != ?
+      ''',
+      whereArgs: [areaId, _serviceCategoryName],
+      orderBy: 'display_order ASC, name ASC',
     );
 
-    return rows.map(FacilityModel.fromMap).toList();
+    return rows.map(FacilityModel.fromMap).toList(growable: false);
   }
 
   @override
@@ -52,12 +65,15 @@ class SQLiteFacilityDataSource implements FacilityDataSource {
 
     final rows = await database.query(
       'facilities',
-      where: 'category = ?',
-      whereArgs: [category.name],
-      orderBy: 'name ASC',
+      where: '''
+        category = ?
+        AND category != ?
+      ''',
+      whereArgs: [category.name, _serviceCategoryName],
+      orderBy: 'park_id ASC, area_id ASC, display_order ASC, name ASC',
     );
 
-    return rows.map(FacilityModel.fromMap).toList();
+    return rows.map(FacilityModel.fromMap).toList(growable: false);
   }
 
   @override
@@ -66,8 +82,11 @@ class SQLiteFacilityDataSource implements FacilityDataSource {
 
     final rows = await database.query(
       'facilities',
-      where: 'id = ?',
-      whereArgs: [facilityId],
+      where: '''
+        id = ?
+        AND category != ?
+      ''',
+      whereArgs: [facilityId, _serviceCategoryName],
       limit: 1,
     );
 

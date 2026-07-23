@@ -76,6 +76,23 @@ class PlanPreferenceController extends ChangeNotifier {
     );
   }
 
+  void updateUseStandbyPass({required String facilityId, required bool value}) {
+    _appState.updatePreferenceUseStandbyPass(
+      facilityId: facilityId,
+      value: value,
+    );
+  }
+
+  void updatePrioritizeCapsuleToy({
+    required String facilityId,
+    required bool value,
+  }) {
+    _appState.updatePreferencePrioritizeCapsuleToy(
+      facilityId: facilityId,
+      value: value,
+    );
+  }
+
   void updateMemo({required String facilityId, required String memo}) {
     _appState.updatePreferenceMemo(facilityId: facilityId, memo: memo);
   }
@@ -87,6 +104,7 @@ class PlanPreferenceController extends ChangeNotifier {
   @override
   void dispose() {
     _appState.removeListener(_onAppStateChanged);
+
     super.dispose();
   }
 }

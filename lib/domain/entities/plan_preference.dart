@@ -15,11 +15,16 @@ class PlanPreference {
     required this.usePriorityPass,
     required this.memo,
     required this.createdAt,
+    this.useStandbyPass = false,
+    this.prioritizeCapsuleToy = false,
   });
 
   factory PlanPreference.initial({required String facilityId}) {
     return PlanPreference(
-      id: 'preference_${facilityId}_${DateTime.now().millisecondsSinceEpoch}',
+      id:
+          'preference_'
+          '${facilityId}_'
+          '${DateTime.now().millisecondsSinceEpoch}',
       facilityId: facilityId,
       priority: PriorityLevel.medium,
       preferredTime: PreferredTime.anytime,
@@ -27,6 +32,8 @@ class PlanPreference {
       mealPreference: MealPreference.flexible,
       useDpa: false,
       usePriorityPass: false,
+      useStandbyPass: false,
+      prioritizeCapsuleToy: false,
       memo: '',
       createdAt: DateTime.now(),
     );
@@ -54,6 +61,8 @@ class PlanPreference {
       ),
       useDpa: json['useDpa'] as bool? ?? false,
       usePriorityPass: json['usePriorityPass'] as bool? ?? false,
+      useStandbyPass: json['useStandbyPass'] as bool? ?? false,
+      prioritizeCapsuleToy: json['prioritizeCapsuleToy'] as bool? ?? false,
       memo: json['memo'] as String? ?? '',
       createdAt:
           DateTime.tryParse(json['createdAt'] as String? ?? '') ??
@@ -63,12 +72,18 @@ class PlanPreference {
 
   final String id;
   final String facilityId;
+
   final PriorityLevel priority;
   final PreferredTime preferredTime;
   final WaitTolerance waitTolerance;
   final MealPreference mealPreference;
+
   final bool useDpa;
   final bool usePriorityPass;
+  final bool useStandbyPass;
+
+  final bool prioritizeCapsuleToy;
+
   final String memo;
   final DateTime createdAt;
 
@@ -82,6 +97,8 @@ class PlanPreference {
       'mealPreference': mealPreference.name,
       'useDpa': useDpa,
       'usePriorityPass': usePriorityPass,
+      'useStandbyPass': useStandbyPass,
+      'prioritizeCapsuleToy': prioritizeCapsuleToy,
       'memo': memo,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -96,6 +113,8 @@ class PlanPreference {
     MealPreference? mealPreference,
     bool? useDpa,
     bool? usePriorityPass,
+    bool? useStandbyPass,
+    bool? prioritizeCapsuleToy,
     String? memo,
     DateTime? createdAt,
   }) {
@@ -108,6 +127,8 @@ class PlanPreference {
       mealPreference: mealPreference ?? this.mealPreference,
       useDpa: useDpa ?? this.useDpa,
       usePriorityPass: usePriorityPass ?? this.usePriorityPass,
+      useStandbyPass: useStandbyPass ?? this.useStandbyPass,
+      prioritizeCapsuleToy: prioritizeCapsuleToy ?? this.prioritizeCapsuleToy,
       memo: memo ?? this.memo,
       createdAt: createdAt ?? this.createdAt,
     );

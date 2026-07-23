@@ -27,22 +27,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    if (_controller == null) {
-      final appState = AppStateScope.of(context);
-
-      _controller = SettingsController(appState);
-      _controller!.addListener(_refresh);
+    if (_controller != null) {
+      return;
     }
+
+    final appState = AppStateScope.of(context);
+
+    _controller = SettingsController(appState);
+
+    _controller!.addListener(_refresh);
   }
 
   @override
   void dispose() {
     _controller?.removeListener(_refresh);
     _controller?.dispose();
+
     super.dispose();
   }
 
   void _refresh() {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {});
   }
 
@@ -53,14 +61,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final current = TimeOfDay(
-      hour: controller.settings.entryTimeHour,
-      minute: controller.settings.entryTimeMinute,
-    );
-
     final selected = await showTimePicker(
       context: context,
-      initialTime: current,
+      initialTime: TimeOfDay(
+        hour: controller.settings.entryTimeHour,
+        minute: controller.settings.entryTimeMinute,
+      ),
     );
 
     if (selected != null) {
@@ -75,14 +81,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final current = TimeOfDay(
-      hour: controller.settings.exitTimeHour,
-      minute: controller.settings.exitTimeMinute,
-    );
-
     final selected = await showTimePicker(
       context: context,
-      initialTime: current,
+      initialTime: TimeOfDay(
+        hour: controller.settings.exitTimeHour,
+        minute: controller.settings.exitTimeMinute,
+      ),
     );
 
     if (selected != null) {
@@ -250,7 +254,8 @@ class _PeopleSettingsCard extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              '人数：${settings.numberOfPeople}人',
+              '人数：'
+              '${settings.numberOfPeople}人',
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
@@ -280,9 +285,13 @@ class _ServiceSettingsCard extends StatelessWidget {
   });
 
   final TripSettings settings;
+
   final ValueChanged<bool> onHappyEntryChanged;
+
   final ValueChanged<bool> onDpaChanged;
+
   final ValueChanged<bool> onPriorityPassChanged;
+
   final ValueChanged<bool> onSingleRiderChanged;
 
   @override
@@ -293,22 +302,26 @@ class _ServiceSettingsCard extends StatelessWidget {
         children: [
           Text('サービス利用設定', style: Theme.of(context).textTheme.titleLarge),
           SwitchListTile(
-            title: const Text('Happy Entry'),
+            title: const Text('ハッピーエントリー'),
+            subtitle: const Text(
+              '対象ホテル宿泊者向けの'
+              '早期入園を利用します。',
+            ),
             value: settings.hasHappyEntry,
             onChanged: onHappyEntryChanged,
           ),
           SwitchListTile(
-            title: const Text('DPA'),
+            title: const Text('ディズニー・プレミアアクセス'),
             value: settings.canUseDpa,
             onChanged: onDpaChanged,
           ),
           SwitchListTile(
-            title: const Text('Priority Pass'),
+            title: const Text('プライオリティパス'),
             value: settings.canUsePriorityPass,
             onChanged: onPriorityPassChanged,
           ),
           SwitchListTile(
-            title: const Text('Single Rider'),
+            title: const Text('シングルライダー'),
             value: settings.canUseSingleRider,
             onChanged: onSingleRiderChanged,
           ),
@@ -327,8 +340,11 @@ class _MealSettingsCard extends StatelessWidget {
   });
 
   final TripSettings settings;
+
   final ValueChanged<bool> onBreakfastChanged;
+
   final ValueChanged<bool> onLunchChanged;
+
   final ValueChanged<bool> onDinnerChanged;
 
   @override
@@ -340,7 +356,10 @@ class _MealSettingsCard extends StatelessWidget {
           Text('食事設定', style: Theme.of(context).textTheme.titleLarge),
           SwitchListTile(
             title: const Text('朝食あり'),
-            subtitle: const Text('入園後から10:00までを朝食枠として扱います。'),
+            subtitle: const Text(
+              '入園後から10:00までを'
+              '朝食枠として扱います。',
+            ),
             value: settings.wantsBreakfast,
             onChanged: onBreakfastChanged,
           ),
@@ -368,7 +387,9 @@ class _ConditionSettingsCard extends StatelessWidget {
   });
 
   final TripSettings settings;
+
   final ValueChanged<bool> onRainyChanged;
+
   final ValueChanged<bool> onChildrenChanged;
 
   @override
@@ -384,7 +405,7 @@ class _ConditionSettingsCard extends StatelessWidget {
             onChanged: onRainyChanged,
           ),
           SwitchListTile(
-            title: const Text('子供あり'),
+            title: const Text('子ども連れ'),
             value: settings.hasChildren,
             onChanged: onChildrenChanged,
           ),

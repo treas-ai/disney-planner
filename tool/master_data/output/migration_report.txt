@@ -1,0 +1,105 @@
+Disney Planner マスターデータ移行レポート
+========================================
+
+実行モード：ドライラン
+開始時刻：2026-07-23 10:33:36
+終了時刻：2026-07-23 10:33:36
+処理時間：91ミリ秒
+
+【全体集計】
+対象ファイル数：8
+書き込みファイル数：0
+対象施設数：143
+変更施設数：0
+手動確認対象：0
+
+【カテゴリ集計】
+レストラン：48
+ショップ：41
+カプセルトイ：2
+モバイルオーダー対応：15
+プライオリティ・シーティング対応：5
+スタンバイパス対応：6
+
+【レストラン種別】
+テーブルサービス：6
+カウンターサービス：10
+ブッフェ：1
+ベーカリー・カフェ：2
+スナックスタンド：14
+フードワゴン：15
+対象外・未設定：95
+
+【ショップ種別】
+グッズショップ：8
+カプセルトイ：2
+アパレルショップ：7
+お菓子ショップ：3
+お土産ショップ：0
+専門ショップ：18
+期間限定ショップ：0
+フォトサービス：3
+対象外・未設定：102
+
+【ファイル別集計】
+- assets/master/tdl/adventureland.json
+  施設数：31
+  変更施設数：0
+  手動確認：0
+  書き込み：なし
+- assets/master/tdl/critter_country.json
+  施設数：5
+  変更施設数：0
+  手動確認：0
+  書き込み：なし
+- assets/master/tdl/fantasyland.json
+  施設数：24
+  変更施設数：0
+  手動確認：0
+  書き込み：なし
+- assets/master/tdl/new_fantasyland.json
+  施設数：9
+  変更施設数：0
+  手動確認：0
+  書き込み：なし
+- assets/master/tdl/tomorrowland.json
+  施設数：0
+  変更施設数：0
+  手動確認：0
+  書き込み：なし
+- assets/master/tdl/toontown.json
+  施設数：17
+  変更施設数：0
+  手動確認：0
+  書き込み：なし
+- assets/master/tdl/westernland.json
+  施設数：20
+  変更施設数：0
+  手動確認：0
+  書き込み：なし
+- assets/master/tdl/world_bazaar.json
+  施設数：37
+  変更施設数：0
+  手動確認：0
+  書き込み：なし
+
+【変更施設一覧】
+変更された施設はありません。
+
+【要手動確認】
+手動確認が必要な施設はありません。
+
+【変更なしファイル】
+- assets/master/tdl/adventureland.json
+- assets/master/tdl/critter_country.json
+- assets/master/tdl/fantasyland.json
+- assets/master/tdl/new_fantasyland.json
+- assets/master/tdl/tomorrowland.json
+- assets/master/tdl/toontown.json
+- assets/master/tdl/westernland.json
+- assets/master/tdl/world_bazaar.json
+
+========================================
+この実行はドライランです。JSONファイルは変更されていません。
+要手動確認はありません。
+MasterDataValidatorによる検証へ進んでください。

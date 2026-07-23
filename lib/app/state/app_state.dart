@@ -31,11 +31,11 @@ class AppState extends ChangeNotifier {
   bool isRestored = false;
 
   List<Facility> get selectedFacilities {
-    return List.unmodifiable(_selectedFacilities);
+    return List<Facility>.unmodifiable(_selectedFacilities);
   }
 
   List<PlanPreference> get planPreferences {
-    return List.unmodifiable(_preferencesByFacilityId.values);
+    return List<PlanPreference>.unmodifiable(_preferencesByFacilityId.values);
   }
 
   int get selectedFacilityCount {
@@ -66,11 +66,17 @@ class AppState extends ChangeNotifier {
         _preferencesByFacilityId.clear();
 
         for (final item in rawPreferences) {
-          if (item is! Map<String, dynamic>) {
+          if (item is! Map) {
             continue;
           }
 
-          final preference = PlanPreference.fromJson(item);
+          final convertedItem = <String, dynamic>{};
+
+          for (final entry in item.entries) {
+            convertedItem[entry.key.toString()] = entry.value;
+          }
+
+          final preference = PlanPreference.fromJson(convertedItem);
 
           if (preference.facilityId.isEmpty) {
             continue;
@@ -90,9 +96,18 @@ class AppState extends ChangeNotifier {
 
       if (scheduleJson is Map<String, dynamic>) {
         daySchedule = DaySchedule.fromJson(scheduleJson);
+      } else if (scheduleJson is Map) {
+        final convertedSchedule = <String, dynamic>{};
+
+        for (final entry in scheduleJson.entries) {
+          convertedSchedule[entry.key.toString()] = entry.value;
+        }
+
+        daySchedule = DaySchedule.fromJson(convertedSchedule);
       }
     } catch (error, stackTrace) {
       debugPrint('AppStateの復元に失敗しました: $error');
+
       debugPrintStack(stackTrace: stackTrace);
 
       tripSettings = TripSettings.initial();
@@ -110,6 +125,7 @@ class AppState extends ChangeNotifier {
       await _storage.save(toJson());
     } catch (error, stackTrace) {
       debugPrint('AppStateの保存に失敗しました: $error');
+
       debugPrintStack(stackTrace: stackTrace);
     }
   }
@@ -271,6 +287,40 @@ class AppState extends ChangeNotifier {
     _saveAndNotify();
   }
 
+  void updatePreferenceUseStandbyPass({
+    required String facilityId,
+    required bool value,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+
+    if (current == null) {
+      return;
+    }
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      useStandbyPass: value,
+    );
+
+    _saveAndNotify();
+  }
+
+  void updatePreferencePrioritizeCapsuleToy({
+    required String facilityId,
+    required bool value,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+
+    if (current == null) {
+      return;
+    }
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      prioritizeCapsuleToy: value,
+    );
+
+    _saveAndNotify();
+  }
+
   void updatePreferenceMemo({
     required String facilityId,
     required String memo,
@@ -319,10 +369,10 @@ class AppState extends ChangeNotifier {
 
   List<String> _readStringList(dynamic value) {
     if (value is! List) {
-      return [];
+      return <String>[];
     }
 
-    return value.whereType<String>().toList();
+    return value.whereType<String>().toList(growable: false);
   }
 
   void _saveAndNotify() {
