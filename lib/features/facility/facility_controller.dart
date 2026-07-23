@@ -129,24 +129,13 @@ class FacilityController extends ChangeNotifier {
 
       _facilities = await _facilityRepository.getFacilities();
 
-      debugPrint(
-        '施設データ読み込み完了：'
-        '${_facilities.length}件',
-      );
-
-      _selectAvailableParkIfNecessary();
+      debugPrint('施設データ読み込み完了：${_facilities.length}件');
 
       debugPrint('選択中のパーク：$_selectedParkId');
 
-      debugPrint(
-        '選択中パークの施設数：'
-        '${parkFacilities.length}件',
-      );
+      debugPrint('選択中パークの施設数：${parkFacilities.length}件');
     } catch (error, stackTrace) {
-      debugPrint(
-        '施設データの読み込みに失敗しました: '
-        '$error',
-      );
+      debugPrint('施設データの読み込みに失敗しました: $error');
 
       debugPrintStack(stackTrace: stackTrace);
 
@@ -157,33 +146,8 @@ class FacilityController extends ChangeNotifier {
     }
   }
 
-  void _selectAvailableParkIfNecessary() {
-    if (_facilities.isEmpty) {
-      return;
-    }
-
-    final selectedParkHasFacilities = _facilities.any(
-      (facility) => facility.parkId == _selectedParkId,
-    );
-
-    if (selectedParkHasFacilities) {
-      return;
-    }
-
-    final firstAvailableParkId = _facilities.first.parkId;
-
-    if (firstAvailableParkId.trim().isEmpty) {
-      return;
-    }
-
-    _selectedParkId = firstAvailableParkId;
-    selectedAreaId = null;
-    selectedCategory = null;
-    searchKeyword = '';
-  }
-
   void selectPark(String parkId) {
-    if (_selectedParkId == parkId) {
+    if (parkId.trim().isEmpty || _selectedParkId == parkId) {
       return;
     }
 
