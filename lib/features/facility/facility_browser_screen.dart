@@ -493,6 +493,8 @@ class _CompactAreaFilter extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
+
+        // 1段目：すべてのエリア
         Align(
           alignment: Alignment.centerLeft,
           child: _AreaChoiceButton(
@@ -503,12 +505,15 @@ class _CompactAreaFilter extends StatelessWidget {
             },
           ),
         ),
+
+        // 2段目：各エリア
         if (areaIds.isNotEmpty) ...[
           const SizedBox(height: 6),
           SizedBox(
-            height: 36,
+            height: 34,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.zero,
               itemCount: areaIds.length,
               separatorBuilder: (_, _) {
                 return const SizedBox(width: 6);
@@ -547,46 +552,50 @@ class _AreaChoiceButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    final backgroundColor = selected
+        ? colorScheme.primaryContainer.withValues(alpha: 0.55)
+        : colorScheme.surfaceContainerLowest;
+
+    final borderColor = selected
+        ? colorScheme.primary.withValues(alpha: 0.65)
+        : colorScheme.outlineVariant;
+
+    final foregroundColor = selected
+        ? colorScheme.primary
+        : colorScheme.onSurface;
+
     return Material(
-      color: selected
-          ? colorScheme.primaryContainer
-          : colorScheme.surfaceContainerLowest,
+      color: backgroundColor,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(
-          color: selected ? colorScheme.primary : colorScheme.outlineVariant,
-        ),
+        borderRadius: BorderRadius.circular(9),
+        side: BorderSide(color: borderColor),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onPressed,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 11),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (selected) ...[
-                Icon(
-                  Icons.check,
-                  size: 17,
-                  color: colorScheme.onPrimaryContainer,
+        child: SizedBox(
+          height: 34,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selected) ...[
+                  Icon(Icons.check, size: 15, color: foregroundColor),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
                 ),
-                const SizedBox(width: 5),
               ],
-              Text(
-                label,
-                maxLines: 1,
-                softWrap: false,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: selected
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurface,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
