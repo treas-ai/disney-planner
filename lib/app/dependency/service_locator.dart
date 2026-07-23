@@ -1,4 +1,8 @@
+import 'package:flutter/foundation.dart';
+
 import '../../data/datasources/facility_data_source.dart';
+import '../../data/datasources/json/json_facility_data_source.dart';
+import '../../data/datasources/json/json_park_data_source.dart';
 import '../../data/datasources/park_data_source.dart';
 import '../../data/datasources/sqlite/sqlite_facility_data_source.dart';
 import '../../data/datasources/sqlite/sqlite_park_data_source.dart';
@@ -10,16 +14,16 @@ import '../../domain/repositories/park_repository.dart';
 class ServiceLocator {
   ServiceLocator._();
 
-  static const ParkDataSource _parkDataSource = SQLiteParkDataSource();
+  static final ParkDataSource _parkDataSource = _createParkDataSource();
 
-  static const FacilityDataSource _facilityDataSource =
-      SQLiteFacilityDataSource();
+  static final FacilityDataSource _facilityDataSource =
+      _createFacilityDataSource();
 
-  static const ParkRepository _parkRepository = ParkRepositoryImpl(
+  static final ParkRepository _parkRepository = ParkRepositoryImpl(
     dataSource: _parkDataSource,
   );
 
-  static const FacilityRepository _facilityRepository = FacilityRepositoryImpl(
+  static final FacilityRepository _facilityRepository = FacilityRepositoryImpl(
     dataSource: _facilityDataSource,
   );
 
@@ -29,5 +33,30 @@ class ServiceLocator {
 
   static FacilityRepository get facilityRepository {
     return _facilityRepository;
+  }
+
+  static ParkDataSource _createParkDataSource() {
+    if (kIsWeb) {
+      return const JsonParkDataSource();
+    }
+
+    return const SQLiteParkDataSource();
+  }
+
+  static FacilityDataSource _createFacilityDataSource() {
+    if (kIsWeb) {
+      return const JsonFacilityDataSource();
+    }
+
+    return const SQLiteFacilityDataSource();
+  }
+
+  static void clearWebMasterDataCache() {
+    if (!kIsWeb) {
+      return;
+    }
+
+    JsonParkDataSource.clearCache();
+    JsonFacilityDataSource.clearCache();
   }
 }

@@ -8,7 +8,7 @@ import '../../domain/repositories/facility_repository.dart';
 class FacilityController extends ChangeNotifier {
   FacilityController({
     FacilityRepository? facilityRepository,
-    String initialParkId = 'tokyo_disneysea',
+    String initialParkId = 'tokyo_disneyland',
   }) : _facilityRepository =
            facilityRepository ?? ServiceLocator.facilityRepository,
        _selectedParkId = initialParkId {
@@ -23,8 +23,8 @@ class FacilityController extends ChangeNotifier {
   List<Facility> _facilities = [];
 
   FacilityCategory? selectedCategory;
-  String? selectedAreaId;
   String searchKeyword = '';
+  String? selectedAreaId;
 
   String _selectedParkId;
 
@@ -35,39 +35,61 @@ class FacilityController extends ChangeNotifier {
   }
 
   List<Facility> get parkFacilities {
-    return _facilities
+    final result = _facilities
         .where((facility) => facility.parkId == _selectedParkId)
         .toList(growable: false);
+
+    result.sort(_compareFacilities);
+
+    return List<Facility>.unmodifiable(result);
+  }
+
+  List<String> get availableParkIds {
+    final parkIds = _facilities
+        .map((facility) => facility.parkId)
+        .where((parkId) => parkId.trim().isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+
+    parkIds.sort();
+
+    return List<String>.unmodifiable(parkIds);
   }
 
   List<String> get availableAreaIds {
-    final areaIds = parkFacilities
+    final areaIds = _facilities
+        .where((facility) => facility.parkId == _selectedParkId)
         .map((facility) => facility.areaId)
-        .where((areaId) => areaId.isNotEmpty)
+        .where((areaId) => areaId.trim().isNotEmpty)
         .toSet()
-        .toList();
+        .toList(growable: false);
 
-    areaIds.sort((first, second) {
-      final firstOrder = _areaDisplayOrder(first);
+    areaIds.sort((left, right) {
+      final leftOrder = _areaDisplayOrder(left);
+      final rightOrder = _areaDisplayOrder(right);
 
-      final secondOrder = _areaDisplayOrder(second);
-
-      final orderComparison = firstOrder.compareTo(secondOrder);
+      final orderComparison = leftOrder.compareTo(rightOrder);
 
       if (orderComparison != 0) {
         return orderComparison;
       }
 
-      return first.compareTo(second);
+      return areaLabel(left).compareTo(areaLabel(right));
     });
 
     return List<String>.unmodifiable(areaIds);
   }
 
+  bool get hasActiveFilters {
+    return selectedAreaId != null ||
+        selectedCategory != null ||
+        searchKeyword.trim().isNotEmpty;
+  }
+
   List<Facility> get filteredFacilities {
     final keyword = searchKeyword.trim().toLowerCase();
 
-    final filtered = _facilities
+    final result = _facilities
         .where((facility) {
           final matchesPark = facility.parkId == _selectedParkId;
 
@@ -92,39 +114,34 @@ class FacilityController extends ChangeNotifier {
         })
         .toList(growable: false);
 
-    filtered.sort((first, second) {
-      final areaComparison = _areaDisplayOrder(
-        first.areaId,
-      ).compareTo(_areaDisplayOrder(second.areaId));
+    result.sort(_compareFacilities);
 
-      if (areaComparison != 0) {
-        return areaComparison;
-      }
-
-      final displayOrderComparison = first.displayOrder.compareTo(
-        second.displayOrder,
-      );
-
-      if (displayOrderComparison != 0) {
-        return displayOrderComparison;
-      }
-
-      return first.name.compareTo(second.name);
-    });
-
-    return filtered;
+    return List<Facility>.unmodifiable(result);
   }
 
   Future<void> loadFacilities() async {
     isLoading = true;
     errorMessage = null;
-
     notifyListeners();
 
     try {
+      debugPrint('施設データ読み込み開始');
+
       _facilities = await _facilityRepository.getFacilities();
 
-      _normalizeSelectedArea();
+      debugPrint(
+        '施設データ読み込み完了：'
+        '${_facilities.length}件',
+      );
+
+      _selectAvailableParkIfNecessary();
+
+      debugPrint('選択中のパーク：$_selectedParkId');
+
+      debugPrint(
+        '選択中パークの施設数：'
+        '${parkFacilities.length}件',
+      );
     } catch (error, stackTrace) {
       debugPrint(
         '施設データの読み込みに失敗しました: '
@@ -136,9 +153,33 @@ class FacilityController extends ChangeNotifier {
       errorMessage = '施設データの読み込みに失敗しました。';
     } finally {
       isLoading = false;
-
       notifyListeners();
     }
+  }
+
+  void _selectAvailableParkIfNecessary() {
+    if (_facilities.isEmpty) {
+      return;
+    }
+
+    final selectedParkHasFacilities = _facilities.any(
+      (facility) => facility.parkId == _selectedParkId,
+    );
+
+    if (selectedParkHasFacilities) {
+      return;
+    }
+
+    final firstAvailableParkId = _facilities.first.parkId;
+
+    if (firstAvailableParkId.trim().isEmpty) {
+      return;
+    }
+
+    _selectedParkId = firstAvailableParkId;
+    selectedAreaId = null;
+    selectedCategory = null;
+    searchKeyword = '';
   }
 
   void selectPark(String parkId) {
@@ -147,9 +188,29 @@ class FacilityController extends ChangeNotifier {
     }
 
     _selectedParkId = parkId;
-    selectedCategory = null;
     selectedAreaId = null;
+    selectedCategory = null;
     searchKeyword = '';
+
+    notifyListeners();
+  }
+
+  void selectArea(String? areaId) {
+    if (areaId == null) {
+      if (selectedAreaId == null) {
+        return;
+      }
+
+      selectedAreaId = null;
+      notifyListeners();
+      return;
+    }
+
+    if (selectedAreaId == areaId) {
+      selectedAreaId = null;
+    } else {
+      selectedAreaId = areaId;
+    }
 
     notifyListeners();
   }
@@ -160,21 +221,6 @@ class FacilityController extends ChangeNotifier {
     }
 
     selectedCategory = category;
-
-    notifyListeners();
-  }
-
-  void selectArea(String? areaId) {
-    if (selectedAreaId == areaId) {
-      return;
-    }
-
-    if (areaId != null && !availableAreaIds.contains(areaId)) {
-      return;
-    }
-
-    selectedAreaId = areaId;
-
     notifyListeners();
   }
 
@@ -184,16 +230,19 @@ class FacilityController extends ChangeNotifier {
     }
 
     searchKeyword = value;
-
     notifyListeners();
   }
 
   void clearFilters() {
-    selectedCategory = null;
+    final hadActiveFilters = hasActiveFilters;
+
     selectedAreaId = null;
+    selectedCategory = null;
     searchKeyword = '';
 
-    notifyListeners();
+    if (hadActiveFilters) {
+      notifyListeners();
+    }
   }
 
   String areaLabel(String areaId) {
@@ -210,45 +259,64 @@ class FacilityController extends ChangeNotifier {
       'tds_american_waterfront' => 'アメリカンウォーターフロント',
       'tds_port_discovery' => 'ポートディスカバリー',
       'tds_lost_river_delta' => 'ロストリバーデルタ',
+      'tds_fantasy_springs' => 'ファンタジースプリングス',
       'tds_arabian_coast' => 'アラビアンコースト',
       'tds_mermaid_lagoon' => 'マーメイドラグーン',
       'tds_mysterious_island' => 'ミステリアスアイランド',
-      'tds_fantasy_springs' => 'ファンタジースプリングス',
       _ => areaId,
     };
   }
 
+  Future<void> reload() async {
+    await loadFacilities();
+  }
+
   int _areaDisplayOrder(String areaId) {
     return switch (areaId) {
-      'tdl_world_bazaar' => 10,
-      'tdl_adventureland' => 20,
-      'tdl_westernland' => 30,
-      'tdl_critter_country' => 40,
-      'tdl_fantasyland' => 50,
-      'tdl_new_fantasyland' => 60,
-      'tdl_toontown' => 70,
-      'tdl_tomorrowland' => 80,
-      'tds_mediterranean_harbor' => 110,
-      'tds_american_waterfront' => 120,
-      'tds_port_discovery' => 130,
-      'tds_lost_river_delta' => 140,
-      'tds_arabian_coast' => 150,
-      'tds_mermaid_lagoon' => 160,
-      'tds_mysterious_island' => 170,
-      'tds_fantasy_springs' => 180,
-      _ => 9999,
+      'tdl_world_bazaar' => 1,
+      'tdl_adventureland' => 2,
+      'tdl_westernland' => 3,
+      'tdl_critter_country' => 4,
+      'tdl_fantasyland' => 5,
+      'tdl_new_fantasyland' => 6,
+      'tdl_toontown' => 7,
+      'tdl_tomorrowland' => 8,
+      'tds_mediterranean_harbor' => 1,
+      'tds_american_waterfront' => 2,
+      'tds_port_discovery' => 3,
+      'tds_lost_river_delta' => 4,
+      'tds_fantasy_springs' => 5,
+      'tds_arabian_coast' => 6,
+      'tds_mermaid_lagoon' => 7,
+      'tds_mysterious_island' => 8,
+      _ => 999,
     };
   }
 
-  void _normalizeSelectedArea() {
-    final areaId = selectedAreaId;
+  int _compareFacilities(Facility left, Facility right) {
+    final leftAreaOrder = _areaDisplayOrder(left.areaId);
+    final rightAreaOrder = _areaDisplayOrder(right.areaId);
 
-    if (areaId == null) {
-      return;
+    final areaOrderComparison = leftAreaOrder.compareTo(rightAreaOrder);
+
+    if (areaOrderComparison != 0) {
+      return areaOrderComparison;
     }
 
-    if (!availableAreaIds.contains(areaId)) {
-      selectedAreaId = null;
+    final areaIdComparison = left.areaId.compareTo(right.areaId);
+
+    if (areaIdComparison != 0) {
+      return areaIdComparison;
     }
+
+    final displayOrderComparison = left.displayOrder.compareTo(
+      right.displayOrder,
+    );
+
+    if (displayOrderComparison != 0) {
+      return displayOrderComparison;
+    }
+
+    return left.name.compareTo(right.name);
   }
 }

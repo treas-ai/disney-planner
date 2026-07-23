@@ -33,11 +33,29 @@ class HomeController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('ホームデータ読み込み開始');
+
       resorts = await _parkRepository.getResorts();
+
+      debugPrint('リゾート読み込み完了：${resorts.length}件');
+
       parks = await _parkRepository.getParks();
+
+      debugPrint('パーク読み込み完了：${parks.length}件');
+
       facilities = await _facilityRepository.getFacilities();
-    } catch (_) {
-      errorMessage = 'ホームデータの読み込みに失敗しました。';
+
+      debugPrint('施設読み込み完了：${facilities.length}件');
+
+      debugPrint('ホームデータ読み込み完了');
+    } catch (error, stackTrace) {
+      debugPrint('ホームデータの読み込みに失敗しました: $error');
+
+      debugPrintStack(stackTrace: stackTrace);
+
+      errorMessage =
+          'ホームデータの読み込みに失敗しました。\n'
+          '$error';
     } finally {
       isLoading = false;
       notifyListeners();
