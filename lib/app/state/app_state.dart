@@ -29,6 +29,7 @@ class AppState extends ChangeNotifier {
   DaySchedule? daySchedule;
 
   bool isRestored = false;
+  bool isSaving = false;
 
   List<Facility> get selectedFacilities {
     return List<Facility>.unmodifiable(_selectedFacilities);
@@ -40,6 +41,20 @@ class AppState extends ChangeNotifier {
 
   int get selectedFacilityCount {
     return _selectedFacilities.length;
+  }
+
+  List<Facility> selectedFacilitiesForPark(String parkId) {
+    return List<Facility>.unmodifiable(
+      _selectedFacilities
+          .where((facility) => facility.parkId == parkId)
+          .toList(growable: false),
+    );
+  }
+
+  int selectedFacilityCountForPark(String parkId) {
+    return _selectedFacilities
+        .where((facility) => facility.parkId == parkId)
+        .length;
   }
 
   Future<void> restore() async {
@@ -54,6 +69,14 @@ class AppState extends ChangeNotifier {
 
       if (tripSettingsJson is Map<String, dynamic>) {
         tripSettings = TripSettings.fromJson(tripSettingsJson);
+      } else if (tripSettingsJson is Map) {
+        final convertedSettings = <String, dynamic>{};
+
+        for (final entry in tripSettingsJson.entries) {
+          convertedSettings[entry.key.toString()] = entry.value;
+        }
+
+        tripSettings = TripSettings.fromJson(convertedSettings);
       }
 
       final facilityIds = _readStringList(json['selectedFacilityIds']);
@@ -121,12 +144,22 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> save() async {
+    if (isSaving) {
+      return;
+    }
+
+    isSaving = true;
+    notifyListeners();
+
     try {
       await _storage.save(toJson());
     } catch (error, stackTrace) {
       debugPrint('AppStateの保存に失敗しました: $error');
 
       debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      isSaving = false;
+      notifyListeners();
     }
   }
 
@@ -156,6 +189,7 @@ class AppState extends ChangeNotifier {
 
   void updateTripSettings(TripSettings settings) {
     tripSettings = settings;
+    daySchedule = null;
     _saveAndNotify();
   }
 
@@ -170,13 +204,80 @@ class AppState extends ChangeNotifier {
       facilityId: facility.id,
     );
 
+    daySchedule = null;
+
     _saveAndNotify();
   }
 
   void removeFacility(String facilityId) {
+    final beforeCount = _selectedFacilities.length;
+
     _selectedFacilities.removeWhere((facility) => facility.id == facilityId);
 
+    if (beforeCount == _selectedFacilities.length) {
+      return;
+    }
+
     _preferencesByFacilityId.remove(facilityId);
+
+    daySchedule = null;
+
+    _saveAndNotify();
+  }
+
+  void reorderSelectedFacilitiesForPark({
+    required String parkId,
+    required int oldIndex,
+    required int newIndex,
+  }) {
+    final parkFacilities = _selectedFacilities
+        .where((facility) => facility.parkId == parkId)
+        .toList(growable: true);
+
+    if (parkFacilities.length < 2) {
+      return;
+    }
+
+    if (oldIndex < 0 || oldIndex >= parkFacilities.length) {
+      return;
+    }
+
+    if (newIndex < 0 || newIndex > parkFacilities.length) {
+      return;
+    }
+
+    var adjustedNewIndex = newIndex;
+
+    if (adjustedNewIndex > oldIndex) {
+      adjustedNewIndex--;
+    }
+
+    if (adjustedNewIndex == oldIndex) {
+      return;
+    }
+
+    final movedFacility = parkFacilities.removeAt(oldIndex);
+
+    parkFacilities.insert(adjustedNewIndex, movedFacility);
+
+    final reorderedFacilities = <Facility>[];
+    var currentParkIndex = 0;
+
+    for (final facility in _selectedFacilities) {
+      if (facility.parkId == parkId) {
+        reorderedFacilities.add(parkFacilities[currentParkIndex]);
+
+        currentParkIndex++;
+      } else {
+        reorderedFacilities.add(facility);
+      }
+    }
+
+    _selectedFacilities
+      ..clear()
+      ..addAll(reorderedFacilities);
+
+    daySchedule = null;
 
     _saveAndNotify();
   }
@@ -201,7 +302,7 @@ class AppState extends ChangeNotifier {
 
     _preferencesByFacilityId[facilityId] = current.copyWith(priority: priority);
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updatePreferencePreferredTime({
@@ -218,7 +319,7 @@ class AppState extends ChangeNotifier {
       preferredTime: preferredTime,
     );
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updatePreferenceWaitTolerance({
@@ -235,7 +336,7 @@ class AppState extends ChangeNotifier {
       waitTolerance: waitTolerance,
     );
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updatePreferenceMealPreference({
@@ -252,7 +353,7 @@ class AppState extends ChangeNotifier {
       mealPreference: mealPreference,
     );
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updatePreferenceUseDpa({
@@ -267,7 +368,7 @@ class AppState extends ChangeNotifier {
 
     _preferencesByFacilityId[facilityId] = current.copyWith(useDpa: value);
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updatePreferenceUsePriorityPass({
@@ -284,7 +385,7 @@ class AppState extends ChangeNotifier {
       usePriorityPass: value,
     );
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updatePreferenceUseStandbyPass({
@@ -301,7 +402,7 @@ class AppState extends ChangeNotifier {
       useStandbyPass: value,
     );
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updatePreferencePrioritizeCapsuleToy({
@@ -318,7 +419,7 @@ class AppState extends ChangeNotifier {
       prioritizeCapsuleToy: value,
     );
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updatePreferenceMemo({
@@ -333,7 +434,7 @@ class AppState extends ChangeNotifier {
 
     _preferencesByFacilityId[facilityId] = current.copyWith(memo: memo);
 
-    _saveAndNotify();
+    _invalidateScheduleAndSave();
   }
 
   void updateDaySchedule(DaySchedule schedule) {
@@ -342,6 +443,10 @@ class AppState extends ChangeNotifier {
   }
 
   void clearDaySchedule() {
+    if (daySchedule == null) {
+      return;
+    }
+
     daySchedule = null;
     _saveAndNotify();
   }
@@ -373,6 +478,11 @@ class AppState extends ChangeNotifier {
     }
 
     return value.whereType<String>().toList(growable: false);
+  }
+
+  void _invalidateScheduleAndSave() {
+    daySchedule = null;
+    _saveAndNotify();
   }
 
   void _saveAndNotify() {

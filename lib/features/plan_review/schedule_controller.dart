@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
+import '../../domain/entities/facility.dart';
 import '../../domain/services/schedule_engine.dart';
 
 class ScheduleController extends ChangeNotifier {
@@ -15,41 +16,169 @@ class ScheduleController extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
 
-  DaySchedule? get schedule => _appState.daySchedule;
+  DaySchedule? get schedule {
+    return _appState.daySchedule;
+  }
+
+  String get selectedParkId {
+    return _appState.tripSettings.parkId;
+  }
+
+  String get selectedParkName {
+    return switch (selectedParkId) {
+      'tokyo_disneyland' => '東京ディズニーランド',
+      'tokyo_disneysea' => '東京ディズニーシー',
+      _ => selectedParkId,
+    };
+  }
+
+  IconData get selectedParkIcon {
+    return switch (selectedParkId) {
+      'tokyo_disneyland' => Icons.castle_outlined,
+      'tokyo_disneysea' => Icons.water_outlined,
+      _ => Icons.park_outlined,
+    };
+  }
+
+  List<Facility> get selectedFacilitiesForCurrentPark {
+    return List<Facility>.unmodifiable(
+      _appState.selectedFacilities
+          .where((facility) => facility.parkId == selectedParkId)
+          .toList(growable: false),
+    );
+  }
+
+  int get selectedFacilityCount {
+    return selectedFacilitiesForCurrentPark.length;
+  }
+
+  List<Facility> get unavailableSelectedFacilities {
+    return List<Facility>.unmodifiable(
+      selectedFacilitiesForCurrentPark
+          .where((facility) => !facility.isOpen)
+          .toList(growable: false),
+    );
+  }
+
+  int get unavailableSelectedFacilityCount {
+    return unavailableSelectedFacilities.length;
+  }
+
+  bool get hasUnavailableSelectedFacilities {
+    return unavailableSelectedFacilities.isNotEmpty;
+  }
 
   bool get canGenerateSchedule {
-    return _appState.selectedFacilities.isNotEmpty;
+    return selectedFacilitiesForCurrentPark.isNotEmpty;
+  }
+
+  bool get hasSchedule {
+    return schedule != null;
+  }
+
+  bool get scheduleMatchesSelectedPark {
+    final currentSchedule = schedule;
+
+    if (currentSchedule == null) {
+      return true;
+    }
+
+    return currentSchedule.parkId == selectedParkId;
+  }
+
+  bool get hasStaleSchedule {
+    return schedule != null && !scheduleMatchesSelectedPark;
+  }
+
+  Facility? facilityById(String? facilityId) {
+    if (facilityId == null || facilityId.trim().isEmpty) {
+      return null;
+    }
+
+    for (final facility in _appState.selectedFacilities) {
+      if (facility.id == facilityId) {
+        return facility;
+      }
+    }
+
+    return null;
   }
 
   Future<void> generateSchedule() async {
     if (!canGenerateSchedule) {
-      errorMessage = '施設が選択されていません。施設一覧から行きたい施設を追加してください。';
+      errorMessage =
+          '現在のパークでは施設が選択されていません。'
+          'プラン編集画面から行きたい施設を追加してください。';
+
       notifyListeners();
+
       return;
     }
 
     isLoading = true;
     errorMessage = null;
+
     notifyListeners();
 
     try {
-      final schedule = _scheduleEngine.generate(
+      final availableFacilities = selectedFacilitiesForCurrentPark
+          .where((facility) => facility.isOpen)
+          .toList(growable: false);
+
+      if (availableFacilities.isEmpty) {
+        errorMessage =
+            '営業中の施設が選択されていません。'
+            '休止中施設の選択を解除してください。';
+
+        return;
+      }
+
+      final selectedFacilityIds = availableFacilities
+          .map((facility) => facility.id)
+          .toSet();
+
+      final preferences = _appState.planPreferences
+          .where(
+            (preference) => selectedFacilityIds.contains(preference.facilityId),
+          )
+          .toList(growable: false);
+
+      final generatedSchedule = _scheduleEngine.generate(
         settings: _appState.tripSettings,
-        facilities: _appState.selectedFacilities,
-        preferences: _appState.planPreferences,
+        facilities: availableFacilities,
+        preferences: preferences,
       );
 
-      _appState.updateDaySchedule(schedule);
-    } catch (_) {
-      errorMessage = 'スケジュール生成に失敗しました。';
+      _appState.updateDaySchedule(generatedSchedule);
+    } catch (error, stackTrace) {
+      debugPrint('スケジュール生成に失敗しました: $error');
+
+      debugPrintStack(stackTrace: stackTrace);
+
+      errorMessage =
+          'スケジュール生成に失敗しました。'
+          '設定と選択施設を確認して、もう一度お試しください。';
     } finally {
       isLoading = false;
+
       notifyListeners();
     }
   }
 
   void clearSchedule() {
+    errorMessage = null;
+
     _appState.clearDaySchedule();
+  }
+
+  void clearError() {
+    if (errorMessage == null) {
+      return;
+    }
+
+    errorMessage = null;
+
+    notifyListeners();
   }
 
   void _onAppStateChanged() {
@@ -59,6 +188,7 @@ class ScheduleController extends ChangeNotifier {
   @override
   void dispose() {
     _appState.removeListener(_onAppStateChanged);
+
     super.dispose();
   }
 }

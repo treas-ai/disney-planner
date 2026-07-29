@@ -1,5 +1,6 @@
 import '../../domain/entities/facility.dart';
 import '../../domain/enums/facility_category.dart';
+import '../../domain/enums/facility_operating_status.dart';
 import '../../domain/enums/park_status.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/reservation_type.dart';
@@ -16,6 +17,16 @@ class FacilityModel {
   static Facility fromMap(Map<String, Object?> map, {DateTime? targetDate}) {
     final date = targetDate ?? DateTime.now();
 
+    final parkStatus = _readParkStatus(map['status']);
+
+    final isOperating = _readBool(map['is_operating'], defaultValue: true);
+
+    final operatingStatus = _readFacilityOperatingStatus(
+      map['operating_status'],
+      parkStatus: parkStatus,
+      isOperating: isOperating,
+    );
+
     return Facility(
       id: _readString(map['id']),
       parkId: _readString(map['park_id']),
@@ -30,7 +41,7 @@ class FacilityModel {
       waitTime: _readWaitTime(map),
       reservation: _readReservation(map),
       priority: _readPriorityLevel(map['priority']),
-      status: _readParkStatus(map['status']),
+      status: parkStatus,
       description: _readNullableString(map['description']),
       durationMinutes: _readNullableInt(map['duration_minutes']) ?? 60,
       displayOrder: _readNullableInt(map['display_order']) ?? 0,
@@ -42,7 +53,14 @@ class FacilityModel {
       requiresEntryRequest: _readBool(map['requires_entry_request']),
       requiresReservation: _readBool(map['requires_reservation']),
       isSeasonal: _readBool(map['is_seasonal']),
-      isOperating: _readBool(map['is_operating'], defaultValue: true),
+      isOperating: isOperating,
+      operatingStatus: operatingStatus,
+      closureStartDate: _readNullableDateTime(map['closure_start_date']),
+      closureEndDate: _readNullableDateTime(map['closure_end_date']),
+      operatingStatusNote: _readNullableString(map['operating_status_note']),
+      operatingStatusCheckedAt: _readNullableDateTime(
+        map['operating_status_checked_at'],
+      ),
       minHeight: _readNullableDouble(map['min_height']),
       targetAge: _readNullableString(map['target_age']),
       rideType: _readNullableString(map['ride_type']),
@@ -96,6 +114,12 @@ class FacilityModel {
       'requires_reservation': facility.requiresReservation ? 1 : 0,
       'is_seasonal': facility.isSeasonal ? 1 : 0,
       'is_operating': facility.isOperating ? 1 : 0,
+      'operating_status': facility.operatingStatus.name,
+      'closure_start_date': facility.closureStartDate?.toIso8601String(),
+      'closure_end_date': facility.closureEndDate?.toIso8601String(),
+      'operating_status_note': facility.operatingStatusNote,
+      'operating_status_checked_at': facility.operatingStatusCheckedAt
+          ?.toIso8601String(),
       'min_height': facility.minHeight,
       'target_age': facility.targetAge,
       'ride_type': facility.rideType,
@@ -145,6 +169,40 @@ class FacilityModel {
     );
   }
 
+  static FacilityOperatingStatus _readFacilityOperatingStatus(
+    Object? value, {
+    required ParkStatus parkStatus,
+    required bool isOperating,
+  }) {
+    final name = value as String?;
+
+    if (name != null) {
+      return FacilityOperatingStatus.values.firstWhere(
+        (status) => status.name == name,
+        orElse: () => _legacyOperatingStatus(
+          parkStatus: parkStatus,
+          isOperating: isOperating,
+        ),
+      );
+    }
+
+    return _legacyOperatingStatus(
+      parkStatus: parkStatus,
+      isOperating: isOperating,
+    );
+  }
+
+  static FacilityOperatingStatus _legacyOperatingStatus({
+    required ParkStatus parkStatus,
+    required bool isOperating,
+  }) {
+    if (isOperating && parkStatus == ParkStatus.open) {
+      return FacilityOperatingStatus.operating;
+    }
+
+    return FacilityOperatingStatus.temporarilyClosed;
+  }
+
   static ShopType _readShopType(Object? value) {
     final name = value as String?;
 
@@ -168,8 +226,11 @@ class FacilityModel {
     required DateTime targetDate,
   }) {
     final openHour = _readNullableInt(map['open_hour']);
+
     final openMinute = _readNullableInt(map['open_minute']);
+
     final closeHour = _readNullableInt(map['close_hour']);
+
     final closeMinute = _readNullableInt(map['close_minute']);
 
     if (openHour == null ||
@@ -199,6 +260,7 @@ class FacilityModel {
 
   static WaitTime? _readWaitTime(Map<String, Object?> map) {
     final minutes = _readNullableInt(map['wait_minutes']);
+
     final updatedAtText = _readNullableString(map['wait_updated_at']);
 
     if (minutes == null || updatedAtText == null) {
@@ -276,6 +338,18 @@ class FacilityModel {
     }
 
     return null;
+  }
+
+  static DateTime? _readNullableDateTime(Object? value) {
+    if (value is DateTime) {
+      return value;
+    }
+
+    if (value is! String || value.trim().isEmpty) {
+      return null;
+    }
+
+    return DateTime.tryParse(value.trim());
   }
 
   static bool _readBool(Object? value, {bool defaultValue = false}) {

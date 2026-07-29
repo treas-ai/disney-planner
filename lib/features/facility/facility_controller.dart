@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../../app/dependency/service_locator.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/enums/facility_category.dart';
+import '../../domain/enums/facility_operating_status.dart';
 import '../../domain/repositories/facility_repository.dart';
+import 'facility_operating_filter.dart';
+import 'facility_sort_type.dart';
 
 class FacilityController extends ChangeNotifier {
   FacilityController({
@@ -26,9 +29,15 @@ class FacilityController extends ChangeNotifier {
   String searchKeyword = '';
   String? selectedAreaId;
 
+  FacilityOperatingFilter selectedOperatingFilter = FacilityOperatingFilter.all;
+
+  FacilitySortType selectedSortType = FacilitySortType.areaOrder;
+
   String _selectedParkId;
 
-  String get selectedParkId => _selectedParkId;
+  String get selectedParkId {
+    return _selectedParkId;
+  }
 
   List<Facility> get facilities {
     return List<Facility>.unmodifiable(_facilities);
@@ -39,7 +48,7 @@ class FacilityController extends ChangeNotifier {
         .where((facility) => facility.parkId == _selectedParkId)
         .toList(growable: false);
 
-    result.sort(_compareFacilities);
+    result.sort(_compareByArea);
 
     return List<Facility>.unmodifiable(result);
   }
@@ -66,6 +75,7 @@ class FacilityController extends ChangeNotifier {
 
     areaIds.sort((left, right) {
       final leftOrder = _areaDisplayOrder(left);
+
       final rightOrder = _areaDisplayOrder(right);
 
       final orderComparison = leftOrder.compareTo(rightOrder);
@@ -80,13 +90,32 @@ class FacilityController extends ChangeNotifier {
     return List<String>.unmodifiable(areaIds);
   }
 
+  int get operatingFacilityCount {
+    return parkFacilities.where(_isOperatingFacility).length;
+  }
+
+  int get closedFacilityCount {
+    return parkFacilities.where(_isClosedFacility).length;
+  }
+
+  int get permanentlyClosedFacilityCount {
+    return parkFacilities.where(_isPermanentlyClosedFacility).length;
+  }
+
   bool get hasActiveFilters {
     return selectedAreaId != null ||
         selectedCategory != null ||
+        selectedOperatingFilter != FacilityOperatingFilter.all ||
         searchKeyword.trim().isNotEmpty;
   }
 
-  List<Facility> get filteredFacilities {
+  bool get isDefaultSort {
+    return selectedSortType == FacilitySortType.areaOrder;
+  }
+
+  List<Facility> visibleFacilities({
+    required bool Function(String facilityId) isSelected,
+  }) {
     final keyword = searchKeyword.trim().toLowerCase();
 
     final result = _facilities
@@ -96,32 +125,44 @@ class FacilityController extends ChangeNotifier {
           final matchesArea =
               selectedAreaId == null || facility.areaId == selectedAreaId;
 
-          final matchesCategory =
-              selectedCategory == null || facility.category == selectedCategory;
+          final matchesCategory = _matchesSelectedCategory(facility);
 
-          final matchesKeyword =
-              keyword.isEmpty ||
-              facility.name.toLowerCase().contains(keyword) ||
-              (facility.description?.toLowerCase().contains(keyword) ??
-                  false) ||
-              facility.category.label.toLowerCase().contains(keyword) ||
-              areaLabel(facility.areaId).toLowerCase().contains(keyword);
+          final matchesOperatingStatus = _matchesSelectedOperatingFilter(
+            facility,
+          );
+
+          final matchesKeyword = _matchesSearchKeyword(
+            facility: facility,
+            keyword: keyword,
+          );
 
           return matchesPark &&
               matchesArea &&
               matchesCategory &&
+              matchesOperatingStatus &&
               matchesKeyword;
         })
-        .toList(growable: false);
+        .toList(growable: true);
 
-    result.sort(_compareFacilities);
+    result.sort((left, right) {
+      return _compareFacilities(
+        left: left,
+        right: right,
+        isSelected: isSelected,
+      );
+    });
 
     return List<Facility>.unmodifiable(result);
+  }
+
+  List<Facility> get filteredFacilities {
+    return visibleFacilities(isSelected: (_) => false);
   }
 
   Future<void> loadFacilities() async {
     isLoading = true;
     errorMessage = null;
+
     notifyListeners();
 
     try {
@@ -142,6 +183,7 @@ class FacilityController extends ChangeNotifier {
       errorMessage = '施設データの読み込みに失敗しました。';
     } finally {
       isLoading = false;
+
       notifyListeners();
     }
   }
@@ -154,6 +196,7 @@ class FacilityController extends ChangeNotifier {
     _selectedParkId = parkId;
     selectedAreaId = null;
     selectedCategory = null;
+    selectedOperatingFilter = FacilityOperatingFilter.all;
     searchKeyword = '';
 
     notifyListeners();
@@ -166,7 +209,9 @@ class FacilityController extends ChangeNotifier {
       }
 
       selectedAreaId = null;
+
       notifyListeners();
+
       return;
     }
 
@@ -180,11 +225,36 @@ class FacilityController extends ChangeNotifier {
   }
 
   void selectCategory(FacilityCategory? category) {
-    if (selectedCategory == category) {
+    final normalizedCategory = category == FacilityCategory.parade
+        ? FacilityCategory.show
+        : category;
+
+    if (selectedCategory == normalizedCategory) {
       return;
     }
 
-    selectedCategory = category;
+    selectedCategory = normalizedCategory;
+
+    notifyListeners();
+  }
+
+  void selectOperatingFilter(FacilityOperatingFilter filter) {
+    if (selectedOperatingFilter == filter) {
+      return;
+    }
+
+    selectedOperatingFilter = filter;
+
+    notifyListeners();
+  }
+
+  void selectSortType(FacilitySortType sortType) {
+    if (selectedSortType == sortType) {
+      return;
+    }
+
+    selectedSortType = sortType;
+
     notifyListeners();
   }
 
@@ -194,6 +264,7 @@ class FacilityController extends ChangeNotifier {
     }
 
     searchKeyword = value;
+
     notifyListeners();
   }
 
@@ -202,9 +273,34 @@ class FacilityController extends ChangeNotifier {
 
     selectedAreaId = null;
     selectedCategory = null;
+    selectedOperatingFilter = FacilityOperatingFilter.all;
     searchKeyword = '';
 
     if (hadActiveFilters) {
+      notifyListeners();
+    }
+  }
+
+  void resetSort() {
+    if (isDefaultSort) {
+      return;
+    }
+
+    selectedSortType = FacilitySortType.areaOrder;
+
+    notifyListeners();
+  }
+
+  void resetFiltersAndSort() {
+    final shouldNotify = hasActiveFilters || !isDefaultSort;
+
+    selectedAreaId = null;
+    selectedCategory = null;
+    selectedOperatingFilter = FacilityOperatingFilter.all;
+    selectedSortType = FacilitySortType.areaOrder;
+    searchKeyword = '';
+
+    if (shouldNotify) {
       notifyListeners();
     }
   }
@@ -235,6 +331,217 @@ class FacilityController extends ChangeNotifier {
     await loadFacilities();
   }
 
+  bool _matchesSelectedCategory(Facility facility) {
+    final category = selectedCategory;
+
+    if (category == null) {
+      return true;
+    }
+
+    if (category == FacilityCategory.show) {
+      return facility.category == FacilityCategory.show ||
+          facility.category == FacilityCategory.parade;
+    }
+
+    return facility.category == category;
+  }
+
+  bool _matchesSelectedOperatingFilter(Facility facility) {
+    return switch (selectedOperatingFilter) {
+      FacilityOperatingFilter.all => true,
+      FacilityOperatingFilter.operatingOnly => _isOperatingFacility(facility),
+      FacilityOperatingFilter.closedOnly => _isClosedFacility(facility),
+      FacilityOperatingFilter.permanentlyClosedOnly =>
+        _isPermanentlyClosedFacility(facility),
+    };
+  }
+
+  bool _isOperatingFacility(Facility facility) {
+    return facility.isOpen &&
+        facility.operatingStatus == FacilityOperatingStatus.operating;
+  }
+
+  bool _isClosedFacility(Facility facility) {
+    return switch (facility.operatingStatus) {
+      FacilityOperatingStatus.scheduledClosure => true,
+      FacilityOperatingStatus.temporarilyClosed => true,
+      FacilityOperatingStatus.seasonalClosed => true,
+      FacilityOperatingStatus.longTermClosed => true,
+      FacilityOperatingStatus.operating => !facility.isOpen,
+      FacilityOperatingStatus.permanentlyClosed => false,
+    };
+  }
+
+  bool _isPermanentlyClosedFacility(Facility facility) {
+    return facility.operatingStatus ==
+        FacilityOperatingStatus.permanentlyClosed;
+  }
+
+  bool _matchesSearchKeyword({
+    required Facility facility,
+    required String keyword,
+  }) {
+    if (keyword.isEmpty) {
+      return true;
+    }
+
+    final searchTargets = <String>[
+      facility.name,
+      facility.description ?? '',
+      facility.category.label,
+      _categorySearchLabel(facility),
+      areaLabel(facility.areaId),
+      facility.operatingStatusDisplayLabel,
+      facility.operatingStatusNote ?? '',
+    ];
+
+    return searchTargets.any(
+      (target) => target.toLowerCase().contains(keyword),
+    );
+  }
+
+  String _categorySearchLabel(Facility facility) {
+    if (facility.category == FacilityCategory.show ||
+        facility.category == FacilityCategory.parade) {
+      return 'ショー・パレード ショー パレード';
+    }
+
+    return facility.category.label;
+  }
+
+  int _compareFacilities({
+    required Facility left,
+    required Facility right,
+    required bool Function(String facilityId) isSelected,
+  }) {
+    return switch (selectedSortType) {
+      FacilitySortType.areaOrder => _compareByArea(left, right),
+      FacilitySortType.nameOrder => _compareByName(left, right),
+      FacilitySortType.categoryOrder => _compareByCategory(left, right),
+      FacilitySortType.operatingStatusOrder => _compareByOperatingStatus(
+        left,
+        right,
+      ),
+      FacilitySortType.selectedFirst => _compareSelectedFirst(
+        left: left,
+        right: right,
+        isSelected: isSelected,
+      ),
+    };
+  }
+
+  int _compareSelectedFirst({
+    required Facility left,
+    required Facility right,
+    required bool Function(String facilityId) isSelected,
+  }) {
+    final leftSelected = isSelected(left.id);
+
+    final rightSelected = isSelected(right.id);
+
+    if (leftSelected != rightSelected) {
+      return leftSelected ? -1 : 1;
+    }
+
+    return _compareByArea(left, right);
+  }
+
+  int _compareByArea(Facility left, Facility right) {
+    final leftAreaOrder = _areaDisplayOrder(left.areaId);
+
+    final rightAreaOrder = _areaDisplayOrder(right.areaId);
+
+    final areaOrderComparison = leftAreaOrder.compareTo(rightAreaOrder);
+
+    if (areaOrderComparison != 0) {
+      return areaOrderComparison;
+    }
+
+    final areaLabelComparison = areaLabel(
+      left.areaId,
+    ).compareTo(areaLabel(right.areaId));
+
+    if (areaLabelComparison != 0) {
+      return areaLabelComparison;
+    }
+
+    final displayOrderComparison = left.displayOrder.compareTo(
+      right.displayOrder,
+    );
+
+    if (displayOrderComparison != 0) {
+      return displayOrderComparison;
+    }
+
+    return _compareByName(left, right);
+  }
+
+  int _compareByName(Facility left, Facility right) {
+    final nameComparison = left.name.compareTo(right.name);
+
+    if (nameComparison != 0) {
+      return nameComparison;
+    }
+
+    return left.id.compareTo(right.id);
+  }
+
+  int _compareByCategory(Facility left, Facility right) {
+    final leftOrder = _categoryDisplayOrder(left.category);
+
+    final rightOrder = _categoryDisplayOrder(right.category);
+
+    final categoryComparison = leftOrder.compareTo(rightOrder);
+
+    if (categoryComparison != 0) {
+      return categoryComparison;
+    }
+
+    return _compareByArea(left, right);
+  }
+
+  int _compareByOperatingStatus(Facility left, Facility right) {
+    final leftOrder = _operatingStatusDisplayOrder(left);
+
+    final rightOrder = _operatingStatusDisplayOrder(right);
+
+    final statusComparison = leftOrder.compareTo(rightOrder);
+
+    if (statusComparison != 0) {
+      return statusComparison;
+    }
+
+    return _compareByArea(left, right);
+  }
+
+  int _categoryDisplayOrder(FacilityCategory category) {
+    return switch (category.name) {
+      'attraction' => 1,
+      'restaurant' => 2,
+      'show' => 3,
+      'parade' => 3,
+      'greeting' => 4,
+      'shop' => 5,
+      'service' => 6,
+      _ => 999,
+    };
+  }
+
+  int _operatingStatusDisplayOrder(Facility facility) {
+    if (_isOperatingFacility(facility)) {
+      return 1;
+    }
+
+    return switch (facility.operatingStatus) {
+      FacilityOperatingStatus.temporarilyClosed => 2,
+      FacilityOperatingStatus.scheduledClosure => 3,
+      FacilityOperatingStatus.seasonalClosed => 4,
+      FacilityOperatingStatus.longTermClosed => 5,
+      FacilityOperatingStatus.operating => 6,
+      FacilityOperatingStatus.permanentlyClosed => 7,
+    };
+  }
+
   int _areaDisplayOrder(String areaId) {
     return switch (areaId) {
       'tdl_world_bazaar' => 1,
@@ -255,32 +562,5 @@ class FacilityController extends ChangeNotifier {
       'tds_mysterious_island' => 8,
       _ => 999,
     };
-  }
-
-  int _compareFacilities(Facility left, Facility right) {
-    final leftAreaOrder = _areaDisplayOrder(left.areaId);
-    final rightAreaOrder = _areaDisplayOrder(right.areaId);
-
-    final areaOrderComparison = leftAreaOrder.compareTo(rightAreaOrder);
-
-    if (areaOrderComparison != 0) {
-      return areaOrderComparison;
-    }
-
-    final areaIdComparison = left.areaId.compareTo(right.areaId);
-
-    if (areaIdComparison != 0) {
-      return areaIdComparison;
-    }
-
-    final displayOrderComparison = left.displayOrder.compareTo(
-      right.displayOrder,
-    );
-
-    if (displayOrderComparison != 0) {
-      return displayOrderComparison;
-    }
-
-    return left.name.compareTo(right.name);
   }
 }

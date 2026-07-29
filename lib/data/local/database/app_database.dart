@@ -11,13 +11,14 @@ import 'migrations/migration_v4.dart';
 import 'migrations/migration_v5.dart';
 import 'migrations/migration_v6.dart';
 import 'migrations/migration_v7.dart';
+import 'migrations/migration_v8.dart';
 
 class AppDatabase {
   AppDatabase._();
 
   static const String databaseName = 'disney_planner.db';
 
-  static const int databaseVersion = 7;
+  static const int databaseVersion = 8;
 
   static Database? _database;
 
@@ -105,6 +106,10 @@ class AppDatabase {
     if (oldVersion < 7) {
       await MigrationV7.migrate(database);
     }
+
+    if (oldVersion < 8) {
+      await MigrationV8.migrate(database);
+    }
   }
 
   static Future<void> _onOpen(Database database) async {
@@ -127,14 +132,23 @@ class AppDatabase {
            OR menu_url IS NOT NULL
         ''');
 
+      final closedRows = await database.rawQuery('''
+        SELECT COUNT(*) AS count
+        FROM facilities
+        WHERE operating_status != 'operating'
+        ''');
+
       final totalCount = totalRows.first['count'] as int? ?? 0;
 
       final linkCount = linkRows.first['count'] as int? ?? 0;
 
+      final closedCount = closedRows.first['count'] as int? ?? 0;
+
       debugPrint(
         'マスターデータ同期完了：'
         '全施設$totalCount件、'
-        '公式リンク設定済み$linkCount件',
+        '公式リンク設定済み$linkCount件、'
+        '営業状態設定済み$closedCount件',
       );
     } catch (error, stackTrace) {
       debugPrint('マスターデータ同期に失敗しました: $error');
@@ -244,6 +258,14 @@ class AppDatabase {
         is_operating INTEGER
           NOT NULL DEFAULT 1,
 
+        operating_status TEXT
+          NOT NULL DEFAULT 'operating',
+
+        closure_start_date TEXT,
+        closure_end_date TEXT,
+        operating_status_note TEXT,
+        operating_status_checked_at TEXT,
+
         min_height REAL,
         target_age TEXT,
 
@@ -346,6 +368,14 @@ class AppDatabase {
       ON facilities (
         park_id,
         is_operating
+      )
+      ''');
+
+    await database.execute('''
+      CREATE INDEX index_facilities_operating_status
+      ON facilities (
+        park_id,
+        operating_status
       )
       ''');
 

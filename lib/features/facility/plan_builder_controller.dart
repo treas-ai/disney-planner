@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../app/state/app_state.dart';
 import '../../domain/entities/facility.dart';
@@ -10,9 +10,25 @@ class PlanBuilderController extends ChangeNotifier {
 
   final AppState _appState;
 
-  int get selectedCount => _appState.selectedFacilityCount;
+  List<Facility> get selectedFacilities {
+    return _appState.selectedFacilities;
+  }
 
-  List<Facility> get selectedFacilities => _appState.selectedFacilities;
+  int get selectedFacilityCount {
+    return _appState.selectedFacilityCount;
+  }
+
+  bool get isSaving {
+    return _appState.isSaving;
+  }
+
+  List<Facility> selectedFacilitiesForPark(String parkId) {
+    return _appState.selectedFacilitiesForPark(parkId);
+  }
+
+  int selectedFacilityCountForPark(String parkId) {
+    return _appState.selectedFacilityCountForPark(parkId);
+  }
 
   bool isSelected(String facilityId) {
     return _appState.isFacilitySelected(facilityId);
@@ -26,6 +42,18 @@ class PlanBuilderController extends ChangeNotifier {
     _appState.removeFacility(facilityId);
   }
 
+  void reorderFacilitiesForPark({
+    required String parkId,
+    required int oldIndex,
+    required int newIndex,
+  }) {
+    _appState.reorderSelectedFacilitiesForPark(
+      parkId: parkId,
+      oldIndex: oldIndex,
+      newIndex: newIndex,
+    );
+  }
+
   void _onAppStateChanged() {
     notifyListeners();
   }
@@ -33,6 +61,7 @@ class PlanBuilderController extends ChangeNotifier {
   @override
   void dispose() {
     _appState.removeListener(_onAppStateChanged);
+
     super.dispose();
   }
 }

@@ -1,4 +1,5 @@
 import '../enums/facility_category.dart';
+import '../enums/facility_operating_status.dart';
 import '../enums/park_status.dart';
 import '../enums/priority_level.dart';
 import '../enums/restaurant_type.dart';
@@ -33,6 +34,11 @@ class Facility {
     this.requiresReservation = false,
     this.isSeasonal = false,
     this.isOperating = true,
+    this.operatingStatus = FacilityOperatingStatus.operating,
+    this.closureStartDate,
+    this.closureEndDate,
+    this.operatingStatusNote,
+    this.operatingStatusCheckedAt,
     this.minHeight,
     this.targetAge,
     this.rideType,
@@ -80,7 +86,24 @@ class Facility {
   final bool requiresEntryRequest;
   final bool requiresReservation;
   final bool isSeasonal;
+
+  /// 既存データとの互換性維持用。
   final bool isOperating;
+
+  /// 施設固有の営業状態。
+  final FacilityOperatingStatus operatingStatus;
+
+  /// 休止開始日。
+  final DateTime? closureStartDate;
+
+  /// 休止終了日。再開日未定の場合はnull。
+  final DateTime? closureEndDate;
+
+  /// 再開時期未定など、営業状態に関する補足。
+  final String? operatingStatusNote;
+
+  /// 公式情報を最後に確認した日。
+  final DateTime? operatingStatusCheckedAt;
 
   final double? minHeight;
   final String? targetAge;
@@ -109,7 +132,15 @@ class Facility {
   final String? menuUrl;
 
   bool get isOpen {
-    return status == ParkStatus.open && isOperating;
+    return canAddToPlanAt(DateTime.now());
+  }
+
+  bool get isCurrentlyClosed {
+    return !isOpen;
+  }
+
+  bool get hasClosurePeriod {
+    return closureStartDate != null || closureEndDate != null;
   }
 
   bool get isRestaurant {
@@ -154,6 +185,63 @@ class Facility {
     return null;
   }
 
+  bool canAddToPlanAt(DateTime targetDateTime) {
+    if (!isOperating || status != ParkStatus.open) {
+      return false;
+    }
+
+    switch (operatingStatus) {
+      case FacilityOperatingStatus.operating:
+        return true;
+
+      case FacilityOperatingStatus.scheduledClosure:
+        final startDate = closureStartDate;
+
+        if (startDate == null) {
+          return true;
+        }
+
+        return _dateOnly(targetDateTime).isBefore(_dateOnly(startDate));
+
+      case FacilityOperatingStatus.temporarilyClosed:
+      case FacilityOperatingStatus.seasonalClosed:
+      case FacilityOperatingStatus.longTermClosed:
+      case FacilityOperatingStatus.permanentlyClosed:
+        return false;
+    }
+  }
+
+  String get operatingStatusDisplayLabel {
+    if (operatingStatus == FacilityOperatingStatus.scheduledClosure) {
+      final startDate = closureStartDate;
+
+      if (startDate != null) {
+        return '${operatingStatus.label}（${_formatDate(startDate)}から）';
+      }
+    }
+
+    return operatingStatus.label;
+  }
+
+  String? get closurePeriodLabel {
+    final startDate = closureStartDate;
+    final endDate = closureEndDate;
+
+    if (startDate == null && endDate == null) {
+      return null;
+    }
+
+    if (startDate != null && endDate != null) {
+      return '${_formatDate(startDate)}～${_formatDate(endDate)}';
+    }
+
+    if (startDate != null) {
+      return '${_formatDate(startDate)}から';
+    }
+
+    return '${_formatDate(endDate!)}まで';
+  }
+
   bool _isValidWebUrl(String? value) {
     if (value == null || value.trim().isEmpty) {
       return false;
@@ -164,5 +252,15 @@ class Facility {
     return uri != null &&
         (uri.scheme == 'https' || uri.scheme == 'http') &&
         uri.host.isNotEmpty;
+  }
+
+  DateTime _dateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  String _formatDate(DateTime value) {
+    return '${value.year}年'
+        '${value.month}月'
+        '${value.day}日';
   }
 }

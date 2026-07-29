@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
 import '../../app/state/app_state_scope.dart';
-import '../../core/theme/app_icons.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_view.dart';
-import '../../core/widgets/section_title.dart';
 import '../../domain/entities/facility.dart';
-import '../../domain/enums/facility_category.dart';
 import 'facility_controller.dart';
 import 'plan_builder_controller.dart';
 import 'plan_preference_controller.dart';
+import 'widgets/facility_area_filter.dart';
 import 'widgets/facility_card.dart';
-import 'widgets/plan_preference_editor.dart';
+import 'widgets/facility_category_filter.dart';
+import 'widgets/facility_operating_status_filter.dart';
+import 'widgets/facility_sort_selector.dart';
+import 'widgets/selected_facility_editor_sheet.dart';
 
 class FacilityBrowserScreen extends StatefulWidget {
   const FacilityBrowserScreen({super.key});
@@ -33,7 +34,10 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
   PlanPreferenceController? _planPreferenceController;
 
   late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
+  late final FocusNode _searchFocusNode;
 
+  bool _isSearchVisible = false;
   bool _parkSynchronizationScheduled = false;
 
   @override
@@ -41,6 +45,8 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
     super.initState();
 
     _searchController = TextEditingController();
+    _scrollController = ScrollController();
+    _searchFocusNode = FocusNode();
   }
 
   @override
@@ -51,10 +57,12 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
 
     if (_appState == null) {
       _initializeControllers(appState);
+
       return;
     }
 
     _appState = appState;
+
     _synchronizeParkFromSettings(appState);
   }
 
@@ -74,21 +82,23 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
     _planPreferenceController = planPreferenceController;
 
     facilityController.addListener(_refresh);
+
     planBuilderController.addListener(_refresh);
+
     planPreferenceController.addListener(_refresh);
   }
 
   void _synchronizeParkFromSettings(AppState appState) {
-    final facilityController = _facilityController;
+    final controller = _facilityController;
 
-    if (facilityController == null) {
+    if (controller == null) {
       return;
     }
 
     final settingsParkId = appState.tripSettings.parkId;
 
     if (settingsParkId.trim().isEmpty ||
-        facilityController.selectedParkId == settingsParkId ||
+        controller.selectedParkId == settingsParkId ||
         _parkSynchronizationScheduled) {
       return;
     }
@@ -106,19 +116,22 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
 
       if (latestParkId == null ||
           latestParkId.trim().isEmpty ||
-          facilityController.selectedParkId == latestParkId) {
+          controller.selectedParkId == latestParkId) {
         return;
       }
 
-      facilityController.selectPark(latestParkId);
-      _searchController.clear();
+      controller.selectPark(latestParkId);
+
+      _clearSearchText();
     });
   }
 
   @override
   void dispose() {
     _facilityController?.removeListener(_refresh);
+
     _planBuilderController?.removeListener(_refresh);
+
     _planPreferenceController?.removeListener(_refresh);
 
     _facilityController?.dispose();
@@ -126,6 +139,8 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
     _planPreferenceController?.dispose();
 
     _searchController.dispose();
+    _scrollController.dispose();
+    _searchFocusNode.dispose();
 
     super.dispose();
   }
@@ -147,14 +162,111 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
   }
 
   void _clearFilters() {
-    final facilityController = _facilityController;
+    final controller = _facilityController;
 
-    if (facilityController == null) {
+    if (controller == null) {
       return;
     }
 
-    facilityController.clearFilters();
+    controller.clearFilters();
+
     _searchController.clear();
+    _searchFocusNode.unfocus();
+  }
+
+  void _clearFiltersAndSort() {
+    final controller = _facilityController;
+
+    if (controller == null) {
+      return;
+    }
+
+    controller.resetFiltersAndSort();
+
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+  }
+
+  void _clearSearchText() {
+    _searchController.clear();
+
+    _facilityController?.updateSearchKeyword('');
+
+    _searchFocusNode.unfocus();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+    });
+
+    if (_isSearchVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _searchFocusNode.requestFocus();
+        }
+      });
+
+      return;
+    }
+
+    if (_searchController.text.isNotEmpty) {
+      _clearSearchText();
+    }
+  }
+
+  void _changePark(String parkId) {
+    final appState = _appState;
+    final controller = _facilityController;
+
+    if (appState == null ||
+        controller == null ||
+        parkId.trim().isEmpty ||
+        controller.selectedParkId == parkId) {
+      return;
+    }
+
+    appState.updateTripSettings(appState.tripSettings.copyWith(parkId: parkId));
+
+    controller.selectPark(parkId);
+
+    _clearSearchText();
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _openSelectedFacilityEditor() {
+    final planBuilderController = _planBuilderController;
+
+    final preferenceController = _planPreferenceController;
+
+    final facilityController = _facilityController;
+
+    if (planBuilderController == null ||
+        preferenceController == null ||
+        facilityController == null) {
+      return;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SelectedFacilityEditorSheet(
+          planBuilderController: planBuilderController,
+          preferenceController: preferenceController,
+          selectedParkId: facilityController.selectedParkId,
+        );
+      },
+    );
   }
 
   @override
@@ -162,12 +274,11 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
     final appState = _appState;
     final facilityController = _facilityController;
     final planBuilderController = _planBuilderController;
-    final preferenceController = _planPreferenceController;
 
     if (appState == null ||
         facilityController == null ||
         planBuilderController == null ||
-        preferenceController == null) {
+        _planPreferenceController == null) {
       return const AppScaffold(child: LoadingView(message: '施設画面を準備中です...'));
     }
 
@@ -187,364 +298,199 @@ class _FacilityBrowserScreenState extends State<FacilityBrowserScreen> {
       );
     }
 
-    final filteredFacilities = facilityController.filteredFacilities;
+    final facilities = facilityController.visibleFacilities(
+      isSelected: planBuilderController.isSelected,
+    );
 
-    final selectedFacilitiesForPark = planBuilderController.selectedFacilities
-        .where(
-          (facility) => facility.parkId == facilityController.selectedParkId,
-        )
-        .toList(growable: false);
+    final selectedCount = planBuilderController.selectedFacilityCountForPark(
+      facilityController.selectedParkId,
+    );
 
     return AppScaffold(
-      child: ListView(
-        padding: EdgeInsets.zero,
+      child: Column(
         children: [
-          const SectionTitle(
-            title: 'プラン編集',
-            subtitle: '施設と希望条件を設定します。',
-            icon: AppIcons.planEditorSelected,
+          _FixedEditorHeader(
+            selectedParkId: facilityController.selectedParkId,
+            selectedFacilityCount: selectedCount,
+            isSearchVisible: _isSearchVisible,
+            onParkChanged: _changePark,
+            onSearchPressed: _toggleSearch,
+            onSelectedFacilitiesPressed: _openSelectedFacilityEditor,
           ),
-          const SizedBox(height: AppSpacing.xs),
-          _CompactCurrentPark(parkId: facilityController.selectedParkId),
-          const SizedBox(height: AppSpacing.sm),
-          _CompactSearchField(
-            controller: _searchController,
-            onChanged: facilityController.updateSearchKeyword,
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeInOut,
+            child: _isSearchVisible
+                ? Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: _CompactSearchField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      onChanged: facilityController.updateSearchKeyword,
+                      onClear: _clearSearchText,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
           const SizedBox(height: AppSpacing.sm),
-          _CompactCategoryFilter(
-            selectedCategory: facilityController.selectedCategory,
-            onSelected: facilityController.selectCategory,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _CompactAreaFilter(
-            areaIds: facilityController.availableAreaIds,
-            selectedAreaId: facilityController.selectedAreaId,
-            areaLabel: facilityController.areaLabel,
-            onSelected: facilityController.selectArea,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '表示件数：${filteredFacilities.length}件'
-                  ' / 選択済み：${selectedFacilitiesForPark.length}件',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              if (facilityController.hasActiveFilters)
-                TextButton.icon(
-                  onPressed: _clearFilters,
-                  icon: const Icon(Icons.filter_alt_off_outlined, size: 17),
-                  label: const Text('条件解除'),
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(0, 34),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
+          Expanded(
+            child: Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              interactive: true,
+              child: ListView(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(right: 14, bottom: 96),
+                children: [
+                  _FilterSection(
+                    facilityController: facilityController,
+                    onClearFilters: _clearFilters,
+                    onResetAll: _clearFiltersAndSort,
                   ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _SelectedFacilityAccordion(
-            facilities: selectedFacilitiesForPark,
-            preferenceController: preferenceController,
-            onRemove: _removeFacility,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text('施設一覧', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.sm),
-          if (filteredFacilities.isEmpty)
-            EmptyState(
-              title: facilityController.selectedParkId == 'tokyo_disneysea'
-                  ? '東京ディズニーシーの施設は準備中です'
-                  : '施設が見つかりません',
-              message: facilityController.selectedParkId == 'tokyo_disneysea'
-                  ? '東京ディズニーシーの施設マスターデータは'
-                        'まだ登録されていません。'
-                  : '検索条件、カテゴリまたはエリアを'
-                        '変更してください。',
-            )
-          else
-            for (final facility in filteredFacilities)
-              FacilityCard(
-                facility: facility,
-                isSelected: planBuilderController.isSelected(facility.id),
-                onAdd: () {
-                  _addFacility(facility);
-                },
-                onRemove: () {
-                  _removeFacility(facility.id);
-                },
+                  const SizedBox(height: AppSpacing.sm),
+                  _FacilityCountRow(
+                    displayedCount: facilities.length,
+                    selectedCount: selectedCount,
+                    totalCount: facilityController.parkFacilities.length,
+                    sortLabel: facilityController.selectedSortType.label,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    '施設一覧',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (facilities.isEmpty)
+                    const EmptyState(
+                      title: '施設が見つかりません',
+                      message: '検索条件、カテゴリ、エリアまたは営業状態を変更してください。',
+                      icon: Icons.search_off_outlined,
+                    )
+                  else
+                    for (final facility in facilities) ...[
+                      FacilityCard(
+                        facility: facility,
+                        isSelected: planBuilderController.isSelected(
+                          facility.id,
+                        ),
+                        onAdd: () {
+                          _addFacility(facility);
+                        },
+                        onRemove: () {
+                          _removeFacility(facility.id);
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
+                ],
               ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _CompactCurrentPark extends StatelessWidget {
-  const _CompactCurrentPark({required this.parkId});
+class _FixedEditorHeader extends StatelessWidget {
+  const _FixedEditorHeader({
+    required this.selectedParkId,
+    required this.selectedFacilityCount,
+    required this.isSearchVisible,
+    required this.onParkChanged,
+    required this.onSearchPressed,
+    required this.onSelectedFacilitiesPressed,
+  });
 
-  final String parkId;
+  final String selectedParkId;
+  final int selectedFacilityCount;
+  final bool isSearchVisible;
+  final ValueChanged<String> onParkChanged;
+  final VoidCallback onSearchPressed;
+  final VoidCallback onSelectedFacilitiesPressed;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      constraints: const BoxConstraints(minHeight: 42),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Row(
+    return AppCard(
+      child: Column(
         children: [
-          Icon(_parkIcon, size: 19, color: colorScheme.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  const TextSpan(text: '編集中：'),
-                  TextSpan(
-                    text: _parkName,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  TextSpan(
-                    text: '（変更は設定から）',
-                    style: TextStyle(
-                      color: colorScheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+          Row(
+            children: [
+              Icon(
+                _parkIcon(selectedParkId),
+                size: 20,
+                color: colorScheme.primary,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String get _parkName {
-    return switch (parkId) {
-      'tokyo_disneyland' => '東京ディズニーランド',
-      'tokyo_disneysea' => '東京ディズニーシー',
-      _ => parkId,
-    };
-  }
-
-  IconData get _parkIcon {
-    return switch (parkId) {
-      'tokyo_disneyland' => Icons.castle_outlined,
-      'tokyo_disneysea' => Icons.water_outlined,
-      _ => Icons.park_outlined,
-    };
-  }
-}
-
-class _CompactSearchField extends StatelessWidget {
-  const _CompactSearchField({
-    required this.controller,
-    required this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        textInputAction: TextInputAction.search,
-        style: Theme.of(context).textTheme.bodyMedium,
-        decoration: InputDecoration(
-          hintText: '施設名・カテゴリで検索',
-          prefixIcon: const Icon(Icons.search, size: 21),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 42,
-            minHeight: 42,
-          ),
-          suffixIcon: controller.text.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: '検索文字を消去',
-                  onPressed: () {
-                    controller.clear();
-                    onChanged('');
-                  },
-                  icon: const Icon(Icons.close, size: 19),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  '編集中：${_parkName(selectedParkId)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
+              ),
+              IconButton(
+                tooltip: isSearchVisible ? '検索を閉じる' : '施設を検索',
+                onPressed: onSearchPressed,
+                icon: Icon(isSearchVisible ? Icons.close : Icons.search),
+              ),
+              const SizedBox(width: 4),
+              FilledButton.tonalIcon(
+                onPressed: onSelectedFacilitiesPressed,
+                icon: const Icon(Icons.edit_note_outlined, size: 18),
+                label: Text('選択 $selectedFacilityCount'),
+              ),
+            ],
           ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-    );
-  }
-}
-
-class _CompactCategoryFilter extends StatelessWidget {
-  const _CompactCategoryFilter({
-    required this.selectedCategory,
-    required this.onSelected,
-  });
-
-  final FacilityCategory? selectedCategory;
-  final ValueChanged<FacilityCategory?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <_CategoryFilterItem>[
-      const _CategoryFilterItem(label: 'すべて'),
-      _CategoryFilterItem(
-        label: 'アトラクション',
-        category: FacilityCategory.attraction,
-      ),
-      _CategoryFilterItem(label: 'ショー', category: FacilityCategory.show),
-      _CategoryFilterItem(label: 'パレード', category: FacilityCategory.parade),
-      _CategoryFilterItem(
-        label: 'レストラン',
-        category: FacilityCategory.restaurant,
-      ),
-      _CategoryFilterItem(label: 'ショップ', category: FacilityCategory.shop),
-      _CategoryFilterItem(
-        label: 'グリーティング',
-        category: FacilityCategory.greeting,
-      ),
-    ];
-
-    return SizedBox(
-      height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, _) {
-          return const SizedBox(width: 6);
-        },
-        itemBuilder: (context, index) {
-          final item = items[index];
-
-          final isSelected = item.category == selectedCategory;
-
-          return ChoiceChip(
-            selected: isSelected,
-            showCheckmark: isSelected,
-            label: Text(item.label, maxLines: 1, softWrap: false),
-            labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            ),
-            visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            onSelected: (_) {
-              onSelected(item.category);
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _CategoryFilterItem {
-  const _CategoryFilterItem({required this.label, this.category});
-
-  final String label;
-  final FacilityCategory? category;
-}
-
-class _CompactAreaFilter extends StatelessWidget {
-  const _CompactAreaFilter({
-    required this.areaIds,
-    required this.selectedAreaId,
-    required this.areaLabel,
-    required this.onSelected,
-  });
-
-  final List<String> areaIds;
-  final String? selectedAreaId;
-  final String Function(String areaId) areaLabel;
-  final ValueChanged<String?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.location_on_outlined, size: 20),
-            const SizedBox(width: 6),
-            Text('エリアで絞り込み', style: Theme.of(context).textTheme.titleMedium),
-          ],
-        ),
-        const SizedBox(height: 6),
-
-        // 1段目：すべてのエリア
-        Align(
-          alignment: Alignment.centerLeft,
-          child: _AreaChoiceButton(
-            label: 'すべてのエリア',
-            selected: selectedAreaId == null,
-            onPressed: () {
-              onSelected(null);
-            },
-          ),
-        ),
-
-        // 2段目：各エリア
-        if (areaIds.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 34,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.zero,
-              itemCount: areaIds.length,
-              separatorBuilder: (_, _) {
-                return const SizedBox(width: 6);
-              },
-              itemBuilder: (context, index) {
-                final areaId = areaIds[index];
-
-                return _AreaChoiceButton(
-                  label: areaLabel(areaId),
-                  selected: selectedAreaId == areaId,
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              Expanded(
+                child: _ParkSwitchButton(
+                  label: 'ランド',
+                  icon: Icons.castle_outlined,
+                  selected: selectedParkId == 'tokyo_disneyland',
                   onPressed: () {
-                    onSelected(areaId);
+                    onParkChanged('tokyo_disneyland');
                   },
-                );
-              },
-            ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _ParkSwitchButton(
+                  label: 'シー',
+                  icon: Icons.water_outlined,
+                  selected: selectedParkId == 'tokyo_disneysea',
+                  onPressed: () {
+                    onParkChanged('tokyo_disneysea');
+                  },
+                ),
+              ),
+            ],
           ),
         ],
-      ],
+      ),
     );
   }
 }
 
-class _AreaChoiceButton extends StatelessWidget {
-  const _AreaChoiceButton({
+class _ParkSwitchButton extends StatelessWidget {
+  const _ParkSwitchButton({
     required this.label,
+    required this.icon,
     required this.selected,
     required this.onPressed,
   });
 
   final String label;
+  final IconData icon;
   final bool selected;
   final VoidCallback onPressed;
 
@@ -552,50 +498,33 @@ class _AreaChoiceButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final backgroundColor = selected
-        ? colorScheme.primaryContainer.withValues(alpha: 0.55)
-        : colorScheme.surfaceContainerLowest;
-
-    final borderColor = selected
-        ? colorScheme.primary.withValues(alpha: 0.65)
-        : colorScheme.outlineVariant;
-
-    final foregroundColor = selected
-        ? colorScheme.primary
-        : colorScheme.onSurface;
-
     return Material(
-      color: backgroundColor,
+      color: selected
+          ? colorScheme.primaryContainer
+          : colorScheme.surfaceContainerLowest,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(9),
-        side: BorderSide(color: borderColor),
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: selected ? colorScheme.primary : colorScheme.outlineVariant,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onPressed,
+        onTap: selected ? null : onPressed,
         child: SizedBox(
-          height: 34,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (selected) ...[
-                  Icon(Icons.check, size: 15, color: foregroundColor),
-                  const SizedBox(width: 4),
-                ],
-                Text(
-                  label,
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.visible,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: foregroundColor,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  ),
+          height: 36,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 17),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -603,20 +532,58 @@ class _AreaChoiceButton extends StatelessWidget {
   }
 }
 
-class _SelectedFacilityAccordion extends StatelessWidget {
-  const _SelectedFacilityAccordion({
-    required this.facilities,
-    required this.preferenceController,
-    required this.onRemove,
+class _CompactSearchField extends StatelessWidget {
+  const _CompactSearchField({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onClear,
   });
 
-  final List<Facility> facilities;
-  final PlanPreferenceController preferenceController;
-  final ValueChanged<String> onRemove;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    final categoryGroups = _createCategoryGroups();
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: '施設名・カテゴリ・エリア・営業状態を検索',
+          prefixIcon: const Icon(Icons.search, size: 18),
+          suffixIcon: IconButton(
+            tooltip: '検索文字を消去',
+            onPressed: onClear,
+            icon: const Icon(Icons.close, size: 17),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterSection extends StatelessWidget {
+  const _FilterSection({
+    required this.facilityController,
+    required this.onClearFilters,
+    required this.onResetAll,
+  });
+
+  final FacilityController facilityController;
+  final VoidCallback onClearFilters;
+  final VoidCallback onResetAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasChangedConditions =
+        facilityController.hasActiveFilters ||
+        !facilityController.isDefaultSort;
 
     return AppCard(
       child: Column(
@@ -624,359 +591,147 @@ class _SelectedFacilityAccordion extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  '選択済み施設',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              Text('${facilities.length}件'),
+              const Icon(Icons.category_outlined, size: 21),
+              const SizedBox(width: AppSpacing.sm),
+              Text('カテゴリで絞り込み', style: Theme.of(context).textTheme.titleMedium),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          if (facilities.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-              child: Text('まだ施設が選択されていません。'),
-            )
-          else
-            for (final group in categoryGroups)
-              if (group.facilities.isNotEmpty)
-                _CategoryAccordion(
-                  group: group,
-                  preferenceController: preferenceController,
-                  onRemove: onRemove,
-                ),
-        ],
-      ),
-    );
-  }
-
-  List<_FacilityCategoryGroup> _createCategoryGroups() {
-    return [
-      _FacilityCategoryGroup(
-        keyName: 'attraction',
-        label: 'アトラクション',
-        icon: Icons.attractions_outlined,
-        facilities: _whereCategory('attraction'),
-      ),
-      _FacilityCategoryGroup(
-        keyName: 'restaurant',
-        label: 'レストラン',
-        icon: Icons.restaurant_outlined,
-        facilities: _whereCategory('restaurant'),
-      ),
-      _FacilityCategoryGroup(
-        keyName: 'show_parade',
-        label: 'ショー・パレード',
-        icon: Icons.theater_comedy_outlined,
-        facilities: facilities
-            .where(
-              (facility) =>
-                  facility.category.name == 'show' ||
-                  facility.category.name == 'parade',
-            )
-            .toList(growable: false),
-      ),
-      _FacilityCategoryGroup(
-        keyName: 'greeting',
-        label: 'グリーティング',
-        icon: Icons.photo_camera_front_outlined,
-        facilities: _whereCategory('greeting'),
-      ),
-      _FacilityCategoryGroup(
-        keyName: 'shop',
-        label: 'ショップ',
-        icon: Icons.shopping_bag_outlined,
-        facilities: _whereCategory('shop'),
-      ),
-    ];
-  }
-
-  List<Facility> _whereCategory(String categoryName) {
-    return facilities
-        .where((facility) => facility.category.name == categoryName)
-        .toList(growable: false);
-  }
-}
-
-class _CategoryAccordion extends StatelessWidget {
-  const _CategoryAccordion({
-    required this.group,
-    required this.preferenceController,
-    required this.onRemove,
-  });
-
-  final _FacilityCategoryGroup group;
-  final PlanPreferenceController preferenceController;
-  final ValueChanged<String> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      key: ValueKey('category_${group.keyName}'),
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        leading: Icon(group.icon),
-        title: Text(group.label),
-        subtitle: Text('${group.facilities.length}件選択'),
-        childrenPadding: const EdgeInsets.fromLTRB(
-          AppSpacing.sm,
-          0,
-          AppSpacing.sm,
-          AppSpacing.sm,
-        ),
-        children: [
-          if (group.keyName == 'shop')
-            _ShopAccordionGroups(
-              facilities: group.facilities,
-              preferenceController: preferenceController,
-              onRemove: onRemove,
-            )
-          else
-            for (final facility in group.facilities)
-              _FacilityAccordion(
-                key: ValueKey('facility_${facility.id}'),
-                facility: facility,
-                preferenceController: preferenceController,
-                onRemove: onRemove,
+          FacilityCategoryFilter(
+            selectedCategory: facilityController.selectedCategory,
+            onSelected: facilityController.selectCategory,
+          ),
+          FacilityAreaFilter(
+            areaIds: facilityController.availableAreaIds,
+            selectedAreaId: facilityController.selectedAreaId,
+            areaLabelBuilder: facilityController.areaLabel,
+            onSelected: facilityController.selectArea,
+          ),
+          FacilityOperatingStatusFilter(
+            selectedFilter: facilityController.selectedOperatingFilter,
+            operatingCount: facilityController.operatingFacilityCount,
+            closedCount: facilityController.closedFacilityCount,
+            permanentlyClosedCount:
+                facilityController.permanentlyClosedFacilityCount,
+            onSelected: facilityController.selectOperatingFilter,
+          ),
+          FacilitySortSelector(
+            selectedSortType: facilityController.selectedSortType,
+            onSelected: facilityController.selectSortType,
+          ),
+          if (hasChangedConditions)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  if (facilityController.hasActiveFilters)
+                    TextButton.icon(
+                      onPressed: onClearFilters,
+                      icon: const Icon(Icons.filter_alt_off_outlined, size: 17),
+                      label: const Text('絞り込みを解除'),
+                    ),
+                  TextButton.icon(
+                    onPressed: onResetAll,
+                    icon: const Icon(Icons.restart_alt, size: 17),
+                    label: const Text('すべて初期状態に戻す'),
+                  ),
+                ],
               ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _ShopAccordionGroups extends StatelessWidget {
-  const _ShopAccordionGroups({
-    required this.facilities,
-    required this.preferenceController,
-    required this.onRemove,
+class _FacilityCountRow extends StatelessWidget {
+  const _FacilityCountRow({
+    required this.displayedCount,
+    required this.selectedCount,
+    required this.totalCount,
+    required this.sortLabel,
   });
 
-  final List<Facility> facilities;
-  final PlanPreferenceController preferenceController;
-  final ValueChanged<String> onRemove;
+  final int displayedCount;
+  final int selectedCount;
+  final int totalCount;
+  final String sortLabel;
 
   @override
   Widget build(BuildContext context) {
-    final generalShops = facilities
-        .where((facility) => !facility.isCapsuleToy)
-        .toList(growable: false);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    final capsuleToyShops = facilities
-        .where((facility) => facility.isCapsuleToy)
-        .toList(growable: false);
-
-    return Column(
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.xs,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        if (generalShops.isNotEmpty)
-          _ShopGroupAccordion(
-            key: const ValueKey('general_shop_group'),
-            label: '一般ショップ',
-            icon: Icons.storefront_outlined,
-            facilities: generalShops,
-            preferenceController: preferenceController,
-            onRemove: onRemove,
-          ),
-        if (capsuleToyShops.isNotEmpty)
-          _ShopGroupAccordion(
-            key: const ValueKey('capsule_toy_group'),
-            label: 'カプセルトイ',
-            icon: Icons.catching_pokemon_outlined,
-            facilities: capsuleToyShops,
-            preferenceController: preferenceController,
-            onRemove: onRemove,
-          ),
+        _CountInformation(
+          icon: Icons.list_alt_outlined,
+          label: '表示 $displayedCount件',
+          color: colorScheme.onSurfaceVariant,
+        ),
+        _CountInformation(
+          icon: Icons.location_city_outlined,
+          label: '全体 $totalCount件',
+          color: colorScheme.onSurfaceVariant,
+        ),
+        _CountInformation(
+          icon: Icons.playlist_add_check_outlined,
+          label: '選択済み $selectedCount件',
+          color: colorScheme.onSurfaceVariant,
+        ),
+        _CountInformation(
+          icon: Icons.sort_outlined,
+          label: sortLabel,
+          color: colorScheme.onSurfaceVariant,
+        ),
       ],
     );
   }
 }
 
-class _ShopGroupAccordion extends StatelessWidget {
-  const _ShopGroupAccordion({
-    super.key,
-    required this.label,
+class _CountInformation extends StatelessWidget {
+  const _CountInformation({
     required this.icon,
-    required this.facilities,
-    required this.preferenceController,
-    required this.onRemove,
+    required this.label,
+    required this.color,
   });
 
-  final String label;
   final IconData icon;
-  final List<Facility> facilities;
-  final PlanPreferenceController preferenceController;
-  final ValueChanged<String> onRemove;
+  final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ExpansionTile(
-        leading: Icon(icon),
-        title: Text(label),
-        subtitle: Text('${facilities.length}件'),
-        childrenPadding: const EdgeInsets.fromLTRB(
-          AppSpacing.sm,
-          0,
-          AppSpacing.sm,
-          AppSpacing.sm,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 17, color: color),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
         ),
-        children: [
-          for (final facility in facilities)
-            _FacilityAccordion(
-              key: ValueKey('shop_facility_${facility.id}'),
-              facility: facility,
-              preferenceController: preferenceController,
-              onRemove: onRemove,
-            ),
-        ],
-      ),
+      ],
     );
   }
 }
 
-class _FacilityAccordion extends StatelessWidget {
-  const _FacilityAccordion({
-    super.key,
-    required this.facility,
-    required this.preferenceController,
-    required this.onRemove,
-  });
-
-  final Facility facility;
-  final PlanPreferenceController preferenceController;
-  final ValueChanged<String> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final preference = preferenceController.getPreference(facility.id);
-
-    if (preference == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                facility.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            IconButton(
-              tooltip: '選択解除',
-              onPressed: () {
-                onRemove(facility.id);
-              },
-              icon: const Icon(Icons.close),
-            ),
-          ],
-        ),
-        subtitle: Text(_buildFacilitySubtitle(facility)),
-        childrenPadding: const EdgeInsets.fromLTRB(
-          AppSpacing.sm,
-          0,
-          AppSpacing.sm,
-          AppSpacing.sm,
-        ),
-        children: [
-          PlanPreferenceEditor(
-            facility: facility,
-            preference: preference,
-            onPriorityChanged: (priority) {
-              preferenceController.updatePriority(
-                facilityId: facility.id,
-                priority: priority,
-              );
-            },
-            onPreferredTimeChanged: (preferredTime) {
-              preferenceController.updatePreferredTime(
-                facilityId: facility.id,
-                preferredTime: preferredTime,
-              );
-            },
-            onWaitToleranceChanged: (waitTolerance) {
-              preferenceController.updateWaitTolerance(
-                facilityId: facility.id,
-                waitTolerance: waitTolerance,
-              );
-            },
-            onMealPreferenceChanged: (mealPreference) {
-              preferenceController.updateMealPreference(
-                facilityId: facility.id,
-                mealPreference: mealPreference,
-              );
-            },
-            onUseDpaChanged: (value) {
-              preferenceController.updateUseDpa(
-                facilityId: facility.id,
-                value: value,
-              );
-            },
-            onUsePriorityPassChanged: (value) {
-              preferenceController.updateUsePriorityPass(
-                facilityId: facility.id,
-                value: value,
-              );
-            },
-            onUseStandbyPassChanged: (value) {
-              preferenceController.updateUseStandbyPass(
-                facilityId: facility.id,
-                value: value,
-              );
-            },
-            onPrioritizeCapsuleToyChanged: (value) {
-              preferenceController.updatePrioritizeCapsuleToy(
-                facilityId: facility.id,
-                value: value,
-              );
-            },
-            onMemoChanged: (memo) {
-              preferenceController.updateMemo(
-                facilityId: facility.id,
-                memo: memo,
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _buildFacilitySubtitle(Facility facility) {
-    if (facility.isShop) {
-      return facility.shopType.label;
-    }
-
-    return switch (facility.category.name) {
-      'attraction' => 'アトラクション',
-      'restaurant' => 'レストラン',
-      'show' => 'ショー',
-      'parade' => 'パレード',
-      'greeting' => 'グリーティング',
-      _ => facility.category.name,
-    };
-  }
+String _parkName(String parkId) {
+  return switch (parkId) {
+    'tokyo_disneyland' => '東京ディズニーランド',
+    'tokyo_disneysea' => '東京ディズニーシー',
+    _ => parkId,
+  };
 }
 
-class _FacilityCategoryGroup {
-  const _FacilityCategoryGroup({
-    required this.keyName,
-    required this.label,
-    required this.icon,
-    required this.facilities,
-  });
-
-  final String keyName;
-  final String label;
-  final IconData icon;
-  final List<Facility> facilities;
+IconData _parkIcon(String parkId) {
+  return switch (parkId) {
+    'tokyo_disneyland' => Icons.castle_outlined,
+    'tokyo_disneysea' => Icons.water_outlined,
+    _ => Icons.park_outlined,
+  };
 }

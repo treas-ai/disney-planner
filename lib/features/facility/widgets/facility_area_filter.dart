@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_spacing.dart';
+import 'facility_visual_style.dart';
 
 class FacilityAreaFilter extends StatefulWidget {
   const FacilityAreaFilter({
@@ -164,6 +165,7 @@ class _FacilityAreaFilterState extends State<FacilityAreaFilter> {
   void _selectArea(String areaId) {
     if (widget.selectedAreaId == areaId) {
       widget.onSelected(null);
+
       return;
     }
 
@@ -195,10 +197,8 @@ class _FacilityAreaFilterState extends State<FacilityAreaFilter> {
             height: 48,
             child: Row(
               children: [
-                _AreaFilterChip(
-                  label: 'すべてのエリア',
+                _AllAreaFilterChip(
                   selected: widget.selectedAreaId == null,
-                  icon: Icons.public_outlined,
                   onSelected: () {
                     widget.onSelected(null);
                   },
@@ -232,9 +232,9 @@ class _FacilityAreaFilterState extends State<FacilityAreaFilter> {
                         final areaId = widget.areaIds[index];
 
                         return _AreaFilterChip(
-                          label: widget.areaLabelBuilder(areaId),
+                          areaId: areaId,
+                          fallbackLabel: widget.areaLabelBuilder(areaId),
                           selected: widget.selectedAreaId == areaId,
-                          icon: _iconForArea(areaId),
                           onSelected: () {
                             _selectArea(areaId);
                           },
@@ -256,28 +256,6 @@ class _FacilityAreaFilterState extends State<FacilityAreaFilter> {
         ],
       ),
     );
-  }
-
-  IconData _iconForArea(String areaId) {
-    return switch (areaId) {
-      'tdl_world_bazaar' => Icons.storefront_outlined,
-      'tdl_adventureland' => Icons.forest_outlined,
-      'tdl_westernland' => Icons.landscape_outlined,
-      'tdl_critter_country' => Icons.pets_outlined,
-      'tdl_fantasyland' => Icons.castle_outlined,
-      'tdl_new_fantasyland' => Icons.auto_awesome_outlined,
-      'tdl_toontown' => Icons.house_outlined,
-      'tdl_tomorrowland' => Icons.rocket_launch_outlined,
-      'tds_mediterranean_harbor' => Icons.sailing_outlined,
-      'tds_american_waterfront' => Icons.directions_boat_outlined,
-      'tds_port_discovery' => Icons.explore_outlined,
-      'tds_lost_river_delta' => Icons.temple_buddhist_outlined,
-      'tds_arabian_coast' => Icons.nightlight_outlined,
-      'tds_mermaid_lagoon' => Icons.water_outlined,
-      'tds_mysterious_island' => Icons.terrain_outlined,
-      'tds_fantasy_springs' => Icons.auto_awesome_outlined,
-      _ => Icons.place_outlined,
-    };
   }
 }
 
@@ -332,17 +310,10 @@ class _ScrollArrowButton extends StatelessWidget {
   }
 }
 
-class _AreaFilterChip extends StatelessWidget {
-  const _AreaFilterChip({
-    required this.label,
-    required this.selected,
-    required this.icon,
-    required this.onSelected,
-  });
+class _AllAreaFilterChip extends StatelessWidget {
+  const _AllAreaFilterChip({required this.selected, required this.onSelected});
 
-  final String label;
   final bool selected;
-  final IconData icon;
   final VoidCallback onSelected;
 
   @override
@@ -352,13 +323,8 @@ class _AreaFilterChip extends StatelessWidget {
     return FilterChip(
       selected: selected,
       showCheckmark: selected,
-      avatar: selected ? null : Icon(icon, size: 18),
-      label: Text(
-        label,
-        maxLines: 1,
-        softWrap: false,
-        overflow: TextOverflow.visible,
-      ),
+      avatar: selected ? null : const Icon(Icons.public_outlined, size: 18),
+      label: const Text('すべてのエリア', maxLines: 1, softWrap: false),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
       padding: const EdgeInsets.symmetric(
@@ -372,10 +338,70 @@ class _AreaFilterChip extends StatelessWidget {
         color: selected
             ? colorScheme.onPrimaryContainer
             : colorScheme.onSurface,
-        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
       ),
       side: BorderSide(
         color: selected ? colorScheme.primary : colorScheme.outlineVariant,
+      ),
+      onSelected: (_) {
+        onSelected();
+      },
+    );
+  }
+}
+
+class _AreaFilterChip extends StatelessWidget {
+  const _AreaFilterChip({
+    required this.areaId,
+    required this.fallbackLabel,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String areaId;
+  final String fallbackLabel;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = FacilityVisualStyle.areaStyle(areaId);
+
+    final label = style.label == areaId ? fallbackLabel : style.label;
+
+    final selectedBackgroundColor = Color.alphaBlend(
+      style.borderColor.withValues(alpha: 0.18),
+      style.backgroundColor,
+    );
+
+    return FilterChip(
+      selected: selected,
+      showCheckmark: selected,
+      avatar: selected
+          ? null
+          : Icon(style.icon, size: 18, color: style.foregroundColor),
+      label: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.visible,
+      ),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      selectedColor: selectedBackgroundColor,
+      checkmarkColor: style.foregroundColor,
+      backgroundColor: style.backgroundColor,
+      labelStyle: TextStyle(
+        color: style.foregroundColor,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+      ),
+      side: BorderSide(
+        color: selected ? style.foregroundColor : style.borderColor,
+        width: selected ? 1.5 : 1,
       ),
       onSelected: (_) {
         onSelected();

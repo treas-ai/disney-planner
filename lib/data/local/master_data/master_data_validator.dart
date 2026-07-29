@@ -65,6 +65,15 @@ class MasterDataValidator {
     'photoService',
   };
 
+  static const Set<String> _allowedOperatingStatuses = {
+    'operating',
+    'temporarilyClosed',
+    'scheduledClosure',
+    'seasonalClosed',
+    'longTermClosed',
+    'permanentlyClosed',
+  };
+
   Future<MasterDataValidationResult> validate({
     required String manifestPath,
   }) async {
@@ -237,6 +246,15 @@ class MasterDataValidator {
           errors: errors,
         );
 
+        _validateOperatingStatus(row: row, location: location, errors: errors);
+
+        _validateOfficialUrls(
+          row: row,
+          category: category,
+          location: location,
+          errors: errors,
+        );
+
         _validateOptionalText(
           row: row,
           key: 'representativeMenu',
@@ -295,6 +313,178 @@ class MasterDataValidator {
           }
         }
       }
+    }
+  }
+
+  void _validateOperatingStatus({
+    required Map<String, dynamic> row,
+    required String location,
+    required List<String> errors,
+  }) {
+    final operatingStatus =
+        row['operatingStatus'] ?? _legacyOperatingStatus(row);
+
+    if (operatingStatus is! String ||
+        !_allowedOperatingStatuses.contains(operatingStatus)) {
+      errors.add(
+        '$location: '
+        'operatingStatus'
+        '「$operatingStatus」は'
+        '使用できません。',
+      );
+
+      return;
+    }
+
+    _validateOptionalDate(
+      row: row,
+      key: 'closureStartDate',
+      location: location,
+      errors: errors,
+    );
+
+    _validateOptionalDate(
+      row: row,
+      key: 'closureEndDate',
+      location: location,
+      errors: errors,
+    );
+
+    _validateOptionalDate(
+      row: row,
+      key: 'operatingStatusCheckedAt',
+      location: location,
+      errors: errors,
+    );
+
+    _validateOptionalText(
+      row: row,
+      key: 'operatingStatusNote',
+      location: location,
+      errors: errors,
+    );
+
+    final startDate = _parseOptionalDate(row['closureStartDate']);
+
+    final endDate = _parseOptionalDate(row['closureEndDate']);
+
+    if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+      errors.add(
+        '$location: '
+        'closureEndDateは'
+        'closureStartDate以降に'
+        'してください。',
+      );
+    }
+
+    if (operatingStatus == 'scheduledClosure' && startDate == null) {
+      errors.add(
+        '$location: '
+        'scheduledClosureには'
+        'closureStartDateを'
+        '設定してください。',
+      );
+    }
+
+    if (operatingStatus == 'permanentlyClosed' && endDate != null) {
+      errors.add(
+        '$location: '
+        '運営終了施設に'
+        'closureEndDateは'
+        '設定しないでください。',
+      );
+    }
+
+    final isOperating = row['isOperating'];
+
+    if (operatingStatus == 'operating' && isOperating == false) {
+      errors.add(
+        '$location: '
+        'operatingStatusが'
+        'operatingの場合、'
+        'isOperatingをtrueに'
+        'してください。',
+      );
+    }
+
+    if ({
+          'temporarilyClosed',
+          'seasonalClosed',
+          'longTermClosed',
+          'permanentlyClosed',
+        }.contains(operatingStatus) &&
+        isOperating == true) {
+      errors.add(
+        '$location: '
+        '休止中または運営終了の施設は'
+        'isOperatingをfalseに'
+        'してください。',
+      );
+    }
+  }
+
+  String _legacyOperatingStatus(Map<String, dynamic> row) {
+    final isOperating = row['isOperating'];
+
+    final status = row['status'];
+
+    if (isOperating == false ||
+        status == 'closed' ||
+        status == 'temporarilyClosed') {
+      return 'temporarilyClosed';
+    }
+
+    return 'operating';
+  }
+
+  void _validateOfficialUrls({
+    required Map<String, dynamic> row,
+    required String? category,
+    required String location,
+    required List<String> errors,
+  }) {
+    _validateOptionalUrl(
+      row: row,
+      key: 'officialUrl',
+      location: location,
+      errors: errors,
+    );
+
+    _validateOptionalUrl(
+      row: row,
+      key: 'menuUrl',
+      location: location,
+      errors: errors,
+    );
+
+    final officialUrl = row['officialUrl'];
+
+    final menuUrl = row['menuUrl'];
+
+    if (officialUrl is String && officialUrl.contains('/en/')) {
+      errors.add(
+        '$location: '
+        'officialUrlは英語版ではなく'
+        '日本語版を設定してください。',
+      );
+    }
+
+    if (menuUrl is String && menuUrl.contains('/en/')) {
+      errors.add(
+        '$location: '
+        'menuUrlは英語版ではなく'
+        '日本語版を設定してください。',
+      );
+    }
+
+    if (category != 'restaurant' &&
+        menuUrl is String &&
+        menuUrl.trim().isNotEmpty) {
+      errors.add(
+        '$location: '
+        'レストラン以外には'
+        'menuUrlを設定しないでください。',
+      );
     }
   }
 
@@ -435,6 +625,73 @@ class MasterDataValidator {
         '指定してください。',
       );
     }
+  }
+
+  void _validateOptionalDate({
+    required Map<String, dynamic> row,
+    required String key,
+    required String location,
+    required List<String> errors,
+  }) {
+    final value = row[key];
+
+    if (value == null) {
+      return;
+    }
+
+    if (value is! String ||
+        value.trim().isEmpty ||
+        DateTime.tryParse(value.trim()) == null) {
+      errors.add(
+        '$location: '
+        '$keyはISO 8601形式の日付'
+        'またはnullで指定してください。',
+      );
+    }
+  }
+
+  void _validateOptionalUrl({
+    required Map<String, dynamic> row,
+    required String key,
+    required String location,
+    required List<String> errors,
+  }) {
+    final value = row[key];
+
+    if (value == null) {
+      return;
+    }
+
+    if (value is! String || value.trim().isEmpty) {
+      errors.add(
+        '$location: '
+        '$keyは有効なURLまたはnullで'
+        '指定してください。',
+      );
+
+      return;
+    }
+
+    final uri = Uri.tryParse(value.trim());
+
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host != 'www.tokyodisneyresort.jp') {
+      errors.add(
+        '$location: '
+        '$keyは東京ディズニーリゾート'
+        '日本語公式サイトのHTTPS URLを'
+        '指定してください。',
+      );
+    }
+  }
+
+  DateTime? _parseOptionalDate(Object? value) {
+    if (value is! String || value.trim().isEmpty) {
+      return null;
+    }
+
+    return DateTime.tryParse(value.trim());
   }
 
   String? _requiredPath(

@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../app/state/app_state_scope.dart';
-import '../../core/theme/app_icons.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/loading_view.dart';
-import '../../core/widgets/section_title.dart';
 import '../../domain/entities/trip_settings.dart';
 import 'settings_controller.dart';
 
@@ -34,7 +31,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final appState = AppStateScope.of(context);
 
     _controller = SettingsController(appState);
-
     _controller!.addListener(_refresh);
   }
 
@@ -67,6 +63,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         hour: controller.settings.entryTimeHour,
         minute: controller.settings.entryTimeMinute,
       ),
+      helpText: '入園時刻を選択',
+      cancelText: 'キャンセル',
+      confirmText: '決定',
     );
 
     if (selected != null) {
@@ -87,6 +86,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         hour: controller.settings.exitTimeHour,
         minute: controller.settings.exitTimeMinute,
       ),
+      helpText: '退園時刻を選択',
+      cancelText: 'キャンセル',
+      confirmText: '決定',
     );
 
     if (selected != null) {
@@ -105,44 +107,148 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = controller.settings;
 
     return AppScaffold(
-      child: ListView(
-        children: [
-          const SectionTitle(
-            title: '設定',
-            subtitle: 'プラン生成に使う来園条件を設定します。',
-            icon: AppIcons.settingsSelected,
-          ),
-          _ParkSettingsCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final useTwoColumns = constraints.maxWidth >= 760;
+
+          if (useTwoColumns) {
+            return _DesktopSettingsLayout(
+              settings: settings,
+              controller: controller,
+              onEntryTimePressed: _selectEntryTime,
+              onExitTimePressed: _selectExitTime,
+            );
+          }
+
+          return _MobileSettingsLayout(
             settings: settings,
-            onChanged: controller.updatePark,
-          ),
-          _TimeSettingsCard(
-            settings: settings,
+            controller: controller,
             onEntryTimePressed: _selectEntryTime,
             onExitTimePressed: _selectExitTime,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MobileSettingsLayout extends StatelessWidget {
+  const _MobileSettingsLayout({
+    required this.settings,
+    required this.controller,
+    required this.onEntryTimePressed,
+    required this.onExitTimePressed,
+  });
+
+  final TripSettings settings;
+  final SettingsController controller;
+  final VoidCallback onEntryTimePressed;
+  final VoidCallback onExitTimePressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(right: 12, bottom: 96),
+      children: [
+        _ParkSettingsCard(settings: settings, onChanged: controller.updatePark),
+        const SizedBox(height: AppSpacing.sm),
+        _VisitSummaryCard(
+          settings: settings,
+          onEntryTimePressed: onEntryTimePressed,
+          onExitTimePressed: onExitTimePressed,
+          onDecreasePeople: controller.decreasePeople,
+          onIncreasePeople: controller.increasePeople,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _ServiceSettingsCard(
+          settings: settings,
+          onHappyEntryChanged: controller.updateHappyEntry,
+          onDpaChanged: controller.updateDpa,
+          onPriorityPassChanged: controller.updatePriorityPass,
+          onSingleRiderChanged: controller.updateSingleRider,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _MealSettingsCard(
+          settings: settings,
+          onBreakfastChanged: controller.updateBreakfast,
+          onLunchChanged: controller.updateLunch,
+          onDinnerChanged: controller.updateDinner,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _ConditionSettingsCard(
+          settings: settings,
+          onRainyChanged: controller.updateRainy,
+          onChildrenChanged: controller.updateChildren,
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopSettingsLayout extends StatelessWidget {
+  const _DesktopSettingsLayout({
+    required this.settings,
+    required this.controller,
+    required this.onEntryTimePressed,
+    required this.onExitTimePressed,
+  });
+
+  final TripSettings settings;
+  final SettingsController controller;
+  final VoidCallback onEntryTimePressed;
+  final VoidCallback onExitTimePressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(right: 14, bottom: 48),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              children: [
+                _ParkSettingsCard(
+                  settings: settings,
+                  onChanged: controller.updatePark,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _VisitSummaryCard(
+                  settings: settings,
+                  onEntryTimePressed: onEntryTimePressed,
+                  onExitTimePressed: onExitTimePressed,
+                  onDecreasePeople: controller.decreasePeople,
+                  onIncreasePeople: controller.increasePeople,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _ConditionSettingsCard(
+                  settings: settings,
+                  onRainyChanged: controller.updateRainy,
+                  onChildrenChanged: controller.updateChildren,
+                ),
+              ],
+            ),
           ),
-          _PeopleSettingsCard(
-            settings: settings,
-            onDecrease: controller.decreasePeople,
-            onIncrease: controller.increasePeople,
-          ),
-          _ServiceSettingsCard(
-            settings: settings,
-            onHappyEntryChanged: controller.updateHappyEntry,
-            onDpaChanged: controller.updateDpa,
-            onPriorityPassChanged: controller.updatePriorityPass,
-            onSingleRiderChanged: controller.updateSingleRider,
-          ),
-          _MealSettingsCard(
-            settings: settings,
-            onBreakfastChanged: controller.updateBreakfast,
-            onLunchChanged: controller.updateLunch,
-            onDinnerChanged: controller.updateDinner,
-          ),
-          _ConditionSettingsCard(
-            settings: settings,
-            onRainyChanged: controller.updateRainy,
-            onChildrenChanged: controller.updateChildren,
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              children: [
+                _ServiceSettingsCard(
+                  settings: settings,
+                  onHappyEntryChanged: controller.updateHappyEntry,
+                  onDpaChanged: controller.updateDpa,
+                  onPriorityPassChanged: controller.updatePriorityPass,
+                  onSingleRiderChanged: controller.updateSingleRider,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _MealSettingsCard(
+                  settings: settings,
+                  onBreakfastChanged: controller.updateBreakfast,
+                  onLunchChanged: controller.updateLunch,
+                  onDinnerChanged: controller.updateDinner,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -162,29 +268,38 @@ class _ParkSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('パーク設定', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.md),
-          DropdownButtonFormField<String>(
-            initialValue: settings.parkId,
-            decoration: const InputDecoration(
-              labelText: 'パーク',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: 'tokyo_disneyland',
-                child: Text('東京ディズニーランド'),
+          const _SettingsCardHeader(
+            title: 'パーク',
+            subtitle: '編集・プラン生成の対象パーク',
+            icon: Icons.park_outlined,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: _ParkChoiceButton(
+                  label: 'ランド',
+                  fullName: '東京ディズニーランド',
+                  icon: Icons.castle_outlined,
+                  selected: settings.parkId == 'tokyo_disneyland',
+                  onPressed: () {
+                    onChanged('tokyo_disneyland');
+                  },
+                ),
               ),
-              DropdownMenuItem(
-                value: 'tokyo_disneysea',
-                child: Text('東京ディズニーシー'),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ParkChoiceButton(
+                  label: 'シー',
+                  fullName: '東京ディズニーシー',
+                  icon: Icons.water_outlined,
+                  selected: settings.parkId == 'tokyo_disneysea',
+                  onPressed: () {
+                    onChanged('tokyo_disneysea');
+                  },
+                ),
               ),
             ],
-            onChanged: (value) {
-              if (value != null) {
-                onChanged(value);
-              }
-            },
           ),
         ],
       ),
@@ -192,16 +307,101 @@ class _ParkSettingsCard extends StatelessWidget {
   }
 }
 
-class _TimeSettingsCard extends StatelessWidget {
-  const _TimeSettingsCard({
+class _ParkChoiceButton extends StatelessWidget {
+  const _ParkChoiceButton({
+    required this.label,
+    required this.fullName,
+    required this.icon,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final String fullName;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: selected
+          ? colorScheme.primaryContainer
+          : colorScheme.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: selected ? colorScheme.primary : colorScheme.outlineVariant,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: selected ? null : onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 21,
+                color: selected
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: selected
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: selected
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onSurfaceVariant,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                Icon(Icons.check_circle, size: 18, color: colorScheme.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VisitSummaryCard extends StatelessWidget {
+  const _VisitSummaryCard({
     required this.settings,
     required this.onEntryTimePressed,
     required this.onExitTimePressed,
+    required this.onDecreasePeople,
+    required this.onIncreasePeople,
   });
 
   final TripSettings settings;
   final VoidCallback onEntryTimePressed;
   final VoidCallback onExitTimePressed;
+  final VoidCallback onDecreasePeople;
+  final VoidCallback onIncreasePeople;
 
   @override
   Widget build(BuildContext context) {
@@ -209,26 +409,38 @@ class _TimeSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('時間設定', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.md),
+          const _SettingsCardHeader(
+            title: '来園時間・人数',
+            subtitle: '滞在時間とグループ人数',
+            icon: Icons.schedule_outlined,
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
-                child: AppButton(
-                  label: '入園 ${settings.entryTimeLabel}',
+                child: _TimeSettingButton(
+                  label: '入園',
+                  time: settings.entryTimeLabel,
                   icon: Icons.login,
                   onPressed: onEntryTimePressed,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 8),
               Expanded(
-                child: AppButton(
-                  label: '退園 ${settings.exitTimeLabel}',
+                child: _TimeSettingButton(
+                  label: '退園',
+                  time: settings.exitTimeLabel,
                   icon: Icons.logout,
                   onPressed: onExitTimePressed,
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _PeopleCounter(
+            people: settings.numberOfPeople,
+            onDecrease: onDecreasePeople,
+            onIncrease: onIncreasePeople,
           ),
         ],
       ),
@@ -236,38 +448,125 @@ class _TimeSettingsCard extends StatelessWidget {
   }
 }
 
-class _PeopleSettingsCard extends StatelessWidget {
-  const _PeopleSettingsCard({
-    required this.settings,
+class _TimeSettingButton extends StatelessWidget {
+  const _TimeSettingButton({
+    required this.label,
+    required this.time,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String label;
+  final String time;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colorScheme.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(11),
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          child: Row(
+            children: [
+              Icon(icon, size: 19, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      time,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.edit_outlined,
+                size: 16,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PeopleCounter extends StatelessWidget {
+  const _PeopleCounter({
+    required this.people,
     required this.onDecrease,
     required this.onIncrease,
   });
 
-  final TripSettings settings;
+  final int people;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
       child: Row(
         children: [
+          Icon(Icons.groups_outlined, size: 20, color: colorScheme.primary),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '人数：'
-              '${settings.numberOfPeople}人',
-              style: Theme.of(context).textTheme.titleLarge,
+              '人数',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           IconButton(
             tooltip: '人数を減らす',
-            onPressed: onDecrease,
+            onPressed: people <= 1 ? null : onDecrease,
             icon: const Icon(Icons.remove_circle_outline),
+            visualDensity: VisualDensity.compact,
+          ),
+          SizedBox(
+            width: 44,
+            child: Text(
+              '$people人',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
           IconButton(
             tooltip: '人数を増やす',
-            onPressed: onIncrease,
+            onPressed: people >= 10 ? null : onIncrease,
             icon: const Icon(Icons.add_circle_outline),
+            visualDensity: VisualDensity.compact,
           ),
         ],
       ),
@@ -285,13 +584,9 @@ class _ServiceSettingsCard extends StatelessWidget {
   });
 
   final TripSettings settings;
-
   final ValueChanged<bool> onHappyEntryChanged;
-
   final ValueChanged<bool> onDpaChanged;
-
   final ValueChanged<bool> onPriorityPassChanged;
-
   final ValueChanged<bool> onSingleRiderChanged;
 
   @override
@@ -300,28 +595,37 @@ class _ServiceSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('サービス利用設定', style: Theme.of(context).textTheme.titleLarge),
-          SwitchListTile(
-            title: const Text('ハッピーエントリー'),
-            subtitle: const Text(
-              '対象ホテル宿泊者向けの'
-              '早期入園を利用します。',
-            ),
+          const _SettingsCardHeader(
+            title: '利用サービス',
+            subtitle: 'プラン作成時に利用可能なサービス',
+            icon: Icons.confirmation_number_outlined,
+          ),
+          const SizedBox(height: 4),
+          _CompactSwitchTile(
+            title: 'ハッピーエントリー',
+            subtitle: '対象ホテル宿泊者向けの早期入園',
+            icon: Icons.hotel_outlined,
             value: settings.hasHappyEntry,
             onChanged: onHappyEntryChanged,
           ),
-          SwitchListTile(
-            title: const Text('ディズニー・プレミアアクセス'),
+          _CompactSwitchTile(
+            title: 'ディズニー・プレミアアクセス',
+            subtitle: '有料の時間指定サービス',
+            icon: Icons.bolt,
             value: settings.canUseDpa,
             onChanged: onDpaChanged,
           ),
-          SwitchListTile(
-            title: const Text('プライオリティパス'),
+          _CompactSwitchTile(
+            title: 'プライオリティパス',
+            subtitle: '無料の優先案内サービス',
+            icon: Icons.confirmation_number_outlined,
             value: settings.canUsePriorityPass,
             onChanged: onPriorityPassChanged,
           ),
-          SwitchListTile(
-            title: const Text('シングルライダー'),
+          _CompactSwitchTile(
+            title: 'シングルライダー',
+            subtitle: '同行者と別れて空席を利用',
+            icon: Icons.person_outline,
             value: settings.canUseSingleRider,
             onChanged: onSingleRiderChanged,
           ),
@@ -340,11 +644,8 @@ class _MealSettingsCard extends StatelessWidget {
   });
 
   final TripSettings settings;
-
   final ValueChanged<bool> onBreakfastChanged;
-
   final ValueChanged<bool> onLunchChanged;
-
   final ValueChanged<bool> onDinnerChanged;
 
   @override
@@ -353,23 +654,28 @@ class _MealSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('食事設定', style: Theme.of(context).textTheme.titleLarge),
-          SwitchListTile(
-            title: const Text('朝食あり'),
-            subtitle: const Text(
-              '入園後から10:00までを'
-              '朝食枠として扱います。',
-            ),
+          const _SettingsCardHeader(
+            title: '食事希望',
+            subtitle: 'スケジュールに組み込む食事',
+            icon: Icons.restaurant_outlined,
+          ),
+          const SizedBox(height: 4),
+          _CompactSwitchTile(
+            title: '朝食',
+            subtitle: '入園後から10:00までを朝食枠として扱う',
+            icon: Icons.free_breakfast_outlined,
             value: settings.wantsBreakfast,
             onChanged: onBreakfastChanged,
           ),
-          SwitchListTile(
-            title: const Text('昼食あり'),
+          _CompactSwitchTile(
+            title: '昼食',
+            icon: Icons.lunch_dining_outlined,
             value: settings.wantsLunch,
             onChanged: onLunchChanged,
           ),
-          SwitchListTile(
-            title: const Text('夕食あり'),
+          _CompactSwitchTile(
+            title: '夕食',
+            icon: Icons.dinner_dining_outlined,
             value: settings.wantsDinner,
             onChanged: onDinnerChanged,
           ),
@@ -387,9 +693,7 @@ class _ConditionSettingsCard extends StatelessWidget {
   });
 
   final TripSettings settings;
-
   final ValueChanged<bool> onRainyChanged;
-
   final ValueChanged<bool> onChildrenChanged;
 
   @override
@@ -398,18 +702,165 @@ class _ConditionSettingsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('条件設定', style: Theme.of(context).textTheme.titleLarge),
-          SwitchListTile(
-            title: const Text('雨'),
+          const _SettingsCardHeader(
+            title: '来園条件',
+            subtitle: '施設の優先順位に影響する条件',
+            icon: Icons.tune_outlined,
+          ),
+          const SizedBox(height: 4),
+          _CompactSwitchTile(
+            title: '雨天',
+            subtitle: '屋内施設を優先する',
+            icon: Icons.umbrella_outlined,
             value: settings.isRainy,
             onChanged: onRainyChanged,
           ),
-          SwitchListTile(
-            title: const Text('子ども連れ'),
+          _CompactSwitchTile(
+            title: '子ども連れ',
+            subtitle: '子ども向け施設を考慮する',
+            icon: Icons.family_restroom_outlined,
             value: settings.hasChildren,
             onChanged: onChildrenChanged,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SettingsCardHeader extends StatelessWidget {
+  const _SettingsCardHeader({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, size: 19, color: colorScheme.onPrimaryContainer),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactSwitchTile extends StatelessWidget {
+  const _CompactSwitchTile({
+    required this.title,
+    required this.icon,
+    required this.value,
+    required this.onChanged,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          onChanged(!value);
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: value
+                      ? colorScheme.primaryContainer
+                      : colorScheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: value
+                      ? colorScheme.onPrimaryContainer
+                      : colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Transform.scale(
+                scale: 0.82,
+                child: Switch(value: value, onChanged: onChanged),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
