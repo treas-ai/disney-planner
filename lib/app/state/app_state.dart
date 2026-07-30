@@ -5,6 +5,8 @@ import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/enums/facility_access_method.dart';
+import '../../domain/enums/lottery_fallback_action.dart';
 import '../../domain/enums/meal_preference.dart';
 import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/priority_level.dart';
@@ -24,6 +26,7 @@ class AppState extends ChangeNotifier {
   TripSettings tripSettings = TripSettings.initial();
 
   final List<Facility> _selectedFacilities = [];
+
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
 
   DaySchedule? daySchedule;
@@ -134,6 +137,7 @@ class AppState extends ChangeNotifier {
       debugPrintStack(stackTrace: stackTrace);
 
       tripSettings = TripSettings.initial();
+
       _selectedFacilities.clear();
       _preferencesByFacilityId.clear();
       daySchedule = null;
@@ -167,6 +171,7 @@ class AppState extends ChangeNotifier {
     await _storage.clear();
 
     tripSettings = TripSettings.initial();
+
     _selectedFacilities.clear();
     _preferencesByFacilityId.clear();
     daySchedule = null;
@@ -190,6 +195,7 @@ class AppState extends ChangeNotifier {
   void updateTripSettings(TripSettings settings) {
     tripSettings = settings;
     daySchedule = null;
+
     _saveAndNotify();
   }
 
@@ -261,6 +267,7 @@ class AppState extends ChangeNotifier {
     parkFacilities.insert(adjustedNewIndex, movedFacility);
 
     final reorderedFacilities = <Facility>[];
+
     var currentParkIndex = 0;
 
     for (final facility in _selectedFacilities) {
@@ -356,6 +363,77 @@ class AppState extends ChangeNotifier {
     _invalidateScheduleAndSave();
   }
 
+  void updatePreferenceAccessMethod({
+    required String facilityId,
+    required FacilityAccessMethod accessMethod,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+
+    if (current == null) {
+      return;
+    }
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      accessMethod: accessMethod,
+      useDpa: accessMethod == FacilityAccessMethod.dpa,
+      usePriorityPass: accessMethod == FacilityAccessMethod.priorityPass,
+      useStandbyPass: accessMethod == FacilityAccessMethod.standbyPass,
+    );
+
+    _invalidateScheduleAndSave();
+  }
+
+  void updatePreferencePreferredPerformanceTime({
+    required String facilityId,
+    required String value,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+
+    if (current == null) {
+      return;
+    }
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      preferredPerformanceTime: _normalizeTimeText(value),
+    );
+
+    _invalidateScheduleAndSave();
+  }
+
+  void updatePreferenceReservationTime({
+    required String facilityId,
+    required String value,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+
+    if (current == null) {
+      return;
+    }
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      reservationTime: _normalizeTimeText(value),
+    );
+
+    _invalidateScheduleAndSave();
+  }
+
+  void updatePreferenceLotteryFallbackAction({
+    required String facilityId,
+    required LotteryFallbackAction action,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+
+    if (current == null) {
+      return;
+    }
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      lotteryFallbackAction: action,
+    );
+
+    _invalidateScheduleAndSave();
+  }
+
   void updatePreferenceUseDpa({
     required String facilityId,
     required bool value,
@@ -366,7 +444,14 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    _preferencesByFacilityId[facilityId] = current.copyWith(useDpa: value);
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      useDpa: value,
+      usePriorityPass: value ? false : current.usePriorityPass,
+      useStandbyPass: value ? false : current.useStandbyPass,
+      accessMethod: value
+          ? FacilityAccessMethod.dpa
+          : FacilityAccessMethod.standby,
+    );
 
     _invalidateScheduleAndSave();
   }
@@ -382,7 +467,12 @@ class AppState extends ChangeNotifier {
     }
 
     _preferencesByFacilityId[facilityId] = current.copyWith(
+      useDpa: value ? false : current.useDpa,
       usePriorityPass: value,
+      useStandbyPass: value ? false : current.useStandbyPass,
+      accessMethod: value
+          ? FacilityAccessMethod.priorityPass
+          : FacilityAccessMethod.standby,
     );
 
     _invalidateScheduleAndSave();
@@ -399,7 +489,12 @@ class AppState extends ChangeNotifier {
     }
 
     _preferencesByFacilityId[facilityId] = current.copyWith(
+      useDpa: value ? false : current.useDpa,
+      usePriorityPass: value ? false : current.usePriorityPass,
       useStandbyPass: value,
+      accessMethod: value
+          ? FacilityAccessMethod.standbyPass
+          : FacilityAccessMethod.standby,
     );
 
     _invalidateScheduleAndSave();
@@ -439,6 +534,7 @@ class AppState extends ChangeNotifier {
 
   void updateDaySchedule(DaySchedule schedule) {
     daySchedule = schedule;
+
     _saveAndNotify();
   }
 
@@ -448,6 +544,7 @@ class AppState extends ChangeNotifier {
     }
 
     daySchedule = null;
+
     _saveAndNotify();
   }
 
@@ -480,8 +577,13 @@ class AppState extends ChangeNotifier {
     return value.whereType<String>().toList(growable: false);
   }
 
+  String _normalizeTimeText(String value) {
+    return value.trim().replaceAll('：', ':');
+  }
+
   void _invalidateScheduleAndSave() {
     daySchedule = null;
+
     _saveAndNotify();
   }
 

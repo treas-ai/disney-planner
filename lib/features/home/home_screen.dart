@@ -11,7 +11,18 @@ import '../../domain/entities/schedule_item.dart';
 import '../../domain/entities/trip_settings.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    required this.onEditPlanPressed,
+    required this.onReviewPlanPressed,
+    required this.onTodayPlanPressed,
+    required this.onSettingsPressed,
+  });
+
+  final VoidCallback onEditPlanPressed;
+  final VoidCallback onReviewPlanPressed;
+  final VoidCallback onTodayPlanPressed;
+  final VoidCallback onSettingsPressed;
 
   @override
   State<HomeScreen> createState() {
@@ -70,21 +81,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (appState == null) {
       return const AppScaffold(
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
     final settings = appState.tripSettings;
 
     final selectedFacilities = appState.selectedFacilities
-        .where((facility) => facility.parkId == settings.parkId)
-        .toList(growable: false);
+        .where(
+          (facility) => facility.parkId == settings.parkId,
+        )
+        .toList(
+          growable: false,
+        );
 
     final unavailableFacilities = selectedFacilities
-        .where((facility) => !facility.isOpen)
-        .toList(growable: false);
+        .where(
+          (facility) => !facility.isOpen,
+        )
+        .toList(
+          growable: false,
+        );
 
     final schedule = appState.daySchedule;
+
+    final hasCurrentSchedule =
+        schedule != null && schedule.parkId == settings.parkId;
+
+    final nextAction = _resolveHomeAction(
+      selectedFacilities: selectedFacilities,
+      unavailableFacilities: unavailableFacilities,
+      schedule: schedule,
+      settings: settings,
+    );
 
     return AppScaffold(
       child: Scrollbar(
@@ -95,12 +126,29 @@ class _HomeScreenState extends State<HomeScreen> {
         radius: const Radius.circular(8),
         child: ListView(
           controller: _scrollController,
-          padding: const EdgeInsets.only(right: 14, bottom: 96),
+          padding: const EdgeInsets.only(
+            right: 14,
+            bottom: 96,
+          ),
           children: [
             _HomeHeroCard(
               settings: settings,
               selectedFacilityCount: selectedFacilities.length,
               schedule: schedule,
+              onPressed: selectedFacilities.isEmpty
+                  ? widget.onEditPlanPressed
+                  : hasCurrentSchedule
+                  ? widget.onTodayPlanPressed
+                  : widget.onReviewPlanPressed,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _HomeQuickActions(
+              selectedFacilityCount: selectedFacilities.length,
+              hasCurrentSchedule: hasCurrentSchedule,
+              onEditPlanPressed: widget.onEditPlanPressed,
+              onReviewPlanPressed: widget.onReviewPlanPressed,
+              onTodayPlanPressed: widget.onTodayPlanPressed,
+              onSettingsPressed: widget.onSettingsPressed,
             ),
             const SizedBox(height: AppSpacing.sm),
             LayoutBuilder(
@@ -111,22 +159,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Column(
                     children: [
                       _NextActionCard(
-                        settings: settings,
-                        selectedFacilities: selectedFacilities,
-                        unavailableFacilities: unavailableFacilities,
-                        schedule: schedule,
+                        action: nextAction,
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      _VisitSummaryCard(settings: settings),
+                      _VisitSummaryCard(
+                        settings: settings,
+                        onSettingsPressed: widget.onSettingsPressed,
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                       _SelectedFacilitySummaryCard(
                         selectedFacilities: selectedFacilities,
                         unavailableFacilities: unavailableFacilities,
+                        onEditPlanPressed: widget.onEditPlanPressed,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       _ScheduleSummaryCard(
                         settings: settings,
                         schedule: schedule,
+                        onReviewPlanPressed: widget.onReviewPlanPressed,
+                        onTodayPlanPressed: widget.onTodayPlanPressed,
                       ),
                     ],
                   );
@@ -135,10 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Column(
                   children: [
                     _NextActionCard(
-                      settings: settings,
-                      selectedFacilities: selectedFacilities,
-                      unavailableFacilities: unavailableFacilities,
-                      schedule: schedule,
+                      action: nextAction,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Row(
@@ -147,11 +195,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: Column(
                             children: [
-                              _VisitSummaryCard(settings: settings),
+                              _VisitSummaryCard(
+                                settings: settings,
+                                onSettingsPressed: widget.onSettingsPressed,
+                              ),
                               const SizedBox(height: AppSpacing.sm),
                               _SelectedFacilitySummaryCard(
                                 selectedFacilities: selectedFacilities,
-                                unavailableFacilities: unavailableFacilities,
+                                unavailableFacilities:
+                                    unavailableFacilities,
+                                onEditPlanPressed:
+                                    widget.onEditPlanPressed,
                               ),
                             ],
                           ),
@@ -161,6 +215,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: _ScheduleSummaryCard(
                             settings: settings,
                             schedule: schedule,
+                            onReviewPlanPressed:
+                                widget.onReviewPlanPressed,
+                            onTodayPlanPressed:
+                                widget.onTodayPlanPressed,
                           ),
                         ),
                       ],
@@ -174,6 +232,72 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  _HomeAction _resolveHomeAction({
+    required List<Facility> selectedFacilities,
+    required List<Facility> unavailableFacilities,
+    required DaySchedule? schedule,
+    required TripSettings settings,
+  }) {
+    if (selectedFacilities.isEmpty) {
+      return _HomeAction(
+        title: '行きたい施設を選択',
+        description: 'プラン編集画面で、行きたい施設を追加してください。',
+        buttonLabel: 'プラン編集を始める',
+        icon: Icons.add_location_alt_outlined,
+        foregroundColor: const Color(0xFF2457A6),
+        backgroundColor: const Color(0xFFEAF2FF),
+        onPressed: widget.onEditPlanPressed,
+      );
+    }
+
+    if (unavailableFacilities.isNotEmpty) {
+      return _HomeAction(
+        title: '休止中施設を確認',
+        description:
+            '${unavailableFacilities.length}件の施設は、現在プランへ組み込めません。',
+        buttonLabel: '選択施設を確認',
+        icon: Icons.warning_amber_outlined,
+        foregroundColor: const Color(0xFFC62828),
+        backgroundColor: const Color(0xFFFFEBEE),
+        onPressed: widget.onEditPlanPressed,
+      );
+    }
+
+    if (schedule == null) {
+      return _HomeAction(
+        title: 'プランを生成',
+        description: '選択した施設から一日の予定を作成します。',
+        buttonLabel: 'プラン確認へ',
+        icon: Icons.auto_awesome_outlined,
+        foregroundColor: const Color(0xFF6A3DA1),
+        backgroundColor: const Color(0xFFF2EAFE),
+        onPressed: widget.onReviewPlanPressed,
+      );
+    }
+
+    if (schedule.parkId != settings.parkId) {
+      return _HomeAction(
+        title: '現在のパークで再生成',
+        description: '保存されているプランと、現在選択しているパークが異なります。',
+        buttonLabel: 'プラン確認へ',
+        icon: Icons.sync_problem_outlined,
+        foregroundColor: const Color(0xFFC62828),
+        backgroundColor: const Color(0xFFFFEBEE),
+        onPressed: widget.onReviewPlanPressed,
+      );
+    }
+
+    return _HomeAction(
+      title: '当日の予定を確認',
+      description: 'プランが生成されています。当日画面で時系列の予定を確認できます。',
+      buttonLabel: '当日の予定へ',
+      icon: Icons.event_available_outlined,
+      foregroundColor: const Color(0xFF287A4B),
+      backgroundColor: const Color(0xFFE8F5ED),
+      onPressed: widget.onTodayPlanPressed,
+    );
+  }
 }
 
 class _HomeHeroCard extends StatelessWidget {
@@ -181,140 +305,274 @@ class _HomeHeroCard extends StatelessWidget {
     required this.settings,
     required this.selectedFacilityCount,
     required this.schedule,
+    required this.onPressed,
   });
 
   final TripSettings settings;
   final int selectedFacilityCount;
   final DaySchedule? schedule;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     final scheduleMatchesPark =
-        schedule == null || schedule!.parkId == settings.parkId;
+        schedule != null && schedule!.parkId == settings.parkId;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primaryContainer,
-            colorScheme.secondaryContainer,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              colorScheme.primaryContainer,
+              colorScheme.secondaryContainer,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
         ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 620;
+        child: InkWell(
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 620;
 
-          final information = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface.withValues(alpha: 0.78),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      _parkIcon(settings.parkId),
-                      size: 25,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                final information = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                          '現在のプラン',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface.withValues(alpha: 0.78),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            _parkIcon(settings.parkId),
+                            size: 25,
+                            color: colorScheme.primary,
+                          ),
                         ),
-                        Text(
-                          _parkName(settings.parkId),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w800,
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '現在のプラン',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color:
+                                          colorScheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                               ),
+                              Text(
+                                _parkName(settings.parkId),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      color:
+                                          colorScheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward,
+                          color: colorScheme.onPrimaryContainer,
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _HeroInformationBadge(
-                    icon: Icons.schedule_outlined,
-                    label:
-                        '${settings.entryTimeLabel}～${settings.exitTimeLabel}',
-                  ),
-                  _HeroInformationBadge(
-                    icon: Icons.groups_outlined,
-                    label: '${settings.numberOfPeople}人',
-                  ),
-                  _HeroInformationBadge(
-                    icon: Icons.place_outlined,
-                    label: '$selectedFacilityCount施設',
-                  ),
-                  _HeroInformationBadge(
-                    icon: schedule != null && scheduleMatchesPark
-                        ? Icons.check_circle_outline
-                        : Icons.auto_awesome_outlined,
-                    label: schedule != null && scheduleMatchesPark
-                        ? '${schedule!.items.length}件生成済み'
-                        : '未生成',
-                  ),
-                ],
-              ),
-            ],
-          );
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _HeroInformationBadge(
+                          icon: Icons.schedule_outlined,
+                          label:
+                              '${settings.entryTimeLabel}～${settings.exitTimeLabel}',
+                        ),
+                        _HeroInformationBadge(
+                          icon: Icons.groups_outlined,
+                          label: '${settings.numberOfPeople}人',
+                        ),
+                        _HeroInformationBadge(
+                          icon: Icons.place_outlined,
+                          label: '$selectedFacilityCount施設',
+                        ),
+                        _HeroInformationBadge(
+                          icon: scheduleMatchesPark
+                              ? Icons.check_circle_outline
+                              : Icons.auto_awesome_outlined,
+                          label: scheduleMatchesPark
+                              ? '${schedule!.items.length}件生成済み'
+                              : '未生成',
+                        ),
+                      ],
+                    ),
+                  ],
+                );
 
-          if (compact) {
-            return information;
-          }
+                if (compact) {
+                  return information;
+                }
 
-          return Row(
-            children: [
-              Expanded(child: information),
-              const SizedBox(width: 24),
-              Icon(
-                schedule != null && scheduleMatchesPark
-                    ? Icons.event_available_outlined
-                    : Icons.route_outlined,
-                size: 78,
-                color: colorScheme.onPrimaryContainer.withValues(alpha: 0.24),
-              ),
-            ],
-          );
-        },
+                return Row(
+                  children: [
+                    Expanded(child: information),
+                    const SizedBox(width: 24),
+                    Icon(
+                      scheduleMatchesPark
+                          ? Icons.event_available_outlined
+                          : Icons.route_outlined,
+                      size: 78,
+                      color: colorScheme.onPrimaryContainer.withValues(
+                        alpha: 0.24,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
+class _HomeQuickActions extends StatelessWidget {
+  const _HomeQuickActions({
+    required this.selectedFacilityCount,
+    required this.hasCurrentSchedule,
+    required this.onEditPlanPressed,
+    required this.onReviewPlanPressed,
+    required this.onTodayPlanPressed,
+    required this.onSettingsPressed,
+  });
+
+  final int selectedFacilityCount;
+  final bool hasCurrentSchedule;
+  final VoidCallback onEditPlanPressed;
+  final VoidCallback onReviewPlanPressed;
+  final VoidCallback onTodayPlanPressed;
+  final VoidCallback onSettingsPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'クイック操作',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final buttonWidth = constraints.maxWidth >= 720
+                  ? (constraints.maxWidth - 24) / 4
+                  : constraints.maxWidth >= 420
+                  ? (constraints.maxWidth - 8) / 2
+                  : constraints.maxWidth;
+
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  SizedBox(
+                    width: buttonWidth,
+                    child: _QuickActionButton(
+                      icon: Icons.edit_location_alt_outlined,
+                      label: selectedFacilityCount == 0
+                          ? '施設を選ぶ'
+                          : '施設を編集',
+                      onPressed: onEditPlanPressed,
+                    ),
+                  ),
+                  SizedBox(
+                    width: buttonWidth,
+                    child: _QuickActionButton(
+                      icon: Icons.route_outlined,
+                      label: 'プラン確認',
+                      onPressed: onReviewPlanPressed,
+                    ),
+                  ),
+                  SizedBox(
+                    width: buttonWidth,
+                    child: _QuickActionButton(
+                      icon: Icons.event_available_outlined,
+                      label: '当日の予定',
+                      onPressed:
+                          hasCurrentSchedule ? onTodayPlanPressed : null,
+                    ),
+                  ),
+                  SizedBox(
+                    width: buttonWidth,
+                    child: _QuickActionButton(
+                      icon: Icons.settings_outlined,
+                      label: '来園設定',
+                      onPressed: onSettingsPressed,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.tonalIcon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 19),
+      label: Text(label),
+    );
+  }
+}
+
 class _HeroInformationBadge extends StatelessWidget {
-  const _HeroInformationBadge({required this.icon, required this.label});
+  const _HeroInformationBadge({
+    required this.icon,
+    required this.label,
+  });
 
   final IconData icon;
   final String label;
@@ -324,7 +582,10 @@ class _HeroInformationBadge extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 6,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surface.withValues(alpha: 0.76),
         borderRadius: BorderRadius.circular(9),
@@ -349,140 +610,112 @@ class _HeroInformationBadge extends StatelessWidget {
 
 class _NextActionCard extends StatelessWidget {
   const _NextActionCard({
-    required this.settings,
-    required this.selectedFacilities,
-    required this.unavailableFacilities,
-    required this.schedule,
+    required this.action,
   });
 
-  final TripSettings settings;
-  final List<Facility> selectedFacilities;
-  final List<Facility> unavailableFacilities;
-  final DaySchedule? schedule;
+  final _HomeAction action;
 
   @override
   Widget build(BuildContext context) {
-    final action = _resolveAction();
-
     return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: action.backgroundColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: Icon(action.icon, size: 22, color: action.foregroundColor),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: action.backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  action.icon,
+                  size: 22,
+                  color: action.foregroundColor,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '次にやること',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      action.title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      action.description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '次にやること',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  action.title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  action.description,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: action.onPressed,
+              icon: Icon(action.icon, size: 19),
+              label: Text(action.buttonLabel),
             ),
           ),
         ],
       ),
     );
   }
-
-  _NextAction _resolveAction() {
-    if (selectedFacilities.isEmpty) {
-      return const _NextAction(
-        title: '行きたい施設を選択',
-        description: 'プラン編集画面で、行きたい施設を追加してください。',
-        icon: Icons.add_location_alt_outlined,
-        foregroundColor: Color(0xFF2457A6),
-        backgroundColor: Color(0xFFEAF2FF),
-      );
-    }
-
-    if (unavailableFacilities.isNotEmpty) {
-      return _NextAction(
-        title: '休止中施設を確認',
-        description: '${unavailableFacilities.length}件の施設は、現在プランへ組み込めません。',
-        icon: Icons.warning_amber_outlined,
-        foregroundColor: const Color(0xFFC62828),
-        backgroundColor: const Color(0xFFFFEBEE),
-      );
-    }
-
-    if (schedule == null) {
-      return const _NextAction(
-        title: 'プランを生成',
-        description: 'プラン確認画面で、選択した施設から一日の予定を作成してください。',
-        icon: Icons.auto_awesome_outlined,
-        foregroundColor: Color(0xFF6A3DA1),
-        backgroundColor: Color(0xFFF2EAFE),
-      );
-    }
-
-    if (schedule!.parkId != settings.parkId) {
-      return const _NextAction(
-        title: '現在のパークで再生成',
-        description: '保存されているプランと、現在選択しているパークが異なります。',
-        icon: Icons.sync_problem_outlined,
-        foregroundColor: Color(0xFFC62828),
-        backgroundColor: Color(0xFFFFEBEE),
-      );
-    }
-
-    return const _NextAction(
-      title: '当日の予定を確認',
-      description: 'プランが生成されています。当日画面で時系列の予定を確認できます。',
-      icon: Icons.event_available_outlined,
-      foregroundColor: Color(0xFF287A4B),
-      backgroundColor: Color(0xFFE8F5ED),
-    );
-  }
 }
 
-class _NextAction {
-  const _NextAction({
+class _HomeAction {
+  const _HomeAction({
     required this.title,
     required this.description,
+    required this.buttonLabel,
     required this.icon,
     required this.foregroundColor,
     required this.backgroundColor,
+    required this.onPressed,
   });
 
   final String title;
   final String description;
+  final String buttonLabel;
   final IconData icon;
   final Color foregroundColor;
   final Color backgroundColor;
+  final VoidCallback onPressed;
 }
 
 class _VisitSummaryCard extends StatelessWidget {
-  const _VisitSummaryCard({required this.settings});
+  const _VisitSummaryCard({
+    required this.settings,
+    required this.onSettingsPressed,
+  });
 
   final TripSettings settings;
+  final VoidCallback onSettingsPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -508,7 +741,12 @@ class _VisitSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _HomeCardHeader(title: '来園設定', icon: Icons.tune_outlined),
+          _HomeCardHeader(
+            title: '来園設定',
+            icon: Icons.tune_outlined,
+            actionLabel: '設定を変更',
+            onActionPressed: onSettingsPressed,
+          ),
           const SizedBox(height: AppSpacing.sm),
           _SummaryRow(
             icon: Icons.login,
@@ -553,10 +791,12 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
   const _SelectedFacilitySummaryCard({
     required this.selectedFacilities,
     required this.unavailableFacilities,
+    required this.onEditPlanPressed,
   });
 
   final List<Facility> selectedFacilities;
   final List<Facility> unavailableFacilities;
+  final VoidCallback onEditPlanPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -576,6 +816,8 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
             title: '選択済み施設',
             icon: Icons.playlist_add_check_outlined,
             trailing: '${selectedFacilities.length}件',
+            actionLabel: selectedFacilities.isEmpty ? '施設を選ぶ' : '編集',
+            onActionPressed: onEditPlanPressed,
           ),
           const SizedBox(height: AppSpacing.sm),
           if (selectedFacilities.isEmpty)
@@ -591,7 +833,10 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
               runSpacing: 6,
               children: [
                 for (final entry in categoryCounts.entries)
-                  _CountBadge(label: entry.key, count: entry.value),
+                  _CountBadge(
+                    label: entry.key,
+                    count: entry.value,
+                  ),
               ],
             ),
             if (unavailableFacilities.isNotEmpty) ...[
@@ -608,16 +853,22 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
                     Icon(
                       Icons.warning_amber_outlined,
                       size: 18,
-                      color: Theme.of(context).colorScheme.onErrorContainer,
+                      color:
+                          Theme.of(context).colorScheme.onErrorContainer,
                     ),
                     const SizedBox(width: 7),
                     Expanded(
                       child: Text(
                         '${unavailableFacilities.length}件は休止中または追加不可です。',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                     ),
                   ],
@@ -641,8 +892,8 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
 
     return switch (facility.category.name) {
       'attraction' => 'アトラクション',
-      'show' => 'ショー',
-      'parade' => 'パレード',
+      'show' => 'ショー・パレード',
+      'parade' => 'ショー・パレード',
       'greeting' => 'グリーティング',
       'service' => 'サービス',
       _ => facility.category.label,
@@ -651,10 +902,17 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
 }
 
 class _ScheduleSummaryCard extends StatelessWidget {
-  const _ScheduleSummaryCard({required this.settings, required this.schedule});
+  const _ScheduleSummaryCard({
+    required this.settings,
+    required this.schedule,
+    required this.onReviewPlanPressed,
+    required this.onTodayPlanPressed,
+  });
 
   final TripSettings settings;
   final DaySchedule? schedule;
+  final VoidCallback onReviewPlanPressed;
+  final VoidCallback onTodayPlanPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -669,6 +927,10 @@ class _ScheduleSummaryCard extends StatelessWidget {
             title: '生成済みプラン',
             icon: Icons.route_outlined,
             trailing: scheduleMatchesPark ? '${schedule!.items.length}件' : null,
+            actionLabel: scheduleMatchesPark ? '当日表示' : 'プラン確認',
+            onActionPressed: scheduleMatchesPark
+                ? onTodayPlanPressed
+                : onReviewPlanPressed,
           ),
           const SizedBox(height: AppSpacing.sm),
           if (schedule == null)
@@ -711,6 +973,27 @@ class _ScheduleSummaryCard extends StatelessWidget {
               ),
             ],
           ],
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: scheduleMatchesPark
+                ? FilledButton.icon(
+                    onPressed: onTodayPlanPressed,
+                    icon: const Icon(
+                      Icons.event_available_outlined,
+                      size: 19,
+                    ),
+                    label: const Text('当日の予定を確認'),
+                  )
+                : OutlinedButton.icon(
+                    onPressed: onReviewPlanPressed,
+                    icon: const Icon(
+                      Icons.route_outlined,
+                      size: 19,
+                    ),
+                    label: const Text('プラン確認へ'),
+                  ),
+          ),
         ],
       ),
     );
@@ -718,7 +1001,9 @@ class _ScheduleSummaryCard extends StatelessWidget {
 }
 
 class _ScheduleOverview extends StatelessWidget {
-  const _ScheduleOverview({required this.schedule});
+  const _ScheduleOverview({
+    required this.schedule,
+  });
 
   final DaySchedule schedule;
 
@@ -773,11 +1058,16 @@ class _ScheduleMetric extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 8,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(
+          color: colorScheme.outlineVariant,
+        ),
       ),
       child: Column(
         children: [
@@ -794,9 +1084,9 @@ class _ScheduleMetric extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -805,7 +1095,9 @@ class _ScheduleMetric extends StatelessWidget {
 }
 
 class _FirstScheduleItem extends StatelessWidget {
-  const _FirstScheduleItem({required this.item});
+  const _FirstScheduleItem({
+    required this.item,
+  });
 
   final ScheduleItem item;
 
@@ -832,9 +1124,9 @@ class _FirstScheduleItem extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               item.startTimeLabel,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(width: 9),
@@ -846,9 +1138,9 @@ class _FirstScheduleItem extends StatelessWidget {
                   item.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 Text(
                   item.type.label,
@@ -886,18 +1178,24 @@ class _ScheduleEmptyMessage extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(
+          color: colorScheme.outlineVariant,
+        ),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 30, color: colorScheme.onSurfaceVariant),
+          Icon(
+            icon,
+            size: 30,
+            color: colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 7),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 3),
           Text(
@@ -919,11 +1217,15 @@ class _HomeCardHeader extends StatelessWidget {
     required this.title,
     required this.icon,
     this.trailing,
+    this.actionLabel,
+    this.onActionPressed,
   });
 
   final String title;
   final IconData icon;
   final String? trailing;
+  final String? actionLabel;
+  final VoidCallback? onActionPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -934,17 +1236,31 @@ class _HomeCardHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-        if (trailing != null)
+        if (trailing != null) ...[
           Text(
             trailing!,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (actionLabel != null) const SizedBox(width: 5),
+        ],
+        if (actionLabel != null)
+          TextButton(
+            onPressed: onActionPressed,
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 5,
+              ),
+            ),
+            child: Text(actionLabel!),
           ),
       ],
     );
@@ -990,22 +1306,29 @@ class _SummaryRow extends StatelessWidget {
                 child: Text(
                   value,
                   textAlign: TextAlign.right,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        if (showDivider) Divider(height: 1, color: colorScheme.outlineVariant),
+        if (showDivider)
+          Divider(
+            height: 1,
+            color: colorScheme.outlineVariant,
+          ),
       ],
     );
   }
 }
 
 class _CountBadge extends StatelessWidget {
-  const _CountBadge({required this.label, required this.count});
+  const _CountBadge({
+    required this.label,
+    required this.count,
+  });
 
   final String label;
   final int count;
@@ -1015,17 +1338,22 @@ class _CountBadge extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 5,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(
+          color: colorScheme.outlineVariant,
+        ),
       ),
       child: Text(
         '$label $count',
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

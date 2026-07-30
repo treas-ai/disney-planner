@@ -6,7 +6,6 @@ import '../../../core/widgets/app_status_chip.dart';
 import '../../../domain/entities/facility.dart';
 import '../plan_builder_controller.dart';
 import '../plan_preference_controller.dart';
-import 'facility_visual_style.dart';
 import 'plan_preference_editor.dart';
 
 class SelectedFacilityEditorSheet extends StatefulWidget {
@@ -15,11 +14,13 @@ class SelectedFacilityEditorSheet extends StatefulWidget {
     required this.planBuilderController,
     required this.preferenceController,
     required this.selectedParkId,
+    required this.onReviewPlanPressed,
   });
 
   final PlanBuilderController planBuilderController;
   final PlanPreferenceController preferenceController;
   final String selectedParkId;
+  final VoidCallback onReviewPlanPressed;
 
   @override
   State<SelectedFacilityEditorSheet> createState() {
@@ -38,14 +39,12 @@ class _SelectedFacilityEditorSheetState
     _displayedParkId = widget.selectedParkId;
 
     widget.planBuilderController.addListener(_refresh);
-
     widget.preferenceController.addListener(_refresh);
   }
 
   @override
   void dispose() {
     widget.planBuilderController.removeListener(_refresh);
-
     widget.preferenceController.removeListener(_refresh);
 
     super.dispose();
@@ -57,6 +56,14 @@ class _SelectedFacilityEditorSheetState
     }
 
     setState(() {});
+  }
+
+  void _goToPlanReview() {
+    Navigator.of(context).pop();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onReviewPlanPressed();
+    });
   }
 
   Future<void> _confirmRemove(Facility facility) async {
@@ -174,7 +181,7 @@ class _SelectedFacilityEditorSheetState
                     ? _EmptySelectedFacilities(parkId: _displayedParkId)
                     : ReorderableListView.builder(
                         scrollController: scrollController,
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 48),
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
                         buildDefaultDragHandles: false,
                         itemCount: facilities.length,
                         onReorderItem: _reorderFacility,
@@ -193,10 +200,76 @@ class _SelectedFacilityEditorSheetState
                         },
                       ),
               ),
+              _ReviewActionFooter(
+                selectedCount: facilities.length,
+                onPressed: _goToPlanReview,
+              ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _ReviewActionFooter extends StatelessWidget {
+  const _ReviewActionFooter({
+    required this.selectedCount,
+    required this.onPressed,
+  });
+
+  final int selectedCount;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colorScheme.surface,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selectedCount == 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '施設を1件以上選択してください。',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: selectedCount > 0 ? onPressed : null,
+                icon: const Icon(Icons.arrow_forward, size: 19),
+                label: Text(
+                  selectedCount > 0 ? '$selectedCount件の施設でプラン確認へ' : 'プラン確認へ',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -227,7 +300,7 @@ class _SheetHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '選択済み施設の編集',
+                  '選択施設',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -493,13 +566,15 @@ class _SelectedFacilityItem extends StatelessWidget {
           ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
+          padding: const EdgeInsets.only(top: 4),
           child: Wrap(
             spacing: 5,
             runSpacing: 5,
             children: [
-              _SelectedCategoryBadge(facility: facility),
-              _SelectedAreaBadge(areaId: facility.areaId),
+              AppBadge(
+                label: _categoryLabel(facility),
+                icon: _categoryIcon(facility),
+              ),
               if (!facility.isOpen)
                 AppStatusChip(
                   label: facility.operatingStatusDisplayLabel,
@@ -561,6 +636,30 @@ class _SelectedFacilityItem extends StatelessWidget {
                 mealPreference: mealPreference,
               );
             },
+            onAccessMethodChanged: (accessMethod) {
+              preferenceController.updateAccessMethod(
+                facilityId: facility.id,
+                accessMethod: accessMethod,
+              );
+            },
+            onPreferredPerformanceTimeChanged: (value) {
+              preferenceController.updatePreferredPerformanceTime(
+                facilityId: facility.id,
+                value: value,
+              );
+            },
+            onReservationTimeChanged: (value) {
+              preferenceController.updateReservationTime(
+                facilityId: facility.id,
+                value: value,
+              );
+            },
+            onLotteryFallbackActionChanged: (action) {
+              preferenceController.updateLotteryFallbackAction(
+                facilityId: facility.id,
+                action: action,
+              );
+            },
             onUseDpaChanged: (value) {
               preferenceController.updateUseDpa(
                 facilityId: facility.id,
@@ -598,79 +697,6 @@ class _SelectedFacilityItem extends StatelessWidget {
   }
 }
 
-class _SelectedCategoryBadge extends StatelessWidget {
-  const _SelectedCategoryBadge({required this.facility});
-
-  final Facility facility;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = FacilityVisualStyle.categoryStyle(facility);
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 28),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: style.backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(style.icon, size: 14, color: style.foregroundColor),
-          const SizedBox(width: 5),
-          Text(
-            style.label,
-            maxLines: 1,
-            softWrap: false,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: style.foregroundColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SelectedAreaBadge extends StatelessWidget {
-  const _SelectedAreaBadge({required this.areaId});
-
-  final String areaId;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = FacilityVisualStyle.areaStyle(areaId);
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 28),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: style.backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: style.borderColor),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(style.icon, size: 14, color: style.foregroundColor),
-          const SizedBox(width: 5),
-          Text(
-            style.label,
-            maxLines: 1,
-            softWrap: false,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: style.foregroundColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 String _parkName(String parkId) {
   return switch (parkId) {
     'tokyo_disneyland' => '東京ディズニーランド',
@@ -684,5 +710,39 @@ IconData _parkIcon(String parkId) {
     'tokyo_disneyland' => Icons.castle_outlined,
     'tokyo_disneysea' => Icons.water_outlined,
     _ => Icons.park_outlined,
+  };
+}
+
+String _categoryLabel(Facility facility) {
+  if (facility.isShop) {
+    return facility.shopType.label;
+  }
+
+  if (facility.isRestaurant) {
+    return facility.restaurantType.label;
+  }
+
+  return switch (facility.category.name) {
+    'attraction' => 'アトラクション',
+    'restaurant' => 'レストラン',
+    'show' => 'ショー・パレード',
+    'parade' => 'ショー・パレード',
+    'greeting' => 'グリーティング',
+    'shop' => 'ショップ',
+    'service' => 'サービス',
+    _ => facility.category.label,
+  };
+}
+
+IconData _categoryIcon(Facility facility) {
+  return switch (facility.category.name) {
+    'attraction' => Icons.attractions_outlined,
+    'restaurant' => Icons.restaurant_outlined,
+    'show' => Icons.theater_comedy_outlined,
+    'parade' => Icons.theater_comedy_outlined,
+    'greeting' => Icons.photo_camera_front_outlined,
+    'shop' => Icons.storefront_outlined,
+    'service' => Icons.info_outline,
+    _ => Icons.place_outlined,
   };
 }

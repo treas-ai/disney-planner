@@ -64,50 +64,81 @@ class _FacilityCardState extends State<FacilityCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: _canAddToPlan ? 1 : 0.76,
-      child: AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _FacilityTitleRow(
-              facility: facility,
-              canAddToPlan: _canAddToPlan,
-              isSelected: widget.isSelected,
-              onAdd: widget.onAdd,
-              onRemove: widget.onRemove,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _FacilityBadgeList(
-              facility: facility,
-              requiresPrioritySeating: _requiresPrioritySeating,
-            ),
-            if (_hasExpandableDetails) ...[
-              const SizedBox(height: AppSpacing.xs),
-              _DetailsToggle(
-                isExpanded: _isExpanded,
-                onPressed: () {
-                  setState(() {
-                    _isExpanded = !_isExpanded;
-                  });
-                },
+    final areaStyle = FacilityVisualStyle.areaStyle(facility.areaId);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 430;
+
+        return Opacity(
+          opacity: _canAddToPlan ? 1 : 0.76,
+          child: Stack(
+            children: [
+              AppCard(
+                child: Padding(
+                  padding: EdgeInsets.only(left: compact ? 2 : 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _FacilityTitleRow(
+                        facility: facility,
+                        canAddToPlan: _canAddToPlan,
+                        isSelected: widget.isSelected,
+                        compact: compact,
+                        onAdd: widget.onAdd,
+                        onRemove: widget.onRemove,
+                      ),
+                      SizedBox(height: compact ? 7 : AppSpacing.sm),
+                      _FacilityBadgeList(
+                        facility: facility,
+                        compact: compact,
+                        requiresPrioritySeating: _requiresPrioritySeating,
+                      ),
+                      if (_hasExpandableDetails) ...[
+                        SizedBox(height: compact ? 1 : AppSpacing.xs),
+                        _DetailsToggle(
+                          isExpanded: _isExpanded,
+                          compact: compact,
+                          onPressed: () {
+                            setState(() {
+                              _isExpanded = !_isExpanded;
+                            });
+                          },
+                        ),
+                        AnimatedCrossFade(
+                          duration: const Duration(milliseconds: 180),
+                          sizeCurve: Curves.easeInOut,
+                          crossFadeState: _isExpanded
+                              ? CrossFadeState.showSecond
+                              : CrossFadeState.showFirst,
+                          firstChild: const SizedBox(width: double.infinity),
+                          secondChild: _FacilityDetails(
+                            facility: facility,
+                            compact: compact,
+                            showOperatingStatus: _hasOperatingStatusDetails,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 180),
-                sizeCurve: Curves.easeInOut,
-                crossFadeState: _isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                firstChild: const SizedBox(width: double.infinity),
-                secondChild: _FacilityDetails(
-                  facility: facility,
-                  showOperatingStatus: _hasOperatingStatusDetails,
+              Positioned(
+                left: 0,
+                top: 10,
+                bottom: 10,
+                child: Container(
+                  width: compact ? 3 : 4,
+                  decoration: BoxDecoration(
+                    color: areaStyle.borderColor,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
             ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -117,6 +148,7 @@ class _FacilityTitleRow extends StatelessWidget {
     required this.facility,
     required this.canAddToPlan,
     required this.isSelected,
+    required this.compact,
     required this.onAdd,
     required this.onRemove,
   });
@@ -124,6 +156,7 @@ class _FacilityTitleRow extends StatelessWidget {
   final Facility facility;
   final bool canAddToPlan;
   final bool isSelected;
+  final bool compact;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
 
@@ -135,19 +168,25 @@ class _FacilityTitleRow extends StatelessWidget {
         Expanded(
           child: Text(
             facility.name,
-            maxLines: 2,
+            maxLines: compact ? 2 : 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              height: 1.25,
-            ),
+            style: compact
+                ? Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.22,
+                  )
+                : Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: compact ? 6 : 10),
         _CompactFacilityAction(
           facility: facility,
           canAddToPlan: canAddToPlan,
           isSelected: isSelected,
+          compact: compact,
           onAdd: onAdd,
           onRemove: onRemove,
         ),
@@ -161,6 +200,7 @@ class _CompactFacilityAction extends StatelessWidget {
     required this.facility,
     required this.canAddToPlan,
     required this.isSelected,
+    required this.compact,
     required this.onAdd,
     required this.onRemove,
   });
@@ -168,23 +208,47 @@ class _CompactFacilityAction extends StatelessWidget {
   final Facility facility;
   final bool canAddToPlan;
   final bool isSelected;
+  final bool compact;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (!canAddToPlan) {
+      final message =
+          facility.operatingStatus == FacilityOperatingStatus.permanentlyClosed
+          ? '運営終了のため追加できません'
+          : '現在はプランに追加できません';
+
+      if (compact) {
+        return Tooltip(
+          message: message,
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.block_outlined,
+              size: 19,
+              color: colorScheme.onErrorContainer,
+            ),
+          ),
+        );
+      }
+
       return Tooltip(
-        message:
-            facility.operatingStatus ==
-                FacilityOperatingStatus.permanentlyClosed
-            ? '運営終了のため追加できません'
-            : '現在はプランに追加できません',
+        message: message,
         child: Container(
           constraints: const BoxConstraints(minHeight: 34),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.errorContainer,
+            color: colorScheme.errorContainer,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -193,17 +257,59 @@ class _CompactFacilityAction extends StatelessWidget {
               Icon(
                 Icons.block_outlined,
                 size: 16,
-                color: Theme.of(context).colorScheme.onErrorContainer,
+                color: colorScheme.onErrorContainer,
               ),
               const SizedBox(width: 4),
               Text(
                 '追加不可',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
+                  color: colorScheme.onErrorContainer,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
+          ),
+        ),
+      );
+    }
+
+    if (compact) {
+      if (isSelected) {
+        return Tooltip(
+          message: 'プランから削除',
+          child: Material(
+            color: colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onRemove,
+              child: SizedBox(
+                width: 38,
+                height: 38,
+                child: Icon(
+                  Icons.check,
+                  size: 20,
+                  color: colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      return Tooltip(
+        message: 'プランに追加',
+        child: Material(
+          color: colorScheme.primary,
+          borderRadius: BorderRadius.circular(10),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onAdd,
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Icon(Icons.add, size: 21, color: colorScheme.onPrimary),
+            ),
           ),
         ),
       );
@@ -240,85 +346,95 @@ class _CompactFacilityAction extends StatelessWidget {
 class _FacilityBadgeList extends StatelessWidget {
   const _FacilityBadgeList({
     required this.facility,
+    required this.compact,
     required this.requiresPrioritySeating,
   });
 
   final Facility facility;
+  final bool compact;
   final bool requiresPrioritySeating;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: compact ? 4 : 6,
+      runSpacing: compact ? 4 : 6,
       children: [
-        _CategoryBadge(facility: facility),
-        _AreaBadge(areaId: facility.areaId),
+        _CategoryBadge(facility: facility, compact: compact),
+        _AreaBadge(areaId: facility.areaId, compact: compact),
         _CompactBadge(
           icon: Icons.schedule_outlined,
           label: '約${facility.durationMinutes}分',
+          compact: compact,
           foregroundColor: const Color(0xFF514F66),
           backgroundColor: const Color(0xFFF7F5FC),
           borderColor: const Color(0xFFD5D0E0),
         ),
         if (facility.operatingStatus != FacilityOperatingStatus.operating ||
             !facility.isOpen)
-          _OperatingStatusBadge(facility: facility),
+          _OperatingStatusBadge(facility: facility, compact: compact),
         if (facility.supportsDpa)
-          const _CompactBadge(
+          _CompactBadge(
             icon: Icons.bolt,
             label: 'DPA',
-            foregroundColor: Color(0xFF0277BD),
-            backgroundColor: Color(0xFFE3F2FD),
-            borderColor: Color(0xFF90CAF9),
+            compact: compact,
+            foregroundColor: const Color(0xFF0277BD),
+            backgroundColor: const Color(0xFFE3F2FD),
+            borderColor: const Color(0xFF90CAF9),
           ),
         if (facility.supportsPriorityPass)
-          const _CompactBadge(
+          _CompactBadge(
             icon: Icons.confirmation_number_outlined,
-            label: 'プライオリティパス',
-            foregroundColor: Color(0xFF6750A4),
-            backgroundColor: Color(0xFFEDE7F6),
-            borderColor: Color(0xFFB39DDB),
+            label: compact ? 'PP' : 'プライオリティパス',
+            compact: compact,
+            foregroundColor: const Color(0xFF6750A4),
+            backgroundColor: const Color(0xFFEDE7F6),
+            borderColor: const Color(0xFFB39DDB),
           ),
         if (facility.supportsSingleRider)
-          const _CompactBadge(
+          _CompactBadge(
             icon: Icons.person_outline,
-            label: 'シングルライダー',
-            foregroundColor: Color(0xFF2E7D32),
-            backgroundColor: Color(0xFFE8F5E9),
-            borderColor: Color(0xFFA5D6A7),
+            label: compact ? 'シングル' : 'シングルライダー',
+            compact: compact,
+            foregroundColor: const Color(0xFF2E7D32),
+            backgroundColor: const Color(0xFFE8F5E9),
+            borderColor: const Color(0xFFA5D6A7),
           ),
         if (facility.requiresEntryRequest)
-          const _CompactBadge(
+          _CompactBadge(
             icon: Icons.how_to_reg_outlined,
-            label: 'エントリー受付',
-            foregroundColor: Color(0xFFEF6C00),
-            backgroundColor: Color(0xFFFFF3E0),
-            borderColor: Color(0xFFFFB74D),
+            label: compact ? 'エントリー' : 'エントリー受付',
+            compact: compact,
+            foregroundColor: const Color(0xFFEF6C00),
+            backgroundColor: const Color(0xFFFFF3E0),
+            borderColor: const Color(0xFFFFB74D),
           ),
         if (facility.supportsStandbyPass)
-          const _CompactBadge(
+          _CompactBadge(
             icon: Icons.airplane_ticket_outlined,
-            label: 'スタンバイパス',
-            foregroundColor: Color(0xFF8A6D00),
-            backgroundColor: Color(0xFFFFF8E1),
-            borderColor: Color(0xFFFFD54F),
+            label: compact ? 'SP' : 'スタンバイパス',
+            compact: compact,
+            foregroundColor: const Color(0xFF8A6D00),
+            backgroundColor: const Color(0xFFFFF8E1),
+            borderColor: const Color(0xFFFFD54F),
           ),
         if (facility.supportsMobileOrder)
-          const _CompactBadge(
+          _CompactBadge(
             icon: Icons.phone_iphone_outlined,
-            label: 'モバイルオーダー',
-            foregroundColor: Color(0xFF00796B),
-            backgroundColor: Color(0xFFE0F2F1),
-            borderColor: Color(0xFF80CBC4),
+            label: compact ? 'MO' : 'モバイルオーダー',
+            compact: compact,
+            foregroundColor: const Color(0xFF00796B),
+            backgroundColor: const Color(0xFFE0F2F1),
+            borderColor: const Color(0xFF80CBC4),
           ),
         if (requiresPrioritySeating)
-          const _CompactBadge(
+          _CompactBadge(
             icon: Icons.event_available_outlined,
-            label: 'プライオリティ・シーティング',
-            foregroundColor: Color(0xFFC62828),
-            backgroundColor: Color(0xFFFFEBEE),
-            borderColor: Color(0xFFEF9A9A),
+            label: compact ? 'PS' : 'プライオリティ・シーティング',
+            compact: compact,
+            foregroundColor: const Color(0xFFC62828),
+            backgroundColor: const Color(0xFFFFEBEE),
+            borderColor: const Color(0xFFEF9A9A),
           ),
       ],
     );
@@ -326,26 +442,34 @@ class _FacilityBadgeList extends StatelessWidget {
 }
 
 class _CategoryBadge extends StatelessWidget {
-  const _CategoryBadge({required this.facility});
+  const _CategoryBadge({required this.facility, required this.compact});
 
   final Facility facility;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final style = FacilityVisualStyle.categoryStyle(facility);
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 30),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      constraints: BoxConstraints(minHeight: compact ? 26 : 30),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 9,
+        vertical: compact ? 3 : 5,
+      ),
       decoration: BoxDecoration(
         color: style.backgroundColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(compact ? 7 : 8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(style.icon, size: 15, color: style.foregroundColor),
-          const SizedBox(width: 5),
+          Icon(
+            style.icon,
+            size: compact ? 13 : 15,
+            color: style.foregroundColor,
+          ),
+          SizedBox(width: compact ? 4 : 5),
           Text(
             style.label,
             maxLines: 1,
@@ -353,6 +477,7 @@ class _CategoryBadge extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: style.foregroundColor,
               fontWeight: FontWeight.w700,
+              fontSize: compact ? 11 : null,
             ),
           ),
         ],
@@ -362,27 +487,35 @@ class _CategoryBadge extends StatelessWidget {
 }
 
 class _AreaBadge extends StatelessWidget {
-  const _AreaBadge({required this.areaId});
+  const _AreaBadge({required this.areaId, required this.compact});
 
   final String areaId;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final style = FacilityVisualStyle.areaStyle(areaId);
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 30),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      constraints: BoxConstraints(minHeight: compact ? 26 : 30),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 8,
+        vertical: compact ? 3 : 5,
+      ),
       decoration: BoxDecoration(
         color: style.backgroundColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(compact ? 7 : 8),
         border: Border.all(color: style.borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(style.icon, size: 15, color: style.foregroundColor),
-          const SizedBox(width: 5),
+          Icon(
+            style.icon,
+            size: compact ? 13 : 15,
+            color: style.foregroundColor,
+          ),
+          SizedBox(width: compact ? 4 : 5),
           Text(
             style.label,
             maxLines: 1,
@@ -390,6 +523,7 @@ class _AreaBadge extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: style.foregroundColor,
               fontWeight: FontWeight.w600,
+              fontSize: compact ? 11 : null,
             ),
           ),
         ],
@@ -402,6 +536,7 @@ class _CompactBadge extends StatelessWidget {
   const _CompactBadge({
     required this.icon,
     required this.label,
+    required this.compact,
     required this.foregroundColor,
     required this.backgroundColor,
     required this.borderColor,
@@ -409,6 +544,7 @@ class _CompactBadge extends StatelessWidget {
 
   final IconData icon;
   final String label;
+  final bool compact;
   final Color foregroundColor;
   final Color backgroundColor;
   final Color borderColor;
@@ -416,18 +552,21 @@ class _CompactBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 30),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      constraints: BoxConstraints(minHeight: compact ? 26 : 30),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 8,
+        vertical: compact ? 3 : 5,
+      ),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(compact ? 7 : 8),
         border: Border.all(color: borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: foregroundColor),
-          const SizedBox(width: 5),
+          Icon(icon, size: compact ? 13 : 15, color: foregroundColor),
+          SizedBox(width: compact ? 4 : 5),
           Text(
             label,
             maxLines: 1,
@@ -435,6 +574,7 @@ class _CompactBadge extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: foregroundColor,
               fontWeight: FontWeight.w600,
+              fontSize: compact ? 11 : null,
             ),
           ),
         ],
@@ -444,9 +584,10 @@ class _CompactBadge extends StatelessWidget {
 }
 
 class _OperatingStatusBadge extends StatelessWidget {
-  const _OperatingStatusBadge({required this.facility});
+  const _OperatingStatusBadge({required this.facility, required this.compact});
 
   final Facility facility;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -455,6 +596,7 @@ class _OperatingStatusBadge extends StatelessWidget {
     return _CompactBadge(
       icon: style.icon,
       label: facility.operatingStatusDisplayLabel,
+      compact: compact,
       foregroundColor: style.foregroundColor,
       backgroundColor: style.backgroundColor,
       borderColor: style.borderColor,
@@ -518,9 +660,14 @@ class _OperatingBadgeStyle {
 }
 
 class _DetailsToggle extends StatelessWidget {
-  const _DetailsToggle({required this.isExpanded, required this.onPressed});
+  const _DetailsToggle({
+    required this.isExpanded,
+    required this.compact,
+    required this.onPressed,
+  });
 
   final bool isExpanded;
+  final bool compact;
   final VoidCallback onPressed;
 
   @override
@@ -532,14 +679,15 @@ class _DetailsToggle extends StatelessWidget {
         icon: AnimatedRotation(
           turns: isExpanded ? 0.5 : 0,
           duration: const Duration(milliseconds: 180),
-          child: const Icon(Icons.keyboard_arrow_down, size: 19),
+          child: Icon(Icons.keyboard_arrow_down, size: compact ? 17 : 19),
         ),
         label: Text(isExpanded ? '詳細を閉じる' : '詳細を見る'),
         style: TextButton.styleFrom(
-          minimumSize: const Size(0, 32),
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          minimumSize: Size(0, compact ? 28 : 32),
+          padding: EdgeInsets.symmetric(horizontal: compact ? 2 : 4),
           visualDensity: VisualDensity.compact,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: compact ? Theme.of(context).textTheme.bodySmall : null,
         ),
       ),
     );
@@ -549,10 +697,12 @@ class _DetailsToggle extends StatelessWidget {
 class _FacilityDetails extends StatelessWidget {
   const _FacilityDetails({
     required this.facility,
+    required this.compact,
     required this.showOperatingStatus,
   });
 
   final Facility facility;
+  final bool compact;
   final bool showOperatingStatus;
 
   @override
@@ -560,15 +710,16 @@ class _FacilityDetails extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      padding: EdgeInsets.only(top: compact ? 2 : AppSpacing.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (showOperatingStatus) _OperatingStatusDetails(facility: facility),
+          if (showOperatingStatus)
+            _OperatingStatusDetails(facility: facility, compact: compact),
           if (facility.isShowRestaurant &&
               facility.showName != null &&
               facility.showName!.trim().isNotEmpty) ...[
-            if (showOperatingStatus) const SizedBox(height: AppSpacing.sm),
+            SizedBox(height: compact ? 6 : AppSpacing.sm),
             _DetailRow(
               icon: Icons.theater_comedy_outlined,
               label: facility.showName!,
@@ -576,7 +727,7 @@ class _FacilityDetails extends StatelessWidget {
             ),
           ],
           if (facility.primaryProductLabel != null) ...[
-            const SizedBox(height: AppSpacing.sm),
+            SizedBox(height: compact ? 6 : AppSpacing.sm),
             _DetailRow(
               icon: facility.isPopcornWagon
                   ? Icons.local_movies_outlined
@@ -589,7 +740,7 @@ class _FacilityDetails extends StatelessWidget {
           ],
           if (facility.menuNote != null &&
               facility.menuNote!.trim().isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xs),
+            SizedBox(height: compact ? 3 : AppSpacing.xs),
             Text(
               facility.menuNote!,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -600,7 +751,7 @@ class _FacilityDetails extends StatelessWidget {
           ],
           if (facility.description != null &&
               facility.description!.trim().isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
+            SizedBox(height: compact ? 6 : AppSpacing.sm),
             Text(
               facility.description!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -610,8 +761,8 @@ class _FacilityDetails extends StatelessWidget {
             ),
           ],
           if (facility.hasMenuUrl || facility.hasOfficialUrl) ...[
-            const SizedBox(height: AppSpacing.sm),
-            _FacilityLinks(facility: facility),
+            SizedBox(height: compact ? 6 : AppSpacing.sm),
+            _FacilityLinks(facility: facility, compact: compact),
           ],
         ],
       ),
@@ -620,9 +771,13 @@ class _FacilityDetails extends StatelessWidget {
 }
 
 class _OperatingStatusDetails extends StatelessWidget {
-  const _OperatingStatusDetails({required this.facility});
+  const _OperatingStatusDetails({
+    required this.facility,
+    required this.compact,
+  });
 
   final Facility facility;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -657,7 +812,7 @@ class _OperatingStatusDetails extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(9),
+      padding: EdgeInsets.all(compact ? 7 : 9),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(9),
@@ -716,9 +871,10 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _FacilityLinks extends StatelessWidget {
-  const _FacilityLinks({required this.facility});
+  const _FacilityLinks({required this.facility, required this.compact});
 
   final Facility facility;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -734,7 +890,7 @@ class _FacilityLinks extends StatelessWidget {
             icon: const Icon(Icons.restaurant_menu_outlined, size: 17),
             label: const Text('メニュー'),
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, 34),
+              minimumSize: Size(0, compact ? 32 : 34),
               padding: const EdgeInsets.symmetric(horizontal: 10),
               visualDensity: VisualDensity.compact,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -748,7 +904,7 @@ class _FacilityLinks extends StatelessWidget {
             icon: const Icon(Icons.open_in_new, size: 17),
             label: const Text('公式'),
             style: TextButton.styleFrom(
-              minimumSize: const Size(0, 34),
+              minimumSize: Size(0, compact ? 32 : 34),
               padding: const EdgeInsets.symmetric(horizontal: 10),
               visualDensity: VisualDensity.compact,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

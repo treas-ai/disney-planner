@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../app/dependency/service_locator.dart';
+import '../../core/utils/japanese_search_normalizer.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/facility_operating_status.dart';
@@ -75,7 +76,6 @@ class FacilityController extends ChangeNotifier {
 
     areaIds.sort((left, right) {
       final leftOrder = _areaDisplayOrder(left);
-
       final rightOrder = _areaDisplayOrder(right);
 
       final orderComparison = leftOrder.compareTo(rightOrder);
@@ -116,8 +116,6 @@ class FacilityController extends ChangeNotifier {
   List<Facility> visibleFacilities({
     required bool Function(String facilityId) isSelected,
   }) {
-    final keyword = searchKeyword.trim().toLowerCase();
-
     final result = _facilities
         .where((facility) {
           final matchesPark = facility.parkId == _selectedParkId;
@@ -131,10 +129,7 @@ class FacilityController extends ChangeNotifier {
             facility,
           );
 
-          final matchesKeyword = _matchesSearchKeyword(
-            facility: facility,
-            keyword: keyword,
-          );
+          final matchesKeyword = _matchesSearchKeyword(facility);
 
           return matchesPark &&
               matchesArea &&
@@ -377,10 +372,9 @@ class FacilityController extends ChangeNotifier {
         FacilityOperatingStatus.permanentlyClosed;
   }
 
-  bool _matchesSearchKeyword({
-    required Facility facility,
-    required String keyword,
-  }) {
+  bool _matchesSearchKeyword(Facility facility) {
+    final keyword = searchKeyword.trim();
+
     if (keyword.isEmpty) {
       return true;
     }
@@ -393,10 +387,13 @@ class FacilityController extends ChangeNotifier {
       areaLabel(facility.areaId),
       facility.operatingStatusDisplayLabel,
       facility.operatingStatusNote ?? '',
+      facility.id,
+      facility.areaId,
     ];
 
-    return searchTargets.any(
-      (target) => target.toLowerCase().contains(keyword),
+    return JapaneseSearchNormalizer.matchesAny(
+      query: keyword,
+      targets: searchTargets,
     );
   }
 
@@ -436,7 +433,6 @@ class FacilityController extends ChangeNotifier {
     required bool Function(String facilityId) isSelected,
   }) {
     final leftSelected = isSelected(left.id);
-
     final rightSelected = isSelected(right.id);
 
     if (leftSelected != rightSelected) {

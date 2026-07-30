@@ -1,3 +1,5 @@
+import '../enums/facility_access_method.dart';
+import '../enums/lottery_fallback_action.dart';
 import '../enums/meal_preference.dart';
 import '../enums/preferred_time.dart';
 import '../enums/priority_level.dart';
@@ -17,6 +19,10 @@ class PlanPreference {
     required this.createdAt,
     this.useStandbyPass = false,
     this.prioritizeCapsuleToy = false,
+    this.accessMethod = FacilityAccessMethod.standby,
+    this.preferredPerformanceTime = '',
+    this.reservationTime = '',
+    this.lotteryFallbackAction = LotteryFallbackAction.alternativeFacility,
   });
 
   factory PlanPreference.initial({required String facilityId}) {
@@ -34,12 +40,35 @@ class PlanPreference {
       usePriorityPass: false,
       useStandbyPass: false,
       prioritizeCapsuleToy: false,
+      accessMethod: FacilityAccessMethod.standby,
+      preferredPerformanceTime: '',
+      reservationTime: '',
+      lotteryFallbackAction: LotteryFallbackAction.alternativeFacility,
       memo: '',
       createdAt: DateTime.now(),
     );
   }
 
   factory PlanPreference.fromJson(Map<String, dynamic> json) {
+    final useDpa = json['useDpa'] as bool? ?? false;
+
+    final usePriorityPass = json['usePriorityPass'] as bool? ?? false;
+
+    final useStandbyPass = json['useStandbyPass'] as bool? ?? false;
+
+    final accessMethodName = json['accessMethod'] as String?;
+
+    final accessMethod = accessMethodName == null
+        ? _legacyAccessMethod(
+            useDpa: useDpa,
+            usePriorityPass: usePriorityPass,
+            useStandbyPass: useStandbyPass,
+          )
+        : FacilityAccessMethod.values.firstWhere(
+            (method) => method.name == accessMethodName,
+            orElse: () => FacilityAccessMethod.standby,
+          );
+
     return PlanPreference(
       id: json['id'] as String? ?? '',
       facilityId: json['facilityId'] as String? ?? '',
@@ -59,10 +88,20 @@ class PlanPreference {
         (preference) => preference.name == json['mealPreference'],
         orElse: () => MealPreference.flexible,
       ),
-      useDpa: json['useDpa'] as bool? ?? false,
-      usePriorityPass: json['usePriorityPass'] as bool? ?? false,
-      useStandbyPass: json['useStandbyPass'] as bool? ?? false,
+      useDpa: accessMethod == FacilityAccessMethod.dpa || useDpa,
+      usePriorityPass:
+          accessMethod == FacilityAccessMethod.priorityPass || usePriorityPass,
+      useStandbyPass:
+          accessMethod == FacilityAccessMethod.standbyPass || useStandbyPass,
       prioritizeCapsuleToy: json['prioritizeCapsuleToy'] as bool? ?? false,
+      accessMethod: accessMethod,
+      preferredPerformanceTime:
+          json['preferredPerformanceTime'] as String? ?? '',
+      reservationTime: json['reservationTime'] as String? ?? '',
+      lotteryFallbackAction: LotteryFallbackAction.values.firstWhere(
+        (action) => action.name == json['lotteryFallbackAction'],
+        orElse: () => LotteryFallbackAction.alternativeFacility,
+      ),
       memo: json['memo'] as String? ?? '',
       createdAt:
           DateTime.tryParse(json['createdAt'] as String? ?? '') ??
@@ -84,8 +123,34 @@ class PlanPreference {
 
   final bool prioritizeCapsuleToy;
 
+  final FacilityAccessMethod accessMethod;
+
+  /// ショー・パレードの希望公演時刻。
+  ///
+  /// `HH:mm`形式を基本とし、未設定時は空文字列です。
+  final String preferredPerformanceTime;
+
+  /// レストラン等の予約時刻。
+  ///
+  /// `HH:mm`形式を基本とし、未設定時は空文字列です。
+  final String reservationTime;
+
+  final LotteryFallbackAction lotteryFallbackAction;
+
   final String memo;
   final DateTime createdAt;
+
+  bool get usesEntryRequest {
+    return accessMethod == FacilityAccessMethod.entryRequest;
+  }
+
+  bool get hasPreferredPerformanceTime {
+    return preferredPerformanceTime.trim().isNotEmpty;
+  }
+
+  bool get hasReservationTime {
+    return reservationTime.trim().isNotEmpty;
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -99,6 +164,10 @@ class PlanPreference {
       'usePriorityPass': usePriorityPass,
       'useStandbyPass': useStandbyPass,
       'prioritizeCapsuleToy': prioritizeCapsuleToy,
+      'accessMethod': accessMethod.name,
+      'preferredPerformanceTime': preferredPerformanceTime,
+      'reservationTime': reservationTime,
+      'lotteryFallbackAction': lotteryFallbackAction.name,
       'memo': memo,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -115,6 +184,10 @@ class PlanPreference {
     bool? usePriorityPass,
     bool? useStandbyPass,
     bool? prioritizeCapsuleToy,
+    FacilityAccessMethod? accessMethod,
+    String? preferredPerformanceTime,
+    String? reservationTime,
+    LotteryFallbackAction? lotteryFallbackAction,
     String? memo,
     DateTime? createdAt,
   }) {
@@ -129,8 +202,34 @@ class PlanPreference {
       usePriorityPass: usePriorityPass ?? this.usePriorityPass,
       useStandbyPass: useStandbyPass ?? this.useStandbyPass,
       prioritizeCapsuleToy: prioritizeCapsuleToy ?? this.prioritizeCapsuleToy,
+      accessMethod: accessMethod ?? this.accessMethod,
+      preferredPerformanceTime:
+          preferredPerformanceTime ?? this.preferredPerformanceTime,
+      reservationTime: reservationTime ?? this.reservationTime,
+      lotteryFallbackAction:
+          lotteryFallbackAction ?? this.lotteryFallbackAction,
       memo: memo ?? this.memo,
       createdAt: createdAt ?? this.createdAt,
     );
+  }
+
+  static FacilityAccessMethod _legacyAccessMethod({
+    required bool useDpa,
+    required bool usePriorityPass,
+    required bool useStandbyPass,
+  }) {
+    if (useDpa) {
+      return FacilityAccessMethod.dpa;
+    }
+
+    if (usePriorityPass) {
+      return FacilityAccessMethod.priorityPass;
+    }
+
+    if (useStandbyPass) {
+      return FacilityAccessMethod.standbyPass;
+    }
+
+    return FacilityAccessMethod.standby;
   }
 }

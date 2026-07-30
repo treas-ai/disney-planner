@@ -24,33 +24,24 @@ class AppScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget content = LayoutBuilder(
       builder: (context, constraints) {
-        final horizontalPadding = _horizontalPadding(
-          constraints.maxWidth,
-        );
+        final layoutPadding = _layoutPadding(constraints.maxWidth);
 
         final resolvedPadding =
             padding ??
             EdgeInsets.fromLTRB(
-              horizontalPadding,
-              AppSpacing.md,
-              horizontalPadding,
-              includeBottomSafeArea
-                  ? AppSpacing.md
-                  : 0,
+              layoutPadding.horizontal,
+              layoutPadding.top,
+              layoutPadding.horizontal,
+              includeBottomSafeArea ? layoutPadding.bottom : 0,
             );
 
-        Widget result = Padding(
-          padding: resolvedPadding,
-          child: child,
-        );
+        Widget result = Padding(padding: resolvedPadding, child: child);
 
         if (centerContent) {
           result = Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: maxContentWidth,
-              ),
+              constraints: BoxConstraints(maxWidth: maxContentWidth),
               child: result,
             ),
           );
@@ -61,26 +52,45 @@ class AppScaffold extends StatelessWidget {
     );
 
     if (useSafeArea) {
-      content = SafeArea(
-        bottom: includeBottomSafeArea,
-        child: content,
-      );
+      content = SafeArea(bottom: includeBottomSafeArea, child: content);
     }
 
     return content;
   }
 
-  double _horizontalPadding(
-    double width,
-  ) {
+  _AppScaffoldPadding _layoutPadding(double width) {
     if (width >= 1200) {
-      return AppSpacing.pageDesktop;
+      return const _AppScaffoldPadding(
+        horizontal: AppSpacing.pageDesktop,
+        top: AppSpacing.md,
+        bottom: AppSpacing.md,
+      );
     }
 
     if (width >= 700) {
-      return AppSpacing.pageTablet;
+      return const _AppScaffoldPadding(
+        horizontal: AppSpacing.pageTablet,
+        top: AppSpacing.md,
+        bottom: AppSpacing.md,
+      );
     }
 
-    return AppSpacing.pageMobile;
+    if (width >= 430) {
+      return const _AppScaffoldPadding(horizontal: 10, top: 10, bottom: 10);
+    }
+
+    return const _AppScaffoldPadding(horizontal: 7, top: 7, bottom: 7);
   }
+}
+
+class _AppScaffoldPadding {
+  const _AppScaffoldPadding({
+    required this.horizontal,
+    required this.top,
+    required this.bottom,
+  });
+
+  final double horizontal;
+  final double top;
+  final double bottom;
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
+import '../../domain/entities/plan_preference.dart';
 import '../../domain/services/schedule_engine.dart';
 
 class ScheduleController extends ChangeNotifier {
@@ -104,6 +105,14 @@ class ScheduleController extends ChangeNotifier {
     return null;
   }
 
+  PlanPreference? preferenceByFacilityId(String? facilityId) {
+    if (facilityId == null || facilityId.trim().isEmpty) {
+      return null;
+    }
+
+    return _appState.getPreference(facilityId);
+  }
+
   Future<void> generateSchedule() async {
     if (!canGenerateSchedule) {
       errorMessage =
@@ -138,9 +147,9 @@ class ScheduleController extends ChangeNotifier {
           .toSet();
 
       final preferences = _appState.planPreferences
-          .where(
-            (preference) => selectedFacilityIds.contains(preference.facilityId),
-          )
+          .where((preference) {
+            return selectedFacilityIds.contains(preference.facilityId);
+          })
           .toList(growable: false);
 
       final generatedSchedule = _scheduleEngine.generate(

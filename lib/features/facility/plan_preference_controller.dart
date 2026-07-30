@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
 import '../../domain/entities/plan_preference.dart';
+import '../../domain/enums/facility_access_method.dart';
+import '../../domain/enums/lottery_fallback_action.dart';
 import '../../domain/enums/meal_preference.dart';
 import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/priority_level.dart';
@@ -59,6 +61,46 @@ class PlanPreferenceController extends ChangeNotifier {
     _appState.updatePreferenceMealPreference(
       facilityId: facilityId,
       mealPreference: mealPreference,
+    );
+  }
+
+  void updateAccessMethod({
+    required String facilityId,
+    required FacilityAccessMethod accessMethod,
+  }) {
+    _appState.updatePreferenceAccessMethod(
+      facilityId: facilityId,
+      accessMethod: accessMethod,
+    );
+  }
+
+  void updatePreferredPerformanceTime({
+    required String facilityId,
+    required String value,
+  }) {
+    _appState.updatePreferencePreferredPerformanceTime(
+      facilityId: facilityId,
+      value: value,
+    );
+  }
+
+  void updateReservationTime({
+    required String facilityId,
+    required String value,
+  }) {
+    _appState.updatePreferenceReservationTime(
+      facilityId: facilityId,
+      value: value,
+    );
+  }
+
+  void updateLotteryFallbackAction({
+    required String facilityId,
+    required LotteryFallbackAction action,
+  }) {
+    _appState.updatePreferenceLotteryFallbackAction(
+      facilityId: facilityId,
+      action: action,
     );
   }
 
