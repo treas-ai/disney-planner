@@ -1,17 +1,45 @@
-# disney_planner
+# Disney Planner
 
-A new Flutter project.
+東京ディズニーリゾート向けのプランニングアプリです。
 
-## Getting Started
+Flutterで開発しており、アトラクション・レストラン・ショーなどを自由に組み合わせて、自分だけのプランを作成できます。
 
-This project is a starting point for a Flutter application.
+## 主な機能
 
-A few resources to get you started if this is your first Flutter project:
+- 施設一覧表示
+- カテゴリによる絞り込み
+- エリアによる絞り込み
+- 営業状態による絞り込み
+- 施設検索
+- 並び替え
+- プラン作成
+- 選択施設の優先順位設定
+- SharedPreferencesによるデータ保存
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 開発環境
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Flutter
+- Dart
+- Material 3
+
+## 対応パーク
+
+- 東京ディズニーランド
+- 東京ディズニーシー
+
+## 今後追加予定
+
+- AIによる最適プラン生成
+- 待ち時間API連携
+- 写真表示
+- お気に入り機能
+- Firebase対応
+- 世界のディズニーパーク対応
+
+## スクリーンショット
+
+（今後追加予定）
+
+## ライセンス
+
+MIT License
