@@ -4,6 +4,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_status_chip.dart';
 import '../../../domain/entities/facility.dart';
+import '../../../domain/enums/facility_category.dart';
+import '../../live/live_wait_time_controller.dart';
+import '../../live/widgets/wait_time_editor.dart';
 import '../plan_builder_controller.dart';
 import '../plan_preference_controller.dart';
 import 'plan_preference_editor.dart';
@@ -31,6 +34,7 @@ class SelectedFacilityEditorSheet extends StatefulWidget {
 class _SelectedFacilityEditorSheetState
     extends State<SelectedFacilityEditorSheet> {
   late String _displayedParkId;
+  late final LiveWaitTimeController _liveWaitTimeController;
 
   @override
   void initState() {
@@ -38,16 +42,28 @@ class _SelectedFacilityEditorSheetState
 
     _displayedParkId = widget.selectedParkId;
 
+    _liveWaitTimeController = LiveWaitTimeController();
+
     widget.planBuilderController.addListener(_refresh);
     widget.preferenceController.addListener(_refresh);
+    _liveWaitTimeController.addListener(_refresh);
+
+    _loadWaitTimes();
   }
 
   @override
   void dispose() {
     widget.planBuilderController.removeListener(_refresh);
     widget.preferenceController.removeListener(_refresh);
+    _liveWaitTimeController.removeListener(_refresh);
+
+    _liveWaitTimeController.dispose();
 
     super.dispose();
+  }
+
+  Future<void> _loadWaitTimes() async {
+    await _liveWaitTimeController.loadForPark(_displayedParkId);
   }
 
   void _refresh() {
@@ -56,6 +72,18 @@ class _SelectedFacilityEditorSheetState
     }
 
     setState(() {});
+  }
+
+  Future<void> _changeDisplayedPark(String parkId) async {
+    if (parkId == _displayedParkId) {
+      return;
+    }
+
+    setState(() {
+      _displayedParkId = parkId;
+    });
+
+    await _liveWaitTimeController.loadForPark(parkId);
   }
 
   void _goToPlanReview() {
@@ -74,7 +102,8 @@ class _SelectedFacilityEditorSheetState
           title: const Text('選択を解除しますか？'),
           content: Text(
             '「${facility.name}」をプランから削除します。\n\n'
-            'この施設に設定した希望条件も削除されます。',
+            'この施設に設定した希望条件も削除されます。\n'
+            '当日待ち時間の入力値は削除されません。',
           ),
           actions: [
             TextButton(
@@ -112,6 +141,21 @@ class _SelectedFacilityEditorSheetState
       oldIndex: oldIndex,
       newIndex: legacyNewIndex,
     );
+  }
+
+  Future<bool> _saveWaitTime({
+    required Facility facility,
+    required int waitMinutes,
+  }) {
+    return _liveWaitTimeController.updateWaitTime(
+      facilityId: facility.id,
+      parkId: facility.parkId,
+      waitMinutes: waitMinutes,
+    );
+  }
+
+  Future<bool> _clearWaitTime(Facility facility) {
+    return _liveWaitTimeController.removeWaitTime(facility.id);
   }
 
   @override
@@ -152,7 +196,8 @@ class _SelectedFacilityEditorSheetState
               _SheetHeader(
                 displayedParkId: _displayedParkId,
                 facilityCount: facilities.length,
-                isSaving: controller.isSaving,
+                isSaving:
+                    controller.isSaving || _liveWaitTimeController.isSaving,
                 onClose: () {
                   Navigator.of(context).pop();
                 },
@@ -164,20 +209,28 @@ class _SelectedFacilityEditorSheetState
                   selectedParkId: _displayedParkId,
                   landCount: landCount,
                   seaCount: seaCount,
-                  onChanged: (parkId) {
-                    setState(() {
-                      _displayedParkId = parkId;
-                    });
-                  },
+                  onChanged: _changeDisplayedPark,
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: _ReorderInformation(enabled: facilities.length >= 2),
               ),
+              if (_liveWaitTimeController.errorMessage != null) ...[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: _WaitTimeErrorCard(
+                    message: _liveWaitTimeController.errorMessage!,
+                    onClose: _liveWaitTimeController.clearError,
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Expanded(
-                child: facilities.isEmpty
+                child: _liveWaitTimeController.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : facilities.isEmpty
                     ? _EmptySelectedFacilities(parkId: _displayedParkId)
                     : ReorderableListView.builder(
                         scrollController: scrollController,
@@ -193,6 +246,16 @@ class _SelectedFacilityEditorSheetState
                             index: index,
                             facility: facility,
                             preferenceController: widget.preferenceController,
+                            liveWaitTimeController: _liveWaitTimeController,
+                            onSaveWaitTime: (waitMinutes) {
+                              return _saveWaitTime(
+                                facility: facility,
+                                waitMinutes: waitMinutes,
+                              );
+                            },
+                            onClearWaitTime: () {
+                              return _clearWaitTime(facility);
+                            },
                             onRemove: () {
                               _confirmRemove(facility);
                             },
@@ -473,6 +536,57 @@ class _ReorderInformation extends StatelessWidget {
   }
 }
 
+class _WaitTimeErrorCard extends StatelessWidget {
+  const _WaitTimeErrorCard({required this.message, required this.onClose});
+
+  final String message;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 18,
+            color: colorScheme.onErrorContainer,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: '閉じる',
+            onPressed: onClose,
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.close,
+              size: 17,
+              color: colorScheme.onErrorContainer,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptySelectedFacilities extends StatelessWidget {
   const _EmptySelectedFacilities({required this.parkId});
 
@@ -517,13 +631,26 @@ class _SelectedFacilityItem extends StatelessWidget {
     required this.index,
     required this.facility,
     required this.preferenceController,
+    required this.liveWaitTimeController,
+    required this.onSaveWaitTime,
+    required this.onClearWaitTime,
     required this.onRemove,
   });
 
   final int index;
   final Facility facility;
   final PlanPreferenceController preferenceController;
+  final LiveWaitTimeController liveWaitTimeController;
+
+  final Future<bool> Function(int waitMinutes) onSaveWaitTime;
+
+  final Future<bool> Function() onClearWaitTime;
+
   final VoidCallback onRemove;
+
+  bool get _supportsLiveWaitTime {
+    return facility.category == FacilityCategory.attraction;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -534,6 +661,10 @@ class _SelectedFacilityItem extends StatelessWidget {
     }
 
     final colorScheme = Theme.of(context).colorScheme;
+
+    final liveWaitTime = liveWaitTimeController.waitTimeForFacility(
+      facility.id,
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -575,6 +706,11 @@ class _SelectedFacilityItem extends StatelessWidget {
                 label: _categoryLabel(facility),
                 icon: _categoryIcon(facility),
               ),
+              if (_supportsLiveWaitTime && liveWaitTime != null)
+                _LiveWaitTimeBadge(
+                  waitMinutes: liveWaitTime.waitMinutes,
+                  isStale: liveWaitTime.isStaleAt(DateTime.now()),
+                ),
               if (!facility.isOpen)
                 AppStatusChip(
                   label: facility.operatingStatusDisplayLabel,
@@ -690,6 +826,66 @@ class _SelectedFacilityItem extends StatelessWidget {
                 memo: memo,
               );
             },
+          ),
+          if (_supportsLiveWaitTime) ...[
+            const SizedBox(height: AppSpacing.md),
+            WaitTimeEditor(
+              facilityId: facility.id,
+              facilityName: facility.name,
+              parkId: facility.parkId,
+              currentWaitTime: liveWaitTime,
+              isSaving: liveWaitTimeController.isSaving,
+              onSave: onSaveWaitTime,
+              onClear: onClearWaitTime,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveWaitTimeBadge extends StatelessWidget {
+  const _LiveWaitTimeBadge({required this.waitMinutes, required this.isStale});
+
+  final int waitMinutes;
+  final bool isStale;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 25),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: isStale
+            ? colorScheme.errorContainer
+            : colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isStale ? colorScheme.error : colorScheme.secondary,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isStale ? Icons.warning_amber_outlined : Icons.groups_outlined,
+            size: 14,
+            color: isStale
+                ? colorScheme.onErrorContainer
+                : colorScheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isStale ? '待ち時間 $waitMinutes分・要更新' : '待ち時間 $waitMinutes分',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: isStale
+                  ? colorScheme.onErrorContainer
+                  : colorScheme.onSecondaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),

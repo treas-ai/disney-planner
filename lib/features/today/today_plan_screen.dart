@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
@@ -8,8 +6,14 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state.dart';
-import '../../domain/entities/day_schedule.dart';
+import '../../domain/entities/facility.dart';
+import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
+import '../../domain/enums/facility_access_method.dart';
+import '../live/live_controller.dart';
+import '../live/live_models.dart';
+import '../live/widgets/live_wait_time_list_panel.dart';
+import '../live/widgets/wait_time_editor.dart';
 
 class TodayPlanScreen extends StatefulWidget {
   const TodayPlanScreen({super.key});
@@ -22,13 +26,15 @@ class TodayPlanScreen extends StatefulWidget {
 
 class _TodayPlanScreenState extends State<TodayPlanScreen> {
   AppState? _appState;
+  LiveController? _liveController;
 
   late final ScrollController _mobileScrollController;
   late final ScrollController _scheduleScrollController;
 
-  Timer? _clockTimer;
+  final Map<String, GlobalKey> _scheduleItemKeys = <String, GlobalKey>{};
 
-  DateTime _now = DateTime.now();
+  bool _hasScheduledInitialScroll = false;
+  String? _scheduleSignature;
 
   @override
   void initState() {
@@ -36,16 +42,6 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
 
     _mobileScrollController = ScrollController();
     _scheduleScrollController = ScrollController();
-
-    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _now = DateTime.now();
-      });
-    });
   }
 
   @override
@@ -58,21 +54,30 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
       return;
     }
 
-    _appState?.removeListener(_refresh);
+    _disposeController();
+
     _appState = appState;
-    _appState!.addListener(_refresh);
+    _liveController = LiveController(appState);
+
+    _liveController!.addListener(_refresh);
+    _liveController!.initialize();
   }
 
   @override
   void dispose() {
-    _clockTimer?.cancel();
-
-    _appState?.removeListener(_refresh);
+    _disposeController();
 
     _mobileScrollController.dispose();
     _scheduleScrollController.dispose();
 
     super.dispose();
+  }
+
+  void _disposeController() {
+    _liveController?.removeListener(_refresh);
+    _liveController?.dispose();
+
+    _liveController = null;
   }
 
   void _refresh() {
@@ -83,59 +88,172 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     setState(() {});
   }
 
-  void _refreshCurrentTime() {
-    setState(() {
-      _now = DateTime.now();
+  Future<void> _scrollToCurrentSchedule({bool isInitialScroll = false}) async {
+    final liveController = _liveController;
+
+    if (liveController == null) {
+      return;
+    }
+
+    final targetItemId = _currentOrNextItemId(liveController);
+
+    if (targetItemId == null) {
+      return;
+    }
+
+    final targetContext = _scheduleItemKeys[targetItemId]?.currentContext;
+
+    if (targetContext == null) {
+      return;
+    }
+
+    await Scrollable.ensureVisible(
+      targetContext,
+      alignment: 0.35,
+      duration: Duration(milliseconds: isInitialScroll ? 450 : 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  String? _currentOrNextItemId(LiveController controller) {
+    final schedule = controller.schedule;
+
+    if (schedule == null || schedule.items.isEmpty) {
+      return null;
+    }
+
+    final currentIndex = controller.currentOrNextIndex();
+
+    if (currentIndex == null ||
+        currentIndex < 0 ||
+        currentIndex >= schedule.items.length) {
+      return null;
+    }
+
+    return schedule.items[currentIndex].id;
+  }
+
+  void _synchronizeScheduleItemKeys(LiveController controller) {
+    final schedule = controller.schedule;
+    final items = schedule?.items ?? const <ScheduleItem>[];
+
+    final signature = schedule == null
+        ? null
+        : '${schedule.parkId}|'
+              '${items.map((item) => item.id).join('|')}';
+
+    if (_scheduleSignature != signature) {
+      _scheduleSignature = signature;
+      _hasScheduledInitialScroll = false;
+    }
+
+    final activeIds = items.map((item) => item.id).toSet();
+
+    _scheduleItemKeys.removeWhere((itemId, _) => !activeIds.contains(itemId));
+
+    for (final item in items) {
+      _scheduleItemKeys.putIfAbsent(item.id, GlobalKey.new);
+    }
+  }
+
+  void _scheduleInitialScroll(LiveController controller) {
+    final schedule = controller.schedule;
+
+    if (_hasScheduledInitialScroll ||
+        schedule == null ||
+        schedule.items.isEmpty ||
+        !controller.scheduleMatchesCurrentPark) {
+      return;
+    }
+
+    _hasScheduledInitialScroll = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      _scrollToCurrentSchedule(isInitialScroll: true);
     });
   }
 
-  Future<void> _scrollToCurrentSchedule() async {
-    final schedule = _appState?.daySchedule;
+  void _openWaitTimeEditor(Facility facility) {
+    final liveController = _liveController;
 
-    if (schedule == null || schedule.items.isEmpty) {
+    if (liveController == null) {
       return;
     }
 
-    final currentIndex = _currentOrNextIndex(schedule.items, _now);
+    final currentWaitTime = liveController.manualWaitTimeByFacilityId(
+      facility.id,
+    );
 
-    if (currentIndex == null) {
-      return;
-    }
-
-    final useDesktopLayout = MediaQuery.sizeOf(context).width >= 900;
-
-    final controller = useDesktopLayout
-        ? _scheduleScrollController
-        : _mobileScrollController;
-
-    if (!controller.hasClients) {
-      return;
-    }
-
-    const estimatedItemHeight = 150.0;
-
-    final targetOffset = currentIndex * estimatedItemHeight;
-
-    final maxOffset = controller.position.maxScrollExtent;
-
-    await controller.animateTo(
-      targetOffset.clamp(0, maxOffset),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: Material(
+            color: Theme.of(sheetContext).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(sheetContext).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  WaitTimeEditor(
+                    facilityId: facility.id,
+                    facilityName: facility.name,
+                    parkId: facility.parkId,
+                    currentWaitTime: currentWaitTime,
+                    isSaving: liveController.isSaving,
+                    onSave: (waitMinutes) {
+                      return liveController.updateWaitTime(
+                        facility: facility,
+                        waitMinutes: waitMinutes,
+                      );
+                    },
+                    onClear: () {
+                      return liveController.clearWaitTime(facility);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = _appState;
+    final liveController = _liveController;
 
-    if (appState == null) {
+    if (liveController == null || !liveController.isInitialized) {
       return const AppScaffold(
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final schedule = appState.daySchedule;
+    final snapshot = liveController.buildSnapshot();
+
+    _synchronizeScheduleItemKeys(liveController);
+    _scheduleInitialScroll(liveController);
 
     return AppScaffold(
       child: LayoutBuilder(
@@ -144,22 +262,22 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
 
           if (useTwoColumns) {
             return _DesktopTodayLayout(
-              schedule: schedule,
-              currentParkId: appState.tripSettings.parkId,
-              now: _now,
+              controller: liveController,
+              snapshot: snapshot,
               scheduleScrollController: _scheduleScrollController,
-              onRefreshPressed: _refreshCurrentTime,
+              scheduleItemKeys: _scheduleItemKeys,
               onCurrentSchedulePressed: _scrollToCurrentSchedule,
+              onWaitTimeEditPressed: _openWaitTimeEditor,
             );
           }
 
           return _MobileTodayLayout(
-            schedule: schedule,
-            currentParkId: appState.tripSettings.parkId,
-            now: _now,
+            controller: liveController,
+            snapshot: snapshot,
             scrollController: _mobileScrollController,
-            onRefreshPressed: _refreshCurrentTime,
+            scheduleItemKeys: _scheduleItemKeys,
             onCurrentSchedulePressed: _scrollToCurrentSchedule,
+            onWaitTimeEditPressed: _openWaitTimeEditor,
           );
         },
       ),
@@ -169,20 +287,21 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
 
 class _MobileTodayLayout extends StatelessWidget {
   const _MobileTodayLayout({
-    required this.schedule,
-    required this.currentParkId,
-    required this.now,
+    required this.controller,
+    required this.snapshot,
     required this.scrollController,
-    required this.onRefreshPressed,
+    required this.scheduleItemKeys,
     required this.onCurrentSchedulePressed,
+    required this.onWaitTimeEditPressed,
   });
 
-  final DaySchedule? schedule;
-  final String currentParkId;
-  final DateTime now;
+  final LiveController controller;
+  final LiveScheduleSnapshot snapshot;
   final ScrollController scrollController;
-  final VoidCallback onRefreshPressed;
+  final Map<String, GlobalKey> scheduleItemKeys;
+
   final VoidCallback onCurrentSchedulePressed;
+  final ValueChanged<Facility> onWaitTimeEditPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -196,18 +315,31 @@ class _MobileTodayLayout extends StatelessWidget {
         controller: scrollController,
         padding: const EdgeInsets.only(right: 14, bottom: 96),
         children: [
-          _TodayOverviewCard(
-            schedule: schedule,
-            currentParkId: currentParkId,
-            now: now,
-            onRefreshPressed: onRefreshPressed,
+          _LiveDashboardCard(
+            controller: controller,
+            snapshot: snapshot,
             onCurrentSchedulePressed: onCurrentSchedulePressed,
+            onWaitTimeEditPressed: onWaitTimeEditPressed,
+          ),
+          if (controller.errorMessage != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _LiveErrorCard(
+              message: controller.errorMessage!,
+              onClose: controller.clearError,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          LiveWaitTimeListPanel(
+            controller: controller,
+            now: snapshot.now,
+            onEditPressed: onWaitTimeEditPressed,
           ),
           const SizedBox(height: AppSpacing.sm),
           _TodayScheduleContent(
-            schedule: schedule,
-            currentParkId: currentParkId,
-            now: now,
+            controller: controller,
+            snapshot: snapshot,
+            scheduleItemKeys: scheduleItemKeys,
+            onWaitTimeEditPressed: onWaitTimeEditPressed,
           ),
         ],
       ),
@@ -217,20 +349,21 @@ class _MobileTodayLayout extends StatelessWidget {
 
 class _DesktopTodayLayout extends StatelessWidget {
   const _DesktopTodayLayout({
-    required this.schedule,
-    required this.currentParkId,
-    required this.now,
+    required this.controller,
+    required this.snapshot,
     required this.scheduleScrollController,
-    required this.onRefreshPressed,
+    required this.scheduleItemKeys,
     required this.onCurrentSchedulePressed,
+    required this.onWaitTimeEditPressed,
   });
 
-  final DaySchedule? schedule;
-  final String currentParkId;
-  final DateTime now;
+  final LiveController controller;
+  final LiveScheduleSnapshot snapshot;
   final ScrollController scheduleScrollController;
-  final VoidCallback onRefreshPressed;
+  final Map<String, GlobalKey> scheduleItemKeys;
+
   final VoidCallback onCurrentSchedulePressed;
+  final ValueChanged<Facility> onWaitTimeEditPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -238,15 +371,31 @@ class _DesktopTodayLayout extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 340,
+          width: 370,
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(right: AppSpacing.sm, bottom: 48),
-            child: _TodayOverviewCard(
-              schedule: schedule,
-              currentParkId: currentParkId,
-              now: now,
-              onRefreshPressed: onRefreshPressed,
-              onCurrentSchedulePressed: onCurrentSchedulePressed,
+            child: Column(
+              children: [
+                _LiveDashboardCard(
+                  controller: controller,
+                  snapshot: snapshot,
+                  onCurrentSchedulePressed: onCurrentSchedulePressed,
+                  onWaitTimeEditPressed: onWaitTimeEditPressed,
+                ),
+                if (controller.errorMessage != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _LiveErrorCard(
+                    message: controller.errorMessage!,
+                    onClose: controller.clearError,
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.sm),
+                LiveWaitTimeListPanel(
+                  controller: controller,
+                  now: snapshot.now,
+                  onEditPressed: onWaitTimeEditPressed,
+                ),
+              ],
             ),
           ),
         ),
@@ -263,9 +412,10 @@ class _DesktopTodayLayout extends StatelessWidget {
               padding: const EdgeInsets.only(right: 14, bottom: 48),
               children: [
                 _TodayScheduleContent(
-                  schedule: schedule,
-                  currentParkId: currentParkId,
-                  now: now,
+                  controller: controller,
+                  snapshot: snapshot,
+                  scheduleItemKeys: scheduleItemKeys,
+                  onWaitTimeEditPressed: onWaitTimeEditPressed,
                 ),
               ],
             ),
@@ -276,36 +426,22 @@ class _DesktopTodayLayout extends StatelessWidget {
   }
 }
 
-class _TodayOverviewCard extends StatelessWidget {
-  const _TodayOverviewCard({
-    required this.schedule,
-    required this.currentParkId,
-    required this.now,
-    required this.onRefreshPressed,
+class _LiveDashboardCard extends StatelessWidget {
+  const _LiveDashboardCard({
+    required this.controller,
+    required this.snapshot,
     required this.onCurrentSchedulePressed,
+    required this.onWaitTimeEditPressed,
   });
 
-  final DaySchedule? schedule;
-  final String currentParkId;
-  final DateTime now;
-  final VoidCallback onRefreshPressed;
+  final LiveController controller;
+  final LiveScheduleSnapshot snapshot;
+
   final VoidCallback onCurrentSchedulePressed;
+  final ValueChanged<Facility> onWaitTimeEditPressed;
 
   @override
   Widget build(BuildContext context) {
-    final scheduleMatchesPark =
-        schedule == null || schedule!.parkId == currentParkId;
-
-    final currentItem = schedule == null
-        ? null
-        : _findCurrentItem(schedule!.items, now);
-
-    final nextItem = schedule == null
-        ? null
-        : _findNextItem(schedule!.items, now);
-
-    final displayItem = currentItem ?? nextItem;
-
     final colorScheme = Theme.of(context).colorScheme;
 
     return AppCard(
@@ -315,16 +451,16 @@ class _TodayOverviewCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
-                  _parkIcon(currentParkId),
-                  size: 22,
+                  _parkIcon(controller.currentParkId),
+                  size: 23,
                   color: colorScheme.onPrimaryContainer,
                 ),
               ),
@@ -334,7 +470,7 @@ class _TodayOverviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _parkName(currentParkId),
+                      _parkName(controller.currentParkId),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -342,7 +478,7 @@ class _TodayOverviewCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      _formatCurrentDate(now),
+                      _formatCurrentDate(snapshot.now),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -352,79 +488,35 @@ class _TodayOverviewCard extends StatelessWidget {
               ),
               IconButton(
                 tooltip: '現在時刻を更新',
-                onPressed: onRefreshPressed,
+                onPressed: controller.refreshCurrentTime,
                 icon: const Icon(Icons.refresh),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          _CurrentTimePanel(now: now),
-          if (schedule != null && !scheduleMatchesPark) ...[
+          _CurrentTimePanel(now: snapshot.now),
+          const SizedBox(height: AppSpacing.sm),
+          _LiveMainStatusPanel(
+            snapshot: snapshot,
+            onWaitTimeEditPressed: onWaitTimeEditPressed,
+          ),
+          if (snapshot.hasSchedule &&
+              snapshot.status != LiveScheduleStatus.parkMismatch) ...[
             const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.sync_problem_outlined,
-                    size: 19,
-                    color: colorScheme.onErrorContainer,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '表示中のプランは別のパークで生成されています。'
-                      'プラン確認画面で再生成してください。',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onErrorContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (schedule != null &&
-              scheduleMatchesPark &&
-              displayItem != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            _CurrentOrNextScheduleCard(
-              item: displayItem,
-              isCurrent: identical(displayItem, currentItem),
-            ),
-            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: onCurrentSchedulePressed,
                 icon: const Icon(Icons.my_location_outlined, size: 18),
-                label: const Text('現在の予定へ移動'),
+                label: const Text('現在・次の予定へ移動'),
               ),
             ),
-          ],
-          if (schedule != null && scheduleMatchesPark) ...[
             const SizedBox(height: AppSpacing.md),
-            _TodayProgressSummary(items: schedule!.items, now: now),
+            _TodayProgressSummary(snapshot: snapshot),
           ],
         ],
       ),
     );
-  }
-
-  static String _formatCurrentDate(DateTime value) {
-    const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
-
-    return '${value.year}年'
-        '${value.month}月'
-        '${value.day}日'
-        '（${weekdays[value.weekday - 1]}）';
   }
 }
 
@@ -435,10 +527,6 @@ class _CurrentTimePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hour = now.hour.toString().padLeft(2, '0');
-
-    final minute = now.minute.toString().padLeft(2, '0');
-
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -461,7 +549,7 @@ class _CurrentTimePanel extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            '$hour:$minute',
+            _formatTime(now),
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -472,27 +560,72 @@ class _CurrentTimePanel extends StatelessWidget {
   }
 }
 
-class _CurrentOrNextScheduleCard extends StatelessWidget {
-  const _CurrentOrNextScheduleCard({
-    required this.item,
-    required this.isCurrent,
+class _LiveMainStatusPanel extends StatelessWidget {
+  const _LiveMainStatusPanel({
+    required this.snapshot,
+    required this.onWaitTimeEditPressed,
   });
 
-  final ScheduleItem item;
-  final bool isCurrent;
+  final LiveScheduleSnapshot snapshot;
+  final ValueChanged<Facility> onWaitTimeEditPressed;
 
   @override
   Widget build(BuildContext context) {
+    return switch (snapshot.status) {
+      LiveScheduleStatus.noSchedule => const _LiveMessagePanel(
+        icon: Icons.event_note_outlined,
+        title: '当日のプランがありません',
+        message: 'プラン確認画面でスケジュールを生成してください。',
+      ),
+      LiveScheduleStatus.parkMismatch => const _LiveMessagePanel(
+        icon: Icons.sync_problem_outlined,
+        title: 'パークが一致していません',
+        message: '現在選択しているパークでプランを再生成してください。',
+        warning: true,
+      ),
+      LiveScheduleStatus.completed => const _LiveMessagePanel(
+        icon: Icons.celebration_outlined,
+        title: 'お疲れさまでした！',
+        message: '今日の予定はすべて終了しました。',
+        success: true,
+      ),
+      LiveScheduleStatus.current => _CurrentSchedulePanel(snapshot: snapshot),
+      LiveScheduleStatus.freeTime => _NextSchedulePanel(
+        snapshot: snapshot,
+        onWaitTimeEditPressed: onWaitTimeEditPressed,
+        showFreeTime: true,
+      ),
+      LiveScheduleStatus.upcoming ||
+      LiveScheduleStatus.beforeParkOpen => _NextSchedulePanel(
+        snapshot: snapshot,
+        onWaitTimeEditPressed: onWaitTimeEditPressed,
+        showFreeTime: false,
+      ),
+    };
+  }
+}
+
+class _CurrentSchedulePanel extends StatelessWidget {
+  const _CurrentSchedulePanel({required this.snapshot});
+
+  final LiveScheduleSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = snapshot.currentItem;
+
+    if (item == null) {
+      return const SizedBox.shrink();
+    }
+
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(11),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isCurrent
-            ? colorScheme.primaryContainer
-            : colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(11),
+        color: colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,43 +633,246 @@ class _CurrentOrNextScheduleCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                isCurrent ? Icons.play_circle_outline : Icons.upcoming_outlined,
-                size: 18,
-                color: isCurrent
-                    ? colorScheme.onPrimaryContainer
-                    : colorScheme.onSecondaryContainer,
+                Icons.play_circle_outline,
+                size: 19,
+                color: colorScheme.onPrimaryContainer,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 7),
               Text(
-                isCurrent ? '現在の予定' : '次の予定',
+                '現在の予定',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: isCurrent
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSecondaryContainer,
+                  color: colorScheme.onPrimaryContainer,
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              const Spacer(),
+              if (snapshot.currentRemainingMinutes != null)
+                Text(
+                  '残り約'
+                  '${snapshot.currentRemainingMinutes}分',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 7),
           Text(
             item.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: isCurrent
-                  ? colorScheme.onPrimaryContainer
-                  : colorScheme.onSecondaryContainer,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           Text(
             item.timeRangeLabel,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: isCurrent
-                  ? colorScheme.onPrimaryContainer
-                  : colorScheme.onSecondaryContainer,
+              color: colorScheme.onPrimaryContainer,
+            ),
+          ),
+          if (snapshot.currentWaitTime != null) ...[
+            const SizedBox(height: 9),
+            _WaitTimeInformationRow(
+              waitTime: snapshot.currentWaitTime!,
+              now: snapshot.now,
+              lightForeground: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _NextSchedulePanel extends StatelessWidget {
+  const _NextSchedulePanel({
+    required this.snapshot,
+    required this.onWaitTimeEditPressed,
+    required this.showFreeTime,
+  });
+
+  final LiveScheduleSnapshot snapshot;
+  final ValueChanged<Facility> onWaitTimeEditPressed;
+  final bool showFreeTime;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = snapshot.nextItem;
+
+    if (item == null) {
+      return const SizedBox.shrink();
+    }
+
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                showFreeTime
+                    ? Icons.hourglass_empty_outlined
+                    : Icons.upcoming_outlined,
+                size: 19,
+                color: colorScheme.onSecondaryContainer,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                showFreeTime ? '空き時間' : '次の予定',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              if (snapshot.minutesUntilNext != null)
+                Text(
+                  'あと'
+                  '${snapshot.minutesUntilNext}分',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+          if (showFreeTime && snapshot.freeTimeMinutes != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${snapshot.freeTimeMinutes}分の空き時間があります。',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSecondaryContainer,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            item.title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: colorScheme.onSecondaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.timeRangeLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSecondaryContainer,
+            ),
+          ),
+          if (snapshot.nextPreference != null) ...[
+            const SizedBox(height: 8),
+            _AccessMethodBadge(preference: snapshot.nextPreference!),
+          ],
+          if (snapshot.nextWaitTime != null) ...[
+            const SizedBox(height: 9),
+            _WaitTimeInformationRow(
+              waitTime: snapshot.nextWaitTime!,
+              now: snapshot.now,
+              lightForeground: true,
+            ),
+          ],
+          if (snapshot.nextExpectedEndAt != null) ...[
+            const SizedBox(height: 7),
+            Text(
+              '終了予想 '
+              '${_formatTime(snapshot.nextExpectedEndAt!)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSecondaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          if (!snapshot.canCompleteNextBeforeFollowingItem) ...[
+            const SizedBox(height: 9),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.warning_amber_outlined,
+                    size: 18,
+                    color: colorScheme.onErrorContainer,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      '現在の待ち時間では、'
+                      'その次の予定に間に合わない可能性があります。',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (snapshot.nextFacility != null) ...[
+            const SizedBox(height: 9),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  onWaitTimeEditPressed(snapshot.nextFacility!);
+                },
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('待ち時間を更新'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AccessMethodBadge extends StatelessWidget {
+  const _AccessMethodBadge({required this.preference});
+
+  final PlanPreference preference;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _accessMethodIcon(preference.accessMethod),
+            size: 15,
+            color: colorScheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            preference.accessMethod.liveShortLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSecondaryContainer,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -545,23 +881,97 @@ class _CurrentOrNextScheduleCard extends StatelessWidget {
   }
 }
 
-class _TodayProgressSummary extends StatelessWidget {
-  const _TodayProgressSummary({required this.items, required this.now});
+class _WaitTimeInformationRow extends StatelessWidget {
+  const _WaitTimeInformationRow({
+    required this.waitTime,
+    required this.now,
+    required this.lightForeground,
+  });
 
-  final List<ScheduleItem> items;
+  final LiveWaitTimeDisplay waitTime;
   final DateTime now;
+  final bool lightForeground;
 
   @override
   Widget build(BuildContext context) {
-    final completedCount = items
-        .where(
-          (item) =>
-              _scheduleStatus(item, now) == _TodayScheduleStatus.completed,
-        )
-        .length;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    final progress = items.isEmpty ? 0.0 : completedCount / items.length;
+    final foregroundColor = lightForeground
+        ? colorScheme.onSecondaryContainer
+        : colorScheme.onSurfaceVariant;
 
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          waitTime.isStale
+              ? Icons.warning_amber_outlined
+              : Icons.groups_outlined,
+          size: 17,
+          color: waitTime.isStale ? colorScheme.error : foregroundColor,
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                waitTime.hasWaitMinutes
+                    ? '待ち時間 '
+                          '${waitTime.waitMinutes}分'
+                    : '待ち時間不明',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: foregroundColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                _waitTimeSubLabel(waitTime, now),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: foregroundColor),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _waitTimeSubLabel(LiveWaitTimeDisplay waitTime, DateTime now) {
+    if (waitTime.isStale) {
+      return '要更新・${waitTime.label}';
+    }
+
+    final updatedAt = waitTime.updatedAt;
+
+    if (updatedAt != null) {
+      final difference = now.difference(updatedAt);
+
+      if (difference.inMinutes < 1) {
+        return '${waitTime.label}・たった今更新';
+      }
+
+      if (difference.inMinutes < 60) {
+        return '${waitTime.label}・'
+            '${difference.inMinutes}分前更新';
+      }
+
+      return '${waitTime.label}・'
+          '${difference.inHours}時間前更新';
+    }
+
+    return waitTime.label;
+  }
+}
+
+class _TodayProgressSummary extends StatelessWidget {
+  const _TodayProgressSummary({required this.snapshot});
+
+  final LiveScheduleSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -576,14 +986,15 @@ class _TodayProgressSummary extends StatelessWidget {
               ),
             ),
             Text(
-              '$completedCount / ${items.length}',
+              '${snapshot.completedItemCount}'
+              ' / ${snapshot.totalItemCount}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
         const SizedBox(height: 7),
         LinearProgressIndicator(
-          value: progress,
+          value: snapshot.progress,
           minHeight: 7,
           borderRadius: BorderRadius.circular(4),
         ),
@@ -594,17 +1005,21 @@ class _TodayProgressSummary extends StatelessWidget {
 
 class _TodayScheduleContent extends StatelessWidget {
   const _TodayScheduleContent({
-    required this.schedule,
-    required this.currentParkId,
-    required this.now,
+    required this.controller,
+    required this.snapshot,
+    required this.scheduleItemKeys,
+    required this.onWaitTimeEditPressed,
   });
 
-  final DaySchedule? schedule;
-  final String currentParkId;
-  final DateTime now;
+  final LiveController controller;
+  final LiveScheduleSnapshot snapshot;
+  final Map<String, GlobalKey> scheduleItemKeys;
+  final ValueChanged<Facility> onWaitTimeEditPressed;
 
   @override
   Widget build(BuildContext context) {
+    final schedule = controller.schedule;
+
     if (schedule == null) {
       return const EmptyState(
         title: '当日のプランがありません',
@@ -613,7 +1028,7 @@ class _TodayScheduleContent extends StatelessWidget {
       );
     }
 
-    if (schedule!.parkId != currentParkId) {
+    if (!controller.scheduleMatchesCurrentPark) {
       return const EmptyState(
         title: 'パークが一致していません',
         message: '現在選択しているパークでプランを再生成してください。',
@@ -621,7 +1036,7 @@ class _TodayScheduleContent extends StatelessWidget {
       );
     }
 
-    if (schedule!.items.isEmpty) {
+    if (schedule.items.isEmpty) {
       return const EmptyState(
         title: '予定がありません',
         message: '条件を変更し、プラン確認画面で再生成してください。',
@@ -646,7 +1061,7 @@ class _TodayScheduleContent extends StatelessWidget {
                 ),
               ),
               Text(
-                '${schedule!.items.length}件',
+                '${schedule.items.length}件',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -654,15 +1069,62 @@ class _TodayScheduleContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          for (var index = 0; index < schedule!.items.length; index++)
+          for (var index = 0; index < schedule.items.length; index++)
             _TodayScheduleItemCard(
-              key: ValueKey('today_${schedule!.items[index].id}'),
-              item: schedule!.items[index],
-              now: now,
-              isLast: index == schedule!.items.length - 1,
+              key: scheduleItemKeys[schedule.items[index].id],
+              item: schedule.items[index],
+              facility: controller.facilityById(
+                schedule.items[index].facilityId,
+              ),
+              preference: controller.preferenceByFacilityId(
+                schedule.items[index].facilityId,
+              ),
+              waitTime: _waitTimeForItem(
+                controller: controller,
+                item: schedule.items[index],
+              ),
+              now: snapshot.now,
+              isLast: index == schedule.items.length - 1,
+              onWaitTimeEditPressed: onWaitTimeEditPressed,
             ),
         ],
       ),
+    );
+  }
+
+  LiveWaitTimeDisplay? _waitTimeForItem({
+    required LiveController controller,
+    required ScheduleItem item,
+  }) {
+    final facility = controller.facilityById(item.facilityId);
+
+    if (facility == null) {
+      return null;
+    }
+
+    final manualWaitTime = controller.manualWaitTimeByFacilityId(facility.id);
+
+    if (manualWaitTime != null) {
+      return LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.manual,
+        label: '手動入力',
+        waitMinutes: manualWaitTime.waitMinutes,
+        isStale: manualWaitTime.isStaleAt(controller.now),
+        updatedAt: manualWaitTime.updatedAt,
+      );
+    }
+
+    final facilityWaitTime = facility.waitTime?.minutes;
+
+    if (facilityWaitTime == null) {
+      return null;
+    }
+
+    return LiveWaitTimeDisplay(
+      kind: LiveWaitTimeKind.facilityEstimate,
+      label: '施設データの目安',
+      waitMinutes: facilityWaitTime,
+      isStale: false,
     );
   }
 }
@@ -671,13 +1133,23 @@ class _TodayScheduleItemCard extends StatefulWidget {
   const _TodayScheduleItemCard({
     super.key,
     required this.item,
+    required this.facility,
+    required this.preference,
+    required this.waitTime,
     required this.now,
     required this.isLast,
+    required this.onWaitTimeEditPressed,
   });
 
   final ScheduleItem item;
+  final Facility? facility;
+  final PlanPreference? preference;
+  final LiveWaitTimeDisplay? waitTime;
+
   final DateTime now;
   final bool isLast;
+
+  final ValueChanged<Facility> onWaitTimeEditPressed;
 
   @override
   State<_TodayScheduleItemCard> createState() {
@@ -787,6 +1259,33 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                             foregroundColor: colorScheme.onSurfaceVariant,
                             backgroundColor: colorScheme.surfaceContainerLow,
                           ),
+                          if (widget.preference != null)
+                            _TodaySmallBadge(
+                              icon: _accessMethodIcon(
+                                widget.preference!.accessMethod,
+                              ),
+                              label: widget
+                                  .preference!
+                                  .accessMethod
+                                  .liveShortLabel,
+                              foregroundColor: const Color(0xFF6750A4),
+                              backgroundColor: const Color(0xFFEDE7F6),
+                            ),
+                          if (widget.waitTime?.waitMinutes != null)
+                            _TodaySmallBadge(
+                              icon: widget.waitTime!.isStale
+                                  ? Icons.warning_amber_outlined
+                                  : Icons.groups_outlined,
+                              label:
+                                  '待ち${widget.waitTime!.waitMinutes}分'
+                                  '${widget.waitTime!.isStale ? '・要更新' : ''}',
+                              foregroundColor: widget.waitTime!.isStale
+                                  ? const Color(0xFFC62828)
+                                  : const Color(0xFF287A4B),
+                              backgroundColor: widget.waitTime!.isStale
+                                  ? const Color(0xFFFFEBEE)
+                                  : const Color(0xFFE8F5ED),
+                            ),
                         ],
                       ),
                     ],
@@ -794,6 +1293,22 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                 ),
               ],
             ),
+            if (widget.facility != null) ...[
+              const SizedBox(height: 7),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    widget.onWaitTimeEditPressed(widget.facility!);
+                  },
+                  icon: const Icon(Icons.edit_outlined, size: 17),
+                  label: const Text('待ち時間を更新'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ],
             if (_hasDetails) ...[
               const SizedBox(height: 5),
               Align(
@@ -863,8 +1378,18 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
         foregroundColor: Color(0xFF2457A6),
         backgroundColor: Color(0xFFEAF2FF),
       ),
-      'meal' => const _TodayTypeStyle(
-        icon: Icons.restaurant_outlined,
+      'breakfast' => const _TodayTypeStyle(
+        icon: Icons.free_breakfast_outlined,
+        foregroundColor: Color(0xFF287A4B),
+        backgroundColor: Color(0xFFE8F5ED),
+      ),
+      'lunch' => const _TodayTypeStyle(
+        icon: Icons.lunch_dining_outlined,
+        foregroundColor: Color(0xFF287A4B),
+        backgroundColor: Color(0xFFE8F5ED),
+      ),
+      'dinner' => const _TodayTypeStyle(
+        icon: Icons.dinner_dining_outlined,
         foregroundColor: Color(0xFF287A4B),
         backgroundColor: Color(0xFFE8F5ED),
       ),
@@ -873,10 +1398,15 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
         foregroundColor: Color(0xFF7A5B16),
         backgroundColor: Color(0xFFFFF8DF),
       ),
-      'move' => const _TodayTypeStyle(
-        icon: Icons.directions_walk_outlined,
-        foregroundColor: Color(0xFF6A3DA1),
-        backgroundColor: Color(0xFFF2EAFE),
+      'entry' => const _TodayTypeStyle(
+        icon: Icons.login_outlined,
+        foregroundColor: Color(0xFF167B82),
+        backgroundColor: Color(0xFFE4F5F5),
+      ),
+      'exit' => const _TodayTypeStyle(
+        icon: Icons.logout_outlined,
+        foregroundColor: Color(0xFF536873),
+        backgroundColor: Color(0xFFEDF3F5),
       ),
       _ => const _TodayTypeStyle(
         icon: Icons.event_outlined,
@@ -884,6 +1414,127 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
         backgroundColor: Color(0xFFF7F5FC),
       ),
     };
+  }
+}
+
+class _LiveMessagePanel extends StatelessWidget {
+  const _LiveMessagePanel({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.warning = false,
+    this.success = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final bool warning;
+  final bool success;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final backgroundColor = warning
+        ? colorScheme.errorContainer
+        : success
+        ? colorScheme.secondaryContainer
+        : colorScheme.surfaceContainerLow;
+
+    final foregroundColor = warning
+        ? colorScheme.onErrorContainer
+        : success
+        ? colorScheme.onSecondaryContainer
+        : colorScheme.onSurfaceVariant;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 22, color: foregroundColor),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  message,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: foregroundColor),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveErrorCard extends StatelessWidget {
+  const _LiveErrorCard({required this.message, required this.onClose});
+
+  final String message;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 18,
+            color: colorScheme.onErrorContainer,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: '閉じる',
+            onPressed: onClose,
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.close,
+              size: 17,
+              color: colorScheme.onErrorContainer,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -935,6 +1586,7 @@ class _TodayScheduleDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reason = item.reason?.trim();
+
     final note = item.note?.trim();
 
     return Container(
@@ -1058,41 +1710,33 @@ _TodayScheduleStatus _scheduleStatus(ScheduleItem item, DateTime now) {
   return _TodayScheduleStatus.upcoming;
 }
 
-ScheduleItem? _findCurrentItem(List<ScheduleItem> items, DateTime now) {
-  for (final item in items) {
-    if (_scheduleStatus(item, now) == _TodayScheduleStatus.current) {
-      return item;
-    }
-  }
-
-  return null;
+IconData _accessMethodIcon(FacilityAccessMethod method) {
+  return switch (method) {
+    FacilityAccessMethod.standby => Icons.groups_outlined,
+    FacilityAccessMethod.dpa => Icons.bolt,
+    FacilityAccessMethod.priorityPass => Icons.confirmation_number_outlined,
+    FacilityAccessMethod.standbyPass => Icons.airplane_ticket_outlined,
+    FacilityAccessMethod.entryRequest => Icons.how_to_reg_outlined,
+    FacilityAccessMethod.reservation => Icons.event_available_outlined,
+    FacilityAccessMethod.freeSeating => Icons.chair_alt_outlined,
+  };
 }
 
-ScheduleItem? _findNextItem(List<ScheduleItem> items, DateTime now) {
-  for (final item in items) {
-    if (_scheduleStatus(item, now) == _TodayScheduleStatus.upcoming) {
-      return item;
-    }
-  }
+String _formatCurrentDate(DateTime value) {
+  const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
 
-  return null;
+  return '${value.year}年'
+      '${value.month}月'
+      '${value.day}日'
+      '（${weekdays[value.weekday - 1]}）';
 }
 
-int? _currentOrNextIndex(List<ScheduleItem> items, DateTime now) {
-  for (var index = 0; index < items.length; index++) {
-    final status = _scheduleStatus(items[index], now);
+String _formatTime(DateTime value) {
+  final hour = value.hour.toString().padLeft(2, '0');
 
-    if (status == _TodayScheduleStatus.current ||
-        status == _TodayScheduleStatus.upcoming) {
-      return index;
-    }
-  }
+  final minute = value.minute.toString().padLeft(2, '0');
 
-  if (items.isNotEmpty) {
-    return items.length - 1;
-  }
-
-  return null;
+  return '$hour:$minute';
 }
 
 String _parkName(String parkId) {
