@@ -7,9 +7,7 @@ class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(
-      AppSpacing.card,
-    ),
+    this.padding = const EdgeInsets.all(AppSpacing.card),
     this.margin = EdgeInsets.zero,
     this.backgroundColor,
     this.borderColor,
@@ -34,15 +32,9 @@ class AppCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     final resolvedRadius =
-        borderRadius ??
-        BorderRadius.circular(
-          AppRadius.card,
-        );
+        borderRadius ?? BorderRadius.circular(AppRadius.card);
 
-    final content = Padding(
-      padding: padding,
-      child: child,
-    );
+    final content = Padding(padding: padding, child: child);
 
     return Container(
       width: double.infinity,
@@ -50,24 +42,13 @@ class AppCard extends StatelessWidget {
       child: Material(
         color: backgroundColor ?? colorScheme.surface,
         elevation: elevation,
-        shadowColor: colorScheme.shadow.withValues(
-          alpha: 0.10,
-        ),
+        shadowColor: colorScheme.shadow.withValues(alpha: 0.10),
         shape: RoundedRectangleBorder(
           borderRadius: resolvedRadius,
-          side: BorderSide(
-            color:
-                borderColor ??
-                colorScheme.outlineVariant,
-          ),
+          side: BorderSide(color: borderColor ?? colorScheme.outlineVariant),
         ),
         clipBehavior: clipBehavior,
-        child: onTap == null
-            ? content
-            : InkWell(
-                onTap: onTap,
-                child: content,
-              ),
+        child: onTap == null ? content : InkWell(onTap: onTap, child: content),
       ),
     );
   }

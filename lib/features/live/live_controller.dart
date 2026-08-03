@@ -14,24 +14,15 @@ import 'live_models.dart';
 import 'live_wait_time_controller.dart';
 
 class LiveController extends ChangeNotifier {
-  LiveController(
-    this._appState, {
-    LiveWaitTimeController? waitTimeController,
-  }) : _waitTimeController =
-           waitTimeController ??
-           LiveWaitTimeController() {
-    _appState.addListener(
-      _onAppStateChanged,
-    );
+  LiveController(this._appState, {LiveWaitTimeController? waitTimeController})
+    : _waitTimeController = waitTimeController ?? LiveWaitTimeController() {
+    _appState.addListener(_onAppStateChanged);
 
-    _waitTimeController.addListener(
-      _onWaitTimeChanged,
-    );
+    _waitTimeController.addListener(_onWaitTimeChanged);
   }
 
   final AppState _appState;
-  final LiveWaitTimeController
-      _waitTimeController;
+  final LiveWaitTimeController _waitTimeController;
 
   Timer? _clockTimer;
 
@@ -74,8 +65,7 @@ class LiveController extends ChangeNotifier {
   bool get scheduleMatchesCurrentPark {
     final currentSchedule = schedule;
 
-    return currentSchedule == null ||
-        currentSchedule.parkId == currentParkId;
+    return currentSchedule == null || currentSchedule.parkId == currentParkId;
   }
 
   Future<void> initialize() async {
@@ -85,9 +75,7 @@ class LiveController extends ChangeNotifier {
 
     _isInitialized = true;
 
-    await _waitTimeController.loadForPark(
-      currentParkId,
-    );
+    await _waitTimeController.loadForPark(currentParkId);
 
     _startClock();
 
@@ -101,21 +89,15 @@ class LiveController extends ChangeNotifier {
   }
 
   Future<void> reloadWaitTimes() async {
-    await _waitTimeController.loadForPark(
-      currentParkId,
-    );
+    await _waitTimeController.loadForPark(currentParkId);
   }
 
-  Facility? facilityById(
-    String? facilityId,
-  ) {
-    if (facilityId == null ||
-        facilityId.trim().isEmpty) {
+  Facility? facilityById(String? facilityId) {
+    if (facilityId == null || facilityId.trim().isEmpty) {
       return null;
     }
 
-    for (final facility
-        in _appState.selectedFacilities) {
+    for (final facility in _appState.selectedFacilities) {
       if (facility.id == facilityId) {
         return facility;
       }
@@ -124,26 +106,16 @@ class LiveController extends ChangeNotifier {
     return null;
   }
 
-  PlanPreference? preferenceByFacilityId(
-    String? facilityId,
-  ) {
-    if (facilityId == null ||
-        facilityId.trim().isEmpty) {
+  PlanPreference? preferenceByFacilityId(String? facilityId) {
+    if (facilityId == null || facilityId.trim().isEmpty) {
       return null;
     }
 
-    return _appState.getPreference(
-      facilityId,
-    );
+    return _appState.getPreference(facilityId);
   }
 
-  LiveWaitTime? manualWaitTimeByFacilityId(
-    String? facilityId,
-  ) {
-    return _waitTimeController
-        .waitTimeForFacility(
-      facilityId,
-    );
+  LiveWaitTime? manualWaitTimeByFacilityId(String? facilityId) {
+    return _waitTimeController.waitTimeForFacility(facilityId);
   }
 
   Future<bool> updateWaitTime({
@@ -157,12 +129,8 @@ class LiveController extends ChangeNotifier {
     );
   }
 
-  Future<bool> clearWaitTime(
-    Facility facility,
-  ) {
-    return _waitTimeController.removeWaitTime(
-      facility.id,
-    );
+  Future<bool> clearWaitTime(Facility facility) {
+    return _waitTimeController.removeWaitTime(facility.id);
   }
 
   void clearError() {
@@ -172,8 +140,7 @@ class LiveController extends ChangeNotifier {
   LiveScheduleSnapshot buildSnapshot() {
     final currentSchedule = schedule;
 
-    if (currentSchedule == null ||
-        currentSchedule.items.isEmpty) {
+    if (currentSchedule == null || currentSchedule.items.isEmpty) {
       return LiveScheduleSnapshot(
         now: _now,
         status: LiveScheduleStatus.noSchedule,
@@ -182,33 +149,21 @@ class LiveController extends ChangeNotifier {
       );
     }
 
-    if (currentSchedule.parkId !=
-        currentParkId) {
+    if (currentSchedule.parkId != currentParkId) {
       return LiveScheduleSnapshot(
         now: _now,
-        status:
-            LiveScheduleStatus.parkMismatch,
+        status: LiveScheduleStatus.parkMismatch,
         completedItemCount: 0,
-        totalItemCount:
-            currentSchedule.items.length,
+        totalItemCount: currentSchedule.items.length,
       );
     }
 
-    final sortedItems =
-        List<ScheduleItem>.of(
-      currentSchedule.items,
-    )
-          ..sort(
-            (left, right) {
-              return _startMinutes(left)
-                  .compareTo(
-                _startMinutes(right),
-              );
-            },
-          );
+    final sortedItems = List<ScheduleItem>.of(currentSchedule.items)
+      ..sort((left, right) {
+        return _startMinutes(left).compareTo(_startMinutes(right));
+      });
 
-    final currentMinutes =
-        _now.hour * 60 + _now.minute;
+    final currentMinutes = _now.hour * 60 + _now.minute;
 
     ScheduleItem? currentItem;
     ScheduleItem? nextItem;
@@ -216,35 +171,27 @@ class LiveController extends ChangeNotifier {
 
     var completedCount = 0;
 
-    for (var index = 0;
-        index < sortedItems.length;
-        index++) {
+    for (var index = 0; index < sortedItems.length; index++) {
       final item = sortedItems[index];
 
-      final startMinutes =
-          _startMinutes(item);
+      final startMinutes = _startMinutes(item);
 
-      final endMinutes =
-          _endMinutes(item);
+      final endMinutes = _endMinutes(item);
 
       if (currentMinutes >= endMinutes) {
         completedCount++;
         continue;
       }
 
-      if (currentMinutes >= startMinutes &&
-          currentMinutes < endMinutes) {
+      if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
         currentItem = item;
 
-        if (index + 1 <
-            sortedItems.length) {
+        if (index + 1 < sortedItems.length) {
           nextItem = sortedItems[index + 1];
         }
 
-        if (index + 2 <
-            sortedItems.length) {
-          followingItem =
-              sortedItems[index + 2];
+        if (index + 2 < sortedItems.length) {
+          followingItem = sortedItems[index + 2];
         }
 
         break;
@@ -253,69 +200,48 @@ class LiveController extends ChangeNotifier {
       if (currentMinutes < startMinutes) {
         nextItem = item;
 
-        if (index + 1 <
-            sortedItems.length) {
-          followingItem =
-              sortedItems[index + 1];
+        if (index + 1 < sortedItems.length) {
+          followingItem = sortedItems[index + 1];
         }
 
         break;
       }
     }
 
-    if (currentItem == null &&
-        nextItem == null) {
+    if (currentItem == null && nextItem == null) {
       return LiveScheduleSnapshot(
         now: _now,
         status: LiveScheduleStatus.completed,
-        completedItemCount:
-            sortedItems.length,
-        totalItemCount:
-            sortedItems.length,
+        completedItemCount: sortedItems.length,
+        totalItemCount: sortedItems.length,
       );
     }
 
-    final currentFacility = facilityById(
-      currentItem?.facilityId,
-    );
+    final currentFacility = facilityById(currentItem?.facilityId);
 
-    final nextFacility = facilityById(
-      nextItem?.facilityId,
-    );
+    final nextFacility = facilityById(nextItem?.facilityId);
 
-    final currentPreference =
-        preferenceByFacilityId(
-      currentItem?.facilityId,
-    );
+    final currentPreference = preferenceByFacilityId(currentItem?.facilityId);
 
-    final nextPreference =
-        preferenceByFacilityId(
-      nextItem?.facilityId,
-    );
+    final nextPreference = preferenceByFacilityId(nextItem?.facilityId);
 
-    final currentWaitTime =
-        _resolveWaitTimeDisplay(
+    final currentWaitTime = _resolveWaitTimeDisplay(
       facility: currentFacility,
       preference: currentPreference,
     );
 
-    final nextWaitTime =
-        _resolveWaitTimeDisplay(
+    final nextWaitTime = _resolveWaitTimeDisplay(
       facility: nextFacility,
       preference: nextPreference,
     );
 
-    final minutesUntilNext =
-        nextItem == null
+    final minutesUntilNext = nextItem == null
         ? null
-        : _startMinutes(nextItem) -
-              currentMinutes;
+        : _startMinutes(nextItem) - currentMinutes;
 
-    final currentRemainingMinutes =
-        currentItem == null
+    final currentRemainingMinutes = currentItem == null
         ? null
-        : _endMinutes(currentItem) -
-              currentMinutes;
+        : _endMinutes(currentItem) - currentMinutes;
 
     final freeTimeMinutes =
         currentItem == null &&
@@ -325,15 +251,13 @@ class LiveController extends ChangeNotifier {
         ? minutesUntilNext
         : null;
 
-    final nextExpectedEndAt =
-        _calculateExpectedEndAt(
+    final nextExpectedEndAt = _calculateExpectedEndAt(
       item: nextItem,
       facility: nextFacility,
       waitTime: nextWaitTime,
     );
 
-    final canCompleteBeforeFollowing =
-        _canCompleteBeforeFollowingItem(
+    final canCompleteBeforeFollowing = _canCompleteBeforeFollowingItem(
       expectedEndAt: nextExpectedEndAt,
       followingItem: followingItem,
     );
@@ -354,43 +278,31 @@ class LiveController extends ChangeNotifier {
       followingItem: followingItem,
       currentFacility: currentFacility,
       nextFacility: nextFacility,
-      currentPreference:
-          currentPreference,
+      currentPreference: currentPreference,
       nextPreference: nextPreference,
-      currentWaitTime:
-          currentWaitTime,
+      currentWaitTime: currentWaitTime,
       nextWaitTime: nextWaitTime,
-      minutesUntilNext:
-          minutesUntilNext,
-      currentRemainingMinutes:
-          currentRemainingMinutes,
+      minutesUntilNext: minutesUntilNext,
+      currentRemainingMinutes: currentRemainingMinutes,
       freeTimeMinutes: freeTimeMinutes,
-      nextExpectedEndAt:
-          nextExpectedEndAt,
-      canCompleteNextBeforeFollowingItem:
-          canCompleteBeforeFollowing,
+      nextExpectedEndAt: nextExpectedEndAt,
+      canCompleteNextBeforeFollowingItem: canCompleteBeforeFollowing,
     );
   }
 
   int? currentOrNextIndex() {
     final currentSchedule = schedule;
 
-    if (currentSchedule == null ||
-        currentSchedule.items.isEmpty) {
+    if (currentSchedule == null || currentSchedule.items.isEmpty) {
       return null;
     }
 
-    final currentMinutes =
-        _now.hour * 60 + _now.minute;
+    final currentMinutes = _now.hour * 60 + _now.minute;
 
-    for (var index = 0;
-        index < currentSchedule.items.length;
-        index++) {
-      final item =
-          currentSchedule.items[index];
+    for (var index = 0; index < currentSchedule.items.length; index++) {
+      final item = currentSchedule.items[index];
 
-      if (currentMinutes <
-          _endMinutes(item)) {
+      if (currentMinutes < _endMinutes(item)) {
         return index;
       }
     }
@@ -398,23 +310,18 @@ class LiveController extends ChangeNotifier {
     return currentSchedule.items.length - 1;
   }
 
-  LiveWaitTimeDisplay?
-      _resolveWaitTimeDisplay({
+  LiveWaitTimeDisplay? _resolveWaitTimeDisplay({
     required Facility? facility,
     required PlanPreference? preference,
   }) {
-    if (facility == null ||
-        facility.category !=
-            FacilityCategory.attraction) {
+    if (facility == null || facility.category != FacilityCategory.attraction) {
       return null;
     }
 
     final accessMethod =
-        preference?.accessMethod ??
-        FacilityAccessMethod.standby;
+        preference?.accessMethod ?? FacilityAccessMethod.standby;
 
-    final passEstimate =
-        _passWaitEstimate(
+    final passEstimate = _passWaitEstimate(
       facility: facility,
       accessMethod: accessMethod,
     );
@@ -422,42 +329,31 @@ class LiveController extends ChangeNotifier {
     if (passEstimate != null) {
       return LiveWaitTimeDisplay(
         kind: LiveWaitTimeKind.passEstimate,
-        label:
-            '${accessMethod.liveShortLabel}利用時の目安',
+        label: '${accessMethod.liveShortLabel}利用時の目安',
         waitMinutes: passEstimate,
         isStale: false,
       );
     }
 
-    final manualWaitTime =
-        manualWaitTimeByFacilityId(
-      facility.id,
-    );
+    final manualWaitTime = manualWaitTimeByFacilityId(facility.id);
 
     if (manualWaitTime != null) {
       return LiveWaitTimeDisplay(
         kind: LiveWaitTimeKind.manual,
         label: '手動入力',
-        waitMinutes:
-            manualWaitTime.waitMinutes,
-        isStale: manualWaitTime.isStaleAt(
-          _now,
-        ),
-        updatedAt:
-            manualWaitTime.updatedAt,
+        waitMinutes: manualWaitTime.waitMinutes,
+        isStale: manualWaitTime.isStaleAt(_now),
+        updatedAt: manualWaitTime.updatedAt,
       );
     }
 
-    final facilityWaitMinutes =
-        facility.waitTime?.minutes;
+    final facilityWaitMinutes = facility.waitTime?.minutes;
 
     if (facilityWaitMinutes != null) {
       return LiveWaitTimeDisplay(
-        kind:
-            LiveWaitTimeKind.facilityEstimate,
+        kind: LiveWaitTimeKind.facilityEstimate,
         label: '施設データの目安',
-        waitMinutes:
-            facilityWaitMinutes,
+        waitMinutes: facilityWaitMinutes,
         isStale: false,
       );
     }
@@ -472,30 +368,19 @@ class LiveController extends ChangeNotifier {
 
   int? _passWaitEstimate({
     required Facility facility,
-    required FacilityAccessMethod
-        accessMethod,
+    required FacilityAccessMethod accessMethod,
   }) {
     return switch (accessMethod) {
-      FacilityAccessMethod.dpa =>
-        facility.supportsDpa ? 10 : null,
+      FacilityAccessMethod.dpa => facility.supportsDpa ? 10 : null,
       FacilityAccessMethod.priorityPass =>
-        facility.supportsPriorityPass
-            ? 15
-            : null,
+        facility.supportsPriorityPass ? 15 : null,
       FacilityAccessMethod.standbyPass =>
-        facility.supportsStandbyPass
-            ? 20
-            : null,
+        facility.supportsStandbyPass ? 20 : null,
       FacilityAccessMethod.entryRequest =>
-        facility.requiresEntryRequest
-            ? 15
-            : null,
-      FacilityAccessMethod.reservation =>
-        10,
-      FacilityAccessMethod.freeSeating =>
-        null,
-      FacilityAccessMethod.standby =>
-        null,
+        facility.requiresEntryRequest ? 15 : null,
+      FacilityAccessMethod.reservation => 10,
+      FacilityAccessMethod.freeSeating => null,
+      FacilityAccessMethod.standby => null,
     };
   }
 
@@ -516,9 +401,7 @@ class LiveController extends ChangeNotifier {
       item.startMinute,
     );
 
-    if (facility == null ||
-        facility.category !=
-            FacilityCategory.attraction) {
+    if (facility == null || facility.category != FacilityCategory.attraction) {
       return DateTime(
         _now.year,
         _now.month,
@@ -528,28 +411,20 @@ class LiveController extends ChangeNotifier {
       );
     }
 
-    final waitMinutes =
-        waitTime?.waitMinutes ?? 0;
+    final waitMinutes = waitTime?.waitMinutes ?? 0;
 
-    final durationMinutes =
-        facility.durationMinutes > 0
+    final durationMinutes = facility.durationMinutes > 0
         ? facility.durationMinutes
         : _scheduledDurationMinutes(item);
 
-    return startAt.add(
-      Duration(
-        minutes:
-            waitMinutes + durationMinutes,
-      ),
-    );
+    return startAt.add(Duration(minutes: waitMinutes + durationMinutes));
   }
 
   bool _canCompleteBeforeFollowingItem({
     required DateTime? expectedEndAt,
     required ScheduleItem? followingItem,
   }) {
-    if (expectedEndAt == null ||
-        followingItem == null) {
+    if (expectedEndAt == null || followingItem == null) {
       return true;
     }
 
@@ -561,63 +436,40 @@ class LiveController extends ChangeNotifier {
       followingItem.startMinute,
     );
 
-    return !expectedEndAt.isAfter(
-      followingStartAt,
-    );
+    return !expectedEndAt.isAfter(followingStartAt);
   }
 
-  int _scheduledDurationMinutes(
-    ScheduleItem item,
-  ) {
-    final duration =
-        _endMinutes(item) -
-        _startMinutes(item);
+  int _scheduledDurationMinutes(ScheduleItem item) {
+    final duration = _endMinutes(item) - _startMinutes(item);
 
     return duration < 0 ? 0 : duration;
   }
 
-  int _startMinutes(
-    ScheduleItem item,
-  ) {
-    return item.startHour * 60 +
-        item.startMinute;
+  int _startMinutes(ScheduleItem item) {
+    return item.startHour * 60 + item.startMinute;
   }
 
-  int _endMinutes(
-    ScheduleItem item,
-  ) {
-    return item.endHour * 60 +
-        item.endMinute;
+  int _endMinutes(ScheduleItem item) {
+    return item.endHour * 60 + item.endMinute;
   }
 
   void _startClock() {
     _clockTimer?.cancel();
 
-    _clockTimer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) {
-        _now = DateTime.now();
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      _now = DateTime.now();
 
-        notifyListeners();
-      },
-    );
+      notifyListeners();
+    });
   }
 
   void _onAppStateChanged() {
-    final loadedParkIds = _waitTimeController
-        .waitTimes
-        .map(
-          (waitTime) => waitTime.parkId,
-        )
+    final loadedParkIds = _waitTimeController.waitTimes
+        .map((waitTime) => waitTime.parkId)
         .toSet();
 
-    if (_isInitialized &&
-        !loadedParkIds.contains(
-          currentParkId,
-        )) {
-      _waitTimeController.loadForPark(
-        currentParkId,
-      );
+    if (_isInitialized && !loadedParkIds.contains(currentParkId)) {
+      _waitTimeController.loadForPark(currentParkId);
     }
 
     notifyListeners();
@@ -631,13 +483,9 @@ class LiveController extends ChangeNotifier {
   void dispose() {
     _clockTimer?.cancel();
 
-    _appState.removeListener(
-      _onAppStateChanged,
-    );
+    _appState.removeListener(_onAppStateChanged);
 
-    _waitTimeController.removeListener(
-      _onWaitTimeChanged,
-    );
+    _waitTimeController.removeListener(_onWaitTimeChanged);
 
     _waitTimeController.dispose();
 

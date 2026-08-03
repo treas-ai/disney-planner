@@ -790,6 +790,12 @@ class _SelectedFacilityItem extends StatelessWidget {
                 value: value,
               );
             },
+            onScheduledAccessTimeChanged: (value) {
+              preferenceController.updateScheduledAccessTime(
+                facilityId: facility.id,
+                value: value,
+              );
+            },
             onLotteryFallbackActionChanged: (action) {
               preferenceController.updateLotteryFallbackAction(
                 facilityId: facility.id,

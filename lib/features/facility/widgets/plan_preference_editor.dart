@@ -24,6 +24,7 @@ class PlanPreferenceEditor extends StatelessWidget {
     required this.onAccessMethodChanged,
     required this.onPreferredPerformanceTimeChanged,
     required this.onReservationTimeChanged,
+    required this.onScheduledAccessTimeChanged,
     required this.onLotteryFallbackActionChanged,
     required this.onUseDpaChanged,
     required this.onUsePriorityPassChanged,
@@ -36,78 +37,65 @@ class PlanPreferenceEditor extends StatelessWidget {
   final PlanPreference preference;
 
   final ValueChanged<PriorityLevel> onPriorityChanged;
-
   final ValueChanged<PreferredTime> onPreferredTimeChanged;
-
   final ValueChanged<WaitTolerance> onWaitToleranceChanged;
-
   final ValueChanged<MealPreference> onMealPreferenceChanged;
-
   final ValueChanged<FacilityAccessMethod> onAccessMethodChanged;
-
   final ValueChanged<String> onPreferredPerformanceTimeChanged;
-
   final ValueChanged<String> onReservationTimeChanged;
-
+  final ValueChanged<String> onScheduledAccessTimeChanged;
   final ValueChanged<LotteryFallbackAction> onLotteryFallbackActionChanged;
-
   final ValueChanged<bool> onUseDpaChanged;
   final ValueChanged<bool> onUsePriorityPassChanged;
   final ValueChanged<bool> onUseStandbyPassChanged;
-
   final ValueChanged<bool> onPrioritizeCapsuleToyChanged;
-
   final ValueChanged<String> onMemoChanged;
-
-  bool get _isRestaurant {
-    return facility.category == FacilityCategory.restaurant;
-  }
 
   bool get _isShowOrParade {
     return facility.category == FacilityCategory.show ||
         facility.category == FacilityCategory.parade;
   }
 
-  bool get _usesEntryRequest {
-    return preference.accessMethod == FacilityAccessMethod.entryRequest;
+  bool get _isRestaurant {
+    return facility.isRestaurant;
+  }
+
+  bool get _needsReservationTime {
+    return _isRestaurant &&
+        (facility.supportsPrioritySeating ||
+            facility.requiresReservation ||
+            facility.reservationRequired ||
+            facility.supportsMobileOrder ||
+            preference.accessMethod == FacilityAccessMethod.reservation);
+  }
+
+  bool get _needsScheduledAccessTime {
+    if (_isShowOrParade || _isRestaurant) {
+      return false;
+    }
+
+    return switch (preference.accessMethod) {
+      FacilityAccessMethod.dpa => true,
+      FacilityAccessMethod.priorityPass => true,
+      FacilityAccessMethod.standbyPass => true,
+      FacilityAccessMethod.entryRequest => true,
+      FacilityAccessMethod.reservation => true,
+      FacilityAccessMethod.standby => false,
+      FacilityAccessMethod.freeSeating => false,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    final availableAccessMethods = _availableAccessMethods();
-
-    final resolvedAccessMethod =
-        availableAccessMethods.contains(preference.accessMethod)
-        ? preference.accessMethod
-        : availableAccessMethods.first;
-
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(facility.name, style: Theme.of(context).textTheme.titleLarge),
-          if (facility.isRestaurant) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'レストラン種別：'
-              '${facility.restaurantType.label}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-          if (facility.isShop) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'ショップ種別：'
-              '${facility.shopType.label}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<PriorityLevel>(
             key: ValueKey(
-              '${facility.id}_'
-              'priority_'
-              '${preference.priority.name}',
+              '${facility.id}_priority_${preference.priority.name}',
             ),
             initialValue: preference.priority,
             decoration: const InputDecoration(
@@ -116,12 +104,9 @@ class PlanPreferenceEditor extends StatelessWidget {
             ),
             items: PriorityLevel.values
                 .map(
-                  (priority) => DropdownMenuItem(
-                    value: priority,
-                    child: Text(
-                      '${priority.label} '
-                      '${priority.stars}',
-                    ),
+                  (value) => DropdownMenuItem(
+                    value: value,
+                    child: Text('${value.label} ${value.stars}'),
                   ),
                 )
                 .toList(),
@@ -134,19 +119,18 @@ class PlanPreferenceEditor extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<PreferredTime>(
             key: ValueKey(
-              '${facility.id}_'
-              'preferred_time_'
-              '${preference.preferredTime.name}',
+              '${facility.id}_preferred_${preference.preferredTime.name}',
             ),
             initialValue: preference.preferredTime,
             decoration: const InputDecoration(
-              labelText: '希望時間帯',
+              labelText: '希望時間',
+              helperText: '固定時刻がある場合は固定時刻を優先します。',
               border: OutlineInputBorder(),
             ),
             items: PreferredTime.values
                 .map(
-                  (time) =>
-                      DropdownMenuItem(value: time, child: Text(time.label)),
+                  (value) =>
+                      DropdownMenuItem(value: value, child: Text(value.label)),
                 )
                 .toList(),
             onChanged: (value) {
@@ -155,25 +139,70 @@ class PlanPreferenceEditor extends StatelessWidget {
               }
             },
           ),
+          if (_isRestaurant) ...[
+            const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<MealPreference>(
+              key: ValueKey(
+                '${facility.id}_meal_${preference.mealPreference.name}',
+              ),
+              initialValue: preference.mealPreference,
+              decoration: const InputDecoration(
+                labelText: '食事利用',
+                border: OutlineInputBorder(),
+              ),
+              items: MealPreference.values
+                  .map(
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text(value.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  onMealPreferenceChanged(value);
+                }
+              },
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          DropdownButtonFormField<WaitTolerance>(
+            key: ValueKey(
+              '${facility.id}_wait_${preference.waitTolerance.name}',
+            ),
+            initialValue: preference.waitTolerance,
+            decoration: const InputDecoration(
+              labelText: '待ち時間許容',
+              border: OutlineInputBorder(),
+            ),
+            items: WaitTolerance.values
+                .map(
+                  (value) =>
+                      DropdownMenuItem(value: value, child: Text(value.label)),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                onWaitToleranceChanged(value);
+              }
+            },
+          ),
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<FacilityAccessMethod>(
             key: ValueKey(
-              '${facility.id}_'
-              'access_method_'
-              '${resolvedAccessMethod.name}',
+              '${facility.id}_access_${preference.accessMethod.name}',
             ),
-            initialValue: resolvedAccessMethod,
-            isExpanded: true,
+            initialValue: preference.accessMethod,
             decoration: const InputDecoration(
               labelText: '利用方法',
-              helperText: 'この施設をどの方法で利用するか選択します。',
+              helperText: '取得・予約済みの利用方法を選択してください。',
               border: OutlineInputBorder(),
             ),
-            items: availableAccessMethods
+            items: _availableAccessMethods()
                 .map(
                   (method) => DropdownMenuItem(
                     value: method,
-                    child: Text(method.label),
+                    child: Text(_accessMethodLabel(method)),
                   ),
                 )
                 .toList(),
@@ -183,97 +212,54 @@ class PlanPreferenceEditor extends StatelessWidget {
               }
             },
           ),
-          const SizedBox(height: AppSpacing.xs),
-          _AccessMethodDescription(method: resolvedAccessMethod),
           if (_isShowOrParade) ...[
             const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              key: ValueKey(
-                '${facility.id}_'
-                'performance_time_'
-                '${preference.preferredPerformanceTime}',
-              ),
-              initialValue: preference.preferredPerformanceTime,
-              keyboardType: TextInputType.datetime,
-              decoration: const InputDecoration(
-                labelText: '希望公演時刻',
-                hintText: '例：17:35',
-                helperText: '公式発表の公演時刻を入力してください。未定の場合は空欄にできます。',
-                prefixIcon: Icon(Icons.schedule_outlined),
-                border: OutlineInputBorder(),
-              ),
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: _optionalTimeValidator,
+            _TimePickerField(
+              label: '公演開始時刻',
+              helperText: '選択した公演回の開始時刻を指定します。',
+              value: preference.preferredPerformanceTime,
               onChanged: onPreferredPerformanceTimeChanged,
             ),
           ],
-          if (_isRestaurant) ...[
+          if (_needsReservationTime) ...[
             const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<MealPreference>(
-              key: ValueKey(
-                '${facility.id}_'
-                'meal_'
-                '${preference.mealPreference.name}',
-              ),
-              initialValue: preference.mealPreference,
-              decoration: const InputDecoration(
-                labelText: '食事利用',
-                helperText: '予約時刻が登録されている場合は予約時刻を優先します。',
-                border: OutlineInputBorder(),
-              ),
-              items: MealPreference.values
-                  .map(
-                    (meal) =>
-                        DropdownMenuItem(value: meal, child: Text(meal.label)),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  onMealPreferenceChanged(value);
-                }
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              key: ValueKey(
-                '${facility.id}_'
-                'reservation_time_'
-                '${preference.reservationTime}',
-              ),
-              initialValue: preference.reservationTime,
-              keyboardType: TextInputType.datetime,
-              decoration: const InputDecoration(
-                labelText: '予約時刻',
-                hintText: '例：12:30',
-                helperText: '予約がない場合は空欄にしてください。',
-                prefixIcon: Icon(Icons.event_available_outlined),
-                border: OutlineInputBorder(),
-              ),
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: _optionalTimeValidator,
+            _TimePickerField(
+              label:
+                  facility.supportsMobileOrder &&
+                      !facility.supportsPrioritySeating
+                  ? '受取時刻'
+                  : '予約時刻',
+              helperText: 'プライオリティ・シーティング、予約、受取時間を指定します。',
+              value: preference.reservationTime,
               onChanged: onReservationTimeChanged,
             ),
           ],
-          if (_usesEntryRequest) ...[
+          if (_needsScheduledAccessTime) ...[
+            const SizedBox(height: AppSpacing.md),
+            _TimePickerField(
+              label: '${_accessMethodLabel(preference.accessMethod)}の利用時刻',
+              helperText: '取得済みの利用可能時刻を指定します。',
+              value: preference.scheduledAccessTime,
+              onChanged: onScheduledAccessTimeChanged,
+            ),
+          ],
+          if (preference.accessMethod == FacilityAccessMethod.entryRequest &&
+              facility.requiresEntryRequest) ...[
             const SizedBox(height: AppSpacing.md),
             DropdownButtonFormField<LotteryFallbackAction>(
               key: ValueKey(
-                '${facility.id}_'
-                'fallback_'
-                '${preference.lotteryFallbackAction.name}',
+                '${facility.id}_fallback_${preference.lotteryFallbackAction.name}',
               ),
               initialValue: preference.lotteryFallbackAction,
-              isExpanded: true,
               decoration: const InputDecoration(
-                labelText: '抽選に外れた場合',
-                helperText: 'エントリー受付に外れた場合の代替行動です。',
+                labelText: '外れた場合',
                 border: OutlineInputBorder(),
               ),
               items: LotteryFallbackAction.values
                   .map(
                     (action) => DropdownMenuItem(
                       value: action,
-                      child: Text(action.label),
+                      child: Text(_fallbackLabel(action)),
                     ),
                   )
                   .toList(),
@@ -283,57 +269,22 @@ class PlanPreferenceEditor extends StatelessWidget {
                 }
               },
             ),
-            const SizedBox(height: AppSpacing.xs),
-            _FallbackDescription(action: preference.lotteryFallbackAction),
           ],
-          const SizedBox(height: AppSpacing.md),
-          DropdownButtonFormField<WaitTolerance>(
-            key: ValueKey(
-              '${facility.id}_'
-              'wait_'
-              '${preference.waitTolerance.name}',
-            ),
-            initialValue: preference.waitTolerance,
-            decoration: const InputDecoration(
-              labelText: '待ち時間許容',
-              helperText: 'DPAやパス利用時でも、通常待機へ切り替える場合の判断材料として使用します。',
-              border: OutlineInputBorder(),
-            ),
-            items: WaitTolerance.values
-                .map(
-                  (tolerance) => DropdownMenuItem(
-                    value: tolerance,
-                    child: Text(tolerance.label),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                onWaitToleranceChanged(value);
-              }
-            },
-          ),
           if (facility.isCapsuleToy) ...[
             const SizedBox(height: AppSpacing.sm),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('カプセルトイを優先する'),
-              subtitle: const Text('通常のショップより早い時間帯への配置を優先します。'),
               value: preference.prioritizeCapsuleToy,
               onChanged: onPrioritizeCapsuleToyChanged,
             ),
           ],
           const SizedBox(height: AppSpacing.md),
           TextFormField(
-            key: ValueKey(
-              '${facility.id}_'
-              'memo_'
-              '${preference.memo}',
-            ),
+            key: ValueKey('${facility.id}_${preference.memo}'),
             initialValue: preference.memo,
             decoration: const InputDecoration(
               labelText: 'メモ',
-              hintText: '座席、鑑賞場所、同行者の希望など',
               border: OutlineInputBorder(),
             ),
             minLines: 1,
@@ -375,98 +326,123 @@ class PlanPreferenceEditor extends StatelessWidget {
       methods.add(FacilityAccessMethod.freeSeating);
     }
 
-    return methods.toSet().toList(growable: false);
+    if (!methods.contains(preference.accessMethod)) {
+      methods.add(preference.accessMethod);
+    }
+
+    return methods;
+  }
+}
+
+class _TimePickerField extends StatelessWidget {
+  const _TimePickerField({
+    required this.label,
+    required this.helperText,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String helperText;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = value.trim().isEmpty ? '未設定' : value.trim();
+
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helperText,
+        border: const OutlineInputBorder(),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule_outlined, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              displayValue,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          if (value.trim().isNotEmpty)
+            IconButton(
+              tooltip: '時刻を解除',
+              onPressed: () {
+                onChanged('');
+              },
+              icon: const Icon(Icons.clear),
+            ),
+          FilledButton.tonalIcon(
+            onPressed: () async {
+              final initial = _parseTime(value) ?? TimeOfDay.now();
+
+              final selected = await showTimePicker(
+                context: context,
+                initialTime: initial,
+                helpText: '$labelを選択',
+                cancelText: 'キャンセル',
+                confirmText: '決定',
+              );
+
+              if (selected == null) {
+                return;
+              }
+
+              onChanged(
+                '${selected.hour.toString().padLeft(2, '0')}:'
+                '${selected.minute.toString().padLeft(2, '0')}',
+              );
+            },
+            icon: const Icon(Icons.access_time, size: 18),
+            label: const Text('選択'),
+          ),
+        ],
+      ),
+    );
   }
 
-  static String? _optionalTimeValidator(String? value) {
-    final text = value?.trim().replaceAll('：', ':');
+  TimeOfDay? _parseTime(String value) {
+    final match = RegExp(
+      r'^([01]?\d|2[0-3]):([0-5]\d)$',
+    ).firstMatch(value.trim().replaceAll('：', ':'));
 
-    if (text == null || text.isEmpty) {
+    if (match == null) {
       return null;
     }
 
-    final match = RegExp(r'^([01]?\d|2[0-3]):([0-5]\d)$').firstMatch(text);
+    final hour = int.tryParse(match.group(1) ?? '');
+    final minute = int.tryParse(match.group(2) ?? '');
 
-    if (match == null) {
-      return '時刻は「17:35」の形式で入力してください。';
+    if (hour == null || minute == null) {
+      return null;
     }
 
-    return null;
+    return TimeOfDay(hour: hour, minute: minute);
   }
 }
 
-class _AccessMethodDescription extends StatelessWidget {
-  const _AccessMethodDescription({required this.method});
-
-  final FacilityAccessMethod method;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          _accessMethodIcon(method),
-          size: 17,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 7),
-        Expanded(
-          child: Text(
-            method.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              height: 1.4,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FallbackDescription extends StatelessWidget {
-  const _FallbackDescription({required this.action});
-
-  final LotteryFallbackAction action;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          Icons.alt_route_outlined,
-          size: 17,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 7),
-        Expanded(
-          child: Text(
-            action.description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              height: 1.4,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-IconData _accessMethodIcon(FacilityAccessMethod method) {
+String _accessMethodLabel(FacilityAccessMethod method) {
   return switch (method) {
-    FacilityAccessMethod.standby => Icons.groups_outlined,
-    FacilityAccessMethod.dpa => Icons.bolt,
-    FacilityAccessMethod.priorityPass => Icons.confirmation_number_outlined,
-    FacilityAccessMethod.standbyPass => Icons.airplane_ticket_outlined,
-    FacilityAccessMethod.entryRequest => Icons.how_to_reg_outlined,
-    FacilityAccessMethod.reservation => Icons.event_available_outlined,
-    FacilityAccessMethod.freeSeating => Icons.chair_alt_outlined,
+    FacilityAccessMethod.standby => '通常待機・通常利用',
+    FacilityAccessMethod.dpa => 'ディズニー・プレミアアクセス',
+    FacilityAccessMethod.priorityPass => 'プライオリティパス',
+    FacilityAccessMethod.standbyPass => 'スタンバイパス',
+    FacilityAccessMethod.entryRequest => 'エントリー受付',
+    FacilityAccessMethod.reservation => '予約・プライオリティ・シーティング',
+    FacilityAccessMethod.freeSeating => '自由席・自由鑑賞',
+  };
+}
+
+String _fallbackLabel(LotteryFallbackAction action) {
+  return switch (action) {
+    LotteryFallbackAction.alternativeFacility => '別の施設へ行く',
+    LotteryFallbackAction.freeSeating => '自由席・自由鑑賞を利用',
+    LotteryFallbackAction.retryLater => '後で再検討',
+    LotteryFallbackAction.skip => 'この施設を諦める',
   };
 }

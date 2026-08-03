@@ -26,7 +26,6 @@ class AppState extends ChangeNotifier {
   TripSettings tripSettings = TripSettings.initial();
 
   final List<Facility> _selectedFacilities = [];
-
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
 
   DaySchedule? daySchedule;
@@ -137,7 +136,6 @@ class AppState extends ChangeNotifier {
       debugPrintStack(stackTrace: stackTrace);
 
       tripSettings = TripSettings.initial();
-
       _selectedFacilities.clear();
       _preferencesByFacilityId.clear();
       daySchedule = null;
@@ -171,7 +169,6 @@ class AppState extends ChangeNotifier {
     await _storage.clear();
 
     tripSettings = TripSettings.initial();
-
     _selectedFacilities.clear();
     _preferencesByFacilityId.clear();
     daySchedule = null;
@@ -195,7 +192,6 @@ class AppState extends ChangeNotifier {
   void updateTripSettings(TripSettings settings) {
     tripSettings = settings;
     daySchedule = null;
-
     _saveAndNotify();
   }
 
@@ -267,7 +263,6 @@ class AppState extends ChangeNotifier {
     parkFacilities.insert(adjustedNewIndex, movedFacility);
 
     final reorderedFacilities = <Facility>[];
-
     var currentParkIndex = 0;
 
     for (final facility in _selectedFacilities) {
@@ -394,7 +389,7 @@ class AppState extends ChangeNotifier {
     }
 
     _preferencesByFacilityId[facilityId] = current.copyWith(
-      preferredPerformanceTime: _normalizeTimeText(value),
+      preferredPerformanceTime: value.trim(),
     );
 
     _invalidateScheduleAndSave();
@@ -411,7 +406,24 @@ class AppState extends ChangeNotifier {
     }
 
     _preferencesByFacilityId[facilityId] = current.copyWith(
-      reservationTime: _normalizeTimeText(value),
+      reservationTime: value.trim(),
+    );
+
+    _invalidateScheduleAndSave();
+  }
+
+  void updatePreferenceScheduledAccessTime({
+    required String facilityId,
+    required String value,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+
+    if (current == null) {
+      return;
+    }
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      scheduledAccessTime: value.trim(),
     );
 
     _invalidateScheduleAndSave();
@@ -444,14 +456,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    _preferencesByFacilityId[facilityId] = current.copyWith(
-      useDpa: value,
-      usePriorityPass: value ? false : current.usePriorityPass,
-      useStandbyPass: value ? false : current.useStandbyPass,
-      accessMethod: value
-          ? FacilityAccessMethod.dpa
-          : FacilityAccessMethod.standby,
-    );
+    _preferencesByFacilityId[facilityId] = current.copyWith(useDpa: value);
 
     _invalidateScheduleAndSave();
   }
@@ -467,12 +472,7 @@ class AppState extends ChangeNotifier {
     }
 
     _preferencesByFacilityId[facilityId] = current.copyWith(
-      useDpa: value ? false : current.useDpa,
       usePriorityPass: value,
-      useStandbyPass: value ? false : current.useStandbyPass,
-      accessMethod: value
-          ? FacilityAccessMethod.priorityPass
-          : FacilityAccessMethod.standby,
     );
 
     _invalidateScheduleAndSave();
@@ -489,12 +489,7 @@ class AppState extends ChangeNotifier {
     }
 
     _preferencesByFacilityId[facilityId] = current.copyWith(
-      useDpa: value ? false : current.useDpa,
-      usePriorityPass: value ? false : current.usePriorityPass,
       useStandbyPass: value,
-      accessMethod: value
-          ? FacilityAccessMethod.standbyPass
-          : FacilityAccessMethod.standby,
     );
 
     _invalidateScheduleAndSave();
@@ -534,7 +529,6 @@ class AppState extends ChangeNotifier {
 
   void updateDaySchedule(DaySchedule schedule) {
     daySchedule = schedule;
-
     _saveAndNotify();
   }
 
@@ -544,7 +538,6 @@ class AppState extends ChangeNotifier {
     }
 
     daySchedule = null;
-
     _saveAndNotify();
   }
 
@@ -577,13 +570,8 @@ class AppState extends ChangeNotifier {
     return value.whereType<String>().toList(growable: false);
   }
 
-  String _normalizeTimeText(String value) {
-    return value.trim().replaceAll('：', ':');
-  }
-
   void _invalidateScheduleAndSave() {
     daySchedule = null;
-
     _saveAndNotify();
   }
 

@@ -94,6 +94,16 @@ class PlanPreferenceController extends ChangeNotifier {
     );
   }
 
+  void updateScheduledAccessTime({
+    required String facilityId,
+    required String value,
+  }) {
+    _appState.updatePreferenceScheduledAccessTime(
+      facilityId: facilityId,
+      value: value,
+    );
+  }
+
   void updateLotteryFallbackAction({
     required String facilityId,
     required LotteryFallbackAction action,

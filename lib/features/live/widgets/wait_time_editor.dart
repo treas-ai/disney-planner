@@ -20,9 +20,7 @@ class WaitTimeEditor extends StatefulWidget {
   final LiveWaitTime? currentWaitTime;
   final bool isSaving;
 
-  final Future<bool> Function(
-    int waitMinutes,
-  ) onSave;
+  final Future<bool> Function(int waitMinutes) onSave;
 
   final Future<bool> Function() onClear;
 
@@ -32,10 +30,8 @@ class WaitTimeEditor extends StatefulWidget {
   }
 }
 
-class _WaitTimeEditorState
-    extends State<WaitTimeEditor> {
-  late final TextEditingController
-      _waitMinutesController;
+class _WaitTimeEditorState extends State<WaitTimeEditor> {
+  late final TextEditingController _waitMinutesController;
 
   String? _validationMessage;
 
@@ -43,31 +39,24 @@ class _WaitTimeEditorState
   void initState() {
     super.initState();
 
-    _waitMinutesController =
-        TextEditingController(
-      text: widget.currentWaitTime?.waitMinutes
-          .toString(),
+    _waitMinutesController = TextEditingController(
+      text: widget.currentWaitTime?.waitMinutes.toString(),
     );
   }
 
   @override
-  void didUpdateWidget(
-    WaitTimeEditor oldWidget,
-  ) {
+  void didUpdateWidget(WaitTimeEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final oldWaitMinutes =
-        oldWidget.currentWaitTime?.waitMinutes;
+    final oldWaitMinutes = oldWidget.currentWaitTime?.waitMinutes;
 
-    final newWaitMinutes =
-        widget.currentWaitTime?.waitMinutes;
+    final newWaitMinutes = widget.currentWaitTime?.waitMinutes;
 
     if (oldWaitMinutes == newWaitMinutes) {
       return;
     }
 
-    _waitMinutesController.text =
-        newWaitMinutes?.toString() ?? '';
+    _waitMinutesController.text = newWaitMinutes?.toString() ?? '';
   }
 
   @override
@@ -78,14 +67,11 @@ class _WaitTimeEditorState
   }
 
   Future<void> _save() async {
-    final value = int.tryParse(
-      _waitMinutesController.text.trim(),
-    );
+    final value = int.tryParse(_waitMinutesController.text.trim());
 
     if (value == null) {
       setState(() {
-        _validationMessage =
-            '待ち時間を数字で入力してください。';
+        _validationMessage = '待ち時間を数字で入力してください。';
       });
 
       return;
@@ -93,8 +79,7 @@ class _WaitTimeEditorState
 
     if (value < 0 || value > 999) {
       setState(() {
-        _validationMessage =
-            '0〜999分で入力してください。';
+        _validationMessage = '0〜999分で入力してください。';
       });
 
       return;
@@ -113,11 +98,7 @@ class _WaitTimeEditorState
     FocusScope.of(context).unfocus();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${widget.facilityName}の待ち時間を$value分で保存しました。',
-        ),
-      ),
+      SnackBar(content: Text('${widget.facilityName}の待ち時間を$value分で保存しました。')),
     );
   }
 
@@ -135,26 +116,17 @@ class _WaitTimeEditorState
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${widget.facilityName}の待ち時間を未設定に戻しました。',
-        ),
-      ),
+      SnackBar(content: Text('${widget.facilityName}の待ち時間を未設定に戻しました。')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme =
-        Theme.of(context).colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    final currentWaitTime =
-        widget.currentWaitTime;
+    final currentWaitTime = widget.currentWaitTime;
 
-    final isStale = currentWaitTime?.isStaleAt(
-          DateTime.now(),
-        ) ??
-        false;
+    final isStale = currentWaitTime?.isStaleAt(DateTime.now()) ?? false;
 
     return Material(
       color: colorScheme.surface,
@@ -164,14 +136,11 @@ class _WaitTimeEditorState
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: colorScheme.outlineVariant,
-          ),
+          border: Border.all(color: colorScheme.outlineVariant),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
@@ -179,47 +148,33 @@ class _WaitTimeEditorState
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color:
-                        colorScheme.primaryContainer,
-                    borderRadius:
-                        BorderRadius.circular(11),
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(11),
                   ),
                   alignment: Alignment.center,
                   child: Icon(
                     Icons.schedule_outlined,
                     size: 21,
-                    color: colorScheme
-                        .onPrimaryContainer,
+                    color: colorScheme.onPrimaryContainer,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.facilityName,
                         maxLines: 2,
-                        overflow:
-                            TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(
-                              fontWeight:
-                                  FontWeight.w700,
-                            ),
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       Text(
                         '現在の待ち時間を入力',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(
-                              color: colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -237,46 +192,34 @@ class _WaitTimeEditorState
                 decoration: BoxDecoration(
                   color: isStale
                       ? colorScheme.errorContainer
-                      : colorScheme
-                          .secondaryContainer,
-                  borderRadius:
-                      BorderRadius.circular(10),
+                      : colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       isStale
-                          ? Icons
-                              .warning_amber_outlined
-                          : Icons
-                              .check_circle_outline,
+                          ? Icons.warning_amber_outlined
+                          : Icons.check_circle_outline,
                       size: 18,
                       color: isStale
-                          ? colorScheme
-                              .onErrorContainer
-                          : colorScheme
-                              .onSecondaryContainer,
+                          ? colorScheme.onErrorContainer
+                          : colorScheme.onSecondaryContainer,
                     ),
                     const SizedBox(width: 7),
                     Expanded(
                       child: Text(
                         isStale
                             ? '情報が古くなっています。'
-                                '${currentWaitTime.ageLabel()}に更新'
+                                  '${currentWaitTime.ageLabel()}に更新'
                             : '${currentWaitTime.waitMinutes}分・'
-                                '${currentWaitTime.ageLabel()}に更新',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(
-                              color: isStale
-                                  ? colorScheme
-                                      .onErrorContainer
-                                  : colorScheme
-                                      .onSecondaryContainer,
-                              fontWeight:
-                                  FontWeight.w600,
-                            ),
+                                  '${currentWaitTime.ageLabel()}に更新',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: isStale
+                              ? colorScheme.onErrorContainer
+                              : colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -287,10 +230,8 @@ class _WaitTimeEditorState
             TextField(
               controller: _waitMinutesController,
               enabled: !widget.isSaving,
-              keyboardType:
-                  TextInputType.number,
-              textInputAction:
-                  TextInputAction.done,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
               onSubmitted: (_) {
                 _save();
               },
@@ -298,12 +239,9 @@ class _WaitTimeEditorState
                 labelText: '待ち時間',
                 hintText: '例：60',
                 suffixText: '分',
-                prefixIcon: const Icon(
-                  Icons.groups_outlined,
-                ),
+                prefixIcon: const Icon(Icons.groups_outlined),
                 errorText: _validationMessage,
-                border:
-                    const OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 10),
@@ -312,42 +250,24 @@ class _WaitTimeEditorState
                 if (currentWaitTime != null) ...[
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: widget.isSaving
-                          ? null
-                          : _clear,
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 18,
-                      ),
-                      label:
-                          const Text('未設定に戻す'),
+                      onPressed: widget.isSaving ? null : _clear,
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('未設定に戻す'),
                     ),
                   ),
                   const SizedBox(width: 8),
                 ],
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: widget.isSaving
-                        ? null
-                        : _save,
+                    onPressed: widget.isSaving ? null : _save,
                     icon: widget.isSaving
                         ? const SizedBox(
                             width: 17,
                             height: 17,
-                            child:
-                                CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(
-                            Icons.save_outlined,
-                            size: 18,
-                          ),
-                    label: Text(
-                      widget.isSaving
-                          ? '保存中'
-                          : '待ち時間を保存',
-                    ),
+                        : const Icon(Icons.save_outlined, size: 18),
+                    label: Text(widget.isSaving ? '保存中' : '待ち時間を保存'),
                   ),
                 ),
               ],
@@ -356,14 +276,10 @@ class _WaitTimeEditorState
             Text(
               '待ち時間は手動入力です。'
               'パーク内の最新案内を確認して更新してください。',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(
-                    color:
-                        colorScheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
             ),
           ],
         ),

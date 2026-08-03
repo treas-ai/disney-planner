@@ -81,29 +81,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (appState == null) {
       return const AppScaffold(
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: Center(child: CircularProgressIndicator()),
       );
     }
 
     final settings = appState.tripSettings;
 
     final selectedFacilities = appState.selectedFacilities
-        .where(
-          (facility) => facility.parkId == settings.parkId,
-        )
-        .toList(
-          growable: false,
-        );
+        .where((facility) => facility.parkId == settings.parkId)
+        .toList(growable: false);
 
     final unavailableFacilities = selectedFacilities
-        .where(
-          (facility) => !facility.isOpen,
-        )
-        .toList(
-          growable: false,
-        );
+        .where((facility) => !facility.isOpen)
+        .toList(growable: false);
 
     final schedule = appState.daySchedule;
 
@@ -126,10 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
         radius: const Radius.circular(8),
         child: ListView(
           controller: _scrollController,
-          padding: const EdgeInsets.only(
-            right: 14,
-            bottom: 96,
-          ),
+          padding: const EdgeInsets.only(right: 14, bottom: 96),
           children: [
             _HomeHeroCard(
               settings: settings,
@@ -158,9 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (!useTwoColumns) {
                   return Column(
                     children: [
-                      _NextActionCard(
-                        action: nextAction,
-                      ),
+                      _NextActionCard(action: nextAction),
                       const SizedBox(height: AppSpacing.sm),
                       _VisitSummaryCard(
                         settings: settings,
@@ -185,9 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return Column(
                   children: [
-                    _NextActionCard(
-                      action: nextAction,
-                    ),
+                    _NextActionCard(action: nextAction),
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,10 +185,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               const SizedBox(height: AppSpacing.sm),
                               _SelectedFacilitySummaryCard(
                                 selectedFacilities: selectedFacilities,
-                                unavailableFacilities:
-                                    unavailableFacilities,
-                                onEditPlanPressed:
-                                    widget.onEditPlanPressed,
+                                unavailableFacilities: unavailableFacilities,
+                                onEditPlanPressed: widget.onEditPlanPressed,
                               ),
                             ],
                           ),
@@ -215,10 +196,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: _ScheduleSummaryCard(
                             settings: settings,
                             schedule: schedule,
-                            onReviewPlanPressed:
-                                widget.onReviewPlanPressed,
-                            onTodayPlanPressed:
-                                widget.onTodayPlanPressed,
+                            onReviewPlanPressed: widget.onReviewPlanPressed,
+                            onTodayPlanPressed: widget.onTodayPlanPressed,
                           ),
                         ),
                       ],
@@ -254,8 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (unavailableFacilities.isNotEmpty) {
       return _HomeAction(
         title: '休止中施設を確認',
-        description:
-            '${unavailableFacilities.length}件の施設は、現在プランへ組み込めません。',
+        description: '${unavailableFacilities.length}件の施設は、現在プランへ組み込めません。',
         buttonLabel: '選択施設を確認',
         icon: Icons.warning_amber_outlined,
         foregroundColor: const Color(0xFFC62828),
@@ -370,12 +348,9 @@ class _HomeHeroCard extends StatelessWidget {
                             children: [
                               Text(
                                 '現在のプラン',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      color:
-                                          colorScheme.onPrimaryContainer,
+                                      color: colorScheme.onPrimaryContainer,
                                       fontWeight: FontWeight.w600,
                                     ),
                               ),
@@ -383,12 +358,9 @@ class _HomeHeroCard extends StatelessWidget {
                                 _parkName(settings.parkId),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
+                                style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
-                                      color:
-                                          colorScheme.onPrimaryContainer,
+                                      color: colorScheme.onPrimaryContainer,
                                       fontWeight: FontWeight.w800,
                                     ),
                               ),
@@ -485,9 +457,9 @@ class _HomeQuickActions extends StatelessWidget {
         children: [
           Text(
             'クイック操作',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: AppSpacing.sm),
           LayoutBuilder(
@@ -506,9 +478,7 @@ class _HomeQuickActions extends StatelessWidget {
                     width: buttonWidth,
                     child: _QuickActionButton(
                       icon: Icons.edit_location_alt_outlined,
-                      label: selectedFacilityCount == 0
-                          ? '施設を選ぶ'
-                          : '施設を編集',
+                      label: selectedFacilityCount == 0 ? '施設を選ぶ' : '施設を編集',
                       onPressed: onEditPlanPressed,
                     ),
                   ),
@@ -525,8 +495,7 @@ class _HomeQuickActions extends StatelessWidget {
                     child: _QuickActionButton(
                       icon: Icons.event_available_outlined,
                       label: '当日の予定',
-                      onPressed:
-                          hasCurrentSchedule ? onTodayPlanPressed : null,
+                      onPressed: hasCurrentSchedule ? onTodayPlanPressed : null,
                     ),
                   ),
                   SizedBox(
@@ -569,10 +538,7 @@ class _QuickActionButton extends StatelessWidget {
 }
 
 class _HeroInformationBadge extends StatelessWidget {
-  const _HeroInformationBadge({
-    required this.icon,
-    required this.label,
-  });
+  const _HeroInformationBadge({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -582,10 +548,7 @@ class _HeroInformationBadge extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: colorScheme.surface.withValues(alpha: 0.76),
         borderRadius: BorderRadius.circular(9),
@@ -609,9 +572,7 @@ class _HeroInformationBadge extends StatelessWidget {
 }
 
 class _NextActionCard extends StatelessWidget {
-  const _NextActionCard({
-    required this.action,
-  });
+  const _NextActionCard({required this.action});
 
   final _HomeAction action;
 
@@ -645,26 +606,21 @@ class _NextActionCard extends StatelessWidget {
                     Text(
                       '次にやること',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       action.title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       action.description,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.4,
                       ),
                     ),
@@ -833,10 +789,7 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
               runSpacing: 6,
               children: [
                 for (final entry in categoryCounts.entries)
-                  _CountBadge(
-                    label: entry.key,
-                    count: entry.value,
-                  ),
+                  _CountBadge(label: entry.key, count: entry.value),
               ],
             ),
             if (unavailableFacilities.isNotEmpty) ...[
@@ -853,22 +806,16 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
                     Icon(
                       Icons.warning_amber_outlined,
                       size: 18,
-                      color:
-                          Theme.of(context).colorScheme.onErrorContainer,
+                      color: Theme.of(context).colorScheme.onErrorContainer,
                     ),
                     const SizedBox(width: 7),
                     Expanded(
                       child: Text(
                         '${unavailableFacilities.length}件は休止中または追加不可です。',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onErrorContainer,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -979,18 +926,12 @@ class _ScheduleSummaryCard extends StatelessWidget {
             child: scheduleMatchesPark
                 ? FilledButton.icon(
                     onPressed: onTodayPlanPressed,
-                    icon: const Icon(
-                      Icons.event_available_outlined,
-                      size: 19,
-                    ),
+                    icon: const Icon(Icons.event_available_outlined, size: 19),
                     label: const Text('当日の予定を確認'),
                   )
                 : OutlinedButton.icon(
                     onPressed: onReviewPlanPressed,
-                    icon: const Icon(
-                      Icons.route_outlined,
-                      size: 19,
-                    ),
+                    icon: const Icon(Icons.route_outlined, size: 19),
                     label: const Text('プラン確認へ'),
                   ),
           ),
@@ -1001,9 +942,7 @@ class _ScheduleSummaryCard extends StatelessWidget {
 }
 
 class _ScheduleOverview extends StatelessWidget {
-  const _ScheduleOverview({
-    required this.schedule,
-  });
+  const _ScheduleOverview({required this.schedule});
 
   final DaySchedule schedule;
 
@@ -1058,16 +997,11 @@ class _ScheduleMetric extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(
-          color: colorScheme.outlineVariant,
-        ),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Column(
         children: [
@@ -1084,9 +1018,9 @@ class _ScheduleMetric extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -1095,9 +1029,7 @@ class _ScheduleMetric extends StatelessWidget {
 }
 
 class _FirstScheduleItem extends StatelessWidget {
-  const _FirstScheduleItem({
-    required this.item,
-  });
+  const _FirstScheduleItem({required this.item});
 
   final ScheduleItem item;
 
@@ -1124,9 +1056,9 @@ class _FirstScheduleItem extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               item.startTimeLabel,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 9),
@@ -1138,9 +1070,9 @@ class _FirstScheduleItem extends StatelessWidget {
                   item.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 Text(
                   item.type.label,
@@ -1178,24 +1110,18 @@ class _ScheduleEmptyMessage extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: colorScheme.outlineVariant,
-        ),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: 30,
-            color: colorScheme.onSurfaceVariant,
-          ),
+          Icon(icon, size: 30, color: colorScheme.onSurfaceVariant),
           const SizedBox(height: 7),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 3),
           Text(
@@ -1236,17 +1162,17 @@ class _HomeCardHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
         if (trailing != null) ...[
           Text(
             trailing!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           if (actionLabel != null) const SizedBox(width: 5),
         ],
@@ -1255,10 +1181,7 @@ class _HomeCardHeader extends StatelessWidget {
             onPressed: onActionPressed,
             style: TextButton.styleFrom(
               visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 5,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             ),
             child: Text(actionLabel!),
           ),
@@ -1306,29 +1229,22 @@ class _SummaryRow extends StatelessWidget {
                 child: Text(
                   value,
                   textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
         ),
-        if (showDivider)
-          Divider(
-            height: 1,
-            color: colorScheme.outlineVariant,
-          ),
+        if (showDivider) Divider(height: 1, color: colorScheme.outlineVariant),
       ],
     );
   }
 }
 
 class _CountBadge extends StatelessWidget {
-  const _CountBadge({
-    required this.label,
-    required this.count,
-  });
+  const _CountBadge({required this.label, required this.count});
 
   final String label;
   final int count;
@@ -1338,22 +1254,17 @@ class _CountBadge extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: colorScheme.outlineVariant,
-        ),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Text(
         '$label $count',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }

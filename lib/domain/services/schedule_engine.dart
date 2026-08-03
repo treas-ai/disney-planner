@@ -69,6 +69,14 @@ class ScheduleEngine {
       exitMinutes: exitMinutes,
     );
 
+    final fixedAccessFacilityIds = _addFixedAccessFacilities(
+      items: items,
+      facilities: facilities,
+      preferences: preferences,
+      entryMinutes: entryEndMinutes,
+      exitMinutes: exitMinutes,
+    );
+
     final mealPlan = mealPlanner.plan(
       settings: settings,
       facilities: facilities,
@@ -103,7 +111,9 @@ class ScheduleEngine {
             facility.id,
           );
 
-          return !isAssignedRestaurant && !isFixedPerformance;
+          final isFixedAccess = fixedAccessFacilityIds.contains(facility.id);
+
+          return !isAssignedRestaurant && !isFixedPerformance && !isFixedAccess;
         })
         .toList(growable: false);
 
@@ -370,6 +380,112 @@ class ScheduleEngine {
             preference: preference,
             durationMinutes: durationMinutes,
             waitDecision: waitDecision,
+          ),
+          note: _buildScheduleNote(facility: facility, preference: preference),
+        ),
+      );
+
+      addedFacilityIds.add(facility.id);
+    }
+
+    return addedFacilityIds;
+  }
+
+  Set<String> _addFixedAccessFacilities({
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required List<PlanPreference> preferences,
+    required int entryMinutes,
+    required int exitMinutes,
+  }) {
+    final addedFacilityIds = <String>{};
+
+    final candidates = facilities
+        .map(
+          (facility) => _FixedAccessCandidate(
+            facility: facility,
+            preference: _findPreference(
+              facilityId: facility.id,
+              preferences: preferences,
+            ),
+          ),
+        )
+        .where((candidate) {
+          final preference = candidate.preference;
+
+          if (!candidate.facility.isOpen ||
+              preference == null ||
+              !preference.hasScheduledAccessTime ||
+              _isShowOrParade(candidate.facility) ||
+              candidate.facility.isRestaurant) {
+            return false;
+          }
+
+          return switch (preference.accessMethod) {
+            FacilityAccessMethod.dpa => true,
+            FacilityAccessMethod.priorityPass => true,
+            FacilityAccessMethod.standbyPass => true,
+            FacilityAccessMethod.entryRequest => true,
+            FacilityAccessMethod.reservation => true,
+            FacilityAccessMethod.standby => false,
+            FacilityAccessMethod.freeSeating => false,
+          };
+        })
+        .toList(growable: true);
+
+    candidates.sort((first, second) {
+      final firstTime = _parseTimeText(first.preference!.scheduledAccessTime);
+
+      final secondTime = _parseTimeText(second.preference!.scheduledAccessTime);
+
+      return (firstTime ?? 9999).compareTo(secondTime ?? 9999);
+    });
+
+    for (final candidate in candidates) {
+      final facility = candidate.facility;
+      final preference = candidate.preference!;
+
+      final fixedStartMinutes = _parseTimeText(preference.scheduledAccessTime);
+
+      if (fixedStartMinutes == null) {
+        continue;
+      }
+
+      final durationMinutes = _resolveFacilityDuration(facility);
+      final fixedEndMinutes = fixedStartMinutes + durationMinutes;
+
+      if (fixedStartMinutes < entryMinutes || fixedEndMinutes > exitMinutes) {
+        continue;
+      }
+
+      if (!_fitsOperatingHours(
+        facility: facility,
+        startMinutes: fixedStartMinutes,
+        durationMinutes: durationMinutes,
+      )) {
+        continue;
+      }
+
+      if (!_isTimeRangeAvailable(
+        startMinutes: fixedStartMinutes,
+        endMinutes: fixedEndMinutes,
+        items: items,
+      )) {
+        continue;
+      }
+
+      items.add(
+        _createScheduleItem(
+          id: 'fixed_access_${facility.id}',
+          title: facility.name,
+          type: ScheduleItemType.facility,
+          startMinutes: fixedStartMinutes,
+          endMinutes: fixedEndMinutes,
+          facilityId: facility.id,
+          reason: _buildFixedAccessReason(
+            facility: facility,
+            preference: preference,
+            durationMinutes: durationMinutes,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
         ),
@@ -952,6 +1068,33 @@ class ScheduleEngine {
     };
   }
 
+  String _buildFixedAccessReason({
+    required Facility facility,
+    required PlanPreference preference,
+    required int durationMinutes,
+  }) {
+    final reasons = <String>[
+      '${_accessMethodShortLabel(preference.accessMethod)}の利用時刻'
+          '「${preference.scheduledAccessTime}」へ固定配置しました。',
+      _accessMethodReason(facility: facility, preference: preference),
+      '所要時間を$durationMinutes分として配置しました。',
+    ];
+
+    return reasons.where((reason) => reason.isNotEmpty).join(' ');
+  }
+
+  String _accessMethodShortLabel(FacilityAccessMethod method) {
+    return switch (method) {
+      FacilityAccessMethod.standby => '通常利用',
+      FacilityAccessMethod.dpa => 'DPA',
+      FacilityAccessMethod.priorityPass => 'プライオリティパス',
+      FacilityAccessMethod.standbyPass => 'スタンバイパス',
+      FacilityAccessMethod.entryRequest => 'エントリー受付',
+      FacilityAccessMethod.reservation => '予約利用',
+      FacilityAccessMethod.freeSeating => '自由席・自由鑑賞',
+    };
+  }
+
   String _buildFixedPerformanceReason({
     required Facility facility,
     required PlanPreference preference,
@@ -1326,6 +1469,16 @@ class ScheduleEngine {
 
 class _FixedPerformanceCandidate {
   const _FixedPerformanceCandidate({
+    required this.facility,
+    required this.preference,
+  });
+
+  final Facility facility;
+  final PlanPreference? preference;
+}
+
+class _FixedAccessCandidate {
+  const _FixedAccessCandidate({
     required this.facility,
     required this.preference,
   });

@@ -42,9 +42,7 @@ class AppTypography {
     fontWeight: FontWeight.w400,
   );
 
-  static TextTheme textTheme(
-    ColorScheme colorScheme,
-  ) {
+  static TextTheme textTheme(ColorScheme colorScheme) {
     return TextTheme(
       displayLarge: TextStyle(
         fontFamily: fontFamily,

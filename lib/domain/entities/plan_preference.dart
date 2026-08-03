@@ -1,4 +1,5 @@
 import '../enums/facility_access_method.dart';
+import '../enums/fixed_time_status.dart';
 import '../enums/lottery_fallback_action.dart';
 import '../enums/meal_preference.dart';
 import '../enums/preferred_time.dart';
@@ -22,15 +23,15 @@ class PlanPreference {
     this.accessMethod = FacilityAccessMethod.standby,
     this.preferredPerformanceTime = '',
     this.reservationTime = '',
+    this.scheduledAccessTime = '',
+    this.fixedTimeStatus = FixedTimeStatus.none,
+    this.selectedPerformanceIndex,
     this.lotteryFallbackAction = LotteryFallbackAction.alternativeFacility,
   });
 
   factory PlanPreference.initial({required String facilityId}) {
     return PlanPreference(
-      id:
-          'preference_'
-          '${facilityId}_'
-          '${DateTime.now().millisecondsSinceEpoch}',
+      id: 'preference_${facilityId}_${DateTime.now().millisecondsSinceEpoch}',
       facilityId: facilityId,
       priority: PriorityLevel.medium,
       preferredTime: PreferredTime.anytime,
@@ -43,6 +44,9 @@ class PlanPreference {
       accessMethod: FacilityAccessMethod.standby,
       preferredPerformanceTime: '',
       reservationTime: '',
+      scheduledAccessTime: '',
+      fixedTimeStatus: FixedTimeStatus.none,
+      selectedPerformanceIndex: null,
       lotteryFallbackAction: LotteryFallbackAction.alternativeFacility,
       memo: '',
       createdAt: DateTime.now(),
@@ -51,9 +55,7 @@ class PlanPreference {
 
   factory PlanPreference.fromJson(Map<String, dynamic> json) {
     final useDpa = json['useDpa'] as bool? ?? false;
-
     final usePriorityPass = json['usePriorityPass'] as bool? ?? false;
-
     final useStandbyPass = json['useStandbyPass'] as bool? ?? false;
 
     final accessMethodName = json['accessMethod'] as String?;
@@ -98,6 +100,9 @@ class PlanPreference {
       preferredPerformanceTime:
           json['preferredPerformanceTime'] as String? ?? '',
       reservationTime: json['reservationTime'] as String? ?? '',
+      scheduledAccessTime: json['scheduledAccessTime'] as String? ?? '',
+      fixedTimeStatus: _readFixedTimeStatus(json),
+      selectedPerformanceIndex: json['selectedPerformanceIndex'] as int?,
       lotteryFallbackAction: LotteryFallbackAction.values.firstWhere(
         (action) => action.name == json['lotteryFallbackAction'],
         orElse: () => LotteryFallbackAction.alternativeFacility,
@@ -120,20 +125,22 @@ class PlanPreference {
   final bool useDpa;
   final bool usePriorityPass;
   final bool useStandbyPass;
-
   final bool prioritizeCapsuleToy;
 
   final FacilityAccessMethod accessMethod;
 
-  /// ショー・パレードの希望公演時刻。
-  ///
-  /// `HH:mm`形式を基本とし、未設定時は空文字列です。
+  /// ショー・パレードの公演開始時刻。HH:mm形式。
   final String preferredPerformanceTime;
 
-  /// レストラン等の予約時刻。
-  ///
-  /// `HH:mm`形式を基本とし、未設定時は空文字列です。
+  /// レストラン予約・PS・モバイルオーダー受取時刻。HH:mm形式。
   final String reservationTime;
+
+  /// DPA・PP・SP・時間指定アトラクション等の利用時刻。HH:mm形式。
+  final String scheduledAccessTime;
+
+  final FixedTimeStatus fixedTimeStatus;
+
+  final int? selectedPerformanceIndex;
 
   final LotteryFallbackAction lotteryFallbackAction;
 
@@ -152,6 +159,10 @@ class PlanPreference {
     return reservationTime.trim().isNotEmpty;
   }
 
+  bool get hasScheduledAccessTime {
+    return scheduledAccessTime.trim().isNotEmpty;
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -167,6 +178,9 @@ class PlanPreference {
       'accessMethod': accessMethod.name,
       'preferredPerformanceTime': preferredPerformanceTime,
       'reservationTime': reservationTime,
+      'scheduledAccessTime': scheduledAccessTime,
+      'fixedTimeStatus': fixedTimeStatus.name,
+      'selectedPerformanceIndex': selectedPerformanceIndex,
       'lotteryFallbackAction': lotteryFallbackAction.name,
       'memo': memo,
       'createdAt': createdAt.toIso8601String(),
@@ -187,6 +201,10 @@ class PlanPreference {
     FacilityAccessMethod? accessMethod,
     String? preferredPerformanceTime,
     String? reservationTime,
+    String? scheduledAccessTime,
+    FixedTimeStatus? fixedTimeStatus,
+    int? selectedPerformanceIndex,
+    bool clearSelectedPerformanceIndex = false,
     LotteryFallbackAction? lotteryFallbackAction,
     String? memo,
     DateTime? createdAt,
@@ -206,11 +224,34 @@ class PlanPreference {
       preferredPerformanceTime:
           preferredPerformanceTime ?? this.preferredPerformanceTime,
       reservationTime: reservationTime ?? this.reservationTime,
+      scheduledAccessTime: scheduledAccessTime ?? this.scheduledAccessTime,
+      fixedTimeStatus: fixedTimeStatus ?? this.fixedTimeStatus,
+      selectedPerformanceIndex: clearSelectedPerformanceIndex
+          ? null
+          : selectedPerformanceIndex ?? this.selectedPerformanceIndex,
       lotteryFallbackAction:
           lotteryFallbackAction ?? this.lotteryFallbackAction,
       memo: memo ?? this.memo,
       createdAt: createdAt ?? this.createdAt,
     );
+  }
+
+  static FixedTimeStatus _readFixedTimeStatus(Map<String, dynamic> json) {
+    final raw = json['fixedTimeStatus'] as String?;
+
+    if (raw != null) {
+      return FixedTimeStatus.values.firstWhere(
+        (value) => value.name == raw,
+        orElse: () => FixedTimeStatus.none,
+      );
+    }
+
+    final hasLegacyTime =
+        (json['preferredPerformanceTime'] as String? ?? '').trim().isNotEmpty ||
+        (json['reservationTime'] as String? ?? '').trim().isNotEmpty ||
+        (json['scheduledAccessTime'] as String? ?? '').trim().isNotEmpty;
+
+    return hasLegacyTime ? FixedTimeStatus.confirmed : FixedTimeStatus.none;
   }
 
   static FacilityAccessMethod _legacyAccessMethod({
