@@ -15,7 +15,9 @@ import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
 import '../facility/widgets/facility_visual_style.dart';
 import '../facility/widgets/fixed_schedule_editor_sheet.dart';
+import 'plan_optimization_controller.dart';
 import 'schedule_controller.dart';
+import 'widgets/plan_optimization_sheet.dart';
 
 class PlanReviewScreen extends StatefulWidget {
   const PlanReviewScreen({super.key});
@@ -28,6 +30,7 @@ class PlanReviewScreen extends StatefulWidget {
 
 class _PlanReviewScreenState extends State<PlanReviewScreen> {
   ScheduleController? _controller;
+  PlanOptimizationController? _optimizationController;
 
   late final ScrollController _mobileScrollController;
   late final ScrollController _timelineScrollController;
@@ -52,12 +55,16 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
 
     _controller = ScheduleController(appState);
     _controller!.addListener(_refresh);
+    _optimizationController = PlanOptimizationController(appState);
+    _optimizationController!.addListener(_refresh);
   }
 
   @override
   void dispose() {
     _controller?.removeListener(_refresh);
     _controller?.dispose();
+    _optimizationController?.removeListener(_refresh);
+    _optimizationController?.dispose();
 
     _mobileScrollController.dispose();
     _timelineScrollController.dispose();
@@ -100,6 +107,44 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
       0,
       duration: const Duration(milliseconds: 240),
       curve: Curves.easeOut,
+    );
+  }
+
+  Future<void> _showPlanOptimization() async {
+    final optimizationController = _optimizationController;
+    if (optimizationController == null) {
+      return;
+    }
+
+    await optimizationController.analyze();
+    if (!mounted) {
+      return;
+    }
+    final errorMessage = optimizationController.errorMessage;
+    if (errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      return;
+    }
+    final result = optimizationController.result;
+    if (result == null) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.9,
+          child: PlanOptimizationSheet(
+            result: result,
+            onApply: optimizationController.apply,
+          ),
+        );
+      },
     );
   }
 
@@ -165,6 +210,8 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
               timelineScrollController: _timelineScrollController,
               onGeneratePressed: _generateSchedule,
               onClearPressed: _confirmClearSchedule,
+              onOptimizePressed: _showPlanOptimization,
+              isOptimizing: _optimizationController?.isLoading ?? false,
             );
           }
 
@@ -173,6 +220,8 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
             scrollController: _mobileScrollController,
             onGeneratePressed: _generateSchedule,
             onClearPressed: _confirmClearSchedule,
+            onOptimizePressed: _showPlanOptimization,
+            isOptimizing: _optimizationController?.isLoading ?? false,
           );
         },
       ),
@@ -186,12 +235,16 @@ class _MobilePlanReviewLayout extends StatelessWidget {
     required this.scrollController,
     required this.onGeneratePressed,
     required this.onClearPressed,
+    required this.onOptimizePressed,
+    required this.isOptimizing,
   });
 
   final ScheduleController controller;
   final ScrollController scrollController;
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
+  final VoidCallback onOptimizePressed;
+  final bool isOptimizing;
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +262,8 @@ class _MobilePlanReviewLayout extends StatelessWidget {
             controller: controller,
             onGeneratePressed: onGeneratePressed,
             onClearPressed: onClearPressed,
+            onOptimizePressed: onOptimizePressed,
+            isOptimizing: isOptimizing,
           ),
           if (controller.errorMessage != null) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -237,12 +292,16 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
     required this.timelineScrollController,
     required this.onGeneratePressed,
     required this.onClearPressed,
+    required this.onOptimizePressed,
+    required this.isOptimizing,
   });
 
   final ScheduleController controller;
   final ScrollController timelineScrollController;
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
+  final VoidCallback onOptimizePressed;
+  final bool isOptimizing;
 
   @override
   Widget build(BuildContext context) {
@@ -259,6 +318,8 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                   controller: controller,
                   onGeneratePressed: onGeneratePressed,
                   onClearPressed: onClearPressed,
+                  onOptimizePressed: onOptimizePressed,
+                  isOptimizing: isOptimizing,
                 ),
                 if (controller.errorMessage != null) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -302,11 +363,15 @@ class _PlanOverviewCard extends StatelessWidget {
     required this.controller,
     required this.onGeneratePressed,
     required this.onClearPressed,
+    required this.onOptimizePressed,
+    required this.isOptimizing,
   });
 
   final ScheduleController controller;
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
+  final VoidCallback onOptimizePressed;
+  final bool isOptimizing;
 
   @override
   Widget build(BuildContext context) {
@@ -406,6 +471,21 @@ class _PlanOverviewCard extends StatelessWidget {
             ),
           ),
           if (schedule != null) ...[
+            const SizedBox(height: 7),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: isOptimizing ? null : onOptimizePressed,
+                icon: isOptimizing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.psychology_alt_outlined, size: 19),
+                label: Text(isOptimizing ? 'AI分析中...' : 'AIプラン評価'),
+              ),
+            ),
             const SizedBox(height: 7),
             SizedBox(
               width: double.infinity,
