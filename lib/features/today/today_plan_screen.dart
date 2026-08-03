@@ -15,6 +15,8 @@ import '../live/live_controller.dart';
 import '../live/live_models.dart';
 import '../live/widgets/live_wait_time_list_panel.dart';
 import '../live/widgets/wait_time_editor.dart';
+import 'schedule_recalculation_controller.dart';
+import 'widgets/schedule_recalculation_preview_sheet.dart';
 
 class TodayPlanScreen extends StatefulWidget {
   const TodayPlanScreen({super.key});
@@ -28,6 +30,7 @@ class TodayPlanScreen extends StatefulWidget {
 class _TodayPlanScreenState extends State<TodayPlanScreen> {
   AppState? _appState;
   LiveController? _liveController;
+  ScheduleRecalculationController? _recalculationController;
 
   late final ScrollController _mobileScrollController;
   late final ScrollController _scheduleScrollController;
@@ -59,8 +62,13 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
 
     _appState = appState;
     _liveController = LiveController(appState);
+    _recalculationController = ScheduleRecalculationController(
+      appState,
+      _liveController!,
+    );
 
     _liveController!.addListener(_refresh);
+    _recalculationController!.addListener(_refresh);
     _liveController!.initialize();
   }
 
@@ -75,9 +83,12 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
   }
 
   void _disposeController() {
+    _recalculationController?.removeListener(_refresh);
+    _recalculationController?.dispose();
     _liveController?.removeListener(_refresh);
     _liveController?.dispose();
 
+    _recalculationController = null;
     _liveController = null;
   }
 
@@ -241,6 +252,35 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     );
   }
 
+  Future<void> _createRecalculationProposal() async {
+    final controller = _recalculationController;
+    if (controller == null) return;
+    final result = await controller.createProposal();
+    if (!mounted || result == null) return;
+    final apply = await showScheduleRecalculationPreviewSheet(
+      context: context,
+      result: result,
+    );
+    if (!mounted) return;
+    if (apply) {
+      controller.applyProposal();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('再計算した予定を反映しました。')));
+    } else {
+      controller.discardProposal();
+    }
+  }
+
+  void _undoRecalculation() {
+    final controller = _recalculationController;
+    if (controller == null || !controller.canUndo) return;
+    controller.undoLastApply();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('直前のスケジュールへ戻しました。')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final liveController = _liveController;
@@ -256,31 +296,71 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     _synchronizeScheduleItemKeys(liveController);
     _scheduleInitialScroll(liveController);
 
+    final recalculationController = _recalculationController;
+
     return AppScaffold(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final useTwoColumns = constraints.maxWidth >= 900;
+      child: Stack(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final useTwoColumns = constraints.maxWidth >= 900;
 
-          if (useTwoColumns) {
-            return _DesktopTodayLayout(
-              controller: liveController,
-              snapshot: snapshot,
-              scheduleScrollController: _scheduleScrollController,
-              scheduleItemKeys: _scheduleItemKeys,
-              onCurrentSchedulePressed: _scrollToCurrentSchedule,
-              onWaitTimeEditPressed: _openWaitTimeEditor,
-            );
-          }
+              if (useTwoColumns) {
+                return _DesktopTodayLayout(
+                  controller: liveController,
+                  snapshot: snapshot,
+                  scheduleScrollController: _scheduleScrollController,
+                  scheduleItemKeys: _scheduleItemKeys,
+                  onCurrentSchedulePressed: _scrollToCurrentSchedule,
+                  onWaitTimeEditPressed: _openWaitTimeEditor,
+                );
+              }
 
-          return _MobileTodayLayout(
-            controller: liveController,
-            snapshot: snapshot,
-            scrollController: _mobileScrollController,
-            scheduleItemKeys: _scheduleItemKeys,
-            onCurrentSchedulePressed: _scrollToCurrentSchedule,
-            onWaitTimeEditPressed: _openWaitTimeEditor,
-          );
-        },
+              return _MobileTodayLayout(
+                controller: liveController,
+                snapshot: snapshot,
+                scrollController: _mobileScrollController,
+                scheduleItemKeys: _scheduleItemKeys,
+                onCurrentSchedulePressed: _scrollToCurrentSchedule,
+                onWaitTimeEditPressed: _openWaitTimeEditor,
+              );
+            },
+          ),
+          if (liveController.schedule != null &&
+              recalculationController != null)
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (recalculationController.canUndo) ...[
+                    FloatingActionButton.small(
+                      heroTag: 'undo_schedule_recalculation',
+                      onPressed: _undoRecalculation,
+                      tooltip: '直前の再計算を元に戻す',
+                      child: const Icon(Icons.undo),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  FloatingActionButton.extended(
+                    heroTag: 'create_schedule_recalculation',
+                    onPressed: recalculationController.isCalculating
+                        ? null
+                        : _createRecalculationProposal,
+                    icon: recalculationController.isCalculating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_fix_high_outlined),
+                    label: const Text('残り予定を再計算'),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

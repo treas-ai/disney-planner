@@ -30,6 +30,9 @@ class AppState extends ChangeNotifier {
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
 
   DaySchedule? daySchedule;
+  DaySchedule? _previousDaySchedule;
+
+  bool get canUndoScheduleChange => _previousDaySchedule != null;
 
   bool isRestored = false;
   bool isSaving = false;
@@ -173,6 +176,7 @@ class AppState extends ChangeNotifier {
     _selectedFacilities.clear();
     _preferencesByFacilityId.clear();
     daySchedule = null;
+    _previousDaySchedule = null;
 
     notifyListeners();
   }
@@ -577,7 +581,32 @@ class AppState extends ChangeNotifier {
 
   void updateDaySchedule(DaySchedule schedule) {
     daySchedule = schedule;
+    _previousDaySchedule = null;
     _saveAndNotify();
+  }
+
+  void applyRecalculatedSchedule(DaySchedule schedule) {
+    _previousDaySchedule = daySchedule;
+    daySchedule = schedule;
+    _saveAndNotify();
+  }
+
+  void undoLastScheduleChange() {
+    final previous = _previousDaySchedule;
+    if (previous == null) {
+      return;
+    }
+    daySchedule = previous;
+    _previousDaySchedule = null;
+    _saveAndNotify();
+  }
+
+  void clearScheduleUndoHistory() {
+    if (_previousDaySchedule == null) {
+      return;
+    }
+    _previousDaySchedule = null;
+    notifyListeners();
   }
 
   void clearDaySchedule() {
