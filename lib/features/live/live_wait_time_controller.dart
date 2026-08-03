@@ -1,14 +1,23 @@
 import 'package:flutter/foundation.dart';
 
+import '../../data/local/local_history_repository.dart';
 import '../../data/local/local_live_wait_time_repository.dart';
+import '../../domain/entities/activity_history_record.dart';
 import '../../domain/entities/live_wait_time.dart';
+import '../../domain/enums/history_data_quality.dart';
+import '../../domain/enums/history_data_source.dart';
+import '../../domain/repositories/history_repository.dart';
 import '../../domain/repositories/live_wait_time_repository.dart';
 
 class LiveWaitTimeController extends ChangeNotifier {
-  LiveWaitTimeController({LiveWaitTimeRepository? repository})
-    : _repository = repository ?? const LocalLiveWaitTimeRepository();
+  LiveWaitTimeController({
+    LiveWaitTimeRepository? repository,
+    HistoryRepository? historyRepository,
+  }) : _repository = repository ?? const LocalLiveWaitTimeRepository(),
+       _historyRepository = historyRepository ?? const LocalHistoryRepository();
 
   final LiveWaitTimeRepository _repository;
+  final HistoryRepository _historyRepository;
 
   final Map<String, LiveWaitTime> _waitTimesByFacilityId = {};
 
@@ -173,6 +182,7 @@ class LiveWaitTimeController extends ChangeNotifier {
 
     try {
       await _repository.save(waitTime);
+      await _saveWaitTimeHistory(waitTime);
 
       return true;
     } catch (error, stackTrace) {
@@ -193,6 +203,32 @@ class LiveWaitTimeController extends ChangeNotifier {
       isSaving = false;
 
       notifyListeners();
+    }
+  }
+
+  Future<void> _saveWaitTimeHistory(LiveWaitTime waitTime) async {
+    final recordedAt = waitTime.updatedAt;
+    final record = ActivityHistoryRecord.waitTime(
+      id: 'wait_${waitTime.parkId}_${waitTime.facilityId}_${recordedAt.microsecondsSinceEpoch}',
+      parkId: waitTime.parkId,
+      facilityId: waitTime.facilityId,
+      waitMinutes: waitTime.waitMinutes,
+      recordedAt: recordedAt,
+      source: switch (waitTime.source) {
+        LiveWaitTimeSource.manual => HistoryDataSource.manual,
+        LiveWaitTimeSource.realtime => HistoryDataSource.officialReference,
+        LiveWaitTimeSource.estimated => HistoryDataSource.predicted,
+      },
+      quality: waitTime.source == LiveWaitTimeSource.estimated
+          ? HistoryDataQuality.low
+          : HistoryDataQuality.high,
+    );
+
+    try {
+      await _historyRepository.save(record);
+    } catch (error, stackTrace) {
+      debugPrint('AI学習用の待ち時間履歴を保存できませんでした: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 

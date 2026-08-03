@@ -87,3 +87,19 @@ flutter analyze
 ```text
 No issues found!
 ```
+
+
+## 行動履歴・学習データ（v2.6）
+
+```text
+Today / LiveWaitTimeController
+  → HistoryRepository
+    → LocalHistoryRepository（SharedPreferences）
+    → 将来 SQLite / Cloud
+
+LearningEngine
+  → 学習対象データの品質判定・要約
+  → v2.7 Prediction Engineへ入力
+```
+
+AI予測値は履歴として識別可能にし、実測データと混同しない。低品質データと予測値は標準では学習対象外とする。

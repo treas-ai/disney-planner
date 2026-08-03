@@ -50,3 +50,13 @@ dart format lib
 flutter analyze
 flutter run -d windows
 ```
+
+
+## v2.6 追加内容
+
+- 行動履歴共通モデル
+- 待ち時間履歴の自動保存
+- HistoryRepository / LocalHistoryRepository
+- データ品質・取得元の識別
+- LearningEngine基盤
+- AI予測値を学習対象から除外する設計

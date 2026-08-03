@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.6 — 行動履歴・AI学習データ基盤
+
+- 共通行動履歴モデルを追加
+- HistoryRepositoryとLocalHistoryRepositoryを追加
+- 待ち時間の手動保存時に学習履歴を自動記録
+- データ取得元と品質を保存
+- AI予測値を学習対象から除外可能にした
+- LearningEngineと学習データ要約を追加
+- SharedPreferencesへ最大5000件保存
+- バージョンを2.6.0+26へ更新
+
 ## v2.5 - 開発中
 
 - プロダクトを「公式アプリと一緒に使うAIディズニープランナー」として再定義
