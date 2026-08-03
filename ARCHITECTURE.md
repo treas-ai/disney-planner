@@ -117,3 +117,20 @@ Today UI
 Prediction Engineは将来、統計・機械学習・クラウド実装へ差し替え可能とする。
 ## Plan Optimization
 `PlanOptimizationEngine`はPlan Reviewから呼び出され、Prediction Engineの結果、施設エリア、優先度、固定予定を評価して改善案を返します。UIは承認前にスケジュールを変更しません。
+
+
+## Assistant Layer
+```text
+AssistantScreen → AssistantController → AssistantEngine → RuleBasedAssistantEngine
+```
+将来はCloudAssistantEngineへ差し替え可能。
+
+
+## v3.0 Master Data Layout
+
+```text
+assets/master/tokyo/tdl/*.json
+assets/master/tokyo/tds/*.json
+```
+
+`master_manifest.json`だけが物理ファイルパスを知り、UIとDomainはパーク別ディレクトリを認識しません。

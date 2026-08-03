@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_icons.dart';
 import '../core/utils/japanese_search_normalizer.dart';
 import '../domain/entities/facility.dart';
+import '../features/assistant/assistant_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/plan_editor/plan_editor_screen.dart';
 import '../features/plan_review/plan_review_screen.dart';
@@ -28,7 +29,8 @@ class _MainShellState extends State<MainShell> {
   static const int _editorIndex = 1;
   static const int _reviewIndex = 2;
   static const int _todayIndex = 3;
-  static const int _settingsIndex = 4;
+  static const int _assistantIndex = 4;
+  static const int _settingsIndex = 5;
 
   int _currentIndex = _homeIndex;
 
@@ -66,6 +68,13 @@ class _MainShellState extends State<MainShell> {
       subtitle: '採用したプランを当日用の表示で確認します。',
       icon: AppIcons.today,
       selectedIcon: AppIcons.todaySelected,
+    ),
+    _MainDestination(
+      title: 'AIコンシェルジュ',
+      navigationLabel: 'AI',
+      subtitle: '現在のプランをもとに次の行動を案内します。',
+      icon: Icons.smart_toy_outlined,
+      selectedIcon: Icons.smart_toy,
     ),
     _MainDestination(
       title: '設定',
@@ -293,7 +302,9 @@ class _MainShellState extends State<MainShell> {
   }
 
   bool get _shouldShowFlowBar {
-    return _currentIndex != _editorIndex && _currentIndex != _settingsIndex;
+    return _currentIndex != _editorIndex &&
+        _currentIndex != _assistantIndex &&
+        _currentIndex != _settingsIndex;
   }
 
   Widget _buildScreenStack() {
@@ -312,6 +323,7 @@ class _MainShellState extends State<MainShell> {
         ),
         const PlanReviewScreen(),
         const TodayPlanScreen(),
+        const AssistantScreen(),
         const SettingsScreen(),
       ],
     );

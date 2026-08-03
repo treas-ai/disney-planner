@@ -1,4 +1,6 @@
+import '../enums/dining_location_type.dart';
 import '../enums/facility_category.dart';
+import '../enums/meal_period.dart';
 import '../enums/facility_operating_status.dart';
 import '../enums/park_status.dart';
 import '../enums/priority_level.dart';
@@ -58,6 +60,13 @@ class Facility {
     this.showName,
     this.officialUrl,
     this.menuUrl,
+    this.diningLocationType = DiningLocationType.inPark,
+    this.mealPeriods = const <MealPeriod>{},
+    this.requiresParkExit = false,
+    this.requiresHotelStay = false,
+    this.hotelId,
+    this.outboundTravelMinutes = 0,
+    this.returnTravelMinutes = 0,
   });
 
   final String id;
@@ -130,6 +139,35 @@ class Facility {
 
   final String? officialUrl;
   final String? menuUrl;
+
+  /// 食事場所の種別。ホテルレストランはパーク内施設と区別する。
+  final DiningLocationType diningLocationType;
+
+  /// 提供対象となる食事時間帯。
+  final Set<MealPeriod> mealPeriods;
+
+  /// 利用時にパーク退出が必要か。
+  final bool requiresParkExit;
+
+  /// 利用対象がホテル宿泊者に限定されるか。
+  final bool requiresHotelStay;
+
+  /// ホテルを識別するID。
+  final String? hotelId;
+
+  /// パークからレストランまでの見込み移動時間。
+  final int outboundTravelMinutes;
+
+  /// レストランからパークへ戻る見込み移動時間。
+  final int returnTravelMinutes;
+
+  bool get isHotelRestaurant {
+    return diningLocationType == DiningLocationType.disneyHotel;
+  }
+
+  int get totalPlannedDurationMinutes {
+    return durationMinutes + outboundTravelMinutes + returnTravelMinutes;
+  }
 
   bool get isOpen {
     return canAddToPlanAt(DateTime.now());

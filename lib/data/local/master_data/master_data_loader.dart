@@ -122,6 +122,13 @@ class MasterDataLoader {
       'show_name': row['showName'],
       'official_url': row['officialUrl'],
       'menu_url': row['menuUrl'],
+      'dining_location_type': row['diningLocationType'],
+      'meal_periods': (row['mealPeriods'] as List<Object?>?)?.join(','),
+      'requires_park_exit': _boolToInteger(row['requiresParkExit']),
+      'requires_hotel_stay': _boolToInteger(row['requiresHotelStay']),
+      'hotel_id': row['hotelId'],
+      'outbound_travel_minutes': row['outboundTravelMinutes'],
+      'return_travel_minutes': row['returnTravelMinutes'],
     };
   }
 

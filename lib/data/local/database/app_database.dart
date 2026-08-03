@@ -12,13 +12,14 @@ import 'migrations/migration_v5.dart';
 import 'migrations/migration_v6.dart';
 import 'migrations/migration_v7.dart';
 import 'migrations/migration_v8.dart';
+import 'migrations/migration_v9.dart';
 
 class AppDatabase {
   AppDatabase._();
 
   static const String databaseName = 'disney_planner.db';
 
-  static const int databaseVersion = 8;
+  static const int databaseVersion = 9;
 
   static Database? _database;
 
@@ -109,6 +110,10 @@ class AppDatabase {
 
     if (oldVersion < 8) {
       await MigrationV8.migrate(database);
+    }
+
+    if (oldVersion < 9) {
+      await MigrationV9.migrate(database);
     }
   }
 
@@ -310,6 +315,25 @@ class AppDatabase {
 
         official_url TEXT,
         menu_url TEXT,
+
+        dining_location_type TEXT
+          NOT NULL DEFAULT 'inPark',
+
+        meal_periods TEXT,
+
+        requires_park_exit INTEGER
+          NOT NULL DEFAULT 0,
+
+        requires_hotel_stay INTEGER
+          NOT NULL DEFAULT 0,
+
+        hotel_id TEXT,
+
+        outbound_travel_minutes INTEGER
+          NOT NULL DEFAULT 0,
+
+        return_travel_minutes INTEGER
+          NOT NULL DEFAULT 0,
 
         FOREIGN KEY (park_id)
           REFERENCES parks (id)

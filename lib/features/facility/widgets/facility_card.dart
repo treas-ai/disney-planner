@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../domain/entities/facility.dart';
+import '../../../domain/enums/dining_location_type.dart';
 import '../../../domain/enums/facility_operating_status.dart';
 import 'facility_visual_style.dart';
 
@@ -758,6 +759,22 @@ class _FacilityDetails extends StatelessWidget {
                 color: colorScheme.onSurfaceVariant,
                 height: 1.45,
               ),
+            ),
+          ],
+          if (facility.diningLocationType != DiningLocationType.inPark) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              [
+                facility.diningLocationType.label,
+                if (facility.mealPeriods.isNotEmpty)
+                  facility.mealPeriods.map((period) => period.label).join('・'),
+                if (facility.requiresParkExit) 'パーク退出・再入園を考慮',
+                if (facility.requiresHotelStay) '宿泊者条件あり',
+                if (facility.outboundTravelMinutes > 0 ||
+                    facility.returnTravelMinutes > 0)
+                  '往復移動 約${facility.outboundTravelMinutes + facility.returnTravelMinutes}分',
+              ].join(' / '),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
           if (facility.hasMenuUrl || facility.hasOfficialUrl) ...[

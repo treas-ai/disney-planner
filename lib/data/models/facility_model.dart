@@ -1,5 +1,7 @@
 import '../../domain/entities/facility.dart';
+import '../../domain/enums/dining_location_type.dart';
 import '../../domain/enums/facility_category.dart';
+import '../../domain/enums/meal_period.dart';
 import '../../domain/enums/facility_operating_status.dart';
 import '../../domain/enums/park_status.dart';
 import '../../domain/enums/priority_level.dart';
@@ -80,6 +82,14 @@ class FacilityModel {
       showName: _readNullableString(map['show_name']),
       officialUrl: _readNullableString(map['official_url']),
       menuUrl: _readNullableString(map['menu_url']),
+      diningLocationType: _readDiningLocationType(map['dining_location_type']),
+      mealPeriods: _readMealPeriods(map['meal_periods']),
+      requiresParkExit: _readBool(map['requires_park_exit']),
+      requiresHotelStay: _readBool(map['requires_hotel_stay']),
+      hotelId: _readNullableString(map['hotel_id']),
+      outboundTravelMinutes:
+          _readNullableInt(map['outbound_travel_minutes']) ?? 0,
+      returnTravelMinutes: _readNullableInt(map['return_travel_minutes']) ?? 0,
     );
   }
 
@@ -139,6 +149,13 @@ class FacilityModel {
       'show_name': facility.showName,
       'official_url': facility.officialUrl,
       'menu_url': facility.menuUrl,
+      'dining_location_type': facility.diningLocationType.name,
+      'meal_periods': facility.mealPeriods.map((value) => value.name).join(','),
+      'requires_park_exit': facility.requiresParkExit ? 1 : 0,
+      'requires_hotel_stay': facility.requiresHotelStay ? 1 : 0,
+      'hotel_id': facility.hotelId,
+      'outbound_travel_minutes': facility.outboundTravelMinutes,
+      'return_travel_minutes': facility.returnTravelMinutes,
     };
   }
 
@@ -362,5 +379,33 @@ class FacilityModel {
     }
 
     return defaultValue;
+  }
+
+  static DiningLocationType _readDiningLocationType(Object? value) {
+    final name = value as String?;
+
+    return DiningLocationType.values.firstWhere(
+      (type) => type.name == name,
+      orElse: () => DiningLocationType.inPark,
+    );
+  }
+
+  static Set<MealPeriod> _readMealPeriods(Object? value) {
+    final names = switch (value) {
+      String text => text.split(','),
+      List<Object?> values => values.whereType<String>().toList(),
+      _ => const <String>[],
+    };
+
+    return names
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .map(
+          (name) => MealPeriod.values.firstWhere(
+            (period) => period.name == name,
+            orElse: () => MealPeriod.lunch,
+          ),
+        )
+        .toSet();
   }
 }

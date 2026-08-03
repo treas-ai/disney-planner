@@ -327,20 +327,22 @@ class ScheduleEngine {
       if (start == null) {
         continue;
       }
-      final duration = _resolveFacilityDuration(facility);
-      final end = start + duration;
-      if (start < entryMinutes || end > exitMinutes) {
+      final diningDuration = _resolveFacilityDuration(facility);
+      final startWithTravel = start - facility.outboundTravelMinutes;
+      final duration = facility.totalPlannedDurationMinutes;
+      final end = startWithTravel + duration;
+      if (startWithTravel < entryMinutes || end > exitMinutes) {
         continue;
       }
       if (!_fitsOperatingHours(
         facility: facility,
         startMinutes: start,
-        durationMinutes: duration,
+        durationMinutes: diningDuration,
       )) {
         continue;
       }
       if (!_isTimeRangeAvailable(
-        startMinutes: start,
+        startMinutes: startWithTravel,
         endMinutes: end,
         items: items,
       )) {
@@ -352,10 +354,12 @@ class ScheduleEngine {
           id: 'fixed_restaurant_${facility.id}',
           title: facility.name,
           type: ScheduleItemType.lunch,
-          startMinutes: start,
+          startMinutes: startWithTravel,
           endMinutes: end,
           facilityId: facility.id,
-          reason: '事前予約済みの固定予定を最優先で配置しました。',
+          reason: facility.isHotelRestaurant
+              ? 'ホテルへの往復移動を含め、事前予約済みの食事予定を固定配置しました。'
+              : '事前予約済みの固定予定を最優先で配置しました。',
           note: _buildScheduleNote(facility: facility, preference: preference),
         ),
       );
