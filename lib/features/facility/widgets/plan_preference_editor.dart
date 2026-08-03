@@ -60,31 +60,6 @@ class PlanPreferenceEditor extends StatelessWidget {
     return facility.isRestaurant;
   }
 
-  bool get _needsReservationTime {
-    return _isRestaurant &&
-        (facility.supportsPrioritySeating ||
-            facility.requiresReservation ||
-            facility.reservationRequired ||
-            facility.supportsMobileOrder ||
-            preference.accessMethod == FacilityAccessMethod.reservation);
-  }
-
-  bool get _needsScheduledAccessTime {
-    if (_isShowOrParade || _isRestaurant) {
-      return false;
-    }
-
-    return switch (preference.accessMethod) {
-      FacilityAccessMethod.dpa => true,
-      FacilityAccessMethod.priorityPass => true,
-      FacilityAccessMethod.standbyPass => true,
-      FacilityAccessMethod.entryRequest => true,
-      FacilityAccessMethod.reservation => true,
-      FacilityAccessMethod.standby => false,
-      FacilityAccessMethod.freeSeating => false,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     return AppCard(
@@ -212,37 +187,6 @@ class PlanPreferenceEditor extends StatelessWidget {
               }
             },
           ),
-          if (_isShowOrParade) ...[
-            const SizedBox(height: AppSpacing.md),
-            _TimePickerField(
-              label: '公演開始時刻',
-              helperText: '選択した公演回の開始時刻を指定します。',
-              value: preference.preferredPerformanceTime,
-              onChanged: onPreferredPerformanceTimeChanged,
-            ),
-          ],
-          if (_needsReservationTime) ...[
-            const SizedBox(height: AppSpacing.md),
-            _TimePickerField(
-              label:
-                  facility.supportsMobileOrder &&
-                      !facility.supportsPrioritySeating
-                  ? '受取時刻'
-                  : '予約時刻',
-              helperText: 'プライオリティ・シーティング、予約、受取時間を指定します。',
-              value: preference.reservationTime,
-              onChanged: onReservationTimeChanged,
-            ),
-          ],
-          if (_needsScheduledAccessTime) ...[
-            const SizedBox(height: AppSpacing.md),
-            _TimePickerField(
-              label: '${_accessMethodLabel(preference.accessMethod)}の利用時刻',
-              helperText: '取得済みの利用可能時刻を指定します。',
-              value: preference.scheduledAccessTime,
-              onChanged: onScheduledAccessTimeChanged,
-            ),
-          ],
           if (preference.accessMethod == FacilityAccessMethod.entryRequest &&
               facility.requiresEntryRequest) ...[
             const SizedBox(height: AppSpacing.md),
@@ -331,98 +275,6 @@ class PlanPreferenceEditor extends StatelessWidget {
     }
 
     return methods;
-  }
-}
-
-class _TimePickerField extends StatelessWidget {
-  const _TimePickerField({
-    required this.label,
-    required this.helperText,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String helperText;
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final displayValue = value.trim().isEmpty ? '未設定' : value.trim();
-
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: helperText,
-        border: const OutlineInputBorder(),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.schedule_outlined, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              displayValue,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-          if (value.trim().isNotEmpty)
-            IconButton(
-              tooltip: '時刻を解除',
-              onPressed: () {
-                onChanged('');
-              },
-              icon: const Icon(Icons.clear),
-            ),
-          FilledButton.tonalIcon(
-            onPressed: () async {
-              final initial = _parseTime(value) ?? TimeOfDay.now();
-
-              final selected = await showTimePicker(
-                context: context,
-                initialTime: initial,
-                helpText: '$labelを選択',
-                cancelText: 'キャンセル',
-                confirmText: '決定',
-              );
-
-              if (selected == null) {
-                return;
-              }
-
-              onChanged(
-                '${selected.hour.toString().padLeft(2, '0')}:'
-                '${selected.minute.toString().padLeft(2, '0')}',
-              );
-            },
-            icon: const Icon(Icons.access_time, size: 18),
-            label: const Text('選択'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  TimeOfDay? _parseTime(String value) {
-    final match = RegExp(
-      r'^([01]?\d|2[0-3]):([0-5]\d)$',
-    ).firstMatch(value.trim().replaceAll('：', ':'));
-
-    if (match == null) {
-      return null;
-    }
-
-    final hour = int.tryParse(match.group(1) ?? '');
-    final minute = int.tryParse(match.group(2) ?? '');
-
-    if (hour == null || minute == null) {
-      return null;
-    }
-
-    return TimeOfDay(hour: hour, minute: minute);
   }
 }
 

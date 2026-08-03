@@ -10,6 +10,7 @@ import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/enums/facility_access_method.dart';
+import '../facility/widgets/fixed_schedule_editor_sheet.dart';
 import '../live/live_controller.dart';
 import '../live/live_models.dart';
 import '../live/widgets/live_wait_time_list_panel.dart';
@@ -1223,18 +1224,44 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              decoration:
-                                  status == _TodayScheduleStatus.completed
-                                  ? TextDecoration.lineThrough
-                                  : null,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    decoration:
+                                        status == _TodayScheduleStatus.completed
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
                             ),
+                          ),
+                          if (widget.facility != null &&
+                              status != _TodayScheduleStatus.completed)
+                            IconButton(
+                              tooltip: '固定予定を編集して残りを再計算',
+                              onPressed: () async {
+                                final appState = AppStateScope.of(context);
+                                final changed =
+                                    await showFixedScheduleEditorSheet(
+                                      context: context,
+                                      appState: appState,
+                                      facility: widget.facility!,
+                                    );
+                                if (!changed || !context.mounted) return;
+                                final controller = LiveController(appState);
+                                controller.refreshCurrentTime();
+                                await controller.regenerateRemainingSchedule();
+                                controller.dispose();
+                              },
+                              icon: const Icon(Icons.edit_calendar_outlined),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 5),
                       Wrap(

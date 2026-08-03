@@ -249,7 +249,7 @@ class _UnifiedFacilityFilterPanelState
     return [
       _FilterItem.all(
         count: facilities.length,
-        label: 'すべてのエリア',
+        label: 'すべて',
         icon: Icons.public_outlined,
       ),
       for (final areaId in controller.availableAreaIds)

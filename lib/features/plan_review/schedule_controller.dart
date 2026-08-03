@@ -4,6 +4,7 @@ import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
+import '../../domain/enums/fixed_time_status.dart';
 import '../../domain/services/schedule_engine.dart';
 
 class ScheduleController extends ChangeNotifier {
@@ -113,6 +114,28 @@ class ScheduleController extends ChangeNotifier {
     return _appState.getPreference(facilityId);
   }
 
+  List<String> get fixedTimeConflicts {
+    final byTime = <String, List<String>>{};
+    for (final facility in selectedFacilitiesForCurrentPark) {
+      final preference = _appState.getPreference(facility.id);
+      if (preference == null ||
+          preference.fixedTimeStatus != FixedTimeStatus.confirmed) {
+        continue;
+      }
+      final time = preference.preferredPerformanceTime.trim().isNotEmpty
+          ? preference.preferredPerformanceTime.trim()
+          : preference.reservationTime.trim().isNotEmpty
+          ? preference.reservationTime.trim()
+          : preference.scheduledAccessTime.trim();
+      if (time.isEmpty) continue;
+      byTime.putIfAbsent(time, () => <String>[]).add(facility.name);
+    }
+    return [
+      for (final entry in byTime.entries)
+        if (entry.value.length > 1) '${entry.key}：${entry.value.join('、')}',
+    ];
+  }
+
   Future<void> generateSchedule() async {
     if (!canGenerateSchedule) {
       errorMessage =
@@ -121,6 +144,13 @@ class ScheduleController extends ChangeNotifier {
 
       notifyListeners();
 
+      return;
+    }
+
+    final conflicts = fixedTimeConflicts;
+    if (conflicts.isNotEmpty) {
+      errorMessage = '固定予定が競合しています。時刻を変更してください。\n${conflicts.join('\n')}';
+      notifyListeners();
       return;
     }
 

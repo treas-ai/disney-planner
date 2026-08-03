@@ -1,27 +1,59 @@
 # Changelog
 
-## v2.2（開発中）
+## v2.2（実装完了・動作確認待ち）
 
-### 実装済み（v2.2-A）
+### 修正
+- `flutter analyze`で検出されたlint 4件とデッドコード6件を修正
+- 制御構文へ波括弧を追加
+- 旧時刻入力UIの無効化コードを削除
 
--   `FixedTimeStatus { none, planned, confirmed }`を追加
--   `PerformanceTimeOption`を追加
--   `PerformanceScheduleRepository`を追加
--   `LocalPerformanceScheduleRepository`を追加
--   `assets/master/performance_schedules.json`を追加
--   公演時刻を`parkId`・`facilityId`・`date`で検索する構成を追加
--   公演時刻未登録時に仮時刻を生成しない方針を実装
--   旧保存データの固定時刻を`confirmed`相当として読み込む互換処理を追加
+### 固定予定Domain・Repository
 
-### 継続実装予定（v2.2-B以降）
+- `FixedTimeStatus { none, planned, confirmed }`を追加
+- `PerformanceTimeOption`を追加
+- `PerformanceScheduleRepository`を追加
+- `LocalPerformanceScheduleRepository`を追加
+- `assets/master/performance_schedules.json`を追加
+- 公演時刻を`parkId`・`facilityId`・`date`で検索
+- 未登録の公演時刻を自動生成しない処理を追加
+- 旧保存データの固定時刻を`confirmed`として移行
 
--   ショー・パレードの公演回選択UI
--   DPA / PP / SPの取得予定・取得済みUI
--   Priority Seatingの予約状態UI
--   10分刻み時刻選択
--   Plan Review / Todayから固定予定編集
--   固定予定維持での再生成
--   固定予定競合警告
+### 固定予定編集UI
+
+- 選択施設編集画面へ固定予定編集シートを追加
+- DPA / PP / SPの取得なし・取得予定・取得済みに対応
+- Entry Requestの抽選予定・当選・外れに対応
+- Priority Seatingの予約なし・予約予定・事前予約済みに対応
+- モバイルオーダーの受取時刻に対応
+- 時刻選択を10分刻みに統一
+- ショー・パレードの自由時刻入力を廃止
+- ローカル公演マスターからの公演回選択に対応
+
+### Schedule Engine
+
+- 事前予約済みレストランを最優先で固定配置
+- 確定済みショー・パレードを固定配置
+- 確定済みDPA / PP / SP / Entryを固定配置
+- `planned`状態は時刻未確定の通常候補として保持
+- 同一開始時刻の固定予定競合を検出
+- 競合時は自動移動せず警告を表示
+
+### Plan Review / Today
+
+- Plan Reviewから固定予定を編集して再生成可能
+- Todayから固定予定を編集可能
+- Todayで完了済み・進行中の予定を維持
+- 変更後は未実施の残り予定を再計算
+- おすすめ施設と残りスケジュールの再評価に対応
+
+### 確認待ち
+
+- `dart format`実行
+- `flutter analyze`で`No issues found!`確認
+- Windows起動確認
+- 保存・再起動復元確認
+- 固定予定競合確認
+- モバイル幅確認
 
 ------------------------------------------------------------------------
 

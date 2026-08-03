@@ -14,6 +14,7 @@ import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
 import '../facility/widgets/facility_visual_style.dart';
+import '../facility/widgets/fixed_schedule_editor_sheet.dart';
 import 'schedule_controller.dart';
 
 class PlanReviewScreen extends StatefulWidget {
@@ -810,11 +811,34 @@ class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
                       ],
                     ),
                     const SizedBox(height: 7),
-                    Text(
-                      item.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (facility != null)
+                          IconButton(
+                            tooltip: '固定予定を編集して再生成',
+                            onPressed: () async {
+                              final appState = AppStateScope.of(context);
+                              final changed =
+                                  await showFixedScheduleEditorSheet(
+                                    context: context,
+                                    appState: appState,
+                                    facility: facility!,
+                                  );
+                              if (!changed || !context.mounted) return;
+                              final controller = ScheduleController(appState);
+                              await controller.generateSchedule();
+                              controller.dispose();
+                            },
+                            icon: const Icon(Icons.edit_calendar_outlined),
+                          ),
+                      ],
                     ),
                     if (facility != null) ...[
                       const SizedBox(height: 7),

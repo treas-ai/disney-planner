@@ -5,6 +5,7 @@ import '../entities/schedule_item.dart';
 import '../entities/trip_settings.dart';
 import '../enums/facility_access_method.dart';
 import '../enums/facility_category.dart';
+import '../enums/fixed_time_status.dart';
 import '../enums/lottery_fallback_action.dart';
 import '../enums/preferred_time.dart';
 import '../enums/schedule_item_type.dart';
@@ -61,6 +62,14 @@ class ScheduleEngine {
       ),
     );
 
+    final fixedRestaurantFacilityIds = _addConfirmedRestaurantReservations(
+      items: items,
+      facilities: facilities,
+      preferences: preferences,
+      entryMinutes: entryEndMinutes,
+      exitMinutes: exitMinutes,
+    );
+
     final fixedPerformanceFacilityIds = _addFixedPerformanceFacilities(
       items: items,
       facilities: facilities,
@@ -84,6 +93,9 @@ class ScheduleEngine {
     );
 
     for (final assignment in mealPlan.assignments) {
+      if (fixedRestaurantFacilityIds.contains(assignment.facility.id)) {
+        continue;
+      }
       _addRestaurantMeal(
         items: items,
         assignment: assignment,
@@ -105,7 +117,8 @@ class ScheduleEngine {
         .where((facility) {
           final isAssignedRestaurant =
               facility.category == FacilityCategory.restaurant &&
-              mealPlan.assignedFacilityIds.contains(facility.id);
+              (mealPlan.assignedFacilityIds.contains(facility.id) ||
+                  fixedRestaurantFacilityIds.contains(facility.id));
 
           final isFixedPerformance = fixedPerformanceFacilityIds.contains(
             facility.id,
@@ -269,6 +282,88 @@ class ScheduleEngine {
     );
   }
 
+  Set<String> _addConfirmedRestaurantReservations({
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required List<PlanPreference> preferences,
+    required int entryMinutes,
+    required int exitMinutes,
+  }) {
+    final added = <String>{};
+    final candidates =
+        facilities
+            .where((facility) {
+              if (!facility.isOpen || !facility.isRestaurant) {
+                return false;
+              }
+              final preference = _findPreference(
+                facilityId: facility.id,
+                preferences: preferences,
+              );
+              return preference?.fixedTimeStatus == FixedTimeStatus.confirmed &&
+                  preference?.hasReservationTime == true;
+            })
+            .toList(growable: false)
+          ..sort((a, b) {
+            final pa = _findPreference(
+              facilityId: a.id,
+              preferences: preferences,
+            )!;
+            final pb = _findPreference(
+              facilityId: b.id,
+              preferences: preferences,
+            )!;
+            return (_parseTimeText(pa.reservationTime) ?? 9999).compareTo(
+              _parseTimeText(pb.reservationTime) ?? 9999,
+            );
+          });
+
+    for (final facility in candidates) {
+      final preference = _findPreference(
+        facilityId: facility.id,
+        preferences: preferences,
+      )!;
+      final start = _parseTimeText(preference.reservationTime);
+      if (start == null) {
+        continue;
+      }
+      final duration = _resolveFacilityDuration(facility);
+      final end = start + duration;
+      if (start < entryMinutes || end > exitMinutes) {
+        continue;
+      }
+      if (!_fitsOperatingHours(
+        facility: facility,
+        startMinutes: start,
+        durationMinutes: duration,
+      )) {
+        continue;
+      }
+      if (!_isTimeRangeAvailable(
+        startMinutes: start,
+        endMinutes: end,
+        items: items,
+      )) {
+        continue;
+      }
+
+      items.add(
+        _createScheduleItem(
+          id: 'fixed_restaurant_${facility.id}',
+          title: facility.name,
+          type: ScheduleItemType.lunch,
+          startMinutes: start,
+          endMinutes: end,
+          facilityId: facility.id,
+          reason: '事前予約済みの固定予定を最優先で配置しました。',
+          note: _buildScheduleNote(facility: facility, preference: preference),
+        ),
+      );
+      added.add(facility.id);
+    }
+    return added;
+  }
+
   Set<String> _addFixedPerformanceFacilities({
     required List<ScheduleItem> items,
     required List<Facility> facilities,
@@ -292,7 +387,9 @@ class ScheduleEngine {
           );
         })
         .where((candidate) {
-          return candidate.preference?.hasPreferredPerformanceTime == true;
+          return candidate.preference?.fixedTimeStatus ==
+                  FixedTimeStatus.confirmed &&
+              candidate.preference?.hasPreferredPerformanceTime == true;
         })
         .toList(growable: true);
 
@@ -415,6 +512,7 @@ class ScheduleEngine {
 
           if (!candidate.facility.isOpen ||
               preference == null ||
+              preference.fixedTimeStatus != FixedTimeStatus.confirmed ||
               !preference.hasScheduledAccessTime ||
               _isShowOrParade(candidate.facility) ||
               candidate.facility.isRestaurant) {
@@ -588,7 +686,9 @@ class ScheduleEngine {
       preference?.reservationTime ?? '',
     );
 
-    final hasReservation = reservationMinutes != null;
+    final hasReservation =
+        preference?.fixedTimeStatus == FixedTimeStatus.confirmed &&
+        reservationMinutes != null;
 
     final requestedStartMinutes = hasReservation
         ? reservationMinutes

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/enums/facility_access_method.dart';
+import '../../domain/enums/fixed_time_status.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
 import '../../domain/enums/meal_preference.dart';
 import '../../domain/enums/preferred_time.dart';
@@ -15,6 +16,8 @@ class PlanPreferenceController extends ChangeNotifier {
   }
 
   final AppState _appState;
+
+  AppState get appState => _appState;
 
   List<PlanPreference> get preferences {
     return _appState.planPreferences;
@@ -101,6 +104,28 @@ class PlanPreferenceController extends ChangeNotifier {
     _appState.updatePreferenceScheduledAccessTime(
       facilityId: facilityId,
       value: value,
+    );
+  }
+
+  void updateFixedTimeStatus({
+    required String facilityId,
+    required FixedTimeStatus status,
+  }) {
+    _appState.updatePreferenceFixedTimeStatus(
+      facilityId: facilityId,
+      status: status,
+    );
+  }
+
+  void updateSelectedPerformance({
+    required String facilityId,
+    required int? performanceIndex,
+    required String startTime,
+  }) {
+    _appState.updatePreferenceSelectedPerformance(
+      facilityId: facilityId,
+      performanceIndex: performanceIndex,
+      startTime: startTime,
     );
   }
 

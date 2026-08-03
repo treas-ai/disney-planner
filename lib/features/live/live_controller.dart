@@ -10,6 +10,7 @@ import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
+import '../../domain/services/schedule_engine.dart';
 import 'live_models.dart';
 import 'live_wait_time_controller.dart';
 
@@ -86,6 +87,54 @@ class LiveController extends ChangeNotifier {
     _now = DateTime.now();
 
     notifyListeners();
+  }
+
+  Future<void> regenerateRemainingSchedule() async {
+    final currentSchedule = _appState.daySchedule;
+    final nowMinutes = _now.hour * 60 + _now.minute;
+    final currentItems = currentSchedule?.items ?? const <ScheduleItem>[];
+    final preserved = currentItems
+        .where((item) {
+          final start = item.startHour * 60 + item.startMinute;
+          return start <= nowMinutes;
+        })
+        .toList(growable: false);
+
+    final facilities = _appState.selectedFacilities
+        .where(
+          (facility) => facility.parkId == currentParkId && facility.isOpen,
+        )
+        .toList(growable: false);
+    final ids = facilities.map((facility) => facility.id).toSet();
+    final preferences = _appState.planPreferences
+        .where((preference) => ids.contains(preference.facilityId))
+        .toList(growable: false);
+
+    final generated = const ScheduleEngine().generate(
+      settings: _appState.tripSettings,
+      facilities: facilities,
+      preferences: preferences,
+    );
+    final preservedIds = preserved.map((item) => item.id).toSet();
+    final future = generated.items.where((item) {
+      final start = item.startHour * 60 + item.startMinute;
+      return start > nowMinutes && !preservedIds.contains(item.id);
+    });
+    final merged = <ScheduleItem>[...preserved, ...future]
+      ..sort(
+        (a, b) => (a.startHour * 60 + a.startMinute).compareTo(
+          b.startHour * 60 + b.startMinute,
+        ),
+      );
+
+    _appState.updateDaySchedule(
+      DaySchedule(
+        id: 'schedule_${DateTime.now().millisecondsSinceEpoch}',
+        parkId: currentParkId,
+        items: List<ScheduleItem>.unmodifiable(merged),
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   Future<void> reloadWaitTimes() async {

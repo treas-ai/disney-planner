@@ -9,6 +9,7 @@ import '../../live/live_wait_time_controller.dart';
 import '../../live/widgets/wait_time_editor.dart';
 import '../plan_builder_controller.dart';
 import '../plan_preference_controller.dart';
+import 'fixed_schedule_editor_sheet.dart';
 import 'plan_preference_editor.dart';
 
 class SelectedFacilityEditorSheet extends StatefulWidget {
@@ -744,6 +745,21 @@ class _SelectedFacilityItem extends StatelessWidget {
         ),
         children: [
           const Divider(height: 1),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: () {
+                showFixedScheduleEditorSheet(
+                  context: context,
+                  appState: preferenceController.appState,
+                  facility: facility,
+                );
+              },
+              icon: const Icon(Icons.event_available_outlined),
+              label: const Text('固定予定を編集'),
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
           PlanPreferenceEditor(
             facility: facility,

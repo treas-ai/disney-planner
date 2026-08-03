@@ -6,6 +6,7 @@ import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/trip_settings.dart';
 import '../../domain/enums/facility_access_method.dart';
+import '../../domain/enums/fixed_time_status.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
 import '../../domain/enums/meal_preference.dart';
 import '../../domain/enums/preferred_time.dart';
@@ -373,6 +374,11 @@ class AppState extends ChangeNotifier {
       useDpa: accessMethod == FacilityAccessMethod.dpa,
       usePriorityPass: accessMethod == FacilityAccessMethod.priorityPass,
       useStandbyPass: accessMethod == FacilityAccessMethod.standbyPass,
+      fixedTimeStatus: FixedTimeStatus.none,
+      preferredPerformanceTime: '',
+      reservationTime: '',
+      scheduledAccessTime: '',
+      clearSelectedPerformanceIndex: true,
     );
 
     _invalidateScheduleAndSave();
@@ -426,6 +432,48 @@ class AppState extends ChangeNotifier {
       scheduledAccessTime: value.trim(),
     );
 
+    _invalidateScheduleAndSave();
+  }
+
+  void updatePreferenceFixedTimeStatus({
+    required String facilityId,
+    required FixedTimeStatus status,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+    if (current == null) return;
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      fixedTimeStatus: status,
+      preferredPerformanceTime: status == FixedTimeStatus.confirmed
+          ? current.preferredPerformanceTime
+          : '',
+      reservationTime: status == FixedTimeStatus.confirmed
+          ? current.reservationTime
+          : '',
+      scheduledAccessTime: status == FixedTimeStatus.confirmed
+          ? current.scheduledAccessTime
+          : '',
+      clearSelectedPerformanceIndex: status != FixedTimeStatus.confirmed,
+    );
+    _invalidateScheduleAndSave();
+  }
+
+  void updatePreferenceSelectedPerformance({
+    required String facilityId,
+    required int? performanceIndex,
+    required String startTime,
+  }) {
+    final current = _preferencesByFacilityId[facilityId];
+    if (current == null) return;
+
+    _preferencesByFacilityId[facilityId] = current.copyWith(
+      fixedTimeStatus: startTime.trim().isEmpty
+          ? FixedTimeStatus.none
+          : FixedTimeStatus.confirmed,
+      selectedPerformanceIndex: performanceIndex,
+      clearSelectedPerformanceIndex: performanceIndex == null,
+      preferredPerformanceTime: startTime.trim(),
+    );
     _invalidateScheduleAndSave();
   }
 
