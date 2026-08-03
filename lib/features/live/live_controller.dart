@@ -13,6 +13,7 @@ import '../../domain/enums/facility_category.dart';
 import '../../domain/services/schedule_engine.dart';
 import 'live_data_controller.dart';
 import 'live_models.dart';
+import 'live_prediction_controller.dart';
 import 'live_wait_time_controller.dart';
 
 class LiveController extends ChangeNotifier {
@@ -20,16 +21,21 @@ class LiveController extends ChangeNotifier {
     this._appState, {
     LiveWaitTimeController? waitTimeController,
     LiveDataController? liveDataController,
+    LivePredictionController? predictionController,
   }) : _waitTimeController = waitTimeController ?? LiveWaitTimeController(),
-       _liveDataController = liveDataController ?? LiveDataController() {
+       _liveDataController = liveDataController ?? LiveDataController(),
+       _predictionController =
+           predictionController ?? LivePredictionController() {
     _appState.addListener(_onAppStateChanged);
     _waitTimeController.addListener(_onWaitTimeChanged);
     _liveDataController.addListener(_onLiveDataChanged);
+    _predictionController.addListener(_onPredictionChanged);
   }
 
   final AppState _appState;
   final LiveWaitTimeController _waitTimeController;
   final LiveDataController _liveDataController;
+  final LivePredictionController _predictionController;
 
   Timer? _clockTimer;
 
@@ -46,7 +52,9 @@ class LiveController extends ChangeNotifier {
   }
 
   bool get isLoading {
-    return _waitTimeController.isLoading || _liveDataController.isLoading;
+    return _waitTimeController.isLoading ||
+        _liveDataController.isLoading ||
+        _predictionController.isLoading;
   }
 
   bool get isSaving {
@@ -54,11 +62,17 @@ class LiveController extends ChangeNotifier {
   }
 
   String? get errorMessage {
-    return _waitTimeController.errorMessage ?? _liveDataController.errorMessage;
+    return _waitTimeController.errorMessage ??
+        _liveDataController.errorMessage ??
+        _predictionController.errorMessage;
   }
 
   LiveDataController get liveDataController {
     return _liveDataController;
+  }
+
+  LivePredictionController get predictionController {
+    return _predictionController;
   }
 
   DateTime? get liveDataUpdatedAt {
@@ -92,6 +106,7 @@ class LiveController extends ChangeNotifier {
 
     await _waitTimeController.loadForPark(currentParkId);
     await _liveDataController.loadForPark(currentParkId);
+    await _reloadPredictions();
 
     _startClock();
 
@@ -155,6 +170,7 @@ class LiveController extends ChangeNotifier {
   Future<void> reloadWaitTimes() async {
     await _waitTimeController.loadForPark(currentParkId);
     await _liveDataController.loadForPark(currentParkId);
+    await _reloadPredictions();
   }
 
   Facility? facilityById(String? facilityId) {
@@ -186,16 +202,24 @@ class LiveController extends ChangeNotifier {
   Future<bool> updateWaitTime({
     required Facility facility,
     required int waitMinutes,
-  }) {
-    return _waitTimeController.updateWaitTime(
+  }) async {
+    final saved = await _waitTimeController.updateWaitTime(
       facilityId: facility.id,
       parkId: facility.parkId,
       waitMinutes: waitMinutes,
     );
+    if (saved) {
+      await _reloadPredictions();
+    }
+    return saved;
   }
 
-  Future<bool> clearWaitTime(Facility facility) {
-    return _waitTimeController.removeWaitTime(facility.id);
+  Future<bool> clearWaitTime(Facility facility) async {
+    final removed = await _waitTimeController.removeWaitTime(facility.id);
+    if (removed) {
+      await _reloadPredictions();
+    }
+    return removed;
   }
 
   void clearError() {
@@ -548,6 +572,27 @@ class LiveController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _onPredictionChanged() {
+    notifyListeners();
+  }
+
+  Future<void> _reloadPredictions() {
+    final attractions = _appState.selectedFacilities.where(
+      (facility) =>
+          facility.parkId == currentParkId &&
+          facility.category == FacilityCategory.attraction,
+    );
+
+    return _predictionController.load(
+      parkId: currentParkId,
+      facilities: attractions,
+      currentWaitTimeFor: (facilityId) {
+        return _waitTimeController.waitTimeForFacility(facilityId) ??
+            _liveDataController.waitTimeForFacility(facilityId);
+      },
+    );
+  }
+
   @override
   void dispose() {
     _clockTimer?.cancel();
@@ -556,9 +601,11 @@ class LiveController extends ChangeNotifier {
 
     _waitTimeController.removeListener(_onWaitTimeChanged);
     _liveDataController.removeListener(_onLiveDataChanged);
+    _predictionController.removeListener(_onPredictionChanged);
 
     _waitTimeController.dispose();
     _liveDataController.dispose();
+    _predictionController.dispose();
 
     super.dispose();
   }

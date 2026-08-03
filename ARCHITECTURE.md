@@ -103,3 +103,15 @@ LearningEngine
 ```
 
 AI予測値は履歴として識別可能にし、実測データと混同しない。低品質データと予測値は標準では学習対象外とする。
+
+## Prediction Layer（v2.7）
+
+```text
+Today UI
+  -> LivePredictionController
+  -> WaitTimePredictionEngine
+  -> RuleBasedWaitTimePredictionEngine
+  -> HistoryRepository / 現在待ち時間
+```
+
+Prediction Engineは将来、統計・機械学習・クラウド実装へ差し替え可能とする。

@@ -10,6 +10,7 @@ import '../live_approach_guidance.dart';
 import '../live_controller.dart';
 import '../live_models.dart';
 import '../live_recommendation.dart';
+import 'live_wait_time_prediction_panel.dart';
 
 class LiveWaitTimeListPanel extends StatelessWidget {
   const LiveWaitTimeListPanel({
@@ -35,14 +36,31 @@ class LiveWaitTimeListPanel extends StatelessWidget {
       controller: controller,
     );
 
+    final hasPredictions =
+        controller.schedule?.items.any((item) {
+          final facilityId = item.facilityId;
+          return facilityId != null &&
+              controller.predictionController
+                  .predictionsForFacility(facilityId)
+                  .isNotEmpty;
+        }) ??
+        false;
+
     if (entries.isEmpty &&
         !recommendationResult.hasRecommendations &&
-        approachGuidance == null) {
+        approachGuidance == null &&
+        !hasPredictions &&
+        !controller.predictionController.isLoading) {
       return const SizedBox.shrink();
     }
 
     return Column(
       children: [
+        LiveWaitTimePredictionPanel(controller: controller),
+        if (approachGuidance != null ||
+            recommendationResult.hasRecommendations ||
+            entries.isNotEmpty)
+          const SizedBox(height: AppSpacing.sm),
         if (approachGuidance != null)
           _ApproachGuidancePanel(guidance: approachGuidance),
         if (approachGuidance != null && recommendationResult.hasRecommendations)
