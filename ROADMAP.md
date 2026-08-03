@@ -1,7 +1,7 @@
 # Disney Planner — ROADMAP
 
 更新日: 2026-08-03
-現在地: v2.2 実装完了・動作確認待ち
+現在地: v2.3 実装完了・動作確認待ち
 
 ## v2.2 — 固定時刻・公演回・事前予約対応
 
@@ -29,7 +29,7 @@
 - Plan ReviewとTodayから編集できる
 - `flutter analyze`が`No issues found!`
 
-## v2.3 — リアルタイムデータ
+## v2.3 — リアルタイムデータ（実装完了・動作確認待ち）
 
 - LiveDataRepository
 - Local / API実装

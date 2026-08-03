@@ -1,11 +1,32 @@
 # Changelog
 
-## v2.2（実装完了・動作確認待ち）
+## v2.3（実装完了・動作確認待ち）
 
-### 修正
-- `flutter analyze`で検出されたlint 4件とデッドコード6件を修正
-- 制御構文へ波括弧を追加
-- 旧時刻入力UIの無効化コードを削除
+### リアルタイムデータ基盤
+
+- `LiveDataRepository`を追加
+- `LocalLiveDataRepository`を追加
+- `ApiLiveDataRepository`の差し替え用雛形を追加
+- `LiveOperatingStatus`と`LivePassStatus`を追加
+- ローカルJSONから待ち時間・営業状態・パス状況を読み込む処理を追加
+- 手動待ち時間をローカルJSONより優先するフォールバックを追加
+- `LiveDataController`を追加
+- `LiveController`をリアルタイムデータRepositoryへ接続
+- データ取得時刻・読み込み状態・エラー状態を管理
+- 未確認の運営情報を生成しない空マスターを追加
+- エリアフィルターの「すべてのエリア」を「すべて」へ変更
+
+### 確認待ち
+
+- `dart format lib`
+- `flutter analyze`で`No issues found!`確認
+- Windows起動確認
+- Today画面の手動待ち時間入力・再読み込み確認
+- 空の営業状態・パス状況マスターで正常起動することを確認
+
+------------------------------------------------------------------------
+
+## v2.2（完了）
 
 ### 固定予定Domain・Repository
 
@@ -46,14 +67,10 @@
 - 変更後は未実施の残り予定を再計算
 - おすすめ施設と残りスケジュールの再評価に対応
 
-### 確認待ち
+### 品質確認
 
-- `dart format`実行
-- `flutter analyze`で`No issues found!`確認
-- Windows起動確認
-- 保存・再起動復元確認
-- 固定予定競合確認
-- モバイル幅確認
+- `flutter analyze`: `No issues found!`
+- エリアフィルター文言を「すべて」へ調整
 
 ------------------------------------------------------------------------
 

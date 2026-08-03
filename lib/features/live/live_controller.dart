@@ -11,19 +11,25 @@ import '../../domain/entities/schedule_item.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/services/schedule_engine.dart';
+import 'live_data_controller.dart';
 import 'live_models.dart';
 import 'live_wait_time_controller.dart';
 
 class LiveController extends ChangeNotifier {
-  LiveController(this._appState, {LiveWaitTimeController? waitTimeController})
-    : _waitTimeController = waitTimeController ?? LiveWaitTimeController() {
+  LiveController(
+    this._appState, {
+    LiveWaitTimeController? waitTimeController,
+    LiveDataController? liveDataController,
+  }) : _waitTimeController = waitTimeController ?? LiveWaitTimeController(),
+       _liveDataController = liveDataController ?? LiveDataController() {
     _appState.addListener(_onAppStateChanged);
-
     _waitTimeController.addListener(_onWaitTimeChanged);
+    _liveDataController.addListener(_onLiveDataChanged);
   }
 
   final AppState _appState;
   final LiveWaitTimeController _waitTimeController;
+  final LiveDataController _liveDataController;
 
   Timer? _clockTimer;
 
@@ -40,7 +46,7 @@ class LiveController extends ChangeNotifier {
   }
 
   bool get isLoading {
-    return _waitTimeController.isLoading;
+    return _waitTimeController.isLoading || _liveDataController.isLoading;
   }
 
   bool get isSaving {
@@ -48,7 +54,15 @@ class LiveController extends ChangeNotifier {
   }
 
   String? get errorMessage {
-    return _waitTimeController.errorMessage;
+    return _waitTimeController.errorMessage ?? _liveDataController.errorMessage;
+  }
+
+  LiveDataController get liveDataController {
+    return _liveDataController;
+  }
+
+  DateTime? get liveDataUpdatedAt {
+    return _liveDataController.lastUpdatedAt;
   }
 
   LiveWaitTimeController get waitTimeController {
@@ -77,6 +91,7 @@ class LiveController extends ChangeNotifier {
     _isInitialized = true;
 
     await _waitTimeController.loadForPark(currentParkId);
+    await _liveDataController.loadForPark(currentParkId);
 
     _startClock();
 
@@ -139,6 +154,7 @@ class LiveController extends ChangeNotifier {
 
   Future<void> reloadWaitTimes() async {
     await _waitTimeController.loadForPark(currentParkId);
+    await _liveDataController.loadForPark(currentParkId);
   }
 
   Facility? facilityById(String? facilityId) {
@@ -528,6 +544,10 @@ class LiveController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _onLiveDataChanged() {
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _clockTimer?.cancel();
@@ -535,8 +555,10 @@ class LiveController extends ChangeNotifier {
     _appState.removeListener(_onAppStateChanged);
 
     _waitTimeController.removeListener(_onWaitTimeChanged);
+    _liveDataController.removeListener(_onLiveDataChanged);
 
     _waitTimeController.dispose();
+    _liveDataController.dispose();
 
     super.dispose();
   }

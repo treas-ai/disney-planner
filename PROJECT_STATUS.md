@@ -253,3 +253,17 @@ flutter analyze
 Windows起動
 保存・復元
 ```
+
+
+## v2.3 追加内容
+
+- LiveDataRepository
+- LocalLiveDataRepository
+- ApiLiveDataRepository雛形
+- LiveOperatingStatus
+- LivePassStatus
+- LiveDataController
+- assets/liveのローカルJSON
+- 手動待ち時間優先フォールバック
+- LiveControllerへのRepository接続
+- エリアフィルター「すべて」表記
