@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 2.2.0+22
+version: 2.5.0+25
 
 environment:
   sdk: ^3.12.2
@@ -29,6 +29,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/movement/
     - assets/live/
     - assets/master/
     - assets/master/tdl/

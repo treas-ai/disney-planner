@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.5 - 開発中
+
+- プロダクトを「公式アプリと一緒に使うAIディズニープランナー」として再定義
+- 移動時間エンジン基盤を追加
+- FacilityLocation、AreaConnection、MovementEstimateを追加
+- MovementRepositoryを追加
+- LocalMovementRepositoryを追加
+- ApiMovementRepositoryの雛形を追加
+- MovementTimeEngineによる最短移動時間と到着予測を追加
+- 公式マップ画像を使用しない方針を明文化
+- ROADMAPをAI待ち時間予測・AI最適化中心へ再編
+- README、ARCHITECTURE、PROJECT_STATUSを更新
+
 ## v2.4 - 開発中
 
 - flutter analyze指摘17件を修正（構文、lint、初期化形式）

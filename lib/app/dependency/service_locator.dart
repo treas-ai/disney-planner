@@ -8,8 +8,10 @@ import '../../data/datasources/sqlite/sqlite_facility_data_source.dart';
 import '../../data/datasources/sqlite/sqlite_park_data_source.dart';
 import '../../data/repositories/facility_repository_impl.dart';
 import '../../data/repositories/park_repository_impl.dart';
+import '../../data/local/local_movement_repository.dart';
 import '../../domain/repositories/facility_repository.dart';
 import '../../domain/repositories/park_repository.dart';
+import '../../domain/repositories/movement_repository.dart';
 
 class ServiceLocator {
   ServiceLocator._();
@@ -27,12 +29,19 @@ class ServiceLocator {
     dataSource: _facilityDataSource,
   );
 
+  static const MovementRepository _movementRepository =
+      LocalMovementRepository();
+
   static ParkRepository get parkRepository {
     return _parkRepository;
   }
 
   static FacilityRepository get facilityRepository {
     return _facilityRepository;
+  }
+
+  static MovementRepository get movementRepository {
+    return _movementRepository;
   }
 
   static ParkDataSource _createParkDataSource() {
