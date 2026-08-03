@@ -1,4 +1,5 @@
 import '../entities/day_schedule.dart';
+import '../entities/event_impact.dart';
 import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
 import '../entities/schedule_item.dart';
@@ -9,6 +10,7 @@ import '../enums/fixed_time_status.dart';
 import '../enums/lottery_fallback_action.dart';
 import '../enums/preferred_time.dart';
 import '../enums/schedule_item_type.dart';
+import 'event_impact_engine.dart';
 import 'meal_planner.dart';
 import 'route_optimizer.dart';
 import 'time_allocator.dart';
@@ -18,11 +20,13 @@ class ScheduleEngine {
     this.timeAllocator = const TimeAllocator(),
     this.mealPlanner = const MealPlanner(),
     this.routeOptimizer = const RouteOptimizer(),
+    this.eventImpactEngine = const EventImpactEngine(),
   });
 
   final TimeAllocator timeAllocator;
   final MealPlanner mealPlanner;
   final RouteOptimizer routeOptimizer;
+  final EventImpactEngine eventImpactEngine;
 
   static const int _entryDurationMinutes = 15;
   static const int _movementDurationMinutes = 15;
@@ -33,6 +37,7 @@ class ScheduleEngine {
     required TripSettings settings,
     required List<Facility> facilities,
     required List<PlanPreference> preferences,
+    List<EventImpact> eventImpacts = const [],
   }) {
     final items = <ScheduleItem>[];
 
@@ -172,6 +177,8 @@ class ScheduleEngine {
       final movementMinutes = _calculateMovementMinutes(
         previousAreaId: previousAreaId,
         currentAreaId: facility.areaId,
+        atMinutes: currentMinutes,
+        eventImpacts: eventImpacts,
       );
 
       var requestedStartMinutes = _maximum(
@@ -971,16 +978,33 @@ class ScheduleEngine {
   int _calculateMovementMinutes({
     required String? previousAreaId,
     required String currentAreaId,
+    required int atMinutes,
+    required List<EventImpact> eventImpacts,
   }) {
     if (previousAreaId == null) {
       return 0;
     }
 
-    if (previousAreaId == currentAreaId) {
-      return _sameAreaMovementMinutes;
+    final baseMinutes = previousAreaId == currentAreaId
+        ? _sameAreaMovementMinutes
+        : _movementDurationMinutes;
+
+    if (eventImpactEngine.isRouteBlocked(
+      fromAreaId: previousAreaId,
+      toAreaId: currentAreaId,
+      atMinutes: atMinutes,
+      impacts: eventImpacts,
+    )) {
+      return baseMinutes + 30;
     }
 
-    return _movementDurationMinutes;
+    return baseMinutes +
+        eventImpactEngine.movementPenaltyMinutes(
+          fromAreaId: previousAreaId,
+          toAreaId: currentAreaId,
+          atMinutes: atMinutes,
+          impacts: eventImpacts,
+        );
   }
 
   int _applyFacilitySpecificStartPriority({

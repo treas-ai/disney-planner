@@ -2,9 +2,14 @@ import '../entities/assistant_context.dart';
 import '../entities/assistant_response.dart';
 import '../entities/schedule_item.dart';
 import 'assistant_engine.dart';
+import 'event_impact_engine.dart';
 
 class RuleBasedAssistantEngine implements AssistantEngine {
-  const RuleBasedAssistantEngine();
+  const RuleBasedAssistantEngine({
+    this.eventImpactEngine = const EventImpactEngine(),
+  });
+
+  final EventImpactEngine eventImpactEngine;
 
   @override
   Future<AssistantResponse> respond({
@@ -21,11 +26,17 @@ class RuleBasedAssistantEngine implements AssistantEngine {
       );
     }
 
+    final currentMinutes = context.now.hour * 60 + context.now.minute;
+    final eventWarnings = eventImpactEngine.warnings(
+      atMinutes: currentMinutes,
+      impacts: context.eventImpacts,
+    );
+
     final upcoming = _upcomingItems(context);
     final next = upcoming.isEmpty ? null : upcoming.first;
 
     if (_containsAny(normalized, const ['今どこ', 'どこへ', '次', 'おすすめ'])) {
-      return _nextRecommendation(next, context);
+      return _nextRecommendation(next, context, eventWarnings);
     }
 
     if (_containsAny(normalized, const ['昼食', '食事', 'ごはん', 'レストラン'])) {
@@ -57,7 +68,7 @@ class RuleBasedAssistantEngine implements AssistantEngine {
       );
     }
 
-    return _nextRecommendation(next, context);
+    return _nextRecommendation(next, context, eventWarnings);
   }
 
   List<ScheduleItem> _upcomingItems(AssistantContext context) {
@@ -76,6 +87,7 @@ class RuleBasedAssistantEngine implements AssistantEngine {
   AssistantResponse _nextRecommendation(
     ScheduleItem? next,
     AssistantContext context,
+    List<String> eventWarnings,
   ) {
     if (next == null) {
       return const AssistantResponse(
@@ -90,6 +102,7 @@ class RuleBasedAssistantEngine implements AssistantEngine {
           '次は${next.startTimeLabel}から「${next.title}」です。移動と準備の時間を考えて向かいましょう。',
       reasons: [
         '現在のプランで最も近い未完了予定です。',
+        ...eventWarnings,
         if (facility != null) '施設エリア：${facility.areaId}',
         if (next.reason != null && next.reason!.trim().isNotEmpty) next.reason!,
       ],

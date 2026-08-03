@@ -1,16 +1,23 @@
 import '../entities/area_connection.dart';
+import '../entities/event_impact.dart';
 import '../entities/movement_estimate.dart';
+import 'event_impact_engine.dart';
 
 class MovementTimeEngine {
-  const MovementTimeEngine({this.fallbackMinutes = 10});
+  const MovementTimeEngine({
+    this.fallbackMinutes = 10,
+    this.eventImpactEngine = const EventImpactEngine(),
+  });
 
   final int fallbackMinutes;
+  final EventImpactEngine eventImpactEngine;
 
   MovementEstimate estimate({
     required String fromAreaId,
     required String toAreaId,
     required DateTime departureAt,
     required List<AreaConnection> connections,
+    List<EventImpact> eventImpacts = const [],
   }) {
     if (fromAreaId == toAreaId) {
       return MovementEstimate(
@@ -29,7 +36,33 @@ class MovementTimeEngine {
       connections: connections,
     );
 
-    final minutes = result?.minutes ?? fallbackMinutes;
+    final baseMinutes = result?.minutes ?? fallbackMinutes;
+    final atMinutes = departureAt.hour * 60 + departureAt.minute;
+    final path = result?.pathAreaIds ?? [fromAreaId, toAreaId];
+    var impactMinutes = 0;
+
+    for (var index = 0; index < path.length - 1; index++) {
+      final from = path[index];
+      final to = path[index + 1];
+      if (eventImpactEngine.isRouteBlocked(
+        fromAreaId: from,
+        toAreaId: to,
+        atMinutes: atMinutes + baseMinutes + impactMinutes,
+        impacts: eventImpacts,
+      )) {
+        impactMinutes += 30;
+        continue;
+      }
+
+      impactMinutes += eventImpactEngine.movementPenaltyMinutes(
+        fromAreaId: from,
+        toAreaId: to,
+        atMinutes: atMinutes + baseMinutes + impactMinutes,
+        impacts: eventImpacts,
+      );
+    }
+
+    final minutes = baseMinutes + impactMinutes;
 
     return MovementEstimate(
       fromAreaId: fromAreaId,

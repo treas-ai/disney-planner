@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.2.0 - Park Intelligence / Event Impact Engine
+
+- EventImpactモデルを追加
+- EventImpactRepositoryとLocalEventImpactRepositoryを追加
+- EventImpactEngineを追加
+- イベント開催中の移動ペナルティと経路制限判定を追加
+- Schedule Engineへイベント影響を統合
+- Movement Time Engineへイベント影響を統合
+- AIコンシェルジュへ現在のイベント影響警告を統合
+- TDL/TDSイベント影響マスターを追加
+- 未確認の通行規制・停止情報を推測登録しない方針を明文化
+
 ## v3.1.2 - Entertainment Complete（TDSグリーティング）
 
 - 東京ディズニーシー公式一覧に掲載されたグリーティング6施設を追加

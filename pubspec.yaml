@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 3.1.2+312
+version: 3.2.0+320
 
 environment:
   sdk: ^3.12.2
@@ -32,6 +32,7 @@ flutter:
     - assets/movement/
     - assets/live/
     - assets/master/
+    - assets/master/events/
     - assets/master/tokyo/tdl/
     - assets/master/tokyo/tds/
     - assets/data/attractions.json

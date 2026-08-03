@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/dependency/service_locator.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
@@ -182,10 +183,14 @@ class ScheduleController extends ChangeNotifier {
           })
           .toList(growable: false);
 
+      final eventImpacts = await ServiceLocator.eventImpactRepository
+          .loadEventImpacts(parkId: selectedParkId);
+
       final generatedSchedule = _scheduleEngine.generate(
         settings: _appState.tripSettings,
         facilities: availableFacilities,
         preferences: preferences,
+        eventImpacts: eventImpacts,
       );
 
       _appState.updateDaySchedule(generatedSchedule);

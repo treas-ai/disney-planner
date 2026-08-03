@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../app/dependency/service_locator.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/assistant_context.dart';
 import '../../domain/entities/assistant_response.dart';
@@ -32,12 +33,16 @@ class AssistantController extends ChangeNotifier {
     try {
       final parkId =
           _appState.daySchedule?.parkId ?? _appState.tripSettings.parkId;
+      final eventImpacts = await ServiceLocator.eventImpactRepository
+          .loadEventImpacts(parkId: parkId);
+
       response = await _engine.respond(
         question: trimmed,
         context: AssistantContext(
           now: DateTime.now(),
           schedule: _appState.daySchedule,
           facilities: _appState.selectedFacilitiesForPark(parkId),
+          eventImpacts: eventImpacts,
         ),
       );
     } catch (error, stackTrace) {

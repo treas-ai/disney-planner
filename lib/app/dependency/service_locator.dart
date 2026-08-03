@@ -8,8 +8,10 @@ import '../../data/datasources/sqlite/sqlite_facility_data_source.dart';
 import '../../data/datasources/sqlite/sqlite_park_data_source.dart';
 import '../../data/repositories/facility_repository_impl.dart';
 import '../../data/repositories/park_repository_impl.dart';
+import '../../data/local/local_event_impact_repository.dart';
 import '../../data/local/local_history_repository.dart';
 import '../../data/local/local_movement_repository.dart';
+import '../../domain/repositories/event_impact_repository.dart';
 import '../../domain/repositories/facility_repository.dart';
 import '../../domain/repositories/park_repository.dart';
 import '../../domain/repositories/history_repository.dart';
@@ -36,6 +38,9 @@ class ServiceLocator {
   static const MovementRepository _movementRepository =
       LocalMovementRepository();
 
+  static const EventImpactRepository _eventImpactRepository =
+      LocalEventImpactRepository();
+
   static const HistoryRepository _historyRepository = LocalHistoryRepository();
 
   static const LearningEngine _learningEngine = BasicLearningEngine();
@@ -50,6 +55,10 @@ class ServiceLocator {
 
   static MovementRepository get movementRepository {
     return _movementRepository;
+  }
+
+  static EventImpactRepository get eventImpactRepository {
+    return _eventImpactRepository;
   }
 
   static HistoryRepository get historyRepository {
