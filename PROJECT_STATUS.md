@@ -41,4 +41,16 @@ AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
 - Mock Repositoryで通信差し替え基盤を構築
 - AIコンシェルジュへパーク状況カードを追加
 - Mockデータと公式情報を明確に区別
+## v3.7 Official Data Service Foundation
+
+- Provider抽象化
+- Mock／Official切替
+- キャッシュ・フォールバック
+- 外部接続はv3.8以降で判断
+## v3.8 Manual Live Data Input
+
+- 手動待ち時間入力
+- 保存・復元
+- 鮮度警告・前回差分
+- Smart Schedule Engine連携
 

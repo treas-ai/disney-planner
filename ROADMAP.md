@@ -29,4 +29,22 @@
 - Repository InterfaceとMock実装
 - AIコンシェルジュ連携
 - 次版で外部データ取得実装へ差し替え
+## v3.7（完了対象）
+
+- Official Data Service Foundation
+- Mock／Official切替基盤
+- キャッシュとオフラインフォールバック
+
+## v3.8（検討）
+
+- 外部サービス接続方式の選定とConnector実装
+## v3.8（完了対象）
+
+- Manual Live Data Input
+- 公式アプリ補助としての安全な現在値入力
+
+## v3.9（予定）
+
+- ホテル・レストラン予約連携強化
+- Version 1.0.0向けUI・UX最終調整
 

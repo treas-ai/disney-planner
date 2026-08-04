@@ -26,8 +26,9 @@ class AssistantController extends ChangeNotifier {
     try {
       final parkId =
           _appState.daySchedule?.parkId ?? _appState.tripSettings.parkId;
-      liveOperation = await ServiceLocator.liveOperationRepository
-          .fetchSnapshot(parkId: parkId);
+      liveOperation = await ServiceLocator.fetchLiveOperationSnapshot(
+        parkId: parkId,
+      );
       notifyListeners();
     } catch (error, stackTrace) {
       debugPrint('ライブ運営情報の読み込みに失敗しました: $error');
@@ -48,8 +49,9 @@ class AssistantController extends ChangeNotifier {
     try {
       final parkId =
           _appState.daySchedule?.parkId ?? _appState.tripSettings.parkId;
-      liveOperation ??= await ServiceLocator.liveOperationRepository
-          .fetchSnapshot(parkId: parkId);
+      liveOperation ??= await ServiceLocator.fetchLiveOperationSnapshot(
+        parkId: parkId,
+      );
       final eventImpacts = await ServiceLocator.eventImpactRepository
           .loadEventImpacts(parkId: parkId);
 

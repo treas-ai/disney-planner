@@ -194,12 +194,12 @@ class _FixedScheduleEditorSheetState extends State<_FixedScheduleEditorSheet> {
                 if (_loading) const LinearProgressIndicator(),
                 if (_loadError != null) Text(_loadError!),
                 if (!_loading && _performanceOptions.isEmpty)
-                  const Text('この日付の公演時刻は未登録です。仮時刻は作成しません。'),
+                  const Text('本日の公式公演時刻は未登録です。仮の時刻は作成しません。'),
                 if (_performanceOptions.isNotEmpty)
                   DropdownButtonFormField<int>(
                     initialValue: p.selectedPerformanceIndex,
                     decoration: const InputDecoration(
-                      labelText: '公演回',
+                      labelText: '公式公演時刻',
                       border: OutlineInputBorder(),
                     ),
                     items: _performanceOptions

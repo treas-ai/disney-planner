@@ -165,4 +165,32 @@ API / Approved Data Source
 ```
 
 UIとAIは`LiveOperationSnapshot`だけを参照し、取得元を意識しません。Mock情報には`isMock`を付け、公式情報と誤認されない表示を必須とします。
+## Live Data Provider Architecture
+
+```text
+UI / AI
+  ↓
+LiveOperationRepository
+  ↓
+CachedLiveDataProvider
+  ├─ MockLiveDataProvider
+  └─ OfficialLiveDataProvider（接続先未設定）
+```
+
+取得元の違いをUI・AIから分離し、後からConnectorを差し替えられる構造です。
+## Manual Live Data
+
+```text
+公式アプリを確認
+  ↓
+ManualLiveDataScreen
+  ↓
+ManualWaitTimeStore
+  ↓
+ManualLiveDataProvider
+  ↓
+AI / Smart Schedule Engine
+```
+
+30分以内の手動待ち時間だけを現在値として利用します。
 

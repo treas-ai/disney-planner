@@ -1,54 +1,3 @@
-function Test-PubGetRequired {
-    if (-not (Test-Path ".dart_tool/package_config.json")) {
-        return $true
-    }
-
-    if (-not (Test-Path ".git")) {
-        return $false
-    }
-
-    git diff --quiet -- pubspec.yaml pubspec.lock
-    $workingTreeChanged = $LASTEXITCODE -ne 0
-
-    git diff --cached --quiet -- pubspec.yaml pubspec.lock
-    $stagedChanged = $LASTEXITCODE -ne 0
-
-    return ($workingTreeChanged -or $stagedChanged)
-}
-
-function Invoke-Flutter {
-    param(
-        [string[]]$Arguments,
-        [string]$FailureMessage
-    )
-
-    & flutter @Arguments
-
-    if ($LASTEXITCODE -ne 0) {
-        throw $FailureMessage
-    }
-}
-
-function Initialize-FlutterDependencies {
-    param(
-        [switch]$ForcePub
-    )
-
-    $needsPubGet = $ForcePub -or (Test-PubGetRequired)
-
-    if ($needsPubGet) {
-        Write-Host "Running flutter pub get..." -ForegroundColor Cyan
-        Invoke-Flutter `
-            -Arguments @("pub", "get") `
-            -FailureMessage "flutter pub get failed."
-
-        return @()
-    }
-
-    Write-Host "Dependencies unchanged. Using --no-pub." -ForegroundColor Green
-    return @("--no-pub")
-}
-
 param(
     [switch]$ForcePub
 )
@@ -59,10 +8,33 @@ if (-not (Test-Path "pubspec.yaml")) {
     throw "Run this script from the Flutter project root."
 }
 
-$pubOption = Initialize-FlutterDependencies -ForcePub:$ForcePub
+$needsPubGet = $ForcePub -or (-not (Test-Path ".dart_tool/package_config.json"))
+
+if ((-not $needsPubGet) -and (Test-Path ".git")) {
+    git diff --quiet --ignore-space-at-eol -- pubspec.yaml pubspec.lock
+    $workingTreeChanged = $LASTEXITCODE -ne 0
+
+    git diff --cached --quiet --ignore-space-at-eol -- pubspec.yaml pubspec.lock
+    $stagedChanged = $LASTEXITCODE -ne 0
+
+    $needsPubGet = $workingTreeChanged -or $stagedChanged
+}
+
+if ($needsPubGet) {
+    Write-Host "Running flutter pub get..." -ForegroundColor Cyan
+    flutter pub get
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "flutter pub get failed."
+    }
+} else {
+    Write-Host "Dependencies unchanged. Skipping pub get." -ForegroundColor Green
+}
 
 Write-Host ""
 Write-Host "Launching Windows app..." -ForegroundColor Cyan
-Invoke-Flutter `
-    -Arguments (@("run") + $pubOption + @("-d", "windows")) `
-    -FailureMessage "flutter run failed."
+flutter run --no-pub -d windows
+
+if ($LASTEXITCODE -ne 0) {
+    throw "flutter run failed."
+}

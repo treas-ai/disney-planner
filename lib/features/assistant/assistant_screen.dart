@@ -7,6 +7,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../domain/entities/assistant_insight.dart';
 import '../../domain/entities/live_operation_snapshot.dart';
+import '../live_data/manual_live_data_screen.dart';
 import 'assistant_controller.dart';
 
 class AssistantScreen extends StatefulWidget {
@@ -64,7 +65,20 @@ class _AssistantScreenState extends State<AssistantScreen> {
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
             if (controller.liveOperation != null) ...[
-              _LiveOperationCard(snapshot: controller.liveOperation!),
+              _LiveOperationCard(
+                snapshot: controller.liveOperation!,
+                onManualInput: () async {
+                  final parkId =
+                      AppStateScope.of(context).daySchedule?.parkId ??
+                      AppStateScope.of(context).tripSettings.parkId;
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ManualLiveDataScreen(parkId: parkId),
+                    ),
+                  );
+                  await controller.loadLiveOperation();
+                },
+              ),
               const SizedBox(height: AppSpacing.md),
             ],
             AppCard(
@@ -220,10 +234,21 @@ class _IntelligenceSummary extends StatelessWidget {
   }
 }
 
+
 class _LiveOperationCard extends StatelessWidget {
-  const _LiveOperationCard({required this.snapshot});
+  const _LiveOperationCard({
+    required this.snapshot,
+    required this.onManualInput,
+  });
 
   final LiveOperationSnapshot snapshot;
+  final VoidCallback onManualInput;
+
+  String _formatUpdatedAt(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +272,12 @@ class _LiveOperationCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (snapshot.isMock) const Chip(label: Text('Mock')),
+              Chip(label: Text(snapshot.sourceLabel)),
+              IconButton(
+                tooltip: '待ち時間を手動入力',
+                onPressed: onManualInput,
+                icon: const Icon(Icons.edit_note_outlined),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -255,27 +285,20 @@ class _LiveOperationCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (park != null)
-                Chip(label: Text('営業時間 ${park.operatingHoursLabel}')),
-              if (weather != null)
-                Chip(label: Text('天気 ${weather.condition.label}')),
+              if (park != null) Chip(label: Text('営業時間 ${park.operatingHoursLabel}')),
+              if (weather != null) Chip(label: Text('天気 ${weather.condition.label}')),
               if (weather?.temperatureCelsius != null)
-                Chip(
-                  label: Text(
-                    '${weather!.temperatureCelsius!.toStringAsFixed(0)}℃',
-                  ),
-                ),
-              if (crowd != null)
-                Chip(label: Text('混雑 ${crowd.parkLevel.label}')),
+                Chip(label: Text('${weather!.temperatureCelsius!.toStringAsFixed(0)}℃')),
+              if (crowd != null) Chip(label: Text('混雑 ${crowd.parkLevel.label}')),
             ],
           ),
           if (snapshot.attractions.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
-              '主要アトラクション（Mock）',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              '主要アトラクション（${snapshot.sourceLabel}）',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             for (final attraction in snapshot.attractions.take(2))
@@ -287,10 +310,22 @@ class _LiveOperationCard extends StatelessWidget {
                 ),
               ),
           ],
-          if (snapshot.isMock) ...[
-            const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '最終更新 ${_formatUpdatedAt(snapshot.updatedAt)}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (snapshot.fallbackMessage != null) ...[
+            const SizedBox(height: AppSpacing.xs),
             Text(
-              'これは接続確認用のMockデータです。実際の運営情報は公式アプリで確認してください。',
+              snapshot.fallbackMessage!,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          if (snapshot.isMock) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '現在はサンプルデータを表示しています。実際の運営情報は公式アプリで確認してください。',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

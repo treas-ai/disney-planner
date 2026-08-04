@@ -264,14 +264,21 @@ class ScheduleEngine {
       previousAreaId = facility.areaId;
     }
 
+    final latestScheduledEnd = items.fold<int>(
+      exitMinutes,
+      (latest, item) => _maximum(latest, _itemEndMinutes(item)),
+    );
+
     items.add(
       _createScheduleItem(
         id: 'exit',
         title: '退園',
         type: ScheduleItemType.exit,
-        startMinutes: exitMinutes,
-        endMinutes: exitMinutes,
-        reason: '設定された退園時間です。',
+        startMinutes: latestScheduledEnd,
+        endMinutes: latestScheduledEnd,
+        reason: latestScheduledEnd > exitMinutes
+            ? '公式公演の終了時刻を優先し、退園時刻を後ろへ調整しました。'
+            : '設定された退園時間です。',
       ),
     );
 
@@ -444,23 +451,9 @@ class ScheduleEngine {
 
       final fixedEndMinutes = fixedStartMinutes + durationMinutes;
 
-      if (fixedStartMinutes < entryMinutes || fixedEndMinutes > exitMinutes) {
-        continue;
-      }
+      addedFacilityIds.add(facility.id);
 
-      if (!_fitsOperatingHours(
-        facility: facility,
-        startMinutes: fixedStartMinutes,
-        durationMinutes: durationMinutes,
-      )) {
-        continue;
-      }
-
-      if (!_isTimeRangeAvailable(
-        startMinutes: fixedStartMinutes,
-        endMinutes: fixedEndMinutes,
-        items: items,
-      )) {
+      if (fixedStartMinutes < entryMinutes || fixedStartMinutes > exitMinutes) {
         continue;
       }
 
@@ -468,10 +461,6 @@ class ScheduleEngine {
         facility: facility,
         preference: preference,
       );
-
-      if (waitDecision.shouldSkip) {
-        continue;
-      }
 
       items.add(
         _createScheduleItem(
@@ -493,7 +482,6 @@ class ScheduleEngine {
         ),
       );
 
-      addedFacilityIds.add(facility.id);
     }
 
     return addedFacilityIds;

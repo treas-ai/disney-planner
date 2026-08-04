@@ -483,7 +483,7 @@ class _PlanOverviewCard extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.psychology_alt_outlined, size: 19),
-                label: Text(isOptimizing ? 'AI分析中...' : 'AIプラン評価'),
+                label: Text(isOptimizing ? 'AI改善中...' : 'AIでもっと良くする'),
               ),
             ),
             const SizedBox(height: 7),

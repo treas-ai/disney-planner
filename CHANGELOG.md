@@ -1,5 +1,76 @@
 # Changelog
 
+## v3.8.2 - Official Entertainment Fixed-Time HotFix
+
+### 修正
+- 公式公演時刻が未選択でも、登録済みの最初の公演回を自動選択
+- ショー・パレードを確定固定予定としてSchedule Engineへ渡す
+- 公演終了が設定退園時刻を越える場合も公式時刻を優先
+- 公式公演終了後へ退園時刻を自動調整
+- 固定公演が他予定と重なっても通常施設として午前へ再配置されないよう修正
+- Reach for the Starsの表示名を日本語表記へ統一
+
+## v3.8.1 - 日本語表示・公式公演時刻修正
+
+### 修正
+- 画面上の「Mock」「Manual」「Official」を日本語表示へ変更
+- サンプルデータ／手動入力／自動取得に表記統一
+- 2026年8月4日のTDL・TDS公式ショー／パレード時刻を登録
+- 公演回選択欄を「公式公演時刻」へ変更
+- 未登録日には仮時刻を生成しない方針を明確化
+
+### 固定予定
+- 公式公演時刻を選択すると確定固定予定として保存
+- Schedule Engine・AI改善・再計算で時刻を移動しない
+- 事前予約制ショーレストランは予約時刻を手動登録
+
+## v3.8.0 - Manual Live Data Input
+
+### 追加
+- 公式アプリを見ながら入力する待ち時間編集画面
+- 運営中・一時休止・システム調整・終了・不明の状態入力
+- SharedPreferencesによる保存・復元
+- 前回待ち時間との差分表示
+- 30分以上経過した情報への警告
+- Manualデータソース
+- 手動待ち時間のSmart Schedule Engine連携
+- 手動入力の自動テスト
+
+### 仕様
+- 外部サイトへの自動アクセスは行わない
+- 保存時にデータ取得元をManualへ切り替える
+- 30分以内の運営中データだけをAI改善の現在待ち時間として使用
+
+## v3.7.0 - Official Data Service Foundation
+
+### 追加
+- `LiveDataProvider`抽象インターフェース
+- Mock／Official Provider
+- TTL付きメモリキャッシュ
+- 取得失敗時のキャッシュ／Mockフォールバック
+- データソース設定の永続化
+- 設定画面のMock／Official切替
+- AI画面の取得元・最終更新時刻・フォールバック表示
+- Provider自動テスト
+
+### 仕様
+- Officialの外部接続処理は未実装
+- Official選択時に接続できない場合は安全にMockへ切替
+- AI・画面は取得元を意識せず同じRepositoryを利用
+
+## v3.6.0 - Smart Schedule Engine
+
+### 追加
+- 移動・待ち時間・雨天・イベント影響・歩行負担を統合したスマート改善
+- 固定予定と朝食・昼食・夕食を完全保護
+- Before／Afterの評価指標を拡張
+- Smart Schedule Engine自動テスト
+
+### 変更
+- 「AIプラン評価」を「AIでもっと良くする」へ変更
+- AI改善理由を具体化
+- Event Impact Engineをプラン最適化へ接続
+
 ## v3.5 - Live Operation Foundation
 
 ### Added

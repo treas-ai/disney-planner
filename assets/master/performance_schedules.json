@@ -1,6 +1,203 @@
 {
-  "schemaVersion": 1,
-  "updatedAt": "",
-  "sourceNote": "公式発表を確認した公演時刻だけを登録してください。未登録時は選択不可とし、仮時刻を生成しません。",
-  "schedules": []
+  "schemaVersion": 2,
+  "updatedAt": "2026-08-04",
+  "sourceNote": "2026年8月4日の東京ディズニーリゾート公式『当日のパーク情報』で確認した公演時刻のみ登録。事前予約制ショーレストランは予約時刻を手動登録してください。",
+  "sourceUrls": {
+    "tokyo_disneyland": "https://www.tokyodisneyresort.jp/tdl/daily/calendar/20260804/",
+    "tokyo_disneysea": "https://www.tokyodisneyresort.jp/tds/daily/calendar/20260804/"
+  },
+  "schedules": [
+    {
+      "id": "tdl_world_bazaar_baymax_mission_cooldown_20260804_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_baymax_mission_cooldown",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "10:00"
+    },
+    {
+      "id": "tdl_world_bazaar_baymax_mission_cooldown_20260804_2",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_baymax_mission_cooldown",
+      "date": "2026-08-04",
+      "performanceIndex": 1,
+      "startTime": "12:50"
+    },
+    {
+      "id": "tdl_world_bazaar_baymax_mission_cooldown_20260804_3",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_baymax_mission_cooldown",
+      "date": "2026-08-04",
+      "performanceIndex": 2,
+      "startTime": "14:55"
+    },
+    {
+      "id": "tdl_world_bazaar_harmony_in_color_20260804_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_harmony_in_color",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "17:00"
+    },
+    {
+      "id": "tdl_world_bazaar_electrical_parade_dreamlights_20260804_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_electrical_parade_dreamlights",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "19:45"
+    },
+    {
+      "id": "tdl_world_bazaar_reach_for_the_stars_20260804_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_reach_for_the_stars",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "20:55"
+    },
+    {
+      "id": "tdl_adventureland_jamboree_mickey_20260804_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_jamboree_mickey",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "18:00"
+    },
+    {
+      "id": "tdl_adventureland_jamboree_mickey_20260804_2",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_jamboree_mickey",
+      "date": "2026-08-04",
+      "performanceIndex": 1,
+      "startTime": "19:20"
+    },
+    {
+      "id": "tdl_adventureland_jamboree_mickey_20260804_3",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_jamboree_mickey",
+      "date": "2026-08-04",
+      "performanceIndex": 2,
+      "startTime": "20:35"
+    },
+    {
+      "id": "tdl_new_fantasyland_mickeys_magical_music_world_20260804_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_new_fantasyland_mickeys_magical_music_world",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "10:50"
+    },
+    {
+      "id": "tdl_new_fantasyland_mickeys_magical_music_world_20260804_2",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_new_fantasyland_mickeys_magical_music_world",
+      "date": "2026-08-04",
+      "performanceIndex": 1,
+      "startTime": "12:15"
+    },
+    {
+      "id": "tdl_new_fantasyland_mickeys_magical_music_world_20260804_3",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_new_fantasyland_mickeys_magical_music_world",
+      "date": "2026-08-04",
+      "performanceIndex": 2,
+      "startTime": "13:40"
+    },
+    {
+      "id": "tdl_new_fantasyland_mickeys_magical_music_world_20260804_4",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_new_fantasyland_mickeys_magical_music_world",
+      "date": "2026-08-04",
+      "performanceIndex": 3,
+      "startTime": "15:45"
+    },
+    {
+      "id": "tdl_new_fantasyland_mickeys_magical_music_world_20260804_5",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_new_fantasyland_mickeys_magical_music_world",
+      "date": "2026-08-04",
+      "performanceIndex": 4,
+      "startTime": "17:10"
+    },
+    {
+      "id": "tds_show_sparkling_jubilee_celebration_20260804_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_sparkling_jubilee_celebration",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "17:00"
+    },
+    {
+      "id": "tds_show_sparkling_jubilee_night_20260804_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_sparkling_jubilee_night",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "20:55"
+    },
+    {
+      "id": "tds_show_believe_sea_of_dreams_20260804_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_believe_sea_of_dreams",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "20:15"
+    },
+    {
+      "id": "tds_show_dance_the_globe_20260804_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dance_the_globe",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "17:55"
+    },
+    {
+      "id": "tds_show_dance_the_globe_20260804_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dance_the_globe",
+      "date": "2026-08-04",
+      "performanceIndex": 1,
+      "startTime": "19:40"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20260804_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-08-04",
+      "performanceIndex": 0,
+      "startTime": "11:00"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20260804_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-08-04",
+      "performanceIndex": 1,
+      "startTime": "12:25"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20260804_3",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-08-04",
+      "performanceIndex": 2,
+      "startTime": "13:50"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20260804_4",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-08-04",
+      "performanceIndex": 3,
+      "startTime": "15:55"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20260804_5",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-08-04",
+      "performanceIndex": 4,
+      "startTime": "17:20"
+    }
+  ]
 }

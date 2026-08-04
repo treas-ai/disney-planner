@@ -6,6 +6,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/loading_view.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/enums/live_data_source_type.dart';
 import 'settings_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -152,6 +153,12 @@ class _MobileSettingsLayout extends StatelessWidget {
       children: [
         _ParkSettingsCard(settings: settings, onChanged: controller.updatePark),
         const SizedBox(height: AppSpacing.sm),
+        _LiveDataSourceSettingsCard(
+          value: controller.liveDataSource,
+          isLoading: controller.isLoadingLiveDataSource,
+          onChanged: controller.updateLiveDataSource,
+        ),
+        const SizedBox(height: AppSpacing.sm),
         _VisitSummaryCard(
           settings: settings,
           onEntryTimePressed: onEntryTimePressed,
@@ -211,6 +218,12 @@ class _DesktopSettingsLayout extends StatelessWidget {
                 _ParkSettingsCard(
                   settings: settings,
                   onChanged: controller.updatePark,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _LiveDataSourceSettingsCard(
+                  value: controller.liveDataSource,
+                  isLoading: controller.isLoadingLiveDataSource,
+                  onChanged: controller.updateLiveDataSource,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _VisitSummaryCard(
@@ -383,6 +396,73 @@ class _ParkChoiceButton extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LiveDataSourceSettingsCard extends StatelessWidget {
+  const _LiveDataSourceSettingsCard({
+    required this.value,
+    required this.isLoading,
+    required this.onChanged,
+  });
+
+  final LiveDataSourceType value;
+  final bool isLoading;
+  final ValueChanged<LiveDataSourceType> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SettingsCardHeader(
+            title: 'ライブデータ取得元',
+            subtitle: '運営情報の取得方法を選択',
+            icon: Icons.cloud_sync_outlined,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (isLoading)
+            const LinearProgressIndicator()
+          else
+            SegmentedButton<LiveDataSourceType>(
+              segments: const [
+                ButtonSegment(
+                  value: LiveDataSourceType.mock,
+                  label: Text('サンプル'),
+                  icon: Icon(Icons.science_outlined),
+                ),
+                ButtonSegment(
+                  value: LiveDataSourceType.manual,
+                  label: Text('手動入力'),
+                  icon: Icon(Icons.edit_note_outlined),
+                ),
+                ButtonSegment(
+                  value: LiveDataSourceType.official,
+                  label: Text('自動取得'),
+                  icon: Icon(Icons.cloud_outlined),
+                ),
+              ],
+              selected: {value},
+              onSelectionChanged: (selection) {
+                onChanged(selection.first);
+              },
+            ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            switch (value) {
+              LiveDataSourceType.mock =>
+                '動作確認用のサンプルデータを使用します。',
+              LiveDataSourceType.manual =>
+                '公式アプリを見ながら手動入力した待ち時間を使用します。',
+              LiveDataSourceType.official =>
+                '自動取得の接続先は準備中です。取得できない場合はサンプルデータへ切り替えます。',
+            },
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }

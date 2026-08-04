@@ -31,7 +31,7 @@ class PlanOptimizationSheet extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'AIプラン評価',
+                    'AIスマート改善',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -104,7 +104,7 @@ class PlanOptimizationSheet extends StatelessWidget {
                       ),
                     const SizedBox(height: 8),
                     Text(
-                      'AIによる参考提案です。確定固定予定は変更しません。',
+                      'AIによる参考提案です。固定予定と食事予定は変更しません。',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),

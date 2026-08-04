@@ -6,6 +6,8 @@ import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/enums/fixed_time_status.dart';
+import '../../data/local/local_performance_schedule_repository.dart';
+import '../../domain/services/official_performance_preference_resolver.dart';
 import '../../domain/services/schedule_engine.dart';
 
 class ScheduleController extends ChangeNotifier {
@@ -15,6 +17,10 @@ class ScheduleController extends ChangeNotifier {
 
   final AppState _appState;
   final ScheduleEngine _scheduleEngine = const ScheduleEngine();
+  final OfficialPerformancePreferenceResolver _performanceResolver =
+      OfficialPerformancePreferenceResolver(
+        repository: LocalPerformanceScheduleRepository(),
+      );
 
   bool isLoading = false;
   String? errorMessage;
@@ -177,11 +183,35 @@ class ScheduleController extends ChangeNotifier {
           .map((facility) => facility.id)
           .toSet();
 
-      final preferences = _appState.planPreferences
+      final selectedPreferences = _appState.planPreferences
           .where((preference) {
             return selectedFacilityIds.contains(preference.facilityId);
           })
           .toList(growable: false);
+
+      final settings = _appState.tripSettings;
+      final preferences = await _performanceResolver.resolve(
+        parkId: selectedParkId,
+        date: DateTime.now(),
+        entryMinutes: settings.entryTimeHour * 60 + settings.entryTimeMinute,
+        exitMinutes: settings.exitTimeHour * 60 + settings.exitTimeMinute,
+        facilities: availableFacilities,
+        preferences: selectedPreferences,
+      );
+
+      for (final preference in preferences) {
+        final current = _appState.getPreference(preference.facilityId);
+        if (current == null ||
+            current.preferredPerformanceTime ==
+                preference.preferredPerformanceTime) {
+          continue;
+        }
+        _appState.updatePreferenceSelectedPerformance(
+          facilityId: preference.facilityId,
+          performanceIndex: preference.selectedPerformanceIndex,
+          startTime: preference.preferredPerformanceTime,
+        );
+      }
 
       final eventImpacts = await ServiceLocator.eventImpactRepository
           .loadEventImpacts(parkId: selectedParkId);

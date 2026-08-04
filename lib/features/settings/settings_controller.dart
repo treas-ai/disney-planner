@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
+import '../../app/dependency/service_locator.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/enums/live_data_source_type.dart';
 
 class SettingsController extends ChangeNotifier {
   SettingsController(this._appState) {
     _appState.addListener(_onAppStateChanged);
+    _restoreLiveDataSource();
   }
 
   final AppState _appState;
+
+  LiveDataSourceType liveDataSource = LiveDataSourceType.mock;
+  bool isLoadingLiveDataSource = true;
 
   TripSettings get settings {
     return _appState.tripSettings;
@@ -88,6 +94,23 @@ class SettingsController extends ChangeNotifier {
 
   void updateChildren(bool value) {
     _appState.updateTripSettings(settings.copyWith(hasChildren: value));
+  }
+
+  Future<void> _restoreLiveDataSource() async {
+    liveDataSource = await ServiceLocator.liveDataSourcePreferences.load();
+    isLoadingLiveDataSource = false;
+    notifyListeners();
+  }
+
+  Future<void> updateLiveDataSource(LiveDataSourceType value) async {
+    if (liveDataSource == value) {
+      return;
+    }
+
+    liveDataSource = value;
+    ServiceLocator.clearLiveDataCache();
+    notifyListeners();
+    await ServiceLocator.liveDataSourcePreferences.save(value);
   }
 
   @override
