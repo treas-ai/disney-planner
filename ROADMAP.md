@@ -23,3 +23,10 @@
 - 不足データの可視化
 - 後続版で監査結果に基づきTDL/TDSを補完
 
+## v3.5 Live Operation Foundation
+
+- パーク営業時間・天候・混雑・施設運営状態の統合モデル
+- Repository InterfaceとMock実装
+- AIコンシェルジュ連携
+- 次版で外部データ取得実装へ差し替え
+

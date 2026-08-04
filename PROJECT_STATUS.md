@@ -34,3 +34,11 @@ AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
 - 公式URL・メニュー・休止確認日監査対応
 - 正式版1.0.0に向けた不足項目の可視化
 
+## v3.5 Live Operation Foundation
+
+- ライブ運営情報のDomainモデルを追加
+- LiveOperationRepositoryを追加
+- Mock Repositoryで通信差し替え基盤を構築
+- AIコンシェルジュへパーク状況カードを追加
+- Mockデータと公式情報を明確に区別
+

@@ -4,6 +4,7 @@ import '../../app/dependency/service_locator.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/assistant_context.dart';
 import '../../domain/entities/assistant_response.dart';
+import '../../domain/entities/live_operation_snapshot.dart';
 import '../../domain/services/assistant_engine.dart';
 import '../../domain/services/rule_based_assistant_engine.dart';
 
@@ -19,6 +20,20 @@ class AssistantController extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
   AssistantResponse? response;
+  LiveOperationSnapshot? liveOperation;
+
+  Future<void> loadLiveOperation() async {
+    try {
+      final parkId =
+          _appState.daySchedule?.parkId ?? _appState.tripSettings.parkId;
+      liveOperation = await ServiceLocator.liveOperationRepository
+          .fetchSnapshot(parkId: parkId);
+      notifyListeners();
+    } catch (error, stackTrace) {
+      debugPrint('ライブ運営情報の読み込みに失敗しました: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
 
   Future<void> ask(String question) async {
     final trimmed = question.trim();
@@ -33,6 +48,8 @@ class AssistantController extends ChangeNotifier {
     try {
       final parkId =
           _appState.daySchedule?.parkId ?? _appState.tripSettings.parkId;
+      liveOperation ??= await ServiceLocator.liveOperationRepository
+          .fetchSnapshot(parkId: parkId);
       final eventImpacts = await ServiceLocator.eventImpactRepository
           .loadEventImpacts(parkId: parkId);
 
@@ -43,6 +60,7 @@ class AssistantController extends ChangeNotifier {
           schedule: _appState.daySchedule,
           facilities: _appState.selectedFacilitiesForPark(parkId),
           eventImpacts: eventImpacts,
+          liveOperation: liveOperation,
         ),
       );
     } catch (error, stackTrace) {

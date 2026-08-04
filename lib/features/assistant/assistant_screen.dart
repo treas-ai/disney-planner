@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../domain/entities/assistant_insight.dart';
+import '../../domain/entities/live_operation_snapshot.dart';
 import 'assistant_controller.dart';
 
 class AssistantScreen extends StatefulWidget {
@@ -28,7 +31,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _controller ??= AssistantController(AppStateScope.of(context));
+    if (_controller == null) {
+      final controller = AssistantController(AppStateScope.of(context));
+      _controller = controller;
+      unawaited(controller.loadLiveOperation());
+    }
   }
 
   @override
@@ -56,6 +63,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
         return ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
+            if (controller.liveOperation != null) ...[
+              _LiveOperationCard(snapshot: controller.liveOperation!),
+              const SizedBox(height: AppSpacing.md),
+            ],
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,6 +214,86 @@ class _IntelligenceSummary extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(insight.description),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveOperationCard extends StatelessWidget {
+  const _LiveOperationCard({required this.snapshot});
+
+  final LiveOperationSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final park = snapshot.parkOperation;
+    final weather = snapshot.weather;
+    final crowd = snapshot.crowd;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.monitor_heart_outlined),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  '本日のパーク状況',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (snapshot.isMock) const Chip(label: Text('Mock')),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (park != null)
+                Chip(label: Text('営業時間 ${park.operatingHoursLabel}')),
+              if (weather != null)
+                Chip(label: Text('天気 ${weather.condition.label}')),
+              if (weather?.temperatureCelsius != null)
+                Chip(
+                  label: Text(
+                    '${weather!.temperatureCelsius!.toStringAsFixed(0)}℃',
+                  ),
+                ),
+              if (crowd != null)
+                Chip(label: Text('混雑 ${crowd.parkLevel.label}')),
+            ],
+          ),
+          if (snapshot.attractions.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '主要アトラクション（Mock）',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            for (final attraction in snapshot.attractions.take(2))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '・${attraction.facilityId}：${attraction.availability.label}'
+                  '${attraction.standbyMinutes == null ? '' : ' / ${attraction.standbyMinutes}分'}',
+                ),
+              ),
+          ],
+          if (snapshot.isMock) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'これは接続確認用のMockデータです。実際の運営情報は公式アプリで確認してください。',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
     );

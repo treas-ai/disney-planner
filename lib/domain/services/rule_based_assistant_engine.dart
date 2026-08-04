@@ -51,6 +51,19 @@ class RuleBasedAssistantEngine implements AssistantEngine {
     }
 
     if (_containsAny(normalized, const ['混ん', '待ち時間', '並ぶ'])) {
+      final live = context.liveOperation;
+      final crowd = live?.crowd;
+      if (live != null && crowd != null) {
+        return AssistantResponse(
+          message:
+              '現在の混雑レベルは「${crowd.parkLevel.label}」です。公式アプリの実際の待ち時間も確認してください。',
+          reasons: [
+            if (live.isMock) '現在はMockデータを表示しています。',
+            if (crowd.peakTimeLabel != null) '混雑ピーク目安：${crowd.peakTimeLabel}',
+            'Disney Plannerは公式待ち時間を独自に生成しません。',
+          ],
+        );
+      }
       return const AssistantResponse(
         message:
             '待ち時間は公式アプリで確認し、Disney Plannerへ入力してください。入力後はAI待ち時間予測と再計算機能を利用できます。',
@@ -111,6 +124,7 @@ class RuleBasedAssistantEngine implements AssistantEngine {
       reasons: [
         '現在のプランで最も近い未完了予定です。',
         ...eventWarnings,
+        if (context.liveOperation?.isMock == true) 'ライブ運営情報はMockデータです。',
         if (facility != null) '施設エリア：${facility.areaId}',
         if (next.reason != null && next.reason!.trim().isNotEmpty) next.reason!,
       ],

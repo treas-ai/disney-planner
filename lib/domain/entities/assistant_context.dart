@@ -1,6 +1,7 @@
 import 'day_schedule.dart';
 import 'event_impact.dart';
 import 'facility.dart';
+import 'live_operation_snapshot.dart';
 
 class AssistantContext {
   const AssistantContext({
@@ -8,12 +9,14 @@ class AssistantContext {
     required this.schedule,
     required this.facilities,
     this.eventImpacts = const [],
+    this.liveOperation,
   });
 
   final DateTime now;
   final DaySchedule? schedule;
   final List<Facility> facilities;
   final List<EventImpact> eventImpacts;
+  final LiveOperationSnapshot? liveOperation;
 
   Facility? facilityById(String? facilityId) {
     if (facilityId == null) {

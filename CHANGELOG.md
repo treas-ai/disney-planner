@@ -1,5 +1,42 @@
 # Changelog
 
+## v3.5 - Live Operation Foundation
+
+### Added
+
+- ParkOperation / AttractionOperation / RestaurantOperation / EntertainmentOperation
+- WeatherSnapshot / CrowdSnapshot / LiveOperationSnapshot
+- LiveOperationRepository
+- MockLiveOperationRepository
+- AIコンシェルジュ画面の「本日のパーク状況」カード
+- AI回答へのMock混雑情報連携
+- Live Operation Repositoryの自動テスト
+
+### Policy
+
+- v3.5は通信基盤のみ
+- 初期表示はMockデータであり、公式情報ではないことを明示
+- 実際の運営情報は公式アプリを優先
+
+
+## v3.4.1 - Master Data Audit Warning Fix
+
+### 修正
+
+- 公式で固定キャラクターが明示されるTDLグリーティングへ`characterIds`を追加
+- デイジーダックをキャラクターマスターへ追加
+- 「当日のお楽しみ」のグリーティングを固定キャラクター参照の警告対象外へ変更
+- ショーレストランを代表メニュー・単独メニューURLの必須警告対象外へ変更
+- ポップコーン販売施設3件へ料理ジャンル「ポップコーン」を追加
+- 監査ルールの自動テストを追加
+
+### 目標監査結果
+
+- Facilities: 253
+- Errors: 0
+- Warnings: 0
+- Information: 0
+
 ## v3.4 - Tokyo Disney Resort Data Quality
 
 ### Added

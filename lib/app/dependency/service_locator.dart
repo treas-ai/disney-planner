@@ -10,11 +10,13 @@ import '../../data/repositories/facility_repository_impl.dart';
 import '../../data/repositories/park_repository_impl.dart';
 import '../../data/local/local_event_impact_repository.dart';
 import '../../data/local/local_history_repository.dart';
+import '../../data/mock/mock_live_operation_repository.dart';
 import '../../data/local/local_movement_repository.dart';
 import '../../domain/repositories/event_impact_repository.dart';
 import '../../domain/repositories/facility_repository.dart';
 import '../../domain/repositories/park_repository.dart';
 import '../../domain/repositories/history_repository.dart';
+import '../../domain/repositories/live_operation_repository.dart';
 import '../../domain/repositories/movement_repository.dart';
 import '../../domain/services/basic_learning_engine.dart';
 import '../../domain/services/learning_engine.dart';
@@ -45,6 +47,9 @@ class ServiceLocator {
 
   static const LearningEngine _learningEngine = BasicLearningEngine();
 
+  static const LiveOperationRepository _liveOperationRepository =
+      MockLiveOperationRepository();
+
   static ParkRepository get parkRepository {
     return _parkRepository;
   }
@@ -67,6 +72,10 @@ class ServiceLocator {
 
   static LearningEngine get learningEngine {
     return _learningEngine;
+  }
+
+  static LiveOperationRepository get liveOperationRepository {
+    return _liveOperationRepository;
   }
 
   static ParkDataSource _createParkDataSource() {

@@ -152,3 +152,17 @@ Master JSON
 
 Validatorは不正な構造を拒否し、Auditorは公式URL・メニュー・確認日の不足を可視化します。
 
+## Live Operation Architecture (v3.5)
+
+```text
+Assistant / Schedule
+        ↓
+LiveOperationRepository
+        ↓
+MockLiveOperationRepository（v3.5）
+        ↓ 将来差し替え
+API / Approved Data Source
+```
+
+UIとAIは`LiveOperationSnapshot`だけを参照し、取得元を意識しません。Mock情報には`isMock`を付け、公式情報と誤認されない表示を必須とします。
+
