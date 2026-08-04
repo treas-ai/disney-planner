@@ -10,3 +10,10 @@
 - 提案理由の構造化
 - Event Impactとの統合
 
+## v3.3.2 Git Maintenance（完了対象）
+
+- `.gitignore`整備
+- 生成ファイルのGit追跡解除
+- Git運用手順の標準化
+- 次版から`git add .`を通常利用
+

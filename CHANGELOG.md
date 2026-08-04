@@ -1,5 +1,26 @@
 # Changelog
 
+## v3.3.2 - Git Maintenance
+
+### 追加
+
+- Flutter標準に沿ったルート`.gitignore`
+- Git整理を安全に実行する`setup_git_maintenance.ps1`
+- Git整理手順書`GIT_MAINTENANCE.md`
+
+### 変更
+
+- `.dart_tool/`、`build/`、`.flutter-plugins-dependencies`をGit管理対象外へ変更
+- READMEへ通常のGitリリース手順を追加
+- CONTRIBUTINGへGit管理ルールを追加
+- 通常確認コマンドを`--no-pub`対応へ整理
+
+### 仕様
+
+- アプリ機能の変更なし
+- 生成ファイルはPC上に残したまま、Gitの追跡対象からのみ除外
+- 今後は`git add .`を標準運用とする
+
 ## v3.3.1 - Area Label Fix
 
 - エリアフィルターで内部IDが表示される問題を修正

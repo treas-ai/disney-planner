@@ -453,3 +453,32 @@ Single Rider
 ---
 
 このルールをDisney Plannerの標準開発ルールとします。
+
+---
+
+# 24. Git管理ルール
+
+Flutterの生成物・キャッシュはGitへ保存しません。
+
+除外対象:
+
+```text
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+各プラットフォームのephemeral/
+```
+
+通常の変更は、`.gitignore`が整備された状態で次の手順を使用します。
+
+```powershell
+git add .
+git commit -m "Release vX.X"
+git push
+git tag vX.X
+git push origin vX.X
+```
+
+コミット前に、実装ファイル以外の生成物が含まれていないことを`git status`で確認します。
+

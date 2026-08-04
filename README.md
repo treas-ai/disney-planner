@@ -48,3 +48,25 @@ v2.9では、現在のプランをもとに次の行動を案内するローカ�
 ## 東京ディズニーシー対応
 
 v3.0からTDL/TDSのマスターデータを分離し、公式アプリを補助するプラン作成用データとして管理します。変動する運営情報は公式アプリで確認してください。
+
+## Git運用
+
+Flutterの生成ファイルは`.gitignore`で除外します。通常のリリースでは次を実行します。
+
+```powershell
+git add .
+git commit -m "Release vX.X"
+git push
+
+git tag vX.X
+git push origin vX.X
+```
+
+依存関係を変更していない通常確認では、不要な依存解決を避けるため`--no-pub`を使用できます。
+
+```powershell
+flutter analyze --no-pub
+flutter test --no-pub
+flutter run --no-pub -d windows
+```
+

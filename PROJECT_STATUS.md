@@ -20,3 +20,10 @@ Park Intelligence / Event Impact Engineを実装。イベント影響マスタ�
 
 AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
 
+## v3.3.2 Git Maintenance
+
+- ルート`.gitignore`整備
+- Flutter生成ファイルのGit追跡解除
+- `git add .`を使える標準運用へ移行
+- アプリ機能変更なし
+
