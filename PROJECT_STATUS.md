@@ -72,4 +72,15 @@ AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
 - main Push時の自動ビルド・公開
 - Analyze／Testを公開条件に設定
 - Web版バージョン表示
+## v4.5.0 Wish List & Event Pack
+
+- Wish Item中心の旅行目標管理
+- AIプラン候補への店舗自動追加
+- GitHub JSONイベントパック
+- 2026夏スペシャルドリンク第一弾
+## v4.6.0 Wish First Planning Flow
+
+- Wish Listを施設選択より前へ移動
+- Wishから施設候補を自動抽出
+- 施設選択を候補確認・微調整へ役割変更
 

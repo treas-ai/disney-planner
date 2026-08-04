@@ -9,6 +9,7 @@ import '../features/plan_editor/plan_editor_screen.dart';
 import '../features/plan_review/plan_review_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/today/today_plan_screen.dart';
+import '../features/wish_list/wish_list_screen.dart';
 import 'dependency/service_locator.dart';
 import 'state/app_state.dart';
 import 'state/app_state_scope.dart';
@@ -26,11 +27,12 @@ class _MainShellState extends State<MainShell> {
   static const double _navigationRailBreakpoint = 900;
 
   static const int _homeIndex = 0;
-  static const int _editorIndex = 1;
-  static const int _reviewIndex = 2;
-  static const int _todayIndex = 3;
-  static const int _assistantIndex = 4;
-  static const int _settingsIndex = 5;
+  static const int _settingsIndex = 1;
+  static const int _wishListIndex = 2;
+  static const int _editorIndex = 3;
+  static const int _reviewIndex = 4;
+  static const int _todayIndex = 5;
+  static const int _assistantIndex = 6;
 
   int _currentIndex = _homeIndex;
 
@@ -44,44 +46,51 @@ class _MainShellState extends State<MainShell> {
     _MainDestination(
       title: 'ホーム',
       navigationLabel: 'ホーム',
-      subtitle: '現在の設定とプラン作成状況を確認します。',
+      subtitle: '旅行準備とプラン作成の進行状況を確認します。',
       icon: AppIcons.home,
       selectedIcon: AppIcons.homeSelected,
     ),
     _MainDestination(
-      title: 'プラン編集',
-      navigationLabel: '編集',
-      subtitle: '行きたい施設と希望条件を設定します。',
+      title: '旅行設定',
+      navigationLabel: '設定',
+      subtitle: '来園日・パーク・時間・利用条件を最初に設定します。',
+      icon: AppIcons.settings,
+      selectedIcon: AppIcons.settingsSelected,
+    ),
+    _MainDestination(
+      title: 'やりたいこと',
+      navigationLabel: 'Wish',
+      subtitle: '乗りたい・見たい・飲みたい・食べたいものを選びます。',
+      icon: Icons.favorite_border,
+      selectedIcon: Icons.favorite,
+    ),
+    _MainDestination(
+      title: 'プラン候補確認',
+      navigationLabel: '候補',
+      subtitle: 'Wish Listから抽出された施設を確認・微調整します。',
       icon: AppIcons.planEditor,
       selectedIcon: AppIcons.planEditorSelected,
     ),
     _MainDestination(
       title: 'プラン確認',
       navigationLabel: 'プラン',
-      subtitle: '作成した一日のプランを確認・調整します。',
+      subtitle: '候補施設から作成した一日のプランを確認・調整します。',
       icon: AppIcons.planReview,
       selectedIcon: AppIcons.planReviewSelected,
     ),
     _MainDestination(
       title: '当日の予定',
       navigationLabel: '当日',
-      subtitle: '採用したプランを当日用の表示で確認します。',
+      subtitle: '採用したプランを現地向け表示で確認します。',
       icon: AppIcons.today,
       selectedIcon: AppIcons.todaySelected,
     ),
     _MainDestination(
       title: 'AIコンシェルジュ',
       navigationLabel: 'AI',
-      subtitle: '現在のプランをもとに次の行動を案内します。',
+      subtitle: '現在の状況とプランをもとに次の行動を案内します。',
       icon: Icons.smart_toy_outlined,
       selectedIcon: Icons.smart_toy,
-    ),
-    _MainDestination(
-      title: '設定',
-      navigationLabel: '設定',
-      subtitle: '来園条件や利用サービスを設定します。',
-      icon: AppIcons.settings,
-      selectedIcon: AppIcons.settingsSelected,
     ),
   ];
 
@@ -146,6 +155,14 @@ class _MainShellState extends State<MainShell> {
     _onDestinationSelected(_homeIndex);
   }
 
+  void _goToSettings() {
+    _onDestinationSelected(_settingsIndex);
+  }
+
+  void _goToWishList() {
+    _onDestinationSelected(_wishListIndex);
+  }
+
   void _goToEditor() {
     _onDestinationSelected(_editorIndex);
   }
@@ -156,10 +173,6 @@ class _MainShellState extends State<MainShell> {
 
   void _goToToday() {
     _onDestinationSelected(_todayIndex);
-  }
-
-  void _goToSettings() {
-    _onDestinationSelected(_settingsIndex);
   }
 
   void _clearEditorSearch() {
@@ -247,6 +260,8 @@ class _MainShellState extends State<MainShell> {
                         flowState: flowState,
                         compact: false,
                         onHomePressed: _goToHome,
+                        onSettingsPressed: _goToSettings,
+                        onWishListPressed: _goToWishList,
                         onEditorPressed: _goToEditor,
                         onReviewPressed: _goToReview,
                         onTodayPressed: _goToToday,
@@ -286,6 +301,8 @@ class _MainShellState extends State<MainShell> {
                 flowState: flowState,
                 compact: true,
                 onHomePressed: _goToHome,
+                onSettingsPressed: _goToSettings,
+                onWishListPressed: _goToWishList,
                 onEditorPressed: _goToEditor,
                 onReviewPressed: _goToReview,
                 onTodayPressed: _goToToday,
@@ -302,9 +319,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   bool get _shouldShowFlowBar {
-    return _currentIndex != _editorIndex &&
-        _currentIndex != _assistantIndex &&
-        _currentIndex != _settingsIndex;
+    return _currentIndex != _assistantIndex;
   }
 
   Widget _buildScreenStack() {
@@ -312,11 +327,14 @@ class _MainShellState extends State<MainShell> {
       index: _currentIndex,
       children: [
         HomeScreen(
+          onWishListPressed: _goToWishList,
           onEditPlanPressed: _goToEditor,
           onReviewPlanPressed: _goToReview,
           onTodayPlanPressed: _goToToday,
           onSettingsPressed: _goToSettings,
         ),
+        const SettingsScreen(),
+        WishListScreen(onCandidateReviewPressed: _goToEditor),
         PlanEditorScreen(
           searchController: _editorSearchController,
           onReviewPlanPressed: _goToReview,
@@ -324,7 +342,6 @@ class _MainShellState extends State<MainShell> {
         const PlanReviewScreen(),
         const TodayPlanScreen(),
         const AssistantScreen(),
-        const SettingsScreen(),
       ],
     );
   }
@@ -615,6 +632,8 @@ class _PlannerFlowActionBar extends StatelessWidget {
     required this.flowState,
     required this.compact,
     required this.onHomePressed,
+    required this.onSettingsPressed,
+    required this.onWishListPressed,
     required this.onEditorPressed,
     required this.onReviewPressed,
     required this.onTodayPressed,
@@ -625,6 +644,8 @@ class _PlannerFlowActionBar extends StatelessWidget {
   final bool compact;
 
   final VoidCallback onHomePressed;
+  final VoidCallback onSettingsPressed;
+  final VoidCallback onWishListPressed;
   final VoidCallback onEditorPressed;
   final VoidCallback onReviewPressed;
   final VoidCallback onTodayPressed;
@@ -673,18 +694,30 @@ class _PlannerFlowActionBar extends StatelessWidget {
   _PlannerFlowAction _resolveAction() {
     return switch (currentIndex) {
       _MainShellState._homeIndex => _PlannerFlowAction(
-        title: flowState.selectedFacilityCount == 0 ? 'プラン編集を始める' : 'プラン編集を続ける',
-        description: flowState.selectedFacilityCount == 0
-            ? '最初に行きたい施設を選択します。'
-            : '${flowState.selectedFacilityCount}件の選択内容を確認・編集します。',
-        icon: Icons.edit_location_alt_outlined,
+        title: '旅行設定へ',
+        description: '来園日・パーク・滞在時間を最初に確認します。',
+        icon: Icons.tune,
+        onPressed: onSettingsPressed,
+      ),
+      _MainShellState._settingsIndex => _PlannerFlowAction(
+        title: 'やりたいことを選ぶ',
+        description: '設定したパークで、達成したいことをWish Listへ登録します。',
+        icon: Icons.favorite_border,
+        onPressed: onWishListPressed,
+      ),
+      _MainShellState._wishListIndex => _PlannerFlowAction(
+        title: 'プラン候補を確認',
+        description: flowState.selectedWishCount == 0
+            ? 'Wishを選ばず、施設を手動で追加することもできます。'
+            : '${flowState.selectedWishCount}件のWishから販売店舗・施設を抽出します。',
+        icon: Icons.checklist_outlined,
         onPressed: onEditorPressed,
       ),
       _MainShellState._editorIndex => _PlannerFlowAction(
-        title: 'プラン確認へ',
+        title: 'プランを生成・確認',
         description: flowState.selectedFacilityCount == 0
-            ? '施設を選択するとプランを生成できます。'
-            : '${flowState.selectedFacilityCount}件の施設から一日のプランを作成します。',
+            ? '候補施設を追加するとプランを生成できます。'
+            : '${flowState.selectedFacilityCount}件の候補から一日のプランを作成します。',
         icon: Icons.arrow_forward,
         onPressed: onReviewPressed,
       ),
@@ -692,15 +725,13 @@ class _PlannerFlowActionBar extends StatelessWidget {
         flowState.hasCurrentSchedule
             ? _PlannerFlowAction(
                 title: '当日の予定へ',
-                description: '${flowState.scheduleItemCount}件の予定を当日表示で確認します。',
+                description: '${flowState.scheduleItemCount}件の予定を現地表示で確認します。',
                 icon: Icons.event_available_outlined,
                 onPressed: onTodayPressed,
               )
             : _PlannerFlowAction(
-                title: '施設を編集する',
-                description: flowState.selectedFacilityCount == 0
-                    ? '施設を選択してからプランを生成します。'
-                    : '施設や希望条件を見直せます。',
+                title: '候補を見直す',
+                description: 'Wishから抽出した施設や手動追加施設を確認します。',
                 icon: Icons.arrow_back,
                 onPressed: onEditorPressed,
               ),
@@ -712,7 +743,7 @@ class _PlannerFlowActionBar extends StatelessWidget {
       ),
       _ => _PlannerFlowAction(
         title: 'ホームへ',
-        description: '現在のプラン状況を確認します。',
+        description: '現在の旅行準備状況を確認します。',
         icon: Icons.home_outlined,
         onPressed: onHomePressed,
       ),
@@ -815,19 +846,25 @@ class _PlannerProgressIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final steps = <_PlannerStep>[
       _PlannerStep(
-        label: 'ホーム',
-        icon: Icons.home_outlined,
+        label: '旅行設定',
+        icon: Icons.tune,
         completed: true,
-        active: currentIndex == _MainShellState._homeIndex,
+        active: currentIndex == _MainShellState._settingsIndex,
       ),
       _PlannerStep(
-        label: '施設選択',
-        icon: Icons.edit_location_alt_outlined,
+        label: 'Wish',
+        icon: Icons.favorite_border,
+        completed: flowState.selectedWishCount > 0,
+        active: currentIndex == _MainShellState._wishListIndex,
+      ),
+      _PlannerStep(
+        label: '候補確認',
+        icon: Icons.checklist_outlined,
         completed: flowState.selectedFacilityCount > 0,
         active: currentIndex == _MainShellState._editorIndex,
       ),
       _PlannerStep(
-        label: 'プラン確認',
+        label: 'プラン',
         icon: Icons.route_outlined,
         completed: flowState.hasCurrentSchedule,
         active: currentIndex == _MainShellState._reviewIndex,
@@ -1010,7 +1047,7 @@ class _DesktopNavigation extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(14),
             child: Text(
-              '施設選択から当日確認まで',
+              '旅行設定から当日確認まで',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
@@ -1024,6 +1061,10 @@ class _DesktopNavigation extends StatelessWidget {
 
   String? _badgeForIndex(int index) {
     return switch (index) {
+      _MainShellState._wishListIndex =>
+        flowState.selectedWishCount > 0
+            ? '${flowState.selectedWishCount}'
+            : null,
       _MainShellState._editorIndex =>
         flowState.selectedFacilityCount > 0
             ? '${flowState.selectedFacilityCount}'
@@ -1168,6 +1209,10 @@ class _MobileNavigation extends StatelessWidget {
 
   String? _badgeForIndex(int index) {
     return switch (index) {
+      _MainShellState._wishListIndex =>
+        flowState.selectedWishCount > 0
+            ? '${flowState.selectedWishCount}'
+            : null,
       _MainShellState._editorIndex =>
         flowState.selectedFacilityCount > 0
             ? '${flowState.selectedFacilityCount}'
@@ -1197,6 +1242,7 @@ class _MobileNavigationIcon extends StatelessWidget {
 
 class _PlannerFlowState {
   const _PlannerFlowState({
+    required this.selectedWishCount,
     required this.selectedFacilityCount,
     required this.hasCurrentSchedule,
     required this.scheduleItemCount,
@@ -1209,12 +1255,14 @@ class _PlannerFlowState {
     final hasCurrentSchedule = schedule != null && schedule.parkId == parkId;
 
     return _PlannerFlowState(
+      selectedWishCount: appState.selectedWishCount,
       selectedFacilityCount: appState.selectedFacilityCountForPark(parkId),
       hasCurrentSchedule: hasCurrentSchedule,
       scheduleItemCount: hasCurrentSchedule ? schedule.items.length : 0,
     );
   }
 
+  final int selectedWishCount;
   final int selectedFacilityCount;
   final bool hasCurrentSchedule;
   final int scheduleItemCount;

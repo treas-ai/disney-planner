@@ -7,6 +7,7 @@ import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/entities/wish_item_state.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/fixed_time_status.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
@@ -30,6 +31,7 @@ class AppState extends ChangeNotifier {
 
   final List<Facility> _selectedFacilities = [];
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
+  final Map<String, WishItemState> _wishStatesByItemId = {};
 
   DaySchedule? daySchedule;
   final List<DaySchedule> _scheduleUndoHistory = [];
@@ -52,6 +54,20 @@ class AppState extends ChangeNotifier {
 
   int get selectedFacilityCount {
     return _selectedFacilities.length;
+  }
+
+  List<WishItemState> get wishItemStates {
+    return List<WishItemState>.unmodifiable(_wishStatesByItemId.values);
+  }
+
+  WishItemState wishStateFor(String itemId) {
+    return _wishStatesByItemId[itemId] ?? WishItemState(itemId: itemId);
+  }
+
+  int get selectedWishCount {
+    return _wishStatesByItemId.values
+        .where((state) => state.selected && !state.completed)
+        .length;
   }
 
   List<Facility> selectedFacilitiesForPark(String parkId) {
@@ -126,6 +142,23 @@ class AppState extends ChangeNotifier {
 
       _createMissingPreferences();
 
+      _wishStatesByItemId.clear();
+      final rawWishStates = json['wishItemStates'];
+      if (rawWishStates is List) {
+        for (final item in rawWishStates) {
+          if (item is! Map) {
+            continue;
+          }
+          final state = WishItemState.fromJson({
+            for (final entry in item.entries)
+              entry.key.toString(): entry.value,
+          });
+          if (state.itemId.isNotEmpty) {
+            _wishStatesByItemId[state.itemId] = state;
+          }
+        }
+      }
+
       final scheduleJson = json['daySchedule'];
 
       if (scheduleJson is Map<String, dynamic>) {
@@ -154,6 +187,7 @@ class AppState extends ChangeNotifier {
       tripSettings = TripSettings.initial();
       _selectedFacilities.clear();
       _preferencesByFacilityId.clear();
+      _wishStatesByItemId.clear();
       daySchedule = null;
       _scheduleUndoHistory.clear();
       _scheduleRedoHistory.clear();
@@ -189,6 +223,7 @@ class AppState extends ChangeNotifier {
     tripSettings = TripSettings.initial();
     _selectedFacilities.clear();
     _preferencesByFacilityId.clear();
+    _wishStatesByItemId.clear();
     daySchedule = null;
     _scheduleUndoHistory.clear();
     _scheduleRedoHistory.clear();
@@ -204,6 +239,9 @@ class AppState extends ChangeNotifier {
           .toList(),
       'planPreferences': _preferencesByFacilityId.values
           .map((preference) => preference.toJson())
+          .toList(),
+      'wishItemStates': _wishStatesByItemId.values
+          .map((state) => state.toJson())
           .toList(),
       'daySchedule': daySchedule?.toJson(),
       'scheduleUndoHistory': _scheduleUndoHistory
@@ -600,6 +638,41 @@ class AppState extends ChangeNotifier {
     _invalidateScheduleAndSave();
   }
 
+  void toggleWishSelected(String itemId, bool selected) {
+    final current = wishStateFor(itemId);
+    _wishStatesByItemId[itemId] = current.copyWith(selected: selected);
+    _saveAndNotify();
+  }
+
+  void toggleWishCompleted(String itemId, bool completed) {
+    final current = wishStateFor(itemId);
+    _wishStatesByItemId[itemId] = current.copyWith(completed: completed);
+    _saveAndNotify();
+  }
+
+  void updateWishPriority(String itemId, int priority) {
+    final current = wishStateFor(itemId);
+    _wishStatesByItemId[itemId] = current.copyWith(priority: priority);
+    _saveAndNotify();
+  }
+
+  void selectWishItems(Iterable<String> itemIds) {
+    for (final itemId in itemIds) {
+      final current = wishStateFor(itemId);
+      _wishStatesByItemId[itemId] = current.copyWith(selected: true);
+    }
+    _saveAndNotify();
+  }
+
+  void clearWishSelection() {
+    final keys = _wishStatesByItemId.keys.toList(growable: false);
+    for (final key in keys) {
+      final current = _wishStatesByItemId[key]!;
+      _wishStatesByItemId[key] = current.copyWith(selected: false);
+    }
+    _saveAndNotify();
+  }
+
   void updateDaySchedule(DaySchedule schedule) {
     _recordCurrentSchedule();
     daySchedule = schedule;
@@ -693,7 +766,8 @@ class AppState extends ChangeNotifier {
     }
 
     final converted = <String, dynamic>{
-      for (final entry in rawState.entries) entry.key.toString(): entry.value,
+      for (final entry in rawState.entries)
+        entry.key.toString(): entry.value,
     };
     await _storage.save(converted);
     await restore();
@@ -763,7 +837,8 @@ class AppState extends ChangeNotifier {
       } else if (item is Map) {
         schedules.add(
           DaySchedule.fromJson({
-            for (final entry in item.entries) entry.key.toString(): entry.value,
+            for (final entry in item.entries)
+              entry.key.toString(): entry.value,
           }),
         );
       }

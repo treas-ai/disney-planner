@@ -229,4 +229,32 @@ GitHub Actions
   ↓
 GitHub Pages
 ```
+## Wish List & Event Packs
+
+```text
+Bundled / GitHub JSON Event Pack
+  ↓
+WishEventPackRepository
+  ↓
+Wish List（選択・優先度・完了）
+  ↓
+販売店舗をプラン候補へ自動追加
+  ↓
+既存Schedule Engine / AI Optimization
+```
+## Wish First Planning Flow
+
+```text
+旅行設定
+  ↓
+Wish List
+  ↓
+Wish Itemの販売店舗・対象施設を抽出
+  ↓
+プラン候補確認（追加・削除）
+  ↓
+Schedule Engine / AI
+  ↓
+プラン確認・当日
+```
 

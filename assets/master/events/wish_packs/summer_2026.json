@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "id": "summer_2026",
+  "title": "2026夏 スペシャルドリンク",
+  "description": "サマー・クールオフ、東京ディズニーシー25周年、夏季限定ラウンジに加え、フリードリンク券で楽しみたいカフェ系ドリンク、ジュース、スープを収録した第一弾データ。",
+  "startDate": "2026-07-01",
+  "endDate": "2026-09-14",
+  "updatedAt": "2026-08-04",
+  "sourceUrls": [
+    "https://www.tokyodisneyresort.jp/tdl/food/detail/15542651161/",
+    "https://www.tokyodisneyresort.jp/tdl/food/detail/17787319651/",
+    "https://www.tokyodisneyresort.jp/tds/food/detail/17787333121/",
+    "https://www.tokyodisneyresort.jp/tds/food/detail/15598703211/",
+    "https://www.tokyodisneyresort.jp/vp/guide/free-drink.html",
+    "https://www.tokyodisneyresort.jp/vp/guide/info/freedrink_lounge.html"
+  ],
+  "items": [
+    {
+      "id": "summer2026_tdl_sparkling_fruit_nata",
+      "name": "スパークリングドリンク（フルーツ＆ナタデココ）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_world_bazaar_refreshment_corner",
+        "tdl_tomorrowland_pan_galactic_pizza_port",
+        "tdl_tomorrowland_plazma_rays_diner"
+      ],
+      "venueNames": [
+        "リフレッシュメントコーナー",
+        "パン・ギャラクティック・ピザ・ポート",
+        "プラズマ・レイズ・ダイナー"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 700,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "カウンターサービス店舗で販売。利用当日は公式アプリのフリードリンク絞り込みで最終確認してください。",
+      "mobileOrder": true,
+      "description": "夏限定のスペシャルドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/detail/15542651161/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tdl_citrus_muscat",
+      "name": "スパークリングドリンク（シトラス＆マスカット）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_critter_country_grandma_saras_kitchen",
+        "tdl_toontown_huey_dewey_louies_good_time_cafe"
+      ],
+      "venueNames": [
+        "グランマ・サラのキッチン",
+        "ヒューイ・デューイ・ルーイのグッドタイム・カフェ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 880,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "カウンターサービス店舗で販売。利用当日は公式アプリのフリードリンク絞り込みで最終確認してください。",
+      "mobileOrder": true,
+      "description": "シトラスとマスカットの夏向けドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/detail/17787319651/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tdl_peach",
+      "name": "スパークリングドリンク（ピーチ）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_tomorrowland_tomorrowland_terrace"
+      ],
+      "venueNames": [
+        "トゥモローランド・テラス"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 750,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "カウンターサービス店舗で販売。利用当日は公式アプリのフリードリンク絞り込みで最終確認してください。",
+      "mobileOrder": true,
+      "description": "ピーチ風味の夏限定スパークリングドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/restaurant/food/357/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tdl_eastside_soda_float",
+      "name": "ソーダフロート（グレープフルーツ＆バタフライピー）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_world_bazaar_eastside_cafe"
+      ],
+      "venueNames": [
+        "イーストサイド・カフェ 夏季限定ラウンジ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-08-31",
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "14:00～17:00、最終入店16:30。バケーションパッケージ等の当日有効なフリードリンク券所持者向け。1日1回、最大60分。",
+      "mobileOrder": false,
+      "description": "夏季限定ラウンジの店舗限定スペシャルドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/vp/guide/info/freedrink_lounge.html",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tds_kiwi_lime",
+      "name": "スペシャルスパークリングドリンク（キウイ＆ライム）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_006",
+        "tds_lrd_r_003",
+        "tds_ml_r_008",
+        "tds_fs_r_005"
+      ],
+      "venueNames": [
+        "ザンビーニ・ブラザーズ・リストランテ",
+        "ユカタン・ベースキャンプ・グリル",
+        "セバスチャンのカリプソキッチン",
+        "アレンデール・ロイヤルバンケット"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 750,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "販売期間は店舗により異なります。夏パックでは2026年7月1日～9月14日に利用可能な店舗を候補化しています。公式アプリで最終確認してください。",
+      "mobileOrder": true,
+      "description": "キウイとライムのスペシャルスパークリングドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/detail/17787333121/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tds_mango_blue_lassi",
+      "name": "スペシャルラッシー（マンゴー＆ブルーゼリー）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_ac_r_005"
+      ],
+      "venueNames": [
+        "カスバ・フードコート"
+      ],
+      "startDate": "2026-04-08",
+      "endDate": "2027-03-31",
+      "priceYen": 750,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "カウンターサービス店舗で販売。公式アプリのフリードリンク絞り込みで最終確認してください。",
+      "mobileOrder": true,
+      "description": "マンゴーとブルーゼリーのスペシャルラッシー。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/detail/17787333121/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tds_tea_orange",
+      "name": "スパークリングドリンク（紅茶＆オレンジ）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_aw_r_007",
+        "tds_aw_r_008",
+        "tds_lrd_r_004"
+      ],
+      "venueNames": [
+        "ケープコッド・クックオフ",
+        "ドックサイドダイナー",
+        "ミゲルズ・エルドラド・キャンティーナ"
+      ],
+      "startDate": "2026-07-07",
+      "endDate": "2026-09-14",
+      "priceYen": 750,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "店舗ごとに販売開始・終了日が異なります。公式アプリで当日の販売とフリードリンク対象を確認してください。",
+      "mobileOrder": true,
+      "description": "紅茶とオレンジのスパークリングドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/detail/15598703211/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tds_lemon_tea_passion",
+      "name": "スペシャルスパークリングドリンク（レモンティー＆パッションフルーツ）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [],
+      "venueNames": [
+        "ハドソンリバー・ハーベスト"
+      ],
+      "startDate": "2026-04-08",
+      "endDate": "2026-09-14",
+      "priceYen": 750,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "フリードリンク対象候補。施設マスターに未登録のためプラン自動追加は行わず、Wish Listで管理します。公式アプリで最終確認してください。",
+      "mobileOrder": false,
+      "description": "レモンティーとパッションフルーツのスペシャルドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/restaurant/food/498/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tdl_cafe_latte",
+      "name": "カフェラテ／アイスカフェラテ",
+      "category": "cafeDrink",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_adventureland_cafe_orleans",
+        "tdl_world_bazaar_sweetheart_cafe"
+      ],
+      "venueNames": [
+        "カフェ・オーリンズ",
+        "スウィートハート・カフェ"
+      ],
+      "startDate": "2025-11-01",
+      "endDate": "2026-12-31",
+      "priceYen": 650,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "通常のソフトドリンク枠として候補登録。利用当日は公式アプリのフリードリンク絞り込みで店舗と商品を最終確認してください。",
+      "mobileOrder": true,
+      "description": "コーヒーや紅茶以外で選びたいカフェ系ドリンクとして登録。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/restaurant/food/321/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tdl_iced_strawberry_cafe_latte",
+      "name": "アイスストロベリーカフェラテ",
+      "category": "cafeDrink",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_adventureland_cafe_orleans"
+      ],
+      "venueNames": [
+        "カフェ・オーリンズ"
+      ],
+      "startDate": "2026-04-01",
+      "endDate": "2026-09-14",
+      "priceYen": 880,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "期間限定カフェ系ドリンクとして候補登録。利用当日は公式アプリでフリードリンク対象を最終確認してください。",
+      "mobileOrder": true,
+      "description": "ディズニー・スウィートモーメント・カフェの期間限定ドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/restaurant/food/321/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tdl_guava_drink",
+      "name": "グアバドリンク",
+      "category": "juice",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_adventureland_squeezers_tropical_juice_bar"
+      ],
+      "venueNames": [
+        "スクウィーザーズ・トロピカル・ジュースバー"
+      ],
+      "startDate": "2026-01-01",
+      "endDate": "2026-12-31",
+      "priceYen": 450,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "通常の炭酸飲料や茶類とは異なるジュース候補として登録。利用当日は公式アプリでフリードリンク対象を最終確認してください。",
+      "mobileOrder": true,
+      "description": "トロピカル系の定番ジュース。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/restaurant/food/334/",
+      "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tdl_cold_gumbo_soup",
+      "name": "冷製ガンボスープ",
+      "category": "soup",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_adventureland_cafe_orleans"
+      ],
+      "venueNames": [
+        "カフェ・オーリンズ"
+      ],
+      "startDate": "2026-06-01",
+      "endDate": "2026-09-14",
+      "priceYen": 800,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "フリードリンク券の対象種別にはスープが含まれます。利用当日は公式アプリで店舗と商品の対象状況を最終確認してください。",
+      "mobileOrder": true,
+      "description": "夏向けの冷製スープ。ドリンク券で楽しむ候補として登録。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/detail/15542651161/",
+      "sourceCheckedAt": "2026-08-04"
+    }
+  ]
+}

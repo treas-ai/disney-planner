@@ -13,12 +13,14 @@ import '../../domain/entities/trip_settings.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
+    required this.onWishListPressed,
     required this.onEditPlanPressed,
     required this.onReviewPlanPressed,
     required this.onTodayPlanPressed,
     required this.onSettingsPressed,
   });
 
+  final VoidCallback onWishListPressed;
   final VoidCallback onEditPlanPressed;
   final VoidCallback onReviewPlanPressed;
   final VoidCallback onTodayPlanPressed;
@@ -122,7 +124,9 @@ class _HomeScreenState extends State<HomeScreen> {
               settings: settings,
               selectedFacilityCount: selectedFacilities.length,
               schedule: schedule,
-              onPressed: selectedFacilities.isEmpty
+              onPressed: appState.selectedWishCount == 0
+                  ? widget.onWishListPressed
+                  : selectedFacilities.isEmpty
                   ? widget.onEditPlanPressed
                   : hasCurrentSchedule
                   ? widget.onTodayPlanPressed
@@ -131,7 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: AppSpacing.sm),
             _HomeQuickActions(
               selectedFacilityCount: selectedFacilities.length,
+              selectedWishCount: appState.selectedWishCount,
               hasCurrentSchedule: hasCurrentSchedule,
+              onWishListPressed: widget.onWishListPressed,
               onEditPlanPressed: widget.onEditPlanPressed,
               onReviewPlanPressed: widget.onReviewPlanPressed,
               onTodayPlanPressed: widget.onTodayPlanPressed,
@@ -218,12 +224,26 @@ class _HomeScreenState extends State<HomeScreen> {
     required DaySchedule? schedule,
     required TripSettings settings,
   }) {
+    if (_appState?.selectedWishCount == 0) {
+      return _HomeAction(
+        title: 'やりたいことを選択',
+        description:
+            '乗りたい・見たい・飲みたい・食べたいものを先に選びます。',
+        buttonLabel: 'Wish Listを開く',
+        icon: Icons.favorite_border,
+        foregroundColor: const Color(0xFF8A2D5C),
+        backgroundColor: const Color(0xFFFFEAF4),
+        onPressed: widget.onWishListPressed,
+      );
+    }
+
     if (selectedFacilities.isEmpty) {
       return _HomeAction(
-        title: '行きたい施設を選択',
-        description: 'プラン編集画面で、行きたい施設を追加してください。',
-        buttonLabel: 'プラン編集を始める',
-        icon: Icons.add_location_alt_outlined,
+        title: 'プラン候補を確認',
+        description:
+            'Wish Listの選択内容を施設へ反映するか、候補を手動で追加してください。',
+        buttonLabel: '候補確認を開く',
+        icon: Icons.checklist_outlined,
         foregroundColor: const Color(0xFF2457A6),
         backgroundColor: const Color(0xFFEAF2FF),
         onPressed: widget.onEditPlanPressed,
@@ -435,7 +455,9 @@ class _HomeHeroCard extends StatelessWidget {
 class _HomeQuickActions extends StatelessWidget {
   const _HomeQuickActions({
     required this.selectedFacilityCount,
+    required this.selectedWishCount,
     required this.hasCurrentSchedule,
+    required this.onWishListPressed,
     required this.onEditPlanPressed,
     required this.onReviewPlanPressed,
     required this.onTodayPlanPressed,
@@ -443,7 +465,9 @@ class _HomeQuickActions extends StatelessWidget {
   });
 
   final int selectedFacilityCount;
+  final int selectedWishCount;
   final bool hasCurrentSchedule;
+  final VoidCallback onWishListPressed;
   final VoidCallback onEditPlanPressed;
   final VoidCallback onReviewPlanPressed;
   final VoidCallback onTodayPlanPressed;
@@ -477,25 +501,33 @@ class _HomeQuickActions extends StatelessWidget {
                   SizedBox(
                     width: buttonWidth,
                     child: _QuickActionButton(
-                      icon: Icons.edit_location_alt_outlined,
-                      label: selectedFacilityCount == 0 ? '施設を選ぶ' : '施設を編集',
+                      icon: Icons.favorite_border,
+                      label: selectedWishCount == 0
+                          ? 'Wishを選ぶ'
+                          : 'Wish $selectedWishCount件',
+                      onPressed: onWishListPressed,
+                    ),
+                  ),
+                  SizedBox(
+                    width: buttonWidth,
+                    child: _QuickActionButton(
+                      icon: Icons.checklist_outlined,
+                      label: selectedFacilityCount == 0
+                          ? '候補を確認'
+                          : '候補 $selectedFacilityCount件',
                       onPressed: onEditPlanPressed,
                     ),
                   ),
                   SizedBox(
                     width: buttonWidth,
                     child: _QuickActionButton(
-                      icon: Icons.route_outlined,
-                      label: 'プラン確認',
-                      onPressed: onReviewPlanPressed,
-                    ),
-                  ),
-                  SizedBox(
-                    width: buttonWidth,
-                    child: _QuickActionButton(
-                      icon: Icons.event_available_outlined,
-                      label: '当日の予定',
-                      onPressed: hasCurrentSchedule ? onTodayPlanPressed : null,
+                      icon: hasCurrentSchedule
+                          ? Icons.event_available_outlined
+                          : Icons.route_outlined,
+                      label: hasCurrentSchedule ? '当日の予定' : 'プラン確認',
+                      onPressed: hasCurrentSchedule
+                          ? onTodayPlanPressed
+                          : onReviewPlanPressed,
                     ),
                   ),
                   SizedBox(
