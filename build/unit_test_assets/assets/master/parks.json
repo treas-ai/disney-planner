@@ -1,0 +1,28 @@
+[
+  {
+    "id": "tokyo_disneyland",
+    "resortId": "tokyo_disney_resort",
+    "name": "東京ディズニーランド",
+    "country": "Japan",
+    "timezone": "Asia/Tokyo",
+    "defaultOpenHour": 9,
+    "defaultOpenMinute": 0,
+    "defaultCloseHour": 21,
+    "defaultCloseMinute": 0,
+    "status": "open",
+    "displayOrder": 1
+  },
+  {
+    "id": "tokyo_disneysea",
+    "resortId": "tokyo_disney_resort",
+    "name": "東京ディズニーシー",
+    "country": "Japan",
+    "timezone": "Asia/Tokyo",
+    "defaultOpenHour": 9,
+    "defaultOpenMinute": 0,
+    "defaultCloseHour": 21,
+    "defaultCloseMinute": 0,
+    "status": "open",
+    "displayOrder": 2
+  }
+]
