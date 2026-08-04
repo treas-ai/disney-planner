@@ -481,7 +481,6 @@ class ScheduleEngine {
           note: _buildScheduleNote(facility: facility, preference: preference),
         ),
       );
-
     }
 
     return addedFacilityIds;

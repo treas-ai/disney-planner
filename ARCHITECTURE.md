@@ -200,4 +200,21 @@ AI / Smart Schedule Engine
 - JSON形式のローカルバックアップ
 - SharedPreferencesによる初回案内管理
 - Assetメタデータによる公式情報確認日表示
+## Cross-device Sharing
+
+```text
+AppState
+  ↓
+SharePayloadCodec
+  ├─ 共有URL／共有コード
+  └─ JSON
+
+ShareCenter
+  ├─ Clipboard
+  ├─ FilePicker
+  ├─ OS Share Sheet
+  └─ QR Display / Scanner
+```
+
+外部サーバを使用せず、URLまたはJSON内へデータを格納します。
 

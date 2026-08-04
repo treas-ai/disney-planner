@@ -16,11 +16,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _index = 0;
 
   static const _pages = [
-    (
-      Icons.auto_awesome,
-      'AIで一日のプランを作成',
-      '行きたい施設と希望条件から、移動・食事・固定予定を考慮して提案します。',
-    ),
+    (Icons.auto_awesome, 'AIで一日のプランを作成', '行きたい施設と希望条件から、移動・食事・固定予定を考慮して提案します。'),
     (
       Icons.lock_clock_outlined,
       '予約・公式公演時刻を固定',

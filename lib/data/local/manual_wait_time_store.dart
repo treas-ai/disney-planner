@@ -24,9 +24,8 @@ class ManualWaitTimeStore {
     return decoded
         .whereType<Map>()
         .map(
-          (item) => ManualWaitTimeEntry.fromJson(
-            Map<String, Object?>.from(item),
-          ),
+          (item) =>
+              ManualWaitTimeEntry.fromJson(Map<String, Object?>.from(item)),
         )
         .toList(growable: false);
   }
@@ -42,8 +41,7 @@ class ManualWaitTimeStore {
     final entries = [...await loadAll()];
     final index = entries.indexWhere(
       (item) =>
-          item.parkId == entry.parkId &&
-          item.facilityId == entry.facilityId,
+          item.parkId == entry.parkId && item.facilityId == entry.facilityId,
     );
 
     final previous = index < 0 ? null : entries[index];
@@ -71,9 +69,7 @@ class ManualWaitTimeStore {
   }) async {
     final entries = [...await loadAll()]
       ..removeWhere(
-        (item) =>
-            item.parkId == parkId &&
-            item.facilityId == facilityId,
+        (item) => item.parkId == parkId && item.facilityId == facilityId,
       );
     await _persist(entries);
   }

@@ -9,13 +9,9 @@ void main() {
 
   test('manual provider returns manual source even when empty', () async {
     SharedPreferences.setMockInitialValues({});
-    const provider = ManualLiveDataProvider(
-      store: ManualWaitTimeStore(),
-    );
+    const provider = ManualLiveDataProvider(store: ManualWaitTimeStore());
 
-    final snapshot = await provider.fetchSnapshot(
-      parkId: 'tokyo_disneysea',
-    );
+    final snapshot = await provider.fetchSnapshot(parkId: 'tokyo_disneysea');
 
     expect(snapshot.sourceType, LiveDataSourceType.manual);
     expect(snapshot.attractions, isEmpty);

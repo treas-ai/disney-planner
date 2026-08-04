@@ -27,7 +27,8 @@ class OfficialPerformancePreferenceResolver {
         continue;
       }
 
-      final current = preferenceById[facility.id] ??
+      final current =
+          preferenceById[facility.id] ??
           PlanPreference.initial(facilityId: facility.id);
 
       if (current.fixedTimeStatus == FixedTimeStatus.confirmed &&

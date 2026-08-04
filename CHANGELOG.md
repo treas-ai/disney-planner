@@ -1,5 +1,25 @@
 # Changelog
 
+## v4.0.0 - Cross-device Sharing
+
+### 追加
+- 共有URL／共有コードの生成と読込
+- 現在プランだけの軽量共有
+- 設定・履歴を含む全データ共有
+- JSONファイルの保存・読込
+- LINE・メール等のOS共有
+- QRコード表示
+- カメラによるQRコード読込
+- 端末内画像からのQRコード読込
+- 最近読み込んだデータ履歴
+- 設定画面のデータ共有センター
+
+### 共有方針
+- URL・JSONを主方式とし、QRコードは補助方式
+- サーバを使用せず、共有データをURLまたはJSONへ内包
+- 長い全データURLではJSONファイル共有を推奨
+- Windowsではカメラ読込を使わず、URL貼付またはJSON読込を利用
+
 ## v3.11.0 - Release Readiness Pack
 
 ### v3.9 Plan Safety & History

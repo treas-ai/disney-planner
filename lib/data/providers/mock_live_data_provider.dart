@@ -60,7 +60,9 @@ class MockLiveDataProvider implements LiveDataProvider {
         ),
         AttractionOperation(
           parkId: parkId,
-          facilityId: isSea ? 'tds_tower_of_terror' : 'tdl_big_thunder_mountain',
+          facilityId: isSea
+              ? 'tds_tower_of_terror'
+              : 'tdl_big_thunder_mountain',
           availability: LiveOperationAvailability.operating,
           standbyMinutes: isSea ? 40 : 35,
           updatedAt: now,

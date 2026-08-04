@@ -34,10 +34,7 @@ class _ManualLiveDataScreenState extends State<ManualLiveDataScreen> {
     super.dispose();
   }
 
-  Future<void> _edit(
-    Facility facility,
-    ManualWaitTimeEntry? current,
-  ) async {
+  Future<void> _edit(Facility facility, ManualWaitTimeEntry? current) async {
     final minutesController = TextEditingController(
       text: current?.standbyMinutes?.toString() ?? '',
     );
@@ -80,8 +77,7 @@ class _ManualLiveDataScreenState extends State<ManualLiveDataScreen> {
                     TextField(
                       controller: minutesController,
                       enabled:
-                          availability ==
-                          LiveOperationAvailability.operating,
+                          availability == LiveOperationAvailability.operating,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: '待ち時間（分）',
@@ -90,9 +86,7 @@ class _ManualLiveDataScreenState extends State<ManualLiveDataScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    const Text(
-                      '公式アプリに表示されている情報を入力してください。',
-                    ),
+                    const Text('公式アプリに表示されている情報を入力してください。'),
                   ],
                 ),
               ),
@@ -103,16 +97,11 @@ class _ManualLiveDataScreenState extends State<ManualLiveDataScreen> {
                 ),
                 FilledButton(
                   onPressed: () {
-                    final minutes = int.tryParse(
-                      minutesController.text.trim(),
-                    );
-                    if (availability ==
-                            LiveOperationAvailability.operating &&
+                    final minutes = int.tryParse(minutesController.text.trim());
+                    if (availability == LiveOperationAvailability.operating &&
                         (minutes == null || minutes < 0 || minutes > 999)) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('0〜999分の待ち時間を入力してください。'),
-                        ),
+                        const SnackBar(content: Text('0〜999分の待ち時間を入力してください。')),
                       );
                       return;
                     }
@@ -146,9 +135,7 @@ class _ManualLiveDataScreenState extends State<ManualLiveDataScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('保存しました。データ取得元を手動入力へ切り替えました。'),
-        ),
+        const SnackBar(content: Text('保存しました。データ取得元を手動入力へ切り替えました。')),
       );
     }
   }
@@ -195,9 +182,8 @@ class _ManualLiveDataScreenState extends State<ManualLiveDataScreen> {
 
           final facilities = _controller.facilities
               .where(
-                (facility) => facility.name.toLowerCase().contains(
-                  _query.toLowerCase(),
-                ),
+                (facility) =>
+                    facility.name.toLowerCase().contains(_query.toLowerCase()),
               )
               .toList(growable: false);
 

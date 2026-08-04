@@ -10,8 +10,6 @@ class OfficialLiveDataProvider implements LiveDataProvider {
 
   @override
   Future<LiveOperationSnapshot> fetchSnapshot({required String parkId}) {
-    throw const LiveDataProviderException(
-      '自動取得の接続先はまだ設定されていません。',
-    );
+    throw const LiveDataProviderException('自動取得の接続先はまだ設定されていません。');
   }
 }

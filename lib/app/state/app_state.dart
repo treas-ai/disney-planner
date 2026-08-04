@@ -666,6 +666,21 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  String exportSharedPlanJson() {
+    final schedule = daySchedule;
+    if (schedule == null) {
+      throw StateError('共有できるプランがありません。');
+    }
+
+    return jsonEncode({
+      'shareSchemaVersion': 1,
+      'kind': 'plan',
+      'exportedAt': DateTime.now().toIso8601String(),
+      'tripSettings': tripSettings.toJson(),
+      'daySchedule': schedule.toJson(),
+    });
+  }
+
   Future<void> importBackupJson(String value) async {
     final decoded = jsonDecode(value);
     if (decoded is! Map) {
@@ -678,11 +693,52 @@ class AppState extends ChangeNotifier {
     }
 
     final converted = <String, dynamic>{
-      for (final entry in rawState.entries)
-        entry.key.toString(): entry.value,
+      for (final entry in rawState.entries) entry.key.toString(): entry.value,
     };
     await _storage.save(converted);
     await restore();
+  }
+
+  Future<String> importSharedData(Map<String, dynamic> shared) async {
+    final kind = shared['kind']?.toString();
+
+    if (kind == 'backup') {
+      final payload = shared['payload'];
+      if (payload is! Map) {
+        throw const FormatException('バックアップ本体が含まれていません。');
+      }
+      await importBackupJson(jsonEncode(payload));
+      return 'すべての設定とプラン';
+    }
+
+    if (kind == 'plan') {
+      final rawSettings = shared['tripSettings'];
+      final rawSchedule = shared['daySchedule'];
+      if (rawSettings is! Map || rawSchedule is! Map) {
+        throw const FormatException('プラン共有データが不足しています。');
+      }
+
+      tripSettings = TripSettings.fromJson({
+        for (final entry in rawSettings.entries)
+          entry.key.toString(): entry.value,
+      });
+      _recordCurrentSchedule();
+      daySchedule = DaySchedule.fromJson({
+        for (final entry in rawSchedule.entries)
+          entry.key.toString(): entry.value,
+      });
+      _scheduleRedoHistory.clear();
+      await save();
+      notifyListeners();
+      return '現在のプラン';
+    }
+
+    if (shared.containsKey('appState') || shared.containsKey('tripSettings')) {
+      await importBackupJson(jsonEncode(shared));
+      return 'すべての設定とプラン';
+    }
+
+    throw const FormatException('対応していない共有データです。');
   }
 
   void _recordCurrentSchedule() {
@@ -707,8 +763,7 @@ class AppState extends ChangeNotifier {
       } else if (item is Map) {
         schedules.add(
           DaySchedule.fromJson({
-            for (final entry in item.entries)
-              entry.key.toString(): entry.value,
+            for (final entry in item.entries) entry.key.toString(): entry.value,
           }),
         );
       }

@@ -24,6 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>プラン共有QRコードを読み取るためにカメラを使用します。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>保存されたQRコード画像を読み取るために写真を使用します。</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

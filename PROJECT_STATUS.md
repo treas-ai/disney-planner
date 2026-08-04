@@ -60,4 +60,11 @@ AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
 - Backup & Restore
 - Onboarding
 - Data freshness display
+## v4.0.0 Cross-device Sharing
+
+- URL・共有コード
+- JSON保存・読込
+- OS共有
+- QR表示・カメラ／画像読込
+- 共有履歴
 

@@ -58,8 +58,7 @@ class ServiceLocator {
   static const LiveDataSourcePreferences _liveDataSourcePreferences =
       LiveDataSourcePreferences();
 
-  static const ManualWaitTimeStore _manualWaitTimeStore =
-      ManualWaitTimeStore();
+  static const ManualWaitTimeStore _manualWaitTimeStore = ManualWaitTimeStore();
 
   static final LiveDataMemoryCache _liveDataCache = LiveDataMemoryCache();
 

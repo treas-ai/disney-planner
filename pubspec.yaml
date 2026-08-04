@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 3.11.0+3110
+version: 4.0.0+4000
 
 environment:
   sdk: ^3.12.2
@@ -18,6 +18,11 @@ dependencies:
   sqflite_common_ffi: ^2.4.2
   path: ^1.9.1
   url_launcher: ^6.3.2
+  file_picker: ^11.0.3
+  share_plus: ^12.0.2
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.4.0
+  cross_file: ^0.3.5+1
 
 dev_dependencies:
   flutter_test:

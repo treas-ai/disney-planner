@@ -61,8 +61,7 @@ class CachedLiveDataProvider implements LiveDataProvider {
 
       final fallbackSnapshot = await fallback.fetchSnapshot(parkId: parkId);
       return fallbackSnapshot.copyWith(
-        fallbackMessage:
-            '自動取得の接続先が未設定のため、サンプルデータへ切り替えました。',
+        fallbackMessage: '自動取得の接続先が未設定のため、サンプルデータへ切り替えました。',
       );
     }
   }

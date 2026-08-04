@@ -29,15 +29,14 @@ class ManualLiveDataController extends ChangeNotifier {
         parkId,
       );
 
-      facilities = allFacilities
-          .where(
-            (facility) => facility.category == FacilityCategory.attraction,
-          )
-          .toList(growable: false)
-        ..sort((left, right) => left.name.compareTo(right.name));
-      entries = {
-        for (final entry in saved) entry.facilityId: entry,
-      };
+      facilities =
+          allFacilities
+              .where(
+                (facility) => facility.category == FacilityCategory.attraction,
+              )
+              .toList(growable: false)
+            ..sort((left, right) => left.name.compareTo(right.name));
+      entries = {for (final entry in saved) entry.facilityId: entry};
     } catch (error, stackTrace) {
       debugPrint('手動待ち時間データの読み込みに失敗しました: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -58,10 +57,9 @@ class ManualLiveDataController extends ChangeNotifier {
       facilityId: facilityId,
       availability: availability,
       updatedAt: DateTime.now(),
-      standbyMinutes:
-          availability == LiveOperationAvailability.operating
-              ? standbyMinutes
-              : null,
+      standbyMinutes: availability == LiveOperationAvailability.operating
+          ? standbyMinutes
+          : null,
     );
 
     await ServiceLocator.manualWaitTimeStore.save(entry);

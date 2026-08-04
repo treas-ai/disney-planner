@@ -180,21 +180,19 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     final recommendations = <String>[
       if (afterMetrics.areaTransitions < beforeMetrics.areaTransitions)
         'エリア移動を'
-        '${beforeMetrics.areaTransitions - afterMetrics.areaTransitions}回削減しました。',
+            '${beforeMetrics.areaTransitions - afterMetrics.areaTransitions}回削減しました。',
       if (afterMetrics.predictedWaitMinutes <
           beforeMetrics.predictedWaitMinutes)
         '予測待ち時間が増える施設を早い時間帯へ移動しました。',
       if (settings.isRainy &&
           afterMetrics.outdoorItemsInRain < beforeMetrics.outdoorItemsInRain)
         '雨天を考慮し、屋内施設を優先しました。',
-      if (afterMetrics.eventAffectedItems <
-          beforeMetrics.eventAffectedItems)
+      if (afterMetrics.eventAffectedItems < beforeMetrics.eventAffectedItems)
         'ショー・パレード等のイベント影響を避ける順番へ変更しました。',
       if (afterMetrics.longWalkingStreaks < beforeMetrics.longWalkingStreaks)
         '連続する長距離移動を減らし、歩行負担を軽減しました。',
       '確定済みのショー、予約、DPA等と食事予定は維持します。',
-      if (afterScore <= beforeScore)
-        '現在のプランは既に良好です。大きな改善効果は見込めません。',
+      if (afterScore <= beforeScore) '現在のプランは既に良好です。大きな改善効果は見込めません。',
     ];
 
     return PlanOptimizationResult(
@@ -350,8 +348,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     }
 
     final priority = preference?.priority ?? facility.priority;
-    if (priority == PriorityLevel.high ||
-        priority == PriorityLevel.highest) {
+    if (priority == PriorityLevel.high || priority == PriorityLevel.highest) {
       reasons.add('優先度の高い施設を前倒し');
     }
 

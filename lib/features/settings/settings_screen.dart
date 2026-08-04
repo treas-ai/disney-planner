@@ -10,6 +10,7 @@ import '../../data/local/data_freshness_service.dart';
 import '../../domain/entities/data_freshness_info.dart';
 import '../../domain/entities/trip_settings.dart';
 import '../../domain/enums/live_data_source_type.dart';
+import '../share/share_center_screen.dart';
 import 'settings_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -462,17 +463,12 @@ class _LiveDataSourceSettingsCard extends StatelessWidget {
               },
             ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            switch (value) {
-              LiveDataSourceType.mock =>
-                '動作確認用のサンプルデータを使用します。',
-              LiveDataSourceType.manual =>
-                '公式アプリを見ながら手動入力した待ち時間を使用します。',
-              LiveDataSourceType.official =>
-                '自動取得の接続先は準備中です。取得できない場合はサンプルデータへ切り替えます。',
-            },
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(switch (value) {
+            LiveDataSourceType.mock => '動作確認用のサンプルデータを使用します。',
+            LiveDataSourceType.manual => '公式アプリを見ながら手動入力した待ち時間を使用します。',
+            LiveDataSourceType.official =>
+              '自動取得の接続先は準備中です。取得できない場合はサンプルデータへ切り替えます。',
+          }, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );
@@ -957,7 +953,6 @@ class _CompactSwitchTile extends StatelessWidget {
   }
 }
 
-
 class _DataFreshnessCard extends StatelessWidget {
   const _DataFreshnessCard();
 
@@ -982,10 +977,7 @@ class _DataFreshnessCard extends StatelessWidget {
               else ...[
                 Text('${info.label}：${info.dateLabel}'),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  info.note,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(info.note, style: Theme.of(context).textTheme.bodySmall),
               ],
             ],
           );
@@ -1008,9 +1000,7 @@ class _BackupRestoreCard extends StatelessWidget {
         title: const Text('バックアップを書き出す'),
         content: SizedBox(
           width: 620,
-          child: SingleChildScrollView(
-            child: SelectableText(value),
-          ),
+          child: SingleChildScrollView(child: SelectableText(value)),
         ),
         actions: [
           TextButton.icon(
@@ -1072,15 +1062,15 @@ class _BackupRestoreCard extends StatelessWidget {
     try {
       await controller.appState.importBackupJson(value);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('バックアップを復元しました。')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('バックアップを復元しました。')));
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('復元できませんでした：$error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('復元できませんでした：$error')));
       }
     }
   }
@@ -1117,14 +1107,24 @@ class _BackupRestoreCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ShareCenterScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.share_outlined),
+            label: const Text('データ共有センターを開く'),
+          ),
+          const SizedBox(height: AppSpacing.xs),
           TextButton.icon(
             onPressed: () async {
               await controller.resetOnboarding();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('次回起動時に初回案内を表示します。'),
-                  ),
+                  const SnackBar(content: Text('次回起動時に初回案内を表示します。')),
                 );
               }
             },

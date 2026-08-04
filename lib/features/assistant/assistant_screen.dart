@@ -234,7 +234,6 @@ class _IntelligenceSummary extends StatelessWidget {
   }
 }
 
-
 class _LiveOperationCard extends StatelessWidget {
   const _LiveOperationCard({
     required this.snapshot,
@@ -285,20 +284,27 @@ class _LiveOperationCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (park != null) Chip(label: Text('営業時間 ${park.operatingHoursLabel}')),
-              if (weather != null) Chip(label: Text('天気 ${weather.condition.label}')),
+              if (park != null)
+                Chip(label: Text('営業時間 ${park.operatingHoursLabel}')),
+              if (weather != null)
+                Chip(label: Text('天気 ${weather.condition.label}')),
               if (weather?.temperatureCelsius != null)
-                Chip(label: Text('${weather!.temperatureCelsius!.toStringAsFixed(0)}℃')),
-              if (crowd != null) Chip(label: Text('混雑 ${crowd.parkLevel.label}')),
+                Chip(
+                  label: Text(
+                    '${weather!.temperatureCelsius!.toStringAsFixed(0)}℃',
+                  ),
+                ),
+              if (crowd != null)
+                Chip(label: Text('混雑 ${crowd.parkLevel.label}')),
             ],
           ),
           if (snapshot.attractions.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
               '主要アトラクション（${snapshot.sourceLabel}）',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: AppSpacing.xs),
             for (final attraction in snapshot.attractions.take(2))

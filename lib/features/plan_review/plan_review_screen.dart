@@ -343,9 +343,7 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                 ],
                 if (controller.validationIssues.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.sm),
-                  _ScheduleValidationCard(
-                    issues: controller.validationIssues,
-                  ),
+                  _ScheduleValidationCard(issues: controller.validationIssues),
                 ],
               ],
             ),
@@ -504,8 +502,9 @@ class _PlanOverviewCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed:
-                        controller.canUndo ? controller.undoScheduleChange : null,
+                    onPressed: controller.canUndo
+                        ? controller.undoScheduleChange
+                        : null,
                     icon: const Icon(Icons.undo, size: 18),
                     label: const Text('元に戻す'),
                   ),
@@ -513,8 +512,9 @@ class _PlanOverviewCard extends StatelessWidget {
                 const SizedBox(width: 7),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed:
-                        controller.canRedo ? controller.redoScheduleChange : null,
+                    onPressed: controller.canRedo
+                        ? controller.redoScheduleChange
+                        : null,
                     icon: const Icon(Icons.redo, size: 18),
                     label: const Text('やり直す'),
                   ),
@@ -650,10 +650,11 @@ class _ScheduleValidationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final important = issues.where(
-      (issue) =>
-          issue.severity != ScheduleValidationSeverity.information,
-    ).toList(growable: false);
+    final important = issues
+        .where(
+          (issue) => issue.severity != ScheduleValidationSeverity.information,
+        )
+        .toList(growable: false);
     final displayIssues = important.isEmpty ? issues : important;
     final hasError = displayIssues.any(
       (issue) => issue.severity == ScheduleValidationSeverity.error,
@@ -667,17 +668,15 @@ class _ScheduleValidationCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                hasError
-                    ? Icons.error_outline
-                    : Icons.verified_outlined,
+                hasError ? Icons.error_outline : Icons.verified_outlined,
                 color: hasError ? colorScheme.error : colorScheme.primary,
               ),
               const SizedBox(width: 8),
               Text(
                 hasError ? 'プラン安全確認' : 'プラン確認結果',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),

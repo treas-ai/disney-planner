@@ -43,9 +43,7 @@ void main() {
     );
 
     expect(
-      issues.any(
-        (issue) => issue.severity == ScheduleValidationSeverity.error,
-      ),
+      issues.any((issue) => issue.severity == ScheduleValidationSeverity.error),
       isTrue,
     );
   });

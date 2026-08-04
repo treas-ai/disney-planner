@@ -48,67 +48,61 @@ void main() {
     );
   }
 
-  test('same-area facilities are grouped while fixed meal time is protected', () {
-    final facilities = [
-      facility(id: 'a1', areaId: 'area_a', name: 'A1'),
-      facility(id: 'b1', areaId: 'area_b', name: 'B1'),
-      facility(id: 'a2', areaId: 'area_a', name: 'A2'),
-    ];
-    final lunch = const ScheduleItem(
-      id: 'lunch',
-      title: '昼食',
-      type: ScheduleItemType.lunch,
-      startHour: 12,
-      startMinute: 0,
-      endHour: 13,
-      endMinute: 0,
-      reason: '',
-    );
-    final schedule = DaySchedule(
-      id: 'before',
-      parkId: 'tokyo_disneysea',
-      items: [
-        item(id: 'a1', facilityId: 'a1', hour: 9),
-        item(id: 'b1', facilityId: 'b1', hour: 10),
-        item(id: 'a2', facilityId: 'a2', hour: 11),
-        lunch,
-      ],
-      createdAt: DateTime(2026),
-    );
+  test(
+    'same-area facilities are grouped while fixed meal time is protected',
+    () {
+      final facilities = [
+        facility(id: 'a1', areaId: 'area_a', name: 'A1'),
+        facility(id: 'b1', areaId: 'area_b', name: 'B1'),
+        facility(id: 'a2', areaId: 'area_a', name: 'A2'),
+      ];
+      final lunch = const ScheduleItem(
+        id: 'lunch',
+        title: '昼食',
+        type: ScheduleItemType.lunch,
+        startHour: 12,
+        startMinute: 0,
+        endHour: 13,
+        endMinute: 0,
+        reason: '',
+      );
+      final schedule = DaySchedule(
+        id: 'before',
+        parkId: 'tokyo_disneysea',
+        items: [
+          item(id: 'a1', facilityId: 'a1', hour: 9),
+          item(id: 'b1', facilityId: 'b1', hour: 10),
+          item(id: 'a2', facilityId: 'a2', hour: 11),
+          lunch,
+        ],
+        createdAt: DateTime(2026),
+      );
 
-    final result = engine.optimize(
-      schedule: schedule,
-      facilities: facilities,
-      preferences: facilities
-          .map((value) => PlanPreference.initial(facilityId: value.id))
-          .toList(),
-      predictions: const {},
-      settings: TripSettings.initial(),
-    );
+      final result = engine.optimize(
+        schedule: schedule,
+        facilities: facilities,
+        preferences: facilities
+            .map((value) => PlanPreference.initial(facilityId: value.id))
+            .toList(),
+        predictions: const {},
+        settings: TripSettings.initial(),
+      );
 
-    final lunchAfter = result.afterSchedule.items.singleWhere(
-      (value) => value.id == 'lunch',
-    );
-    expect(lunchAfter.startHour, 12);
-    expect(
-      result.afterMetrics.areaTransitions,
-      lessThanOrEqualTo(result.beforeMetrics.areaTransitions),
-    );
-  });
+      final lunchAfter = result.afterSchedule.items.singleWhere(
+        (value) => value.id == 'lunch',
+      );
+      expect(lunchAfter.startHour, 12);
+      expect(
+        result.afterMetrics.areaTransitions,
+        lessThanOrEqualTo(result.beforeMetrics.areaTransitions),
+      );
+    },
+  );
 
   test('rainy settings prefer indoor facility for an earlier slot', () {
     final facilities = [
-      facility(
-        id: 'outdoor',
-        areaId: 'area_a',
-        name: 'Outdoor',
-      ),
-      facility(
-        id: 'indoor',
-        areaId: 'area_b',
-        name: 'Indoor',
-        indoor: true,
-      ),
+      facility(id: 'outdoor', areaId: 'area_a', name: 'Outdoor'),
+      facility(id: 'indoor', areaId: 'area_b', name: 'Indoor', indoor: true),
     ];
     final schedule = DaySchedule(
       id: 'rain',
@@ -124,12 +118,12 @@ void main() {
       schedule: schedule,
       facilities: facilities,
       preferences: [
-        PlanPreference.initial(facilityId: 'outdoor').copyWith(
-          priority: PriorityLevel.medium,
-        ),
-        PlanPreference.initial(facilityId: 'indoor').copyWith(
-          priority: PriorityLevel.medium,
-        ),
+        PlanPreference.initial(
+          facilityId: 'outdoor',
+        ).copyWith(priority: PriorityLevel.medium),
+        PlanPreference.initial(
+          facilityId: 'indoor',
+        ).copyWith(priority: PriorityLevel.medium),
       ],
       predictions: const {},
       settings: TripSettings.initial().copyWith(isRainy: true),

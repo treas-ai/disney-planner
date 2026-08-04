@@ -67,7 +67,6 @@ class PlanOptimizationController extends ChangeNotifier {
         );
       }
 
-
       final liveSnapshot = await ServiceLocator.fetchLiveOperationSnapshot(
         parkId: schedule.parkId,
       );

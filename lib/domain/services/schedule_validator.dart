@@ -26,17 +26,14 @@ class ScheduleValidator {
           ScheduleValidationIssue(
             code: 'schedule_overlap',
             severity: ScheduleValidationSeverity.error,
-            message:
-                '${previous.title}と${current.title}の時間が重複しています。',
+            message: '${previous.title}と${current.title}の時間が重複しています。',
           ),
         );
       }
     }
 
-    final entryMinutes =
-        settings.entryTimeHour * 60 + settings.entryTimeMinute;
-    final exitMinutes =
-        settings.exitTimeHour * 60 + settings.exitTimeMinute;
+    final entryMinutes = settings.entryTimeHour * 60 + settings.entryTimeMinute;
+    final exitMinutes = settings.exitTimeHour * 60 + settings.exitTimeMinute;
 
     for (final item in items) {
       if (_start(item) < entryMinutes && item.type.name != 'entry') {
