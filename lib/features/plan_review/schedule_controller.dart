@@ -5,10 +5,12 @@ import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
+import '../../domain/entities/schedule_validation_issue.dart';
 import '../../domain/enums/fixed_time_status.dart';
 import '../../data/local/local_performance_schedule_repository.dart';
 import '../../domain/services/official_performance_preference_resolver.dart';
 import '../../domain/services/schedule_engine.dart';
+import '../../domain/services/schedule_validator.dart';
 
 class ScheduleController extends ChangeNotifier {
   ScheduleController(this._appState) {
@@ -17,6 +19,7 @@ class ScheduleController extends ChangeNotifier {
 
   final AppState _appState;
   final ScheduleEngine _scheduleEngine = const ScheduleEngine();
+  final ScheduleValidator _scheduleValidator = const ScheduleValidator();
   final OfficialPerformancePreferenceResolver _performanceResolver =
       OfficialPerformancePreferenceResolver(
         repository: LocalPerformanceScheduleRepository(),
@@ -84,6 +87,25 @@ class ScheduleController extends ChangeNotifier {
   bool get hasSchedule {
     return schedule != null;
   }
+
+  bool get canUndo => _appState.canUndoScheduleChange;
+  bool get canRedo => _appState.canRedoScheduleChange;
+  int get historyCount => _appState.scheduleHistoryCount;
+
+  List<ScheduleValidationIssue> get validationIssues {
+    final current = schedule;
+    if (current == null) {
+      return const [];
+    }
+    return _scheduleValidator.validate(
+      schedule: current,
+      settings: _appState.tripSettings,
+      preferences: _appState.planPreferences,
+    );
+  }
+
+  void undoScheduleChange() => _appState.undoLastScheduleChange();
+  void redoScheduleChange() => _appState.redoLastScheduleChange();
 
   bool get scheduleMatchesSelectedPark {
     final currentSchedule = schedule;

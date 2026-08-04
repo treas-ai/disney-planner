@@ -10,9 +10,12 @@ import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
+import '../../domain/entities/schedule_validation_issue.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
+import '../../domain/enums/fixed_time_status.dart';
+import '../../domain/enums/schedule_validation_severity.dart';
 import '../facility/widgets/facility_visual_style.dart';
 import '../facility/widgets/fixed_schedule_editor_sheet.dart';
 import 'plan_optimization_controller.dart';
@@ -278,6 +281,10 @@ class _MobilePlanReviewLayout extends StatelessWidget {
               facilities: controller.unavailableSelectedFacilities,
             ),
           ],
+          if (controller.validationIssues.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _ScheduleValidationCard(issues: controller.validationIssues),
+          ],
           const SizedBox(height: AppSpacing.sm),
           _ScheduleContent(controller: controller),
         ],
@@ -332,6 +339,12 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                   const SizedBox(height: AppSpacing.sm),
                   _UnavailableFacilityWarning(
                     facilities: controller.unavailableSelectedFacilities,
+                  ),
+                ],
+                if (controller.validationIssues.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _ScheduleValidationCard(
+                    issues: controller.validationIssues,
                   ),
                 ],
               ],
@@ -487,6 +500,35 @@ class _PlanOverviewCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 7),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        controller.canUndo ? controller.undoScheduleChange : null,
+                    icon: const Icon(Icons.undo, size: 18),
+                    label: const Text('元に戻す'),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        controller.canRedo ? controller.redoScheduleChange : null,
+                    icon: const Icon(Icons.redo, size: 18),
+                    label: const Text('やり直す'),
+                  ),
+                ),
+              ],
+            ),
+            if (controller.historyCount > 0) ...[
+              const SizedBox(height: 5),
+              Text(
+                '履歴 ${controller.historyCount}件（最大10件）',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            const SizedBox(height: 7),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -595,6 +637,56 @@ class _GenerationErrorCard extends StatelessWidget {
               color: colorScheme.onErrorContainer,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScheduleValidationCard extends StatelessWidget {
+  const _ScheduleValidationCard({required this.issues});
+
+  final List<ScheduleValidationIssue> issues;
+
+  @override
+  Widget build(BuildContext context) {
+    final important = issues.where(
+      (issue) =>
+          issue.severity != ScheduleValidationSeverity.information,
+    ).toList(growable: false);
+    final displayIssues = important.isEmpty ? issues : important;
+    final hasError = displayIssues.any(
+      (issue) => issue.severity == ScheduleValidationSeverity.error,
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasError
+                    ? Icons.error_outline
+                    : Icons.verified_outlined,
+                color: hasError ? colorScheme.error : colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                hasError ? 'プラン安全確認' : 'プラン確認結果',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final issue in displayIssues)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: Text('・${issue.message}'),
+            ),
         ],
       ),
     );
@@ -1002,6 +1094,18 @@ class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
     final isShowOrParade =
         facility.category == FacilityCategory.show ||
         facility.category == FacilityCategory.parade;
+
+    if (preference.fixedTimeStatus == FixedTimeStatus.confirmed) {
+      badges.add(
+        const _PreferenceBadge(
+          icon: Icons.lock_outline,
+          label: '固定予定',
+          foregroundColor: Color(0xFF8A4B08),
+          backgroundColor: Color(0xFFFFF3E0),
+          borderColor: Color(0xFFFFCC80),
+        ),
+      );
+    }
 
     if (isShowOrParade &&
         preference.preferredPerformanceTime.trim().isNotEmpty) {

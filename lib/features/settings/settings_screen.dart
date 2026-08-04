@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/loading_view.dart';
+import '../../data/local/data_freshness_service.dart';
+import '../../domain/entities/data_freshness_info.dart';
 import '../../domain/entities/trip_settings.dart';
 import '../../domain/enums/live_data_source_type.dart';
 import 'settings_controller.dart';
@@ -187,6 +190,10 @@ class _MobileSettingsLayout extends StatelessWidget {
           onRainyChanged: controller.updateRainy,
           onChildrenChanged: controller.updateChildren,
         ),
+        const SizedBox(height: AppSpacing.sm),
+        _DataFreshnessCard(),
+        const SizedBox(height: AppSpacing.sm),
+        _BackupRestoreCard(controller: controller),
       ],
     );
   }
@@ -260,6 +267,10 @@ class _DesktopSettingsLayout extends StatelessWidget {
                   onLunchChanged: controller.updateLunch,
                   onDinnerChanged: controller.updateDinner,
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                const _DataFreshnessCard(),
+                const SizedBox(height: AppSpacing.sm),
+                _BackupRestoreCard(controller: controller),
               ],
             ),
           ),
@@ -941,6 +952,186 @@ class _CompactSwitchTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+class _DataFreshnessCard extends StatelessWidget {
+  const _DataFreshnessCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: FutureBuilder<DataFreshnessInfo>(
+        future: const DataFreshnessService().loadPerformanceScheduleInfo(),
+        builder: (context, snapshot) {
+          final info = snapshot.data;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SettingsCardHeader(
+                title: 'データ更新情報',
+                subtitle: '公式情報を確認した日付',
+                icon: Icons.update_outlined,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              if (info == null)
+                const LinearProgressIndicator()
+              else ...[
+                Text('${info.label}：${info.dateLabel}'),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  info.note,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BackupRestoreCard extends StatelessWidget {
+  const _BackupRestoreCard({required this.controller});
+
+  final SettingsController controller;
+
+  Future<void> _showExport(BuildContext context) async {
+    final value = controller.appState.exportBackupJson();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('バックアップを書き出す'),
+        content: SizedBox(
+          width: 620,
+          child: SingleChildScrollView(
+            child: SelectableText(value),
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: value));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('クリップボードへコピーしました。')),
+                );
+              }
+            },
+            icon: const Icon(Icons.copy),
+            label: const Text('コピー'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showImport(BuildContext context) async {
+    final textController = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('バックアップを復元する'),
+        content: SizedBox(
+          width: 620,
+          child: TextField(
+            controller: textController,
+            maxLines: 14,
+            decoration: const InputDecoration(
+              hintText: 'コピーしたバックアップJSONを貼り付けてください。',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, textController.text),
+            child: const Text('復元'),
+          ),
+        ],
+      ),
+    );
+    textController.dispose();
+
+    if (value == null || value.trim().isEmpty || !context.mounted) {
+      return;
+    }
+
+    try {
+      await controller.appState.importBackupJson(value);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('バックアップを復元しました。')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('復元できませんでした：$error')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SettingsCardHeader(
+            title: 'バックアップ・案内',
+            subtitle: '端末変更やデータ破損に備える',
+            icon: Icons.backup_outlined,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showExport(context),
+                  icon: const Icon(Icons.upload_file_outlined),
+                  label: const Text('書き出す'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: () => _showImport(context),
+                  icon: const Icon(Icons.restore_outlined),
+                  label: const Text('復元する'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          TextButton.icon(
+            onPressed: () async {
+              await controller.resetOnboarding();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('次回起動時に初回案内を表示します。'),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.help_outline),
+            label: const Text('初回案内をもう一度表示'),
+          ),
+        ],
       ),
     );
   }

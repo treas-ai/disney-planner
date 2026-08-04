@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../data/local/onboarding_preferences.dart';
+import '../features/onboarding/onboarding_screen.dart';
 import 'app_theme.dart';
 import 'main_shell.dart';
 import 'state/app_state.dart';
@@ -14,6 +16,10 @@ class DisneyPlannerApp extends StatefulWidget {
 
 class _DisneyPlannerAppState extends State<DisneyPlannerApp> {
   late final AppState _appState;
+  final OnboardingPreferences _onboardingPreferences =
+      const OnboardingPreferences();
+  bool _onboardingChecked = false;
+  bool _onboardingCompleted = true;
 
   @override
   void initState() {
@@ -24,6 +30,22 @@ class _DisneyPlannerAppState extends State<DisneyPlannerApp> {
 
   Future<void> _restoreAppState() async {
     await _appState.restore();
+    final completed = await _onboardingPreferences.isCompleted();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _onboardingCompleted = completed;
+      _onboardingChecked = true;
+    });
+  }
+
+  Future<void> _completeOnboarding() async {
+    await _onboardingPreferences.complete();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _onboardingCompleted = true);
   }
 
   @override
@@ -43,8 +65,12 @@ class _DisneyPlannerAppState extends State<DisneyPlannerApp> {
         home: AnimatedBuilder(
           animation: _appState,
           builder: (context, _) {
-            if (!_appState.isRestored) {
+            if (!_appState.isRestored || !_onboardingChecked) {
               return const _RestoreLoadingScreen();
+            }
+
+            if (!_onboardingCompleted) {
+              return OnboardingScreen(onCompleted: _completeOnboarding);
             }
 
             return const MainShell();

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../../data/local/app_state_storage.dart';
@@ -30,9 +32,12 @@ class AppState extends ChangeNotifier {
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
 
   DaySchedule? daySchedule;
-  DaySchedule? _previousDaySchedule;
+  final List<DaySchedule> _scheduleUndoHistory = [];
+  final List<DaySchedule> _scheduleRedoHistory = [];
 
-  bool get canUndoScheduleChange => _previousDaySchedule != null;
+  bool get canUndoScheduleChange => _scheduleUndoHistory.isNotEmpty;
+  bool get canRedoScheduleChange => _scheduleRedoHistory.isNotEmpty;
+  int get scheduleHistoryCount => _scheduleUndoHistory.length;
 
   bool isRestored = false;
   bool isSaving = false;
@@ -134,6 +139,13 @@ class AppState extends ChangeNotifier {
 
         daySchedule = DaySchedule.fromJson(convertedSchedule);
       }
+
+      _scheduleUndoHistory
+        ..clear()
+        ..addAll(_readScheduleList(json['scheduleUndoHistory']));
+      _scheduleRedoHistory
+        ..clear()
+        ..addAll(_readScheduleList(json['scheduleRedoHistory']));
     } catch (error, stackTrace) {
       debugPrint('AppStateの復元に失敗しました: $error');
 
@@ -143,6 +155,8 @@ class AppState extends ChangeNotifier {
       _selectedFacilities.clear();
       _preferencesByFacilityId.clear();
       daySchedule = null;
+      _scheduleUndoHistory.clear();
+      _scheduleRedoHistory.clear();
     } finally {
       isRestored = true;
       notifyListeners();
@@ -176,7 +190,8 @@ class AppState extends ChangeNotifier {
     _selectedFacilities.clear();
     _preferencesByFacilityId.clear();
     daySchedule = null;
-    _previousDaySchedule = null;
+    _scheduleUndoHistory.clear();
+    _scheduleRedoHistory.clear();
 
     notifyListeners();
   }
@@ -191,6 +206,12 @@ class AppState extends ChangeNotifier {
           .map((preference) => preference.toJson())
           .toList(),
       'daySchedule': daySchedule?.toJson(),
+      'scheduleUndoHistory': _scheduleUndoHistory
+          .map((schedule) => schedule.toJson())
+          .toList(),
+      'scheduleRedoHistory': _scheduleRedoHistory
+          .map((schedule) => schedule.toJson())
+          .toList(),
     };
   }
 
@@ -580,32 +601,49 @@ class AppState extends ChangeNotifier {
   }
 
   void updateDaySchedule(DaySchedule schedule) {
+    _recordCurrentSchedule();
     daySchedule = schedule;
-    _previousDaySchedule = null;
+    _scheduleRedoHistory.clear();
     _saveAndNotify();
   }
 
   void applyRecalculatedSchedule(DaySchedule schedule) {
-    _previousDaySchedule = daySchedule;
+    _recordCurrentSchedule();
     daySchedule = schedule;
+    _scheduleRedoHistory.clear();
     _saveAndNotify();
   }
 
   void undoLastScheduleChange() {
-    final previous = _previousDaySchedule;
-    if (previous == null) {
+    if (_scheduleUndoHistory.isEmpty) {
       return;
     }
-    daySchedule = previous;
-    _previousDaySchedule = null;
+    final current = daySchedule;
+    if (current != null) {
+      _scheduleRedoHistory.add(current);
+    }
+    daySchedule = _scheduleUndoHistory.removeLast();
+    _saveAndNotify();
+  }
+
+  void redoLastScheduleChange() {
+    if (_scheduleRedoHistory.isEmpty) {
+      return;
+    }
+    final current = daySchedule;
+    if (current != null) {
+      _scheduleUndoHistory.add(current);
+    }
+    daySchedule = _scheduleRedoHistory.removeLast();
     _saveAndNotify();
   }
 
   void clearScheduleUndoHistory() {
-    if (_previousDaySchedule == null) {
+    if (_scheduleUndoHistory.isEmpty && _scheduleRedoHistory.isEmpty) {
       return;
     }
-    _previousDaySchedule = null;
+    _scheduleUndoHistory.clear();
+    _scheduleRedoHistory.clear();
     notifyListeners();
   }
 
@@ -614,8 +652,68 @@ class AppState extends ChangeNotifier {
       return;
     }
 
+    _recordCurrentSchedule();
     daySchedule = null;
+    _scheduleRedoHistory.clear();
     _saveAndNotify();
+  }
+
+  String exportBackupJson() {
+    return const JsonEncoder.withIndent('  ').convert({
+      'schemaVersion': 1,
+      'exportedAt': DateTime.now().toIso8601String(),
+      'appState': toJson(),
+    });
+  }
+
+  Future<void> importBackupJson(String value) async {
+    final decoded = jsonDecode(value);
+    if (decoded is! Map) {
+      throw const FormatException('バックアップ形式が正しくありません。');
+    }
+
+    final rawState = decoded['appState'] ?? decoded;
+    if (rawState is! Map) {
+      throw const FormatException('アプリデータが含まれていません。');
+    }
+
+    final converted = <String, dynamic>{
+      for (final entry in rawState.entries)
+        entry.key.toString(): entry.value,
+    };
+    await _storage.save(converted);
+    await restore();
+  }
+
+  void _recordCurrentSchedule() {
+    final current = daySchedule;
+    if (current == null) {
+      return;
+    }
+    _scheduleUndoHistory.add(current);
+    if (_scheduleUndoHistory.length > 10) {
+      _scheduleUndoHistory.removeAt(0);
+    }
+  }
+
+  List<DaySchedule> _readScheduleList(dynamic value) {
+    if (value is! List) {
+      return <DaySchedule>[];
+    }
+    final schedules = <DaySchedule>[];
+    for (final item in value) {
+      if (item is Map<String, dynamic>) {
+        schedules.add(DaySchedule.fromJson(item));
+      } else if (item is Map) {
+        schedules.add(
+          DaySchedule.fromJson({
+            for (final entry in item.entries)
+              entry.key.toString(): entry.value,
+          }),
+        );
+      }
+    }
+    return schedules;
   }
 
   Future<void> _restoreSelectedFacilities(List<String> facilityIds) async {

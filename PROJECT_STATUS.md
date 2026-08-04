@@ -53,4 +53,11 @@ AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
 - 保存・復元
 - 鮮度警告・前回差分
 - Smart Schedule Engine連携
+## v3.11 Release Readiness Pack
+
+- Plan Safety & History
+- Field Mode
+- Backup & Restore
+- Onboarding
+- Data freshness display
 

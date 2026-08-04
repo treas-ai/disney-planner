@@ -396,6 +396,8 @@ class _MobileTodayLayout extends StatelessWidget {
         controller: scrollController,
         padding: const EdgeInsets.only(right: 14, bottom: 96),
         children: [
+          const _FieldModeBanner(),
+          const SizedBox(height: AppSpacing.sm),
           _LiveDashboardCard(
             controller: controller,
             snapshot: snapshot,
@@ -457,6 +459,8 @@ class _DesktopTodayLayout extends StatelessWidget {
             padding: const EdgeInsets.only(right: AppSpacing.sm, bottom: 48),
             child: Column(
               children: [
+                const _FieldModeBanner(),
+                const SizedBox(height: AppSpacing.sm),
                 _LiveDashboardCard(
                   controller: controller,
                   snapshot: snapshot,
@@ -503,6 +507,49 @@ class _DesktopTodayLayout extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FieldModeBanner extends StatelessWidget {
+  const _FieldModeBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.directions_walk, color: colorScheme.onPrimaryContainer),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '現地モード',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  '現在・次の予定、待ち時間、再計算をこの画面で確認できます。',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

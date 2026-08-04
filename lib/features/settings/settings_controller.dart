@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
 import '../../app/dependency/service_locator.dart';
+import '../../data/local/onboarding_preferences.dart';
 import '../../domain/entities/trip_settings.dart';
 import '../../domain/enums/live_data_source_type.dart';
 
@@ -18,6 +19,12 @@ class SettingsController extends ChangeNotifier {
 
   TripSettings get settings {
     return _appState.tripSettings;
+  }
+
+  AppState get appState => _appState;
+
+  Future<void> resetOnboarding() {
+    return const OnboardingPreferences().reset();
   }
 
   void _onAppStateChanged() {

@@ -193,4 +193,11 @@ AI / Smart Schedule Engine
 ```
 
 30分以内の手動待ち時間だけを現在値として利用します。
+## Release Readiness
+
+- AppStateに最大10件のスケジュール履歴
+- ScheduleValidatorによる事前安全確認
+- JSON形式のローカルバックアップ
+- SharedPreferencesによる初回案内管理
+- Assetメタデータによる公式情報確認日表示
 
