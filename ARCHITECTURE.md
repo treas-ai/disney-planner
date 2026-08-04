@@ -134,3 +134,10 @@ assets/master/tokyo/tds/*.json
 ```
 
 `master_manifest.json`だけが物理ファイルパスを知り、UIとDomainはパーク別ディレクトリを認識しません。
+## Event Impact Layer
+
+`EventImpactRepository → EventImpactEngine → MovementTimeEngine / ScheduleEngine / AssistantEngine` の依存方向で、イベント影響を共通利用する。
+## AI Intelligence
+
+`AssistantIntelligenceEngine` が予定時刻、施設優先度、営業状態、イベント影響を評価し、`AssistantInsight`を生成する。
+

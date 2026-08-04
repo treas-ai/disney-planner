@@ -13,3 +13,10 @@
 - `flutter analyze`
 - TDL/TDS切替
 - マスターデータ検証
+## v3.2
+
+Park Intelligence / Event Impact Engineを実装。イベント影響マスターは確認済み情報だけを登録する。
+## v3.3
+
+AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
+

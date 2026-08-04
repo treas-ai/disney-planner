@@ -310,6 +310,7 @@ class FacilityController extends ChangeNotifier {
       'tdl_new_fantasyland' => 'ニューファンタジーランド',
       'tdl_toontown' => 'トゥーンタウン',
       'tdl_tomorrowland' => 'トゥモローランド',
+      'tdl_resort_hotels' => 'ディズニーホテル',
       'tds_mediterranean_harbor' => 'メディテレーニアンハーバー',
       'tds_american_waterfront' => 'アメリカンウォーターフロント',
       'tds_port_discovery' => 'ポートディスカバリー',
@@ -318,6 +319,9 @@ class FacilityController extends ChangeNotifier {
       'tds_arabian_coast' => 'アラビアンコースト',
       'tds_mermaid_lagoon' => 'マーメイドラグーン',
       'tds_mysterious_island' => 'ミステリアスアイランド',
+      'tds_parkwide' => 'パークワイド',
+      'tds_resort_hotels' => 'ディズニーホテル',
+      'tds_park_entrance' => 'パークエントランス',
       _ => areaId,
     };
   }

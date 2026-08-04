@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
+import '../../domain/entities/assistant_insight.dart';
 import 'assistant_controller.dart';
 
 class AssistantScreen extends StatefulWidget {
@@ -131,6 +132,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(controller.response!.message),
+                    if (controller.response!.insight != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _IntelligenceSummary(
+                        insight: controller.response!.insight!,
+                      ),
+                    ],
                     if (controller.response!.reasons.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.md),
                       Text(
@@ -154,6 +161,50 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+class _IntelligenceSummary extends StatelessWidget {
+  const _IntelligenceSummary({required this.insight});
+
+  final AssistantInsight insight;
+
+  @override
+  Widget build(BuildContext context) {
+    final priority = insight.priority;
+    final confidence = insight.confidence;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'AI判断',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(label: Text('優先度 ${priority.label}')),
+              Chip(label: Text('信頼度 ${confidence.label}')),
+              Chip(label: Text('判断スコア ${insight.score}')),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(insight.description),
+        ],
+      ),
     );
   }
 }

@@ -1,5 +1,23 @@
 # Changelog
 
+## v3.3.1 - Area Label Fix
+
+- エリアフィルターで内部IDが表示される問題を修正
+- `tdl_resort_hotels` / `tds_resort_hotels` を「ディズニーホテル」と表示
+- `tds_parkwide` を「パークワイド」と表示
+- `tds_park_entrance` を「パークエントランス」と表示
+
+## v3.3 - AI Intelligence
+
+- AI判断結果を表す `AssistantInsight` を追加
+- 判断の優先度・信頼度・スコアを追加
+- 次予定までの残り時間を判断材料へ追加
+- 施設優先度と営業状態をAI判断へ追加
+- Event Impact Engineの影響をAI判断へ統合
+- AIコンシェルジュ画面へ判断サマリーを追加
+- AI判断エンジンの単体テストを追加
+- バージョンを `3.3.0+330` へ更新
+
 ## v3.2.0 - Park Intelligence / Event Impact Engine
 
 - EventImpactモデルを追加

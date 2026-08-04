@@ -135,6 +135,13 @@ class FacilityVisualStyle {
         backgroundColor: Color(0xFFEEF2F5),
         borderColor: Color(0xFFA5B3BE),
       ),
+      'tdl_resort_hotels' => const FacilityAreaVisual(
+        label: 'ディズニーホテル',
+        icon: Icons.apartment_outlined,
+        foregroundColor: Color(0xFF566B7D),
+        backgroundColor: Color(0xFFEEF2F5),
+        borderColor: Color(0xFFA5B3BE),
+      ),
       'tds_mediterranean_harbor' => const FacilityAreaVisual(
         label: 'メディテレーニアンハーバー',
         icon: Icons.sailing_outlined,
@@ -190,6 +197,27 @@ class FacilityVisualStyle {
         foregroundColor: Color(0xFF24775F),
         backgroundColor: Color(0xFFE6F5EF),
         borderColor: Color(0xFF76B9A4),
+      ),
+      'tds_resort_hotels' => const FacilityAreaVisual(
+        label: 'ディズニーホテル',
+        icon: Icons.apartment_outlined,
+        foregroundColor: Color(0xFF566B7D),
+        backgroundColor: Color(0xFFEEF2F5),
+        borderColor: Color(0xFFA5B3BE),
+      ),
+      'tds_parkwide' => const FacilityAreaVisual(
+        label: 'パークワイド',
+        icon: Icons.public_outlined,
+        foregroundColor: Color(0xFF59656B),
+        backgroundColor: Color(0xFFF0F3F4),
+        borderColor: Color(0xFFB3BEC3),
+      ),
+      'tds_park_entrance' => const FacilityAreaVisual(
+        label: 'パークエントランス',
+        icon: Icons.door_front_door_outlined,
+        foregroundColor: Color(0xFF59656B),
+        backgroundColor: Color(0xFFF0F3F4),
+        borderColor: Color(0xFFB3BEC3),
       ),
       _ => FacilityAreaVisual(
         label: areaId,

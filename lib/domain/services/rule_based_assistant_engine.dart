@@ -2,14 +2,17 @@ import '../entities/assistant_context.dart';
 import '../entities/assistant_response.dart';
 import '../entities/schedule_item.dart';
 import 'assistant_engine.dart';
+import 'assistant_intelligence_engine.dart';
 import 'event_impact_engine.dart';
 
 class RuleBasedAssistantEngine implements AssistantEngine {
   const RuleBasedAssistantEngine({
     this.eventImpactEngine = const EventImpactEngine(),
+    this.intelligenceEngine = const AssistantIntelligenceEngine(),
   });
 
   final EventImpactEngine eventImpactEngine;
+  final AssistantIntelligenceEngine intelligenceEngine;
 
   @override
   Future<AssistantResponse> respond({
@@ -97,6 +100,11 @@ class RuleBasedAssistantEngine implements AssistantEngine {
     }
 
     final facility = context.facilityById(next.facilityId);
+    final insight = intelligenceEngine.assessNextAction(
+      context: context,
+      next: next,
+    );
+
     return AssistantResponse(
       message:
           '次は${next.startTimeLabel}から「${next.title}」です。移動と準備の時間を考えて向かいましょう。',
@@ -107,6 +115,7 @@ class RuleBasedAssistantEngine implements AssistantEngine {
         if (next.reason != null && next.reason!.trim().isNotEmpty) next.reason!,
       ],
       relatedFacilityId: next.facilityId,
+      insight: insight,
     );
   }
 
