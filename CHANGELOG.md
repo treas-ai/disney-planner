@@ -1,5 +1,22 @@
 # Changelog
 
+## v3.4 - Tokyo Disney Resort Data Quality
+
+### Added
+
+- MasterDataAuditor
+- MasterDataAuditReport / MasterDataAuditIssue
+- パーク別・カテゴリ別件数集計
+- 公式URL、メニュー、表示名、休止情報確認日の監査
+- `dart run tool/audit_master_data.dart`によるMarkdownレポート生成
+- MasterDataAuditorの自動テスト
+
+### Policy
+
+- 公式未確認の施設情報を自動補完しない
+- 警告と構造エラーを分離する
+- v1.0.0までの網羅作業を監査結果に基づいて進める
+
 ## v3.3.2 - Git Maintenance
 
 ### 追加

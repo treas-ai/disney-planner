@@ -70,3 +70,11 @@ flutter test --no-pub
 flutter run --no-pub -d windows
 ```
 
+## マスターデータ監査
+
+```powershell
+dart run tool/audit_master_data.dart
+```
+
+実行するとプロジェクト直下に`MASTER_DATA_AUDIT_REPORT.md`を生成します。構造エラーと品質警告を分け、TDL/TDSの正式版1.0.0に向けた補完作業へ使用します。
+

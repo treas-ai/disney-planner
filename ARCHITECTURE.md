@@ -141,3 +141,14 @@ assets/master/tokyo/tds/*.json
 
 `AssistantIntelligenceEngine` が予定時刻、施設優先度、営業状態、イベント影響を評価し、`AssistantInsight`を生成する。
 
+## Master Data Quality Layer
+
+```text
+Master JSON
+  -> MasterDataValidator (起動を止める構造検証)
+  -> MasterDataAuditor (品質警告と網羅状況)
+  -> Markdown Audit Report
+```
+
+Validatorは不正な構造を拒否し、Auditorは公式URL・メニュー・確認日の不足を可視化します。
+

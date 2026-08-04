@@ -17,3 +17,9 @@
 - Git運用手順の標準化
 - 次版から`git add .`を通常利用
 
+## v3.4 Tokyo Disney Resort Data Quality
+
+- 自動監査基盤
+- 不足データの可視化
+- 後続版で監査結果に基づきTDL/TDSを補完
+
