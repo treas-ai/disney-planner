@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/state/app_state_scope.dart';
+import '../../core/constants/app_version.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
@@ -299,6 +300,21 @@ class _ParkSettingsCard extends StatelessWidget {
             icon: Icons.park_outlined,
           ),
           const SizedBox(height: AppSpacing.sm),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'アプリバージョン ${AppVersion.displayName}',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
@@ -463,12 +479,17 @@ class _LiveDataSourceSettingsCard extends StatelessWidget {
               },
             ),
           const SizedBox(height: AppSpacing.xs),
-          Text(switch (value) {
-            LiveDataSourceType.mock => '動作確認用のサンプルデータを使用します。',
-            LiveDataSourceType.manual => '公式アプリを見ながら手動入力した待ち時間を使用します。',
-            LiveDataSourceType.official =>
-              '自動取得の接続先は準備中です。取得できない場合はサンプルデータへ切り替えます。',
-          }, style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            switch (value) {
+              LiveDataSourceType.mock =>
+                '動作確認用のサンプルデータを使用します。',
+              LiveDataSourceType.manual =>
+                '公式アプリを見ながら手動入力した待ち時間を使用します。',
+              LiveDataSourceType.official =>
+                '自動取得の接続先は準備中です。取得できない場合はサンプルデータへ切り替えます。',
+            },
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ),
     );
@@ -953,6 +974,7 @@ class _CompactSwitchTile extends StatelessWidget {
   }
 }
 
+
 class _DataFreshnessCard extends StatelessWidget {
   const _DataFreshnessCard();
 
@@ -977,7 +999,10 @@ class _DataFreshnessCard extends StatelessWidget {
               else ...[
                 Text('${info.label}：${info.dateLabel}'),
                 const SizedBox(height: AppSpacing.xs),
-                Text(info.note, style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  info.note,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ],
           );
@@ -1000,7 +1025,9 @@ class _BackupRestoreCard extends StatelessWidget {
         title: const Text('バックアップを書き出す'),
         content: SizedBox(
           width: 620,
-          child: SingleChildScrollView(child: SelectableText(value)),
+          child: SingleChildScrollView(
+            child: SelectableText(value),
+          ),
         ),
         actions: [
           TextButton.icon(
@@ -1062,15 +1089,15 @@ class _BackupRestoreCard extends StatelessWidget {
     try {
       await controller.appState.importBackupJson(value);
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('バックアップを復元しました。')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('バックアップを復元しました。')),
+        );
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('復元できませんでした：$error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('復元できませんでした：$error')),
+        );
       }
     }
   }
@@ -1124,7 +1151,9 @@ class _BackupRestoreCard extends StatelessWidget {
               await controller.resetOnboarding();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('次回起動時に初回案内を表示します。')),
+                  const SnackBar(
+                    content: Text('次回起動時に初回案内を表示します。'),
+                  ),
                 );
               }
             },

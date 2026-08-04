@@ -217,4 +217,16 @@ ShareCenter
 ```
 
 外部サーバを使用せず、URLまたはJSON内へデータを格納します。
+## GitHub Pages Deployment
+
+```text
+mainへPush
+  ↓
+GitHub Actions
+  ├─ flutter analyze
+  ├─ flutter test
+  └─ flutter build web --base-href /disney-planner/
+  ↓
+GitHub Pages
+```
 

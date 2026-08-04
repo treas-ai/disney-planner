@@ -1,5 +1,16 @@
 # Changelog
 
+## v4.0.1 - GitHub Pages Auto Deploy
+
+### 追加
+- `main`へのPushでGitHub Pagesを自動更新
+- Actions画面からの手動デプロイ
+- Analyze／Test成功後だけWeb版を公開
+- GitHub Pages向け`base-href`設定
+- 直接アクセス時の`404.html`フォールバック
+- 設定画面のアプリバージョン表示
+- ブラウザタイトル・説明文の更新
+
 ## v4.0.0 - Cross-device Sharing
 
 ### 追加

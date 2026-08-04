@@ -67,4 +67,9 @@ AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
 - OS共有
 - QR表示・カメラ／画像読込
 - 共有履歴
+## v4.0.1 GitHub Pages Auto Deploy
+
+- main Push時の自動ビルド・公開
+- Analyze／Testを公開条件に設定
+- Web版バージョン表示
 
