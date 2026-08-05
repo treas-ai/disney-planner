@@ -32,8 +32,7 @@ class WishEventPack {
         .whereType<Map>()
         .map(
           (item) => WishItem.fromJson({
-            for (final entry in item.entries)
-              entry.key.toString(): entry.value,
+            for (final entry in item.entries) entry.key.toString(): entry.value,
             'eventPackId': id,
           }),
         )

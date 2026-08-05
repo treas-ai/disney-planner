@@ -35,27 +35,30 @@ class WishListController extends ChangeNotifier {
 
   List<WishItem> get visibleItems {
     final parkId = appState.tripSettings.parkId;
-    return allItems.where((item) {
-      if (item.parkId != parkId) {
-        return false;
-      }
-      if (categoryFilter != null && item.category != categoryFilter) {
-        return false;
-      }
-      if (freeDrinkOnly && !item.freeDrinkEligible) {
-        return false;
-      }
-      final normalized = query.trim().toLowerCase();
-      if (normalized.isNotEmpty) {
-        final target =
-            '${item.name} ${item.venueNames.join(' ')} '
-            '${item.description ?? ''}'.toLowerCase();
-        if (!target.contains(normalized)) {
-          return false;
-        }
-      }
-      return true;
-    }).toList(growable: false)
+    return allItems
+        .where((item) {
+          if (item.parkId != parkId) {
+            return false;
+          }
+          if (categoryFilter != null && item.category != categoryFilter) {
+            return false;
+          }
+          if (freeDrinkOnly && !item.freeDrinkEligible) {
+            return false;
+          }
+          final normalized = query.trim().toLowerCase();
+          if (normalized.isNotEmpty) {
+            final target =
+                '${item.name} ${item.venueNames.join(' ')} '
+                        '${item.description ?? ''}'
+                    .toLowerCase();
+            if (!target.contains(normalized)) {
+              return false;
+            }
+          }
+          return true;
+        })
+        .toList(growable: false)
       ..sort((left, right) {
         final leftState = appState.wishStateFor(left.id);
         final rightState = appState.wishStateFor(right.id);
@@ -87,8 +90,7 @@ class WishListController extends ChangeNotifier {
     try {
       packs = await eventPackRepository.refreshRemotePacks();
     } catch (error) {
-      errorMessage =
-          'オンライン更新に失敗したため、内蔵データを使用します：$error';
+      errorMessage = 'オンライン更新に失敗したため、内蔵データを使用します：$error';
       packs = await eventPackRepository.loadBundledPacks();
     } finally {
       isRefreshing = false;
@@ -111,6 +113,23 @@ class WishListController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectItemsByCategories(
+    Set<WishItemCategory> categories, {
+    bool freeDrinkOnly = false,
+  }) {
+    final parkId = appState.tripSettings.parkId;
+    final ids = allItems
+        .where(
+          (item) =>
+              item.parkId == parkId &&
+              categories.contains(item.category) &&
+              (!freeDrinkOnly || item.freeDrinkEligible),
+        )
+        .map((item) => item.id);
+    appState.selectWishItems(ids);
+    notifyListeners();
+  }
+
   void selectAllEligibleFreeDrinkMenus() {
     final parkId = appState.tripSettings.parkId;
     final ids = allItems
@@ -126,10 +145,12 @@ class WishListController extends ChangeNotifier {
   }
 
   Future<int> applySelectedItemsToPlan() async {
-    final selected = allItems.where((item) {
-      final state = appState.wishStateFor(item.id);
-      return state.selected && !state.completed;
-    }).toList(growable: false);
+    final selected = allItems
+        .where((item) {
+          final state = appState.wishStateFor(item.id);
+          return state.selected && !state.completed;
+        })
+        .toList(growable: false);
 
     final facilityIds = selected
         .expand((item) => item.venueFacilityIds)

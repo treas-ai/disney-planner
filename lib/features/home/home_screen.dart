@@ -227,8 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_appState?.selectedWishCount == 0) {
       return _HomeAction(
         title: 'やりたいことを選択',
-        description:
-            '乗りたい・見たい・飲みたい・食べたいものを先に選びます。',
+        description: '乗りたい・見たい・飲みたい・食べたいものを先に選びます。',
         buttonLabel: 'Wish Listを開く',
         icon: Icons.favorite_border,
         foregroundColor: const Color(0xFF8A2D5C),
@@ -240,8 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (selectedFacilities.isEmpty) {
       return _HomeAction(
         title: 'プラン候補を確認',
-        description:
-            'Wish Listの選択内容を施設へ反映するか、候補を手動で追加してください。',
+        description: 'Wish Listの選択内容を施設へ反映するか、候補を手動で追加してください。',
         buttonLabel: '候補確認を開く',
         icon: Icons.checklist_outlined,
         foregroundColor: const Color(0xFF2457A6),

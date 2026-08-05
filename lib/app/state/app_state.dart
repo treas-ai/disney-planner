@@ -150,8 +150,7 @@ class AppState extends ChangeNotifier {
             continue;
           }
           final state = WishItemState.fromJson({
-            for (final entry in item.entries)
-              entry.key.toString(): entry.value,
+            for (final entry in item.entries) entry.key.toString(): entry.value,
           });
           if (state.itemId.isNotEmpty) {
             _wishStatesByItemId[state.itemId] = state;
@@ -766,8 +765,7 @@ class AppState extends ChangeNotifier {
     }
 
     final converted = <String, dynamic>{
-      for (final entry in rawState.entries)
-        entry.key.toString(): entry.value,
+      for (final entry in rawState.entries) entry.key.toString(): entry.value,
     };
     await _storage.save(converted);
     await restore();
@@ -837,8 +835,7 @@ class AppState extends ChangeNotifier {
       } else if (item is Map) {
         schedules.add(
           DaySchedule.fromJson({
-            for (final entry in item.entries)
-              entry.key.toString(): entry.value,
+            for (final entry in item.entries) entry.key.toString(): entry.value,
           }),
         );
       }

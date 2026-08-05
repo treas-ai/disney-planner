@@ -2,7 +2,7 @@ enum WishItemCategory {
   attraction('アトラクション'),
   entertainment('ショー・パレード'),
   specialDrink('スペシャルドリンク'),
-  cafeDrink('カフェ系ドリンク'),
+  cafeDrink('コーヒー系ドリンク'),
   juice('ジュース'),
   soup('スープ'),
   drinkJelly('ドリンクジュレ'),

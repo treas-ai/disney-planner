@@ -69,22 +69,17 @@ class WishEventPackRepositoryImpl implements WishEventPackRepository {
     final packs = <WishEventPack>[];
     for (final file in files) {
       final uri = baseUri.resolve(file);
-      final response = await http
-          .get(uri)
-          .timeout(const Duration(seconds: 12));
+      final response = await http.get(uri).timeout(const Duration(seconds: 12));
       if (response.statusCode != 200) {
         continue;
       }
       final packJson = jsonDecode(utf8.decode(response.bodyBytes));
       if (packJson is Map) {
         packs.add(
-          WishEventPack.fromJson(
-            {
-              for (final entry in packJson.entries)
-                entry.key.toString(): entry.value,
-            },
-            isRemote: true,
-          ),
+          WishEventPack.fromJson({
+            for (final entry in packJson.entries)
+              entry.key.toString(): entry.value,
+          }, isRemote: true),
         );
       }
     }

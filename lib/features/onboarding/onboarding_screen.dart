@@ -18,8 +18,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _pages = [
     (
       Icons.auto_awesome,
-      'やりたいことからプランを作成',
-      '旅行設定の後にWish Listで希望を選ぶと、必要な店舗・施設を自動抽出します。',
+      '会話でやりたいことを決定',
+      '質問に答えるだけでWish Listを自動作成し、必要な店舗・施設を抽出します。',
     ),
     (
       Icons.lock_clock_outlined,

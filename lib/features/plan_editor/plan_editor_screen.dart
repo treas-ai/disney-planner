@@ -47,10 +47,10 @@ class PlanEditorScreen extends StatelessWidget {
                 child: Text(
                   selectedCount == 0
                       ? 'Wish Listから反映した店舗・施設がありません。'
-                        '必要な施設を手動で追加してください。'
+                            '必要な施設を手動で追加してください。'
                       : 'Wish Listと手動選択から、$selectedCount件を'
-                        'プラン候補にしています。不要な施設の削除や'
-                        '追加を行ってからプランを生成してください。',
+                            'プラン候補にしています。不要な施設の削除や'
+                            '追加を行ってからプランを生成してください。',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onPrimaryContainer,
                   ),

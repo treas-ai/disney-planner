@@ -257,4 +257,20 @@ Schedule Engine / AI
   ↓
 プラン確認・当日
 ```
+## Guided Planning Chat
+
+```text
+質問テンプレート
+  ↓
+GuidedPlanningController
+  ↓
+Wish Item自動選択
+  ↓
+候補施設抽出
+  ↓
+Schedule Engine
+
+Today
+  └─ AssistantController（当日案内）
+```
 

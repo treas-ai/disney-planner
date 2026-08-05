@@ -11,6 +11,7 @@ import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../facility/widgets/fixed_schedule_editor_sheet.dart';
+import '../assistant/assistant_controller.dart';
 import '../live/live_controller.dart';
 import '../live/live_models.dart';
 import '../live/widgets/live_wait_time_list_panel.dart';
@@ -31,6 +32,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
   AppState? _appState;
   LiveController? _liveController;
   ScheduleRecalculationController? _recalculationController;
+  AssistantController? _assistantController;
 
   late final ScrollController _mobileScrollController;
   late final ScrollController _scheduleScrollController;
@@ -66,6 +68,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
       appState,
       _liveController!,
     );
+    _assistantController = AssistantController(appState);
 
     _liveController!.addListener(_refresh);
     _recalculationController!.addListener(_refresh);
@@ -88,6 +91,8 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     _liveController?.removeListener(_refresh);
     _liveController?.dispose();
 
+    _assistantController?.dispose();
+    _assistantController = null;
     _recalculationController = null;
     _liveController = null;
   }
@@ -308,6 +313,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
               if (useTwoColumns) {
                 return _DesktopTodayLayout(
                   controller: liveController,
+                  assistantController: _assistantController,
                   snapshot: snapshot,
                   scheduleScrollController: _scheduleScrollController,
                   scheduleItemKeys: _scheduleItemKeys,
@@ -318,6 +324,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
 
               return _MobileTodayLayout(
                 controller: liveController,
+                assistantController: _assistantController,
                 snapshot: snapshot,
                 scrollController: _mobileScrollController,
                 scheduleItemKeys: _scheduleItemKeys,
@@ -369,6 +376,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
 class _MobileTodayLayout extends StatelessWidget {
   const _MobileTodayLayout({
     required this.controller,
+    required this.assistantController,
     required this.snapshot,
     required this.scrollController,
     required this.scheduleItemKeys,
@@ -377,6 +385,7 @@ class _MobileTodayLayout extends StatelessWidget {
   });
 
   final LiveController controller;
+  final AssistantController? assistantController;
   final LiveScheduleSnapshot snapshot;
   final ScrollController scrollController;
   final Map<String, GlobalKey> scheduleItemKeys;
@@ -397,6 +406,8 @@ class _MobileTodayLayout extends StatelessWidget {
         padding: const EdgeInsets.only(right: 14, bottom: 96),
         children: [
           const _FieldModeBanner(),
+          const SizedBox(height: AppSpacing.sm),
+          _TodayConciergeCard(controller: assistantController),
           const SizedBox(height: AppSpacing.sm),
           _LiveDashboardCard(
             controller: controller,
@@ -433,6 +444,7 @@ class _MobileTodayLayout extends StatelessWidget {
 class _DesktopTodayLayout extends StatelessWidget {
   const _DesktopTodayLayout({
     required this.controller,
+    required this.assistantController,
     required this.snapshot,
     required this.scheduleScrollController,
     required this.scheduleItemKeys,
@@ -441,6 +453,7 @@ class _DesktopTodayLayout extends StatelessWidget {
   });
 
   final LiveController controller;
+  final AssistantController? assistantController;
   final LiveScheduleSnapshot snapshot;
   final ScrollController scheduleScrollController;
   final Map<String, GlobalKey> scheduleItemKeys;
@@ -460,6 +473,8 @@ class _DesktopTodayLayout extends StatelessWidget {
             child: Column(
               children: [
                 const _FieldModeBanner(),
+                const SizedBox(height: AppSpacing.sm),
+                _TodayConciergeCard(controller: assistantController),
                 const SizedBox(height: AppSpacing.sm),
                 _LiveDashboardCard(
                   controller: controller,
@@ -507,6 +522,83 @@ class _DesktopTodayLayout extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TodayConciergeCard extends StatefulWidget {
+  const _TodayConciergeCard({required this.controller});
+
+  final AssistantController? controller;
+
+  @override
+  State<_TodayConciergeCard> createState() => _TodayConciergeCardState();
+}
+
+class _TodayConciergeCardState extends State<_TodayConciergeCard> {
+  Future<void> _ask(String question) async {
+    final controller = widget.controller;
+    if (controller == null) return;
+    await controller.ask(question);
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = widget.controller;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome),
+              const SizedBox(width: 8),
+              Text(
+                '当日アシスタント',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ActionChip(
+                label: const Text('次はどこ？'),
+                onPressed: controller?.isLoading == true
+                    ? null
+                    : () => _ask('今どこへ行けばいい？'),
+              ),
+              ActionChip(
+                label: const Text('ショーまで何する？'),
+                onPressed: controller?.isLoading == true
+                    ? null
+                    : () => _ask('ショーまで何をすればいい？'),
+              ),
+              ActionChip(
+                label: const Text('休憩は必要？'),
+                onPressed: controller?.isLoading == true
+                    ? null
+                    : () => _ask('休憩を入れた方がいい？'),
+              ),
+            ],
+          ),
+          if (controller?.isLoading == true) ...[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(),
+          ] else if (controller?.response != null) ...[
+            const SizedBox(height: 8),
+            Text(controller!.response!.message),
+          ] else ...[
+            const SizedBox(height: 8),
+            const Text('現在のプランから次の行動を案内します。'),
+          ],
+        ],
+      ),
     );
   }
 }

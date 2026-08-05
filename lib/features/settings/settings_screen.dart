@@ -310,9 +310,7 @@ class _ParkSettingsCard extends StatelessWidget {
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text(
-              'アプリバージョン ${AppVersion.displayName}',
-            ),
+            child: const Text('アプリバージョン ${AppVersion.displayName}'),
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
@@ -455,41 +453,39 @@ class _LiveDataSourceSettingsCard extends StatelessWidget {
           if (isLoading)
             const LinearProgressIndicator()
           else
-            SegmentedButton<LiveDataSourceType>(
-              segments: const [
-                ButtonSegment(
+            DropdownButtonFormField<LiveDataSourceType>(
+              initialValue: value,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: '取得方法',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.cloud_sync_outlined),
+              ),
+              items: const [
+                DropdownMenuItem(
                   value: LiveDataSourceType.mock,
-                  label: Text('サンプル'),
-                  icon: Icon(Icons.science_outlined),
+                  child: Text('サンプルデータ'),
                 ),
-                ButtonSegment(
+                DropdownMenuItem(
                   value: LiveDataSourceType.manual,
-                  label: Text('手動入力'),
-                  icon: Icon(Icons.edit_note_outlined),
+                  child: Text('手動入力'),
                 ),
-                ButtonSegment(
+                DropdownMenuItem(
                   value: LiveDataSourceType.official,
-                  label: Text('自動取得'),
-                  icon: Icon(Icons.cloud_outlined),
+                  child: Text('自動取得'),
                 ),
               ],
-              selected: {value},
-              onSelectionChanged: (selection) {
-                onChanged(selection.first);
+              onChanged: (selection) {
+                if (selection != null) onChanged(selection);
               },
             ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            switch (value) {
-              LiveDataSourceType.mock =>
-                '動作確認用のサンプルデータを使用します。',
-              LiveDataSourceType.manual =>
-                '公式アプリを見ながら手動入力した待ち時間を使用します。',
-              LiveDataSourceType.official =>
-                '自動取得の接続先は準備中です。取得できない場合はサンプルデータへ切り替えます。',
-            },
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(switch (value) {
+            LiveDataSourceType.mock => '動作確認用のサンプルデータを使用します。',
+            LiveDataSourceType.manual => '公式アプリを見ながら手動入力した待ち時間を使用します。',
+            LiveDataSourceType.official =>
+              '自動取得の接続先は準備中です。取得できない場合はサンプルデータへ切り替えます。',
+          }, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );
@@ -974,7 +970,6 @@ class _CompactSwitchTile extends StatelessWidget {
   }
 }
 
-
 class _DataFreshnessCard extends StatelessWidget {
   const _DataFreshnessCard();
 
@@ -999,10 +994,7 @@ class _DataFreshnessCard extends StatelessWidget {
               else ...[
                 Text('${info.label}：${info.dateLabel}'),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  info.note,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(info.note, style: Theme.of(context).textTheme.bodySmall),
               ],
             ],
           );
@@ -1025,9 +1017,7 @@ class _BackupRestoreCard extends StatelessWidget {
         title: const Text('バックアップを書き出す'),
         content: SizedBox(
           width: 620,
-          child: SingleChildScrollView(
-            child: SelectableText(value),
-          ),
+          child: SingleChildScrollView(child: SelectableText(value)),
         ),
         actions: [
           TextButton.icon(
@@ -1089,15 +1079,15 @@ class _BackupRestoreCard extends StatelessWidget {
     try {
       await controller.appState.importBackupJson(value);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('バックアップを復元しました。')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('バックアップを復元しました。')));
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('復元できませんでした：$error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('復元できませんでした：$error')));
       }
     }
   }
@@ -1151,9 +1141,7 @@ class _BackupRestoreCard extends StatelessWidget {
               await controller.resetOnboarding();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('次回起動時に初回案内を表示します。'),
-                  ),
+                  const SnackBar(content: Text('次回起動時に初回案内を表示します。')),
                 );
               }
             },

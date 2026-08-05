@@ -69,8 +69,7 @@ class WishItem {
       description: json['description']?.toString(),
       priceYen: json['priceYen'] as int?,
       freeDrinkEligible: json['freeDrinkEligible'] as bool? ?? false,
-      freeDrinkEligibilityNote:
-          json['freeDrinkEligibilityNote']?.toString(),
+      freeDrinkEligibilityNote: json['freeDrinkEligibilityNote']?.toString(),
       mobileOrder: json['mobileOrder'] as bool? ?? false,
       officialUrl: json['officialUrl']?.toString(),
       sourceCheckedAt: DateTime.tryParse(

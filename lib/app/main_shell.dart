@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_icons.dart';
 import '../core/utils/japanese_search_normalizer.dart';
 import '../domain/entities/facility.dart';
-import '../features/assistant/assistant_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/plan_editor/plan_editor_screen.dart';
 import '../features/plan_review/plan_review_screen.dart';
@@ -32,7 +31,6 @@ class _MainShellState extends State<MainShell> {
   static const int _editorIndex = 3;
   static const int _reviewIndex = 4;
   static const int _todayIndex = 5;
-  static const int _assistantIndex = 6;
 
   int _currentIndex = _homeIndex;
 
@@ -59,7 +57,7 @@ class _MainShellState extends State<MainShell> {
     ),
     _MainDestination(
       title: 'やりたいこと',
-      navigationLabel: 'Wish',
+      navigationLabel: 'やりたいこと',
       subtitle: '乗りたい・見たい・飲みたい・食べたいものを選びます。',
       icon: Icons.favorite_border,
       selectedIcon: Icons.favorite,
@@ -67,7 +65,7 @@ class _MainShellState extends State<MainShell> {
     _MainDestination(
       title: 'プラン候補確認',
       navigationLabel: '候補',
-      subtitle: 'Wish Listから抽出された施設を確認・微調整します。',
+      subtitle: 'やりたいことから抽出された施設を確認・微調整します。',
       icon: AppIcons.planEditor,
       selectedIcon: AppIcons.planEditorSelected,
     ),
@@ -84,13 +82,6 @@ class _MainShellState extends State<MainShell> {
       subtitle: '採用したプランを現地向け表示で確認します。',
       icon: AppIcons.today,
       selectedIcon: AppIcons.todaySelected,
-    ),
-    _MainDestination(
-      title: 'AIコンシェルジュ',
-      navigationLabel: 'AI',
-      subtitle: '現在の状況とプランをもとに次の行動を案内します。',
-      icon: Icons.smart_toy_outlined,
-      selectedIcon: Icons.smart_toy,
     ),
   ];
 
@@ -319,7 +310,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   bool get _shouldShowFlowBar {
-    return _currentIndex != _assistantIndex;
+    return true;
   }
 
   Widget _buildScreenStack() {
@@ -341,7 +332,6 @@ class _MainShellState extends State<MainShell> {
         ),
         const PlanReviewScreen(),
         const TodayPlanScreen(),
-        const AssistantScreen(),
       ],
     );
   }
@@ -701,15 +691,15 @@ class _PlannerFlowActionBar extends StatelessWidget {
       ),
       _MainShellState._settingsIndex => _PlannerFlowAction(
         title: 'やりたいことを選ぶ',
-        description: '設定したパークで、達成したいことをWish Listへ登録します。',
+        description: '設定したパークで、達成したいことを選びます。',
         icon: Icons.favorite_border,
         onPressed: onWishListPressed,
       ),
       _MainShellState._wishListIndex => _PlannerFlowAction(
         title: 'プラン候補を確認',
         description: flowState.selectedWishCount == 0
-            ? 'Wishを選ばず、施設を手動で追加することもできます。'
-            : '${flowState.selectedWishCount}件のWishから販売店舗・施設を抽出します。',
+            ? 'やりたいことを選ばず、施設を手動で追加することもできます。'
+            : '${flowState.selectedWishCount}件のやりたいことから販売店舗・施設を抽出します。',
         icon: Icons.checklist_outlined,
         onPressed: onEditorPressed,
       ),
@@ -731,7 +721,7 @@ class _PlannerFlowActionBar extends StatelessWidget {
               )
             : _PlannerFlowAction(
                 title: '候補を見直す',
-                description: 'Wishから抽出した施設や手動追加施設を確認します。',
+                description: 'やりたいことから抽出した施設や手動追加施設を確認します。',
                 icon: Icons.arrow_back,
                 onPressed: onEditorPressed,
               ),
@@ -852,7 +842,7 @@ class _PlannerProgressIndicator extends StatelessWidget {
         active: currentIndex == _MainShellState._settingsIndex,
       ),
       _PlannerStep(
-        label: 'Wish',
+        label: 'やりたいこと',
         icon: Icons.favorite_border,
         completed: flowState.selectedWishCount > 0,
         active: currentIndex == _MainShellState._wishListIndex,

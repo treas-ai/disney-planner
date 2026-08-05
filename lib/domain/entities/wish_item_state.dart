@@ -29,11 +29,7 @@ class WishItemState {
     };
   }
 
-  WishItemState copyWith({
-    bool? selected,
-    bool? completed,
-    int? priority,
-  }) {
+  WishItemState copyWith({bool? selected, bool? completed, int? priority}) {
     return WishItemState(
       itemId: itemId,
       selected: selected ?? this.selected,

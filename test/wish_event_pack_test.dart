@@ -18,25 +18,19 @@ void main() {
     expect(pack.items, isNotEmpty);
     expect(
       pack.items.any(
-        (item) =>
-            item.name.contains('シトラス＆マスカット') &&
-            item.freeDrinkEligible,
+        (item) => item.name.contains('シトラス＆マスカット') && item.freeDrinkEligible,
       ),
       isTrue,
     );
     expect(
       pack.items.any(
-        (item) =>
-            item.name == '冷製ガンボスープ' &&
-            item.freeDrinkEligible,
+        (item) => item.name == '冷製ガンボスープ' && item.freeDrinkEligible,
       ),
       isTrue,
     );
     expect(
       pack.items.any(
-        (item) =>
-            item.name == 'グアバドリンク' &&
-            item.freeDrinkEligible,
+        (item) => item.name == 'グアバドリンク' && item.freeDrinkEligible,
       ),
       isTrue,
     );
