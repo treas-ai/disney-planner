@@ -696,3 +696,8 @@ dart run tool/audit_wish_data.dart
 -   Plan Review
 -   Today
 -   Settings
+## 5.5.0 - 2026-08-05
+- AI候補評価、現実的件数調整、DPA自動割当、Schedule Engineを統合する`AiDayPlanner`を追加。
+- AI生成結果を保持する`AiPlanResult`を追加。
+- v5.5.0設計凍結書と統合テストを追加。
+- 配布ZIPからビルド生成物とキャッシュを除外する方針へ変更。
