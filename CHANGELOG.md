@@ -1,5 +1,17 @@
 # Changelog
 
+## v5.1.1 - Historical Wait Pipeline & AI Planning Connection
+
+- CSV/JSON対応の`HistoricalWaitDataImporter`
+- 出典・除外理由・祝日・イベントを保持する履歴レコード
+- 施設別・曜日別・季節別・祝日別・イベント別の混雑係数生成
+- 施設別7時間帯の最小・代表・最大待ち時間生成
+- サンプル数に基づく信頼度判定と対象期間保持
+- Wish候補の混雑・優先度・所要時間スコアリング
+- 現実的な候補件数への自動絞り込み
+- DPA短縮効果に基づく自動割当基盤
+- 履歴入力仕様、生成CLI、監査項目、ユニットテスト追加
+
 ## v5.1.0 - Prediction Engine Foundation
 
 - すべての表示時間を5分単位へ切り上げるサービス

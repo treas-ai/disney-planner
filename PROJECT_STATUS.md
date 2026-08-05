@@ -1,93 +1,14 @@
-# Disney Planner — PROJECT_STATUS
+# Project Status
 
-更新日: 2026-08-03
-対象バージョン: v3.0 開発中
+Current version: v5.1.1
 
-## 現在
-- v2.9 AIコンシェルジュ完了
-- v3.0でTDL/TDSマスターデータを再編
-- TDS 8エリアと主要施設データを追加
-- 変動情報は公式アプリ確認を前提
+Design: Frozen
+Implementation: Completed in supplied source package
+Verification: Must be run on a Windows Flutter environment
 
-## 品質確認
-- `flutter analyze`
-- TDL/TDS切替
-- マスターデータ検証
-## v3.2
+Required acceptance:
+- flutter analyze: No issues found!
+- flutter test: All tests passed!
+- verify.ps1: Errors: 0
 
-Park Intelligence / Event Impact Engineを実装。イベント影響マスターは確認済み情報だけを登録する。
-## v3.3
-
-AIコンシェルジュへ判断優先度・信頼度・スコアを追加。
-
-## v3.3.2 Git Maintenance
-
-- ルート`.gitignore`整備
-- Flutter生成ファイルのGit追跡解除
-- `git add .`を使える標準運用へ移行
-- アプリ機能変更なし
-
-## v3.4 Data Quality
-
-- マスターデータ監査基盤実装
-- TDL/TDS件数集計対応
-- 公式URL・メニュー・休止確認日監査対応
-- 正式版1.0.0に向けた不足項目の可視化
-
-## v3.5 Live Operation Foundation
-
-- ライブ運営情報のDomainモデルを追加
-- LiveOperationRepositoryを追加
-- Mock Repositoryで通信差し替え基盤を構築
-- AIコンシェルジュへパーク状況カードを追加
-- Mockデータと公式情報を明確に区別
-## v3.7 Official Data Service Foundation
-
-- Provider抽象化
-- Mock／Official切替
-- キャッシュ・フォールバック
-- 外部接続はv3.8以降で判断
-## v3.8 Manual Live Data Input
-
-- 手動待ち時間入力
-- 保存・復元
-- 鮮度警告・前回差分
-- Smart Schedule Engine連携
-## v3.11 Release Readiness Pack
-
-- Plan Safety & History
-- Field Mode
-- Backup & Restore
-- Onboarding
-- Data freshness display
-## v4.0.0 Cross-device Sharing
-
-- URL・共有コード
-- JSON保存・読込
-- OS共有
-- QR表示・カメラ／画像読込
-- 共有履歴
-## v4.0.1 GitHub Pages Auto Deploy
-
-- main Push時の自動ビルド・公開
-- Analyze／Testを公開条件に設定
-- Web版バージョン表示
-## v4.5.0 Wish List & Event Pack
-
-- Wish Item中心の旅行目標管理
-- AIプラン候補への店舗自動追加
-- GitHub JSONイベントパック
-- 2026夏スペシャルドリンク第一弾
-## v4.6.0 Wish First Planning Flow
-
-- Wish Listを施設選択より前へ移動
-- Wishから施設候補を自動抽出
-- 施設選択を候補確認・微調整へ役割変更
-## v5.0.0 Guided Planning Chat
-
-- 会話で旅行希望を整理
-- Wish List自動生成
-- 簡潔な確認・修正一覧
-- Todayへ当日アシスタントを統合
-- 独立AIタブを廃止
-
+See `DESIGN_V5_1_1.md` and `IMPLEMENTATION_V5_1_1.md`.
