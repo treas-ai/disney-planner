@@ -7,7 +7,7 @@ import '../../domain/enums/wish_item_category.dart';
 enum GuidedPlanningStep {
   welcome,
   mainFocus,
-  vacationPackage,
+  seasonalEvent,
   freeDrink,
   foodInterests,
   entertainment,
@@ -15,86 +15,113 @@ enum GuidedPlanningStep {
 }
 
 class GuidedPlanningController extends ChangeNotifier {
-  GuidedPlanningController({required this.appState});
+  GuidedPlanningController({required this.appState}) {
+    _restorePackageSettings();
+  }
 
   final AppState appState;
 
   GuidedPlanningStep step = GuidedPlanningStep.welcome;
   final Set<WishItemCategory> preferredCategories = {};
+
   bool usesVacationPackage = false;
   bool usesFreeDrink = false;
   bool wantsFeaturedFreeDrinkMenus = false;
   bool wantsEntertainment = false;
   bool wantsAttractions = false;
   bool wantsBalancedPlan = false;
+  bool wantsSeasonalMenus = false;
+  bool wantsSeasonalEntertainment = false;
+  bool wantsSeasonalGoods = false;
 
-  String get question {
-    return switch (step) {
-      GuidedPlanningStep.welcome => '質問に答えて、やりたいことを整理します。',
-      GuidedPlanningStep.mainFocus => '今回、特に重視したいものは何ですか？',
-      GuidedPlanningStep.vacationPackage => 'バケーションパッケージを利用しますか？',
-      GuidedPlanningStep.freeDrink => 'フリードリンク券を活用しますか？',
-      GuidedPlanningStep.foodInterests => '飲食では何を楽しみたいですか？',
-      GuidedPlanningStep.entertainment => 'ショーやアトラクションも候補に含めますか？',
-      GuidedPlanningStep.completed => '希望の整理が完了しました。',
-    };
-  }
+  String get parkName => switch (appState.tripSettings.parkId) {
+    'tokyo_disneyland' => '東京ディズニーランド',
+    'tokyo_disneysea' => '東京ディズニーシー',
+    _ => '選択中のパーク',
+  };
 
-  String get selectionGuide {
-    return switch (step) {
-      GuidedPlanningStep.foodInterests => '複数選択できます。もう一度押すと選択解除できます。',
-      GuidedPlanningStep.mainFocus ||
-      GuidedPlanningStep.entertainment => '${options.length}つから1つ選択してください。',
-      GuidedPlanningStep.vacationPackage ||
-      GuidedPlanningStep.freeDrink => 'どちらか1つ選択してください。',
-      GuidedPlanningStep.welcome => '「始める」を押してください。',
-      GuidedPlanningStep.completed => '',
-    };
-  }
+  bool get shouldAskFreeDrink =>
+      appState.tripSettings.usesVacationPackage &&
+      appState.tripSettings.usesFreeDrinkBenefit;
 
-  List<String> get options {
-    return switch (step) {
-      GuidedPlanningStep.welcome => const ['始める'],
-      GuidedPlanningStep.mainFocus => const [
-        'グルメを重視',
-        'ショーを重視',
-        'アトラクションを重視',
-        'バランスよく',
-      ],
-      GuidedPlanningStep.vacationPackage => const ['利用する', '利用しない'],
-      GuidedPlanningStep.freeDrink => const ['活用する', '使わない'],
-      GuidedPlanningStep.foodInterests => const [
-        'フリードリンク対象の限定・店舗限定メニューをすべて',
-        '飲食メニューをすべて',
-        'スペシャルドリンク',
-        'コーヒー系・ジュース',
-        'スープ・ドリンクジュレ',
-        'フード・デザート',
-        '飲食は選ばない',
-      ],
-      GuidedPlanningStep.entertainment => const [
-        'ショーも含める',
-        'アトラクションも含める',
-        '両方含める',
-        '飲食中心にする',
-      ],
-      GuidedPlanningStep.completed => const [],
-    };
-  }
+  String get question => switch (step) {
+    GuidedPlanningStep.welcome => '$parkNameのやりたいことを質問で整理します。',
+    GuidedPlanningStep.mainFocus => '$parkNameで、特に重視したいものは何ですか？',
+    GuidedPlanningStep.seasonalEvent => '$parkNameで、現在開催中の季節イベントを楽しみたいですか？',
+    GuidedPlanningStep.freeDrink => 'フリードリンク券をどのように楽しみますか？',
+    GuidedPlanningStep.foodInterests => '$parkNameの飲食では何を楽しみたいですか？',
+    GuidedPlanningStep.entertainment => '$parkNameのショーやアトラクションも候補に含めますか？',
+    GuidedPlanningStep.completed => '$parkNameでの希望を確認してください。',
+  };
 
+  String get selectionGuide => switch (step) {
+    GuidedPlanningStep.seasonalEvent ||
+    GuidedPlanningStep.foodInterests => '複数選択できます。もう一度押すと選択解除できます。',
+    GuidedPlanningStep.welcome => '「始める」を押してください。',
+    GuidedPlanningStep.completed => '',
+    _ => '${options.length}つから1つ選択してください。',
+  };
+
+  List<String> get options => switch (step) {
+    GuidedPlanningStep.welcome => const ['始める'],
+    GuidedPlanningStep.mainFocus => const [
+      'グルメを重視',
+      'ショーを重視',
+      'アトラクションを重視',
+      'キャラクターを重視',
+      'バランスよく',
+    ],
+    GuidedPlanningStep.seasonalEvent => const [
+      '季節限定メニュー',
+      '季節のショー・雰囲気',
+      'イベントグッズ・スーベニア',
+      '季節イベントをすべて',
+      '季節イベントは重視しない',
+    ],
+    GuidedPlanningStep.freeDrink => const [
+      '限定・店舗限定メニューをできるだけ全部',
+      'スペシャルドリンクだけ',
+      'スープ・ドリンクジュレも含める',
+      '一覧から自分で選ぶ',
+      '特に重視しない',
+    ],
+    GuidedPlanningStep.foodInterests => const [
+      '飲食メニューをすべて',
+      'スペシャルドリンク',
+      'コーヒー系・ジュース',
+      'スープ・ドリンクジュレ',
+      'フード・デザート',
+      '飲食は選ばない',
+    ],
+    GuidedPlanningStep.entertainment => const [
+      'ショーも含める',
+      'アトラクションも含める',
+      '両方含める',
+      '飲食中心にする',
+    ],
+    GuidedPlanningStep.completed => const [],
+  };
+
+  bool get isMultiSelectStep =>
+      step == GuidedPlanningStep.seasonalEvent ||
+      step == GuidedPlanningStep.foodInterests;
   bool get isFoodStep => step == GuidedPlanningStep.foodInterests;
   bool get canGoBack => step != GuidedPlanningStep.welcome;
-  int get totalStepCount => 6;
 
-  int get currentStepNumber => switch (step) {
-    GuidedPlanningStep.welcome => 1,
-    GuidedPlanningStep.mainFocus => 2,
-    GuidedPlanningStep.vacationPackage => 3,
-    GuidedPlanningStep.freeDrink => 4,
-    GuidedPlanningStep.foodInterests => 5,
-    GuidedPlanningStep.entertainment => 6,
-    GuidedPlanningStep.completed => 6,
-  };
+  List<GuidedPlanningStep> get _steps => [
+    GuidedPlanningStep.welcome,
+    GuidedPlanningStep.mainFocus,
+    GuidedPlanningStep.seasonalEvent,
+    if (shouldAskFreeDrink) GuidedPlanningStep.freeDrink,
+    GuidedPlanningStep.foodInterests,
+    GuidedPlanningStep.entertainment,
+  ];
+
+  int get totalStepCount => _steps.length;
+  int get currentStepNumber {
+    final index = _steps.indexOf(step);
+    return index < 0 ? _steps.length : index + 1;
+  }
 
   void answer(String answer) {
     switch (step) {
@@ -104,40 +131,30 @@ class GuidedPlanningController extends ChangeNotifier {
         wantsEntertainment = false;
         wantsAttractions = false;
         wantsBalancedPlan = false;
-        if (answer == 'グルメを重視') {
-          // 飲食の詳細は後の質問で選ぶ。
-        } else if (answer == 'ショーを重視') {
+        preferredCategories.remove(WishItemCategory.greeting);
+        if (answer == 'ショーを重視') {
           wantsEntertainment = true;
         } else if (answer == 'アトラクションを重視') {
           wantsAttractions = true;
-        } else {
+        } else if (answer == 'キャラクターを重視') {
+          preferredCategories.add(WishItemCategory.greeting);
+        } else if (answer == 'バランスよく') {
           wantsBalancedPlan = true;
           wantsEntertainment = true;
           wantsAttractions = true;
+          preferredCategories.add(WishItemCategory.greeting);
         }
-        step = GuidedPlanningStep.vacationPackage;
-      case GuidedPlanningStep.vacationPackage:
-        usesVacationPackage = answer == '利用する';
-        step = usesVacationPackage
-            ? GuidedPlanningStep.freeDrink
-            : GuidedPlanningStep.foodInterests;
+        step = GuidedPlanningStep.seasonalEvent;
+      case GuidedPlanningStep.seasonalEvent:
+        _toggleSeasonal(answer);
       case GuidedPlanningStep.freeDrink:
-        usesFreeDrink = answer == '活用する';
-        if (!usesFreeDrink) wantsFeaturedFreeDrinkMenus = false;
+        _applyFreeDrink(answer);
         step = GuidedPlanningStep.foodInterests;
       case GuidedPlanningStep.foodInterests:
-        _toggleFoodOption(answer);
+        _toggleFood(answer);
       case GuidedPlanningStep.entertainment:
-        wantsEntertainment = false;
-        wantsAttractions = false;
-        if (answer == 'ショーも含める') {
-          wantsEntertainment = true;
-        } else if (answer == 'アトラクションも含める') {
-          wantsAttractions = true;
-        } else if (answer == '両方含める') {
-          wantsEntertainment = true;
-          wantsAttractions = true;
-        }
+        wantsEntertainment = answer == 'ショーも含める' || answer == '両方含める';
+        wantsAttractions = answer == 'アトラクションも含める' || answer == '両方含める';
         step = GuidedPlanningStep.completed;
       case GuidedPlanningStep.completed:
         break;
@@ -145,25 +162,59 @@ class GuidedPlanningController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _toggleFoodOption(String answer) {
-    if (answer == 'フリードリンク対象の限定・店舗限定メニューをすべて') {
-      wantsFeaturedFreeDrinkMenus = !wantsFeaturedFreeDrinkMenus;
-      if (wantsFeaturedFreeDrinkMenus) {
-        usesFreeDrink = true;
-        preferredCategories.addAll(_freeDrinkMenuCategories);
-      } else {
-        preferredCategories.removeAll(_freeDrinkMenuCategories);
-      }
-      return;
+  void confirmCurrentMultiSelection() {
+    if (step == GuidedPlanningStep.seasonalEvent) {
+      step = shouldAskFreeDrink
+          ? GuidedPlanningStep.freeDrink
+          : GuidedPlanningStep.foodInterests;
+    } else if (step == GuidedPlanningStep.foodInterests) {
+      step = GuidedPlanningStep.entertainment;
     }
+    notifyListeners();
+  }
 
-    wantsFeaturedFreeDrinkMenus = false;
+  void confirmFoodSelection() => confirmCurrentMultiSelection();
+
+  void _toggleSeasonal(String answer) {
+    if (answer == '季節イベントをすべて') {
+      final all =
+          wantsSeasonalMenus &&
+          wantsSeasonalEntertainment &&
+          wantsSeasonalGoods;
+      wantsSeasonalMenus = !all;
+      wantsSeasonalEntertainment = !all;
+      wantsSeasonalGoods = !all;
+    } else if (answer == '季節限定メニュー') {
+      wantsSeasonalMenus = !wantsSeasonalMenus;
+    } else if (answer == '季節のショー・雰囲気') {
+      wantsSeasonalEntertainment = !wantsSeasonalEntertainment;
+    } else if (answer == 'イベントグッズ・スーベニア') {
+      wantsSeasonalGoods = !wantsSeasonalGoods;
+    } else if (answer == '季節イベントは重視しない') {
+      wantsSeasonalMenus = false;
+      wantsSeasonalEntertainment = false;
+      wantsSeasonalGoods = false;
+    }
+  }
+
+  void _applyFreeDrink(String answer) {
+    wantsFeaturedFreeDrinkMenus = answer == '限定・店舗限定メニューをできるだけ全部';
+    if (wantsFeaturedFreeDrinkMenus) {
+      preferredCategories.addAll(_freeDrinkCategories);
+    } else if (answer == 'スペシャルドリンクだけ') {
+      preferredCategories.add(WishItemCategory.specialDrink);
+    } else if (answer == 'スープ・ドリンクジュレも含める') {
+      preferredCategories.addAll({
+        WishItemCategory.specialDrink,
+        WishItemCategory.soup,
+        WishItemCategory.drinkJelly,
+      });
+    }
+  }
+
+  void _toggleFood(String answer) {
     if (answer == '飲食メニューをすべて') {
-      if (_foodCategories.every(preferredCategories.contains)) {
-        preferredCategories.removeAll(_foodCategories);
-      } else {
-        preferredCategories.addAll(_foodCategories);
-      }
+      _toggleCategories(_foodCategories);
     } else if (answer == 'スペシャルドリンク') {
       _toggleCategories({WishItemCategory.specialDrink});
     } else if (answer == 'コーヒー系・ジュース') {
@@ -189,47 +240,37 @@ class GuidedPlanningController extends ChangeNotifier {
     }
   }
 
-  bool isOptionSelected(String option) {
-    return switch (option) {
-      'フリードリンク対象の限定・店舗限定メニューをすべて' => wantsFeaturedFreeDrinkMenus,
-      '飲食メニューをすべて' => _foodCategories.every(preferredCategories.contains),
-      'スペシャルドリンク' => preferredCategories.contains(
-        WishItemCategory.specialDrink,
-      ),
-      'コーヒー系・ジュース' =>
-        preferredCategories.contains(WishItemCategory.cafeDrink) &&
-            preferredCategories.contains(WishItemCategory.juice),
-      'スープ・ドリンクジュレ' =>
-        preferredCategories.contains(WishItemCategory.soup) &&
-            preferredCategories.contains(WishItemCategory.drinkJelly),
-      'フード・デザート' =>
-        preferredCategories.contains(WishItemCategory.food) &&
-            preferredCategories.contains(WishItemCategory.dessert) &&
-            preferredCategories.contains(WishItemCategory.snack),
-      '飲食は選ばない' => !preferredCategories.any(_foodCategories.contains),
-      _ => false,
-    };
-  }
-
-  void confirmFoodSelection() {
-    if (step != GuidedPlanningStep.foodInterests) return;
-    step = GuidedPlanningStep.entertainment;
-    notifyListeners();
-  }
+  bool isOptionSelected(String option) => switch (option) {
+    '季節限定メニュー' => wantsSeasonalMenus,
+    '季節のショー・雰囲気' => wantsSeasonalEntertainment,
+    'イベントグッズ・スーベニア' => wantsSeasonalGoods,
+    '季節イベントをすべて' =>
+      wantsSeasonalMenus && wantsSeasonalEntertainment && wantsSeasonalGoods,
+    '季節イベントは重視しない' =>
+      !wantsSeasonalMenus && !wantsSeasonalEntertainment && !wantsSeasonalGoods,
+    '飲食メニューをすべて' => _foodCategories.every(preferredCategories.contains),
+    'スペシャルドリンク' => preferredCategories.contains(WishItemCategory.specialDrink),
+    'コーヒー系・ジュース' =>
+      preferredCategories.contains(WishItemCategory.cafeDrink) &&
+          preferredCategories.contains(WishItemCategory.juice),
+    'スープ・ドリンクジュレ' =>
+      preferredCategories.contains(WishItemCategory.soup) &&
+          preferredCategories.contains(WishItemCategory.drinkJelly),
+    'フード・デザート' =>
+      preferredCategories.contains(WishItemCategory.food) &&
+          preferredCategories.contains(WishItemCategory.dessert) &&
+          preferredCategories.contains(WishItemCategory.snack),
+    '飲食は選ばない' => !preferredCategories.any(_foodCategories.contains),
+    _ => false,
+  };
 
   void goBack() {
-    step = switch (step) {
-      GuidedPlanningStep.welcome => GuidedPlanningStep.welcome,
-      GuidedPlanningStep.mainFocus => GuidedPlanningStep.welcome,
-      GuidedPlanningStep.vacationPackage => GuidedPlanningStep.mainFocus,
-      GuidedPlanningStep.freeDrink => GuidedPlanningStep.vacationPackage,
-      GuidedPlanningStep.foodInterests =>
-        usesVacationPackage
-            ? GuidedPlanningStep.freeDrink
-            : GuidedPlanningStep.vacationPackage,
-      GuidedPlanningStep.entertainment => GuidedPlanningStep.foodInterests,
-      GuidedPlanningStep.completed => GuidedPlanningStep.entertainment,
-    };
+    if (step == GuidedPlanningStep.completed) {
+      step = GuidedPlanningStep.entertainment;
+    } else {
+      final index = _steps.indexOf(step);
+      if (index > 0) step = _steps[index - 1];
+    }
     notifyListeners();
   }
 
@@ -238,12 +279,26 @@ class GuidedPlanningController extends ChangeNotifier {
     final matches = items
         .where((item) {
           if (item.parkId != parkId) return false;
-          if (!preferredCategories.contains(item.category)) return false;
-          if (wantsFeaturedFreeDrinkMenus) {
-            // イベントパックは一般的なコーラ・お茶などを収録せず、
-            // 限定・店舗限定・特徴的なメニューだけを管理する。
-            return item.freeDrinkEligible &&
-                item.category.isFreeDrinkMenuCategory;
+          final seasonal = item.eventPackId != 'facility_master';
+          final seasonalMatch =
+              (wantsSeasonalMenus && _foodCategories.contains(item.category)) ||
+              (wantsSeasonalEntertainment &&
+                  item.category == WishItemCategory.entertainment) ||
+              (wantsSeasonalGoods &&
+                  {
+                    WishItemCategory.goods,
+                    WishItemCategory.souvenir,
+                  }.contains(item.category));
+          final normalMatch =
+              preferredCategories.contains(item.category) ||
+              (wantsEntertainment &&
+                  item.category == WishItemCategory.entertainment) ||
+              (wantsAttractions &&
+                  item.category == WishItemCategory.attraction);
+          if (!(normalMatch || (seasonal && seasonalMatch))) return false;
+          if (wantsFeaturedFreeDrinkMenus &&
+              item.category.isFreeDrinkMenuCategory) {
+            return item.freeDrinkEligible;
           }
           if (usesFreeDrink && item.category.isFreeDrinkMenuCategory) {
             return item.freeDrinkEligible;
@@ -252,18 +307,20 @@ class GuidedPlanningController extends ChangeNotifier {
         })
         .map((item) => item.id)
         .toSet();
-
     appState.selectWishItems(matches);
     return matches.length;
   }
 
   String get summary {
-    final parts = <String>[];
-    if (usesVacationPackage) parts.add('バケーションパッケージ利用');
+    final parts = <String>['対象パーク：$parkName'];
+    if (usesVacationPackage) {
+      parts.add('バケーションパッケージ設定を反映');
+    }
+    if (wantsSeasonalMenus) parts.add('現在の季節限定メニュー');
+    if (wantsSeasonalEntertainment) parts.add('現在の季節ショー・雰囲気');
+    if (wantsSeasonalGoods) parts.add('現在のイベントグッズ・スーベニア');
     if (wantsFeaturedFreeDrinkMenus) {
-      parts.add('フリードリンク対象の限定・店舗限定メニューをすべて');
-    } else if (usesFreeDrink) {
-      parts.add('フリードリンク券を活用');
+      parts.add('フリードリンク対象の限定・店舗限定メニュー');
     }
     if (preferredCategories.isNotEmpty && !wantsFeaturedFreeDrinkMenus) {
       parts.add(preferredCategories.map((value) => value.label).join('・'));
@@ -271,23 +328,29 @@ class GuidedPlanningController extends ChangeNotifier {
     if (wantsEntertainment) parts.add('ショーを候補に含める');
     if (wantsAttractions) parts.add('アトラクションを候補に含める');
     if (wantsBalancedPlan) parts.add('全体をバランスよく');
-    if (parts.isEmpty) parts.add('一覧から手動で選択');
     return '今回の希望\n\n・${parts.join('\n・')}';
   }
 
   void restart() {
     step = GuidedPlanningStep.welcome;
     preferredCategories.clear();
-    usesVacationPackage = false;
-    usesFreeDrink = false;
+    _restorePackageSettings();
     wantsFeaturedFreeDrinkMenus = false;
     wantsEntertainment = false;
     wantsAttractions = false;
     wantsBalancedPlan = false;
+    wantsSeasonalMenus = false;
+    wantsSeasonalEntertainment = false;
+    wantsSeasonalGoods = false;
     notifyListeners();
   }
 
-  static const Set<WishItemCategory> _freeDrinkMenuCategories = {
+  void _restorePackageSettings() {
+    usesVacationPackage = appState.tripSettings.usesVacationPackage;
+    usesFreeDrink = appState.tripSettings.usesFreeDrinkBenefit;
+  }
+
+  static const Set<WishItemCategory> _freeDrinkCategories = {
     WishItemCategory.specialDrink,
     WishItemCategory.cafeDrink,
     WishItemCategory.juice,
@@ -296,7 +359,7 @@ class GuidedPlanningController extends ChangeNotifier {
   };
 
   static const Set<WishItemCategory> _foodCategories = {
-    ..._freeDrinkMenuCategories,
+    ..._freeDrinkCategories,
     WishItemCategory.food,
     WishItemCategory.dessert,
     WishItemCategory.snack,

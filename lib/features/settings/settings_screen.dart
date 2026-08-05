@@ -178,6 +178,12 @@ class _MobileSettingsLayout extends StatelessWidget {
           onDpaChanged: controller.updateDpa,
           onPriorityPassChanged: controller.updatePriorityPass,
           onSingleRiderChanged: controller.updateSingleRider,
+          onVacationPackageChanged: controller.updateVacationPackage,
+          onFreeDrinkChanged: controller.updateFreeDrinkBenefit,
+          onAttractionVoucherChanged: controller.updateAttractionVoucher,
+          onShowVoucherChanged: controller.updateShowVoucher,
+          onRestaurantReservationChanged:
+              controller.updateRestaurantReservation,
         ),
         const SizedBox(height: AppSpacing.sm),
         _MealSettingsCard(
@@ -261,6 +267,13 @@ class _DesktopSettingsLayout extends StatelessWidget {
                   onDpaChanged: controller.updateDpa,
                   onPriorityPassChanged: controller.updatePriorityPass,
                   onSingleRiderChanged: controller.updateSingleRider,
+                  onVacationPackageChanged: controller.updateVacationPackage,
+                  onFreeDrinkChanged: controller.updateFreeDrinkBenefit,
+                  onAttractionVoucherChanged:
+                      controller.updateAttractionVoucher,
+                  onShowVoucherChanged: controller.updateShowVoucher,
+                  onRestaurantReservationChanged:
+                      controller.updateRestaurantReservation,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _MealSettingsCard(
@@ -685,6 +698,11 @@ class _ServiceSettingsCard extends StatelessWidget {
     required this.onDpaChanged,
     required this.onPriorityPassChanged,
     required this.onSingleRiderChanged,
+    required this.onVacationPackageChanged,
+    required this.onFreeDrinkChanged,
+    required this.onAttractionVoucherChanged,
+    required this.onShowVoucherChanged,
+    required this.onRestaurantReservationChanged,
   });
 
   final TripSettings settings;
@@ -692,6 +710,11 @@ class _ServiceSettingsCard extends StatelessWidget {
   final ValueChanged<bool> onDpaChanged;
   final ValueChanged<bool> onPriorityPassChanged;
   final ValueChanged<bool> onSingleRiderChanged;
+  final ValueChanged<bool> onVacationPackageChanged;
+  final ValueChanged<bool> onFreeDrinkChanged;
+  final ValueChanged<bool> onAttractionVoucherChanged;
+  final ValueChanged<bool> onShowVoucherChanged;
+  final ValueChanged<bool> onRestaurantReservationChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -733,6 +756,41 @@ class _ServiceSettingsCard extends StatelessWidget {
             value: settings.canUseSingleRider,
             onChanged: onSingleRiderChanged,
           ),
+          const Divider(height: 20),
+          _CompactSwitchTile(
+            title: 'バケーションパッケージ',
+            subtitle: '利用特典を質問とプランへ自動反映',
+            icon: Icons.card_travel_outlined,
+            value: settings.usesVacationPackage,
+            onChanged: onVacationPackageChanged,
+          ),
+          if (settings.usesVacationPackage) ...[
+            _CompactSwitchTile(
+              title: 'フリードリンク券',
+              subtitle: '限定・店舗限定メニューの質問を表示',
+              icon: Icons.local_drink_outlined,
+              value: settings.usesFreeDrinkBenefit,
+              onChanged: onFreeDrinkChanged,
+            ),
+            _CompactSwitchTile(
+              title: 'アトラクション利用券',
+              icon: Icons.attractions_outlined,
+              value: settings.hasAttractionVoucher,
+              onChanged: onAttractionVoucherChanged,
+            ),
+            _CompactSwitchTile(
+              title: 'ショー鑑賞券',
+              icon: Icons.theater_comedy_outlined,
+              value: settings.hasShowVoucher,
+              onChanged: onShowVoucherChanged,
+            ),
+            _CompactSwitchTile(
+              title: 'レストラン予約',
+              icon: Icons.restaurant_outlined,
+              value: settings.hasRestaurantReservation,
+              onChanged: onRestaurantReservationChanged,
+            ),
+          ],
         ],
       ),
     );

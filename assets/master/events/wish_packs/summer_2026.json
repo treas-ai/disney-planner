@@ -1,18 +1,21 @@
 {
   "schemaVersion": 1,
   "id": "summer_2026",
-  "title": "2026夏 スペシャルドリンク",
-  "description": "サマー・クールオフ、東京ディズニーシー25周年、夏季限定ラウンジに加え、フリードリンク券で楽しみたいカフェ系ドリンク、ジュース、スープを収録した第一弾データ。",
+  "title": "現在のやりたいことメニュー",
+  "description": "2026年8月5日時点の公式おすすめメニューを収録。アトラクション・ショー・パレード・グリーティングは施設マスターから自動生成し、販売期間外のメニューは非表示にします。",
   "startDate": "2026-07-01",
   "endDate": "2026-09-14",
-  "updatedAt": "2026-08-04",
+  "updatedAt": "2026-08-05",
   "sourceUrls": [
     "https://www.tokyodisneyresort.jp/tdl/food/detail/15542651161/",
     "https://www.tokyodisneyresort.jp/tdl/food/detail/17787319651/",
     "https://www.tokyodisneyresort.jp/tds/food/detail/17787333121/",
     "https://www.tokyodisneyresort.jp/tds/food/detail/15598703211/",
     "https://www.tokyodisneyresort.jp/vp/guide/free-drink.html",
-    "https://www.tokyodisneyresort.jp/vp/guide/info/freedrink_lounge.html"
+    "https://www.tokyodisneyresort.jp/vp/guide/info/freedrink_lounge.html",
+    "https://www.tokyodisneyresort.jp/tdl/food/detail/17787321521/",
+    "https://www.tokyodisneyresort.jp/tds/food/detail/17787333901/",
+    "https://www.tokyodisneyresort.jp/food/4636/"
   ],
   "items": [
     {
@@ -281,6 +284,606 @@
       "description": "夏向けの冷製スープ。ドリンク券で楽しむ候補として登録。",
       "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/detail/15542651161/",
       "sourceCheckedAt": "2026-08-04"
+    },
+    {
+      "id": "summer2026_tdl_shaved_ice_melon_strawberry",
+      "name": "シェイブアイス（メロンシロップ、ストロベリー、ホイップ）",
+      "category": "dessert",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_toontown_huey_dewey_louies_good_time_cafe"
+      ],
+      "venueNames": [
+        "ヒューイ・デューイ・ルーイのグッドタイム・カフェ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 600,
+      "freeDrinkEligible": false,
+      "mobileOrder": true,
+      "description": "2026年夏の期間限定シェイブアイス。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/detail/17787319651/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tdl_shaved_ice_tropical_tea",
+      "name": "シェイブアイス（トロピカルフルーツ＆ティーゼリー）",
+      "category": "dessert",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_adventureland_boiler_room_bites"
+      ],
+      "venueNames": [
+        "ボイラールーム・バイツ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 600,
+      "freeDrinkEligible": false,
+      "mobileOrder": true,
+      "description": "トロピカルフルーツとティーゼリーの夏限定シェイブアイス。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/detail/17787319651/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tdl_shaved_ice_sundae_strawberry",
+      "name": "シェイブアイスサンデー（ストロベリー）",
+      "category": "dessert",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_world_bazaar_ice_cream_cones"
+      ],
+      "venueNames": [
+        "アイスクリームコーン"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 850,
+      "freeDrinkEligible": false,
+      "mobileOrder": false,
+      "description": "ストロベリー味の夏限定シェイブアイスサンデー。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/detail/17787319651/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tdl_grandma_summer_set",
+      "name": "サラおばあちゃんのおすすめセット",
+      "category": "food",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_critter_country_grandma_saras_kitchen"
+      ],
+      "venueNames": [
+        "グランマ・サラのキッチン"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 1760,
+      "freeDrinkEligible": false,
+      "mobileOrder": true,
+      "description": "2026年夏のおすすめセット。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/detail/17787321521/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tds_pixie_dust_soda_kiwi",
+      "name": "ピクシーダストソーダ（キウイ）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_fs_r_007"
+      ],
+      "venueNames": [
+        "ルックアウト・クックアウト"
+      ],
+      "startDate": "2026-06-22",
+      "endDate": "2026-09-14",
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "対象店舗に含まれます。利用当日は公式アプリのフリードリンク表示で最終確認してください。",
+      "mobileOrder": true,
+      "description": "ファンタジースプリングスで販売する期間限定ドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/food/4636/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tds_pixie_hot_kiwi_banana",
+      "name": "ピクシーダスト・ホットドリンク（キウイ＆バナナ）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_fs_r_007"
+      ],
+      "venueNames": [
+        "ルックアウト・クックアウト"
+      ],
+      "startDate": "2026-06-22",
+      "endDate": "2026-09-14",
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "対象店舗に含まれます。利用当日は公式アプリのフリードリンク表示で最終確認してください。",
+      "mobileOrder": true,
+      "description": "キウイとバナナの期間限定ホットドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/food/4636/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "current2026_tds_rapunzel_magical_milk_tea",
+      "name": "ラプンツェルのマジカルミルクティー",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_fs_r_006"
+      ],
+      "venueNames": [
+        "スナグリーダックリング"
+      ],
+      "startDate": "2026-04-08",
+      "endDate": "2027-03-31",
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "対象店舗に含まれます。利用当日は公式アプリで対象状況を確認してください。",
+      "mobileOrder": true,
+      "description": "ファンタジースプリングスの特徴的なミルクティー。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/food/4636/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tds_cold_seafood_pasta",
+      "name": "冷製シーフードパスタ",
+      "category": "food",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_004"
+      ],
+      "venueNames": [
+        "カフェ・ポルトフィーノ"
+      ],
+      "startDate": "2026-06-01",
+      "endDate": "2026-09-30",
+      "priceYen": 1680,
+      "freeDrinkEligible": false,
+      "mobileOrder": true,
+      "description": "2026年夏の冷製パスタ。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/detail/17787333901/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tds_cold_noodles_chicken",
+      "name": "よだれ鶏の涼麺 胡麻風味、煮たまご添え",
+      "category": "food",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mi_r_003"
+      ],
+      "venueNames": [
+        "ヴォルケイニア・レストラン"
+      ],
+      "startDate": "2026-04-01",
+      "endDate": "2026-09-30",
+      "priceYen": 1480,
+      "freeDrinkEligible": false,
+      "mobileOrder": true,
+      "description": "暑い時期向けの冷たい麺メニュー。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/detail/17787333901/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tds_seafood_cold_noodles",
+      "name": "シーフードの冷やし麺（トマト＆サフラン）、ガーリックシュリンプソース付き",
+      "category": "food",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_pd_r_004"
+      ],
+      "venueNames": [
+        "ホライズンベイ・レストラン"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-30",
+      "priceYen": 1680,
+      "freeDrinkEligible": false,
+      "mobileOrder": true,
+      "description": "トマトとサフランの冷やし麺。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/detail/17787333901/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "summer2026_tds_tomato_strawberry_cold_soup",
+      "name": "トマトと苺の冷製スープ",
+      "category": "soup",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_pd_r_004"
+      ],
+      "venueNames": [
+        "ホライズンベイ・レストラン"
+      ],
+      "startDate": "2026-04-08",
+      "endDate": "2026-09-14",
+      "priceYen": 500,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": "スープですが、ホライズンベイ・レストランは現在のフリードリンク対象店舗一覧に含まれていないため対象外として登録しています。",
+      "mobileOrder": true,
+      "description": "トマトと苺を使った夏向け冷製スープ。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/detail/17787333901/",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tdl_current_happy_hero_baymax_ice",
+      "name": "ハッピーヒーローベイマックスアイス（ヨーグルト風味）",
+      "category": "dessert",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_adventureland_the_gazebo",
+        "tdl_toontown_mickeys_trailer",
+        "tdl_tomorrowland_soft_landing"
+      ],
+      "venueNames": [
+        "ザ・ガゼーボ",
+        "ミッキーのトレーラー",
+        "ソフトランディング"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 500,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tdl_current_fruit_jelly_yogurt_mousse",
+      "name": "フルーツゼリー＆ヨーグルトムース",
+      "category": "dessert",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_world_bazaar_sweetheart_cafe",
+        "tdl_westernland_hungry_bear_restaurant",
+        "tdl_toontown_huey_dewey_louies_good_time_cafe",
+        "tdl_tomorrowland_tomorrowland_terrace",
+        "tdl_tomorrowland_pan_galactic_pizza_port",
+        "tdl_tomorrowland_plazma_rays_diner"
+      ],
+      "venueNames": [
+        "スウィートハート・カフェ",
+        "ハングリーベア・レストラン",
+        "ヒューイ・デューイ・ルーイのグッドタイム・カフェ",
+        "トゥモローランド・テラス",
+        "パン・ギャラクティック・ピザ・ポート",
+        "プラズマ・レイズ・ダイナー"
+      ],
+      "startDate": "2026-06-11",
+      "endDate": "2026-09-14",
+      "priceYen": 550,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tdl_current_hyuganatsu_cheesecake",
+      "name": "ヒュウガナツレアチーズケーキ",
+      "category": "dessert",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_world_bazaar_sweetheart_cafe",
+        "tdl_westernland_hungry_bear_restaurant",
+        "tdl_toontown_huey_dewey_louies_good_time_cafe",
+        "tdl_tomorrowland_tomorrowland_terrace",
+        "tdl_tomorrowland_pan_galactic_pizza_port",
+        "tdl_tomorrowland_plazma_rays_diner"
+      ],
+      "venueNames": [
+        "スウィートハート・カフェ",
+        "ハングリーベア・レストラン",
+        "ヒューイ・デューイ・ルーイのグッドタイム・カフェ",
+        "トゥモローランド・テラス",
+        "パン・ギャラクティック・ピザ・ポート",
+        "プラズマ・レイズ・ダイナー"
+      ],
+      "startDate": "2026-06-11",
+      "endDate": "2026-09-14",
+      "priceYen": 550,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tdl_current_spicy_tortilla_chips",
+      "name": "スパイストルティーヤチップス（チーズ＆アボカド味）",
+      "category": "snack",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_adventureland_royal_street_veranda"
+      ],
+      "venueNames": [
+        "ロイヤルストリート・ベランダ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 300,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tdl_current_original_parfait",
+      "name": "オリジナルパフェ（ココナッツムース、シェイブアイス、もちアイス、マンゴー、ピーチ、杏仁豆腐）",
+      "category": "dessert",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_world_bazaar_center_street_coffeehouse"
+      ],
+      "venueNames": [
+        "センターストリート・コーヒーハウス"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 1580,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tdl_current_pan_galactic_special_set",
+      "name": "スペシャルセット（パン・ギャラクティック・ピザ・ポート）",
+      "category": "food",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_tomorrowland_pan_galactic_pizza_port"
+      ],
+      "venueNames": [
+        "パン・ギャラクティック・ピザ・ポート"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 1180,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_unagi_cold_udon",
+      "name": "鰻の冷やしうどん",
+      "category": "food",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_aw_r_010"
+      ],
+      "venueNames": [
+        "レストラン櫻"
+      ],
+      "startDate": "2026-06-01",
+      "endDate": "2026-09-30",
+      "priceYen": 1700,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_mango_granita",
+      "name": "マンゴーのグラニータ",
+      "category": "dessert",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_008"
+      ],
+      "venueNames": [
+        "リストランテ・ディ・カナレット"
+      ],
+      "startDate": "2026-06-01",
+      "endDate": "2026-09-30",
+      "priceYen": 1800,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_zambini_cold_pasta",
+      "name": "冷製パスタ、シーフードのトマト＆豆乳ソース",
+      "category": "food",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_006"
+      ],
+      "venueNames": [
+        "ザンビーニ・ブラザーズ・リストランテ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 1200,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_cold_curry_udon",
+      "name": "チキンとエッグの冷やしカレーうどん（中辛）",
+      "category": "food",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_ac_r_006"
+      ],
+      "venueNames": [
+        "サルタンズ・オアシス"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 900,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_spicy_chili_dog",
+      "name": "スパイシーチリドッグ",
+      "category": "food",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [],
+      "venueNames": [
+        "デランシー・ケータリング"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 600,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_cold_tomato_soy_potato_soup",
+      "name": "冷製トマト＆豆乳ポテトスープ",
+      "category": "soup",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_006"
+      ],
+      "venueNames": [
+        "ザンビーニ・ブラザーズ・リストランテ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 420,
+      "freeDrinkEligible": true,
+      "freeDrinkEligibilityNote": "フリードリンク対象候補です。当日は公式アプリの「フリードリンク」フィルターで最終確認してください。",
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_coffee_granita_tiramisu",
+      "name": "コーヒーのグラニータ、ティラミス仕立て",
+      "category": "dessert",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_004"
+      ],
+      "venueNames": [
+        "カフェ・ポルトフィーノ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-30",
+      "priceYen": 900,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_annintofu_fruit_sundae",
+      "name": "杏仁豆腐＆フルーツサンデー、ピスタチオ添え",
+      "category": "dessert",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mi_r_003"
+      ],
+      "venueNames": [
+        "ヴォルケイニア・レストラン"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-30",
+      "priceYen": 600,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_peach_lemon_granita",
+      "name": "ピーチ＆レモンのグラニータ",
+      "category": "dessert",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_006"
+      ],
+      "venueNames": [
+        "ザンビーニ・ブラザーズ・リストランテ"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 900,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_shaved_ice_sundae",
+      "name": "シェイブアイスサンデー（ピーチ、ミックスベリー、紅茶ゼリー）",
+      "category": "dessert",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [],
+      "venueNames": [
+        "リバティ・ランディング・ダイナー"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 850,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_shaved_ice_lemon_apple_peach",
+      "name": "シェイブアイス（レモン、アップル、ピーチ）",
+      "category": "dessert",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_fs_r_007"
+      ],
+      "venueNames": [
+        "ハドソンリバー・ハーベスト",
+        "ルックアウト・クックアウト"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-14",
+      "priceYen": 650,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
+    },
+    {
+      "id": "tds_current_happy_hero_baymax_ice",
+      "name": "ハッピーヒーローベイマックスアイス（ヨーグルト風味）",
+      "category": "dessert",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [],
+      "venueNames": [
+        "リフレッシュメント・ステーション"
+      ],
+      "startDate": "2026-07-01",
+      "endDate": "2026-09-30",
+      "priceYen": 500,
+      "freeDrinkEligible": false,
+      "freeDrinkEligibilityNote": null,
+      "mobileOrder": false,
+      "description": "2026年8月現在の公式おすすめメニュー。",
+      "sourceCheckedAt": "2026-08-05"
     }
   ]
 }

@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 5.0.3+5030
+version: 5.1.0+5100
 
 environment:
   sdk: ^3.12.2
@@ -40,6 +40,9 @@ flutter:
     - assets/master/
     - assets/master/events/
     - assets/master/events/wish_packs/
+    - assets/master/wait_profiles/
+    - assets/master/crowd_factors/
+    - assets/master/free_drink_profiles/
     - assets/master/tokyo/tdl/
     - assets/master/tokyo/tds/
     - assets/data/attractions.json

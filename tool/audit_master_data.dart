@@ -22,9 +22,10 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
-  final facilityFiles = (manifest['facilityFiles'] as List?)
-          ?.whereType<String>()
-          .toList(growable: false) ??
+  final facilityFiles =
+      (manifest['facilityFiles'] as List?)?.whereType<String>().toList(
+        growable: false,
+      ) ??
       const <String>[];
   final rowsByFile = <String, List<Map<String, dynamic>>>{};
 
@@ -43,9 +44,12 @@ Future<void> main(List<String> arguments) async {
       return;
     }
 
-    rowsByFile[path] = decoded.whereType<Map>().map((row) {
-      return Map<String, dynamic>.from(row);
-    }).toList(growable: false);
+    rowsByFile[path] = decoded
+        .whereType<Map>()
+        .map((row) {
+          return Map<String, dynamic>.from(row);
+        })
+        .toList(growable: false);
   }
 
   final report = const MasterDataAuditor().audit(

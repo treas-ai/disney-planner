@@ -1,0 +1,27 @@
+{
+  "status": "initial_defaults",
+  "displayRule": "5分単位へ切り上げ",
+  "defaults": {
+    "pickup": {
+      "orderMinutes": 0,
+      "pickupMinutes": 3,
+      "consumeMinutes": 7,
+      "requiresSeat": false,
+      "canInsertDuringTravel": true
+    },
+    "counter": {
+      "orderMinutes": 3,
+      "pickupMinutes": 5,
+      "consumeMinutes": 7,
+      "requiresSeat": false,
+      "canInsertDuringTravel": true
+    },
+    "seated": {
+      "orderMinutes": 5,
+      "pickupMinutes": 10,
+      "consumeMinutes": 20,
+      "requiresSeat": true,
+      "canInsertDuringTravel": false
+    }
+  }
+}

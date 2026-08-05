@@ -13,7 +13,7 @@ class _EmptyFacilityRepository implements FacilityRepository {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('guided planning reaches completed state', () {
+  test('seasonal selection can be selected and cancelled', () {
     SharedPreferences.setMockInitialValues({});
     final state = AppState(
       storage: AppStateStorage(),
@@ -21,12 +21,11 @@ void main() {
     );
     final controller = GuidedPlanningController(appState: state);
     controller.answer('始める');
-    controller.answer('グルメを重視');
-    controller.answer('季節限定メニュー');
-    controller.confirmCurrentMultiSelection();
-    controller.answer('スペシャルドリンク');
-    controller.confirmFoodSelection();
-    controller.answer('飲食中心にする');
-    expect(controller.step, GuidedPlanningStep.completed);
+    controller.answer('バランスよく');
+    expect(controller.step, GuidedPlanningStep.seasonalEvent);
+    controller.answer('季節イベントをすべて');
+    expect(controller.wantsSeasonalMenus, isTrue);
+    controller.answer('季節イベントをすべて');
+    expect(controller.wantsSeasonalMenus, isFalse);
   });
 }

@@ -83,6 +83,42 @@ class SettingsController extends ChangeNotifier {
     _appState.updateTripSettings(settings.copyWith(canUseSingleRider: value));
   }
 
+  void updateVacationPackage(bool value) {
+    _appState.updateTripSettings(
+      settings.copyWith(
+        usesVacationPackage: value,
+        usesFreeDrinkBenefit: value ? settings.usesFreeDrinkBenefit : false,
+        hasAttractionVoucher: value ? settings.hasAttractionVoucher : false,
+        hasShowVoucher: value ? settings.hasShowVoucher : false,
+        hasRestaurantReservation: value
+            ? settings.hasRestaurantReservation
+            : false,
+      ),
+    );
+  }
+
+  void updateFreeDrinkBenefit(bool value) {
+    _appState.updateTripSettings(
+      settings.copyWith(usesFreeDrinkBenefit: value),
+    );
+  }
+
+  void updateAttractionVoucher(bool value) {
+    _appState.updateTripSettings(
+      settings.copyWith(hasAttractionVoucher: value),
+    );
+  }
+
+  void updateShowVoucher(bool value) {
+    _appState.updateTripSettings(settings.copyWith(hasShowVoucher: value));
+  }
+
+  void updateRestaurantReservation(bool value) {
+    _appState.updateTripSettings(
+      settings.copyWith(hasRestaurantReservation: value),
+    );
+  }
+
   void updateBreakfast(bool value) {
     _appState.updateTripSettings(settings.copyWith(wantsBreakfast: value));
   }

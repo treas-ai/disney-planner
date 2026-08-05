@@ -201,6 +201,24 @@ class _GuidedWizard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '対象パーク：${controller.parkName}',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
                   LinearProgressIndicator(
                     value:
                         controller.currentStepNumber /
@@ -246,7 +264,7 @@ class _GuidedWizard extends StatelessWidget {
   IconData _stepIcon(GuidedPlanningStep step) => switch (step) {
     GuidedPlanningStep.welcome => Icons.waving_hand_outlined,
     GuidedPlanningStep.mainFocus => Icons.auto_awesome_outlined,
-    GuidedPlanningStep.vacationPackage => Icons.card_travel_outlined,
+    GuidedPlanningStep.seasonalEvent => Icons.celebration_outlined,
     GuidedPlanningStep.freeDrink => Icons.local_drink_outlined,
     GuidedPlanningStep.foodInterests => Icons.restaurant_menu_outlined,
     GuidedPlanningStep.entertainment => Icons.attractions_outlined,
@@ -317,12 +335,12 @@ class _QuestionOptionsState extends State<_QuestionOptions> {
                 child: grid,
               ),
             ),
-            if (controller.isFoodStep) ...[
+            if (controller.isMultiSelectStep) ...[
               const SizedBox(height: AppSpacing.sm),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: controller.confirmFoodSelection,
+                  onPressed: controller.confirmCurrentMultiSelection,
                   icon: const Icon(Icons.arrow_forward),
                   label: const Text('次へ'),
                 ),
@@ -417,9 +435,8 @@ class _CompactWishList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
-    final items = controller.allItems
-        .where((item) => item.parkId == appState.tripSettings.parkId)
-        .toList(growable: false);
+    final items = controller.visibleItems;
+    final groups = _groupItems(items);
 
     return Column(
       children: [
@@ -429,7 +446,8 @@ class _CompactWishList extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '選択 ${appState.selectedWishCount}件',
+                  '現在楽しめるもの ${items.length}件・選択 '
+                  '${appState.selectedWishCount}件',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -443,52 +461,125 @@ class _CompactWishList extends StatelessWidget {
             ],
           ),
         ),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              0,
-              AppSpacing.md,
-              AppSpacing.md,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: TextField(
+            onChanged: controller.setQuery,
+            decoration: const InputDecoration(
+              labelText: '名前・店舗名を検索',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+              isDense: true,
             ),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              final state = appState.wishStateFor(item.id);
-
-              return CheckboxListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                value: state.selected,
-                onChanged: (value) {
-                  appState.toggleWishSelected(item.id, value ?? false);
-                },
-                secondary: IconButton(
-                  tooltip: '詳細を表示',
-                  onPressed: () => _showDetails(context, item),
-                  icon: Icon(_iconFor(item.category)),
-                ),
-                title: Text(
-                  item.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  _compactSubtitle(item),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              );
-            },
           ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Expanded(
+          child: groups.isEmpty
+              ? const Center(child: Text('現在表示できる項目はありません。'))
+              : Scrollbar(
+                  thumbVisibility: true,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      0,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                    ),
+                    children: [
+                      for (final group in groups)
+                        Card(
+                          clipBehavior: Clip.antiAlias,
+                          child: ExpansionTile(
+                            initiallyExpanded: group.items.any(
+                              (item) => appState.wishStateFor(item.id).selected,
+                            ),
+                            leading: Icon(group.icon),
+                            title: Text(group.title),
+                            subtitle: Text('${group.items.length}件'),
+                            children: [
+                              for (final item in group.items)
+                                _WishItemRow(
+                                  item: item,
+                                  onShowDetails: () =>
+                                      _showDetails(context, item),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
         ),
       ],
     );
   }
 
-  String _compactSubtitle(WishItem item) {
-    final parts = <String>[item.category.label];
+  List<_WishGroup> _groupItems(List<WishItem> items) {
+    final definitions = <_WishGroupDefinition>[
+      const _WishGroupDefinition(
+        title: '飲みたい',
+        icon: Icons.local_drink_outlined,
+        categories: {
+          WishItemCategory.specialDrink,
+          WishItemCategory.cafeDrink,
+          WishItemCategory.juice,
+          WishItemCategory.soup,
+          WishItemCategory.drinkJelly,
+        },
+      ),
+      const _WishGroupDefinition(
+        title: '食べたい',
+        icon: Icons.restaurant_outlined,
+        categories: {
+          WishItemCategory.food,
+          WishItemCategory.snack,
+          WishItemCategory.dessert,
+        },
+      ),
+      const _WishGroupDefinition(
+        title: '乗りたい',
+        icon: Icons.attractions_outlined,
+        categories: {WishItemCategory.attraction},
+      ),
+      const _WishGroupDefinition(
+        title: '見たい',
+        icon: Icons.theater_comedy_outlined,
+        categories: {WishItemCategory.entertainment},
+      ),
+      const _WishGroupDefinition(
+        title: '会いたい',
+        icon: Icons.emoji_people_outlined,
+        categories: {WishItemCategory.greeting},
+      ),
+      const _WishGroupDefinition(
+        title: '買いたい・その他',
+        icon: Icons.shopping_bag_outlined,
+        categories: {
+          WishItemCategory.goods,
+          WishItemCategory.souvenir,
+          WishItemCategory.photo,
+          WishItemCategory.other,
+        },
+      ),
+    ];
+
+    return definitions
+        .map(
+          (definition) => _WishGroup(
+            title: definition.title,
+            icon: definition.icon,
+            items: items
+                .where((item) => definition.categories.contains(item.category))
+                .toList(growable: false),
+          ),
+        )
+        .where((group) => group.items.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  static String compactSubtitle(WishItem item) {
+    final parts = <String>[];
     if (item.freeDrinkEligible) {
       parts.add('フリードリンク');
     }
@@ -499,50 +590,92 @@ class _CompactWishList extends StatelessWidget {
     );
     return parts.join('・');
   }
+}
 
-  IconData _iconFor(WishItemCategory category) {
-    return switch (category) {
-      WishItemCategory.specialDrink => Icons.local_drink_outlined,
-      WishItemCategory.cafeDrink => Icons.coffee_outlined,
-      WishItemCategory.juice => Icons.local_cafe_outlined,
-      WishItemCategory.soup => Icons.soup_kitchen_outlined,
-      WishItemCategory.drinkJelly => Icons.bubble_chart_outlined,
-      WishItemCategory.food || WishItemCategory.snack => Icons.lunch_dining,
-      WishItemCategory.dessert => Icons.cake_outlined,
-      WishItemCategory.entertainment => Icons.theater_comedy_outlined,
-      WishItemCategory.attraction => Icons.attractions_outlined,
-      _ => Icons.favorite_border,
-    };
-  }
+class _WishItemRow extends StatelessWidget {
+  const _WishItemRow({required this.item, required this.onShowDetails});
 
-  void _showDetails(BuildContext context, WishItem item) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Text(item.name, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text('販売：${item.venueNames.join('／')}'),
-            Text(
-              '期間：${item.startDate.month}/${item.startDate.day}'
-              '～${item.endDate.month}/${item.endDate.day}',
-            ),
-            if (item.priceYen != null) Text('価格：¥${item.priceYen}'),
-            if (item.description != null) ...[
-              const SizedBox(height: 8),
-              Text(item.description!),
-            ],
-            if (item.freeDrinkEligibilityNote != null) ...[
-              const SizedBox(height: 8),
-              Text(item.freeDrinkEligibilityNote!),
-            ],
-          ],
-        ),
+  final WishItem item;
+  final VoidCallback onShowDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = AppStateScope.of(context);
+    final state = appState.wishStateFor(item.id);
+
+    return CheckboxListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      value: state.selected,
+      onChanged: (value) {
+        appState.toggleWishSelected(item.id, value ?? false);
+      },
+      secondary: IconButton(
+        tooltip: '詳細を表示',
+        onPressed: onShowDetails,
+        icon: const Icon(Icons.info_outline),
+      ),
+      title: Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        _CompactWishList.compactSubtitle(item),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
+}
+
+class _WishGroupDefinition {
+  const _WishGroupDefinition({
+    required this.title,
+    required this.icon,
+    required this.categories,
+  });
+
+  final String title;
+  final IconData icon;
+  final Set<WishItemCategory> categories;
+}
+
+class _WishGroup {
+  const _WishGroup({
+    required this.title,
+    required this.icon,
+    required this.items,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<WishItem> items;
+}
+
+void _showDetails(BuildContext context, WishItem item) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Text(item.name, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text('販売：${item.venueNames.join('／')}'),
+          Text(
+            '期間：${item.startDate.month}/${item.startDate.day}'
+            '～${item.endDate.month}/${item.endDate.day}',
+          ),
+          if (item.priceYen != null) Text('価格：¥${item.priceYen}'),
+          if (item.description != null) ...[
+            const SizedBox(height: 8),
+            Text(item.description!),
+          ],
+          if (item.freeDrinkEligibilityNote != null) ...[
+            const SizedBox(height: 8),
+            Text(item.freeDrinkEligibilityNote!),
+          ],
+        ],
+      ),
+    ),
+  );
 }

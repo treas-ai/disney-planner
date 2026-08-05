@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 
 import '../../app/state/app_state.dart';
 import '../../data/repositories/wish_event_pack_repository_impl.dart';
+import '../../domain/entities/facility.dart';
 import '../../domain/entities/wish_event_pack.dart';
 import '../../domain/entities/wish_item.dart';
+import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wish_item_category.dart';
 import '../../domain/repositories/facility_repository.dart';
@@ -25,17 +27,33 @@ class WishListController extends ChangeNotifier {
   bool isRefreshing = false;
   String? errorMessage;
   List<WishEventPack> packs = const [];
+  List<WishItem> facilityWishItems = const [];
   WishItemCategory? categoryFilter;
   bool freeDrinkOnly = false;
   String query = '';
 
+  DateTime get effectiveDate => DateTime.now();
+
+  List<WishItem> get allLoadedItems {
+    final byId = <String, WishItem>{};
+    for (final item in packs.expand((pack) => pack.items)) {
+      byId[item.id] = item;
+    }
+    for (final item in facilityWishItems) {
+      byId.putIfAbsent(item.id, () => item);
+    }
+    return List<WishItem>.unmodifiable(byId.values);
+  }
+
   List<WishItem> get allItems {
-    return packs.expand((pack) => pack.items).toList(growable: false);
+    return allLoadedItems
+        .where((item) => item.isAvailableOn(effectiveDate))
+        .toList(growable: false);
   }
 
   List<WishItem> get visibleItems {
     final parkId = appState.tripSettings.parkId;
-    return allItems
+    final items = allItems
         .where((item) {
           if (item.parkId != parkId) {
             return false;
@@ -58,15 +76,21 @@ class WishListController extends ChangeNotifier {
           }
           return true;
         })
-        .toList(growable: false)
-      ..sort((left, right) {
-        final leftState = appState.wishStateFor(left.id);
-        final rightState = appState.wishStateFor(right.id);
-        if (leftState.selected != rightState.selected) {
-          return leftState.selected ? -1 : 1;
-        }
-        return rightState.priority.compareTo(leftState.priority);
-      });
+        .toList(growable: false);
+
+    items.sort((left, right) {
+      final leftState = appState.wishStateFor(left.id);
+      final rightState = appState.wishStateFor(right.id);
+      if (leftState.selected != rightState.selected) {
+        return leftState.selected ? -1 : 1;
+      }
+      final priorityCompare = rightState.priority.compareTo(leftState.priority);
+      if (priorityCompare != 0) {
+        return priorityCompare;
+      }
+      return left.name.compareTo(right.name);
+    });
+    return items;
   }
 
   Future<void> load() async {
@@ -74,9 +98,18 @@ class WishListController extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
     try {
-      packs = await eventPackRepository.loadBundledPacks();
+      final results = await Future.wait([
+        eventPackRepository.loadBundledPacks(),
+        facilityRepository.getFacilities(),
+      ]);
+      packs = results[0] as List<WishEventPack>;
+      final facilities = results[1] as List<Facility>;
+      facilityWishItems = facilities
+          .where(_isWishFacility)
+          .map(_wishItemFromFacility)
+          .toList(growable: false);
     } catch (error) {
-      errorMessage = 'イベントデータを読み込めませんでした：$error';
+      errorMessage = 'やりたいことデータを読み込めませんでした：$error';
     } finally {
       isLoading = false;
       notifyListeners();
@@ -174,5 +207,43 @@ class WishListController extends ChangeNotifier {
     }
 
     return added;
+  }
+
+  bool _isWishFacility(Facility facility) {
+    if (!facility.canAddToPlanAt(effectiveDate)) {
+      return false;
+    }
+    return switch (facility.category) {
+      FacilityCategory.attraction ||
+      FacilityCategory.show ||
+      FacilityCategory.parade ||
+      FacilityCategory.greeting => true,
+      _ => false,
+    };
+  }
+
+  WishItem _wishItemFromFacility(Facility facility) {
+    final category = switch (facility.category) {
+      FacilityCategory.attraction => WishItemCategory.attraction,
+      FacilityCategory.greeting => WishItemCategory.greeting,
+      FacilityCategory.show ||
+      FacilityCategory.parade => WishItemCategory.entertainment,
+      _ => WishItemCategory.other,
+    };
+
+    return WishItem(
+      id: 'facility:${facility.id}',
+      name: facility.name,
+      category: category,
+      parkId: facility.parkId,
+      venueFacilityIds: [facility.id],
+      venueNames: [facility.name],
+      startDate: DateTime(2000),
+      endDate: DateTime(2100),
+      eventPackId: 'facility_master',
+      description: facility.description,
+      officialUrl: facility.officialUrl,
+      sourceCheckedAt: facility.operatingStatusCheckedAt,
+    );
   }
 }
