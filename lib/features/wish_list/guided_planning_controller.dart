@@ -374,23 +374,28 @@ class GuidedPlanningController extends ChangeNotifier {
     return matches.length;
   }
 
-  String get summary {
-    final parts = <String>['対象パーク：$parkName'];
+  List<String> get summaryItems {
+    final parts = <String>[];
     if (usesVacationPackage) {
-      parts.add('バケーションパッケージ設定を反映');
+      parts.add('バケーションパッケージ');
     }
-    if (wantsSeasonalMenus) parts.add('現在の季節限定メニュー');
-    if (wantsSeasonalEntertainment) parts.add('現在の季節ショー・雰囲気');
-    if (wantsSeasonalGoods) parts.add('現在のイベントグッズ・スーベニア');
+    if (wantsSeasonalMenus) parts.add('季節限定メニュー');
+    if (wantsSeasonalEntertainment) parts.add('季節ショー・雰囲気');
+    if (wantsSeasonalGoods) parts.add('イベントグッズ');
     if (wantsFeaturedFreeDrinkMenus) {
-      parts.add('フリードリンク対象の限定・店舗限定メニュー');
+      parts.add('フリードリンク限定メニュー');
     }
     if (preferredCategories.isNotEmpty && !wantsFeaturedFreeDrinkMenus) {
-      parts.add(preferredCategories.map((value) => value.label).join('・'));
+      parts.addAll(preferredCategories.map((value) => value.label));
     }
-    if (wantsEntertainment) parts.add('ショーを候補に含める');
-    if (wantsAttractions) parts.add('アトラクションを候補に含める');
-    if (wantsBalancedPlan) parts.add('全体をバランスよく');
+    if (wantsEntertainment) parts.add('ショー');
+    if (wantsAttractions) parts.add('アトラクション');
+    if (wantsBalancedPlan) parts.add('バランス重視');
+    return parts.toSet().toList(growable: false);
+  }
+
+  String get summary {
+    final parts = <String>['対象パーク：$parkName', ...summaryItems];
     return '今回の希望\n\n・${parts.join('\n・')}';
   }
 

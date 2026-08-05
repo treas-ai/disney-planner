@@ -40,6 +40,7 @@ class _WishListScreenState extends State<WishListScreen> {
     _chatController ??= GuidedPlanningController(appState: appState);
   }
 
+
   @override
   void dispose() {
     _wishController?.dispose();
@@ -340,32 +341,37 @@ class _GuidedWizard extends StatelessWidget {
                         controller.currentStepNumber /
                         controller.totalStepCount,
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  Icon(
-                    _stepIcon(controller.step),
-                    size: 30,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    completed ? controller.summary : controller.question,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                  if (completed) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    _CompletedWishSummary(controller: controller),
+                    const SizedBox(height: AppSpacing.sm),
+                  ] else ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Icon(
+                      _stepIcon(controller.step),
+                      size: 30,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                  ),
-                  if (!completed) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      controller.question,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       controller.selectionGuide,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    const SizedBox(height: AppSpacing.md),
                   ],
-                  const SizedBox(height: AppSpacing.md),
                   Expanded(
                     child: completed
                         ? _SpecificWishPicker(
+                            controller: controller,
                             parkId: controller.appState.tripSettings.parkId,
                             items: items,
                             selectedIds: selectedIds,
@@ -550,8 +556,75 @@ class _OptionTile extends StatelessWidget {
 }
 
 
+
+class _CompletedWishSummary extends StatelessWidget {
+  const _CompletedWishSummary({required this.controller});
+
+  final GuidedPlanningController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = controller.summaryItems;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.check_circle_outline,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '回答内容',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (items.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final item in items)
+                        Chip(
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          avatar: const Icon(Icons.check, size: 15),
+                          label: Text(item),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SpecificWishPicker extends StatefulWidget {
   const _SpecificWishPicker({
+    required this.controller,
     required this.parkId,
     required this.items,
     required this.selectedIds,
@@ -560,6 +633,7 @@ class _SpecificWishPicker extends StatefulWidget {
     required this.onApply,
   });
 
+  final GuidedPlanningController controller;
   final String parkId;
   final List<WishItem> items;
   final Set<String> selectedIds;
@@ -575,6 +649,7 @@ class _SpecificWishPickerState extends State<_SpecificWishPicker>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   String _query = '';
+  bool _showAll = false;
 
   static const _tabs = <({String label, IconData icon})>[
     (label: 'アトラクション', icon: Icons.attractions_outlined),
@@ -586,7 +661,60 @@ class _SpecificWishPickerState extends State<_SpecificWishPicker>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: _initialTabIndex(),
+    );
+  }
+
+  int _initialTabIndex() {
+    final controller = widget.controller;
+    if (controller.wantsEntertainment || controller.wantsSeasonalEntertainment) {
+      return 1;
+    }
+    if (controller.preferredCategories.any(_foodCategories.contains) ||
+        controller.wantsFeaturedFreeDrinkMenus) {
+      return 2;
+    }
+    if (controller.preferredCategories.contains(WishItemCategory.greeting)) {
+      return 3;
+    }
+    return 0;
+  }
+
+  bool _matchesQuestionResult(WishItem item, int tabIndex) {
+    final controller = widget.controller;
+    final isSeasonal = item.eventPackId != 'facility_master';
+    return switch (tabIndex) {
+      0 => controller.wantsAttractions || controller.wantsBalancedPlan,
+      1 => controller.wantsEntertainment ||
+          (controller.wantsSeasonalEntertainment && isSeasonal),
+      2 => controller.preferredCategories.contains(item.category) ||
+          (controller.wantsSeasonalMenus && isSeasonal) ||
+          (controller.wantsFeaturedFreeDrinkMenus && item.freeDrinkEligible) ||
+          (controller.usesFreeDrink && item.freeDrinkEligible),
+      _ => controller.preferredCategories.contains(WishItemCategory.greeting) ||
+          controller.wantsBalancedPlan,
+    };
+  }
+
+  int _recommendationRank(WishItem item, int tabIndex) {
+    var score = 0;
+    final controller = widget.controller;
+    final isSeasonal = item.eventPackId != 'facility_master';
+    if (widget.selectedIds.contains(item.id)) score += 1000;
+    if (_matchesQuestionResult(item, tabIndex)) score += 100;
+    if (isSeasonal &&
+        (controller.wantsSeasonalMenus ||
+            controller.wantsSeasonalEntertainment)) {
+      score += 30;
+    }
+    if (item.freeDrinkEligible &&
+        (controller.usesFreeDrink || controller.wantsFeaturedFreeDrinkMenus)) {
+      score += 40;
+    }
+    return score;
   }
 
   @override
@@ -597,7 +725,7 @@ class _SpecificWishPickerState extends State<_SpecificWishPicker>
 
   List<WishItem> _itemsFor(int tabIndex) {
     final normalized = _query.trim().toLowerCase();
-    final result = widget.items.where((item) {
+    final all = widget.items.where((item) {
       if (item.parkId != widget.parkId) return false;
       final categoryMatch = switch (tabIndex) {
         0 => item.category == WishItemCategory.attraction,
@@ -611,88 +739,156 @@ class _SpecificWishPickerState extends State<_SpecificWishPicker>
           .toLowerCase()
           .contains(normalized);
     }).toList(growable: false);
-    result.sort((a, b) {
-      final selectedCompare = (widget.selectedIds.contains(b.id) ? 1 : 0)
-          .compareTo(widget.selectedIds.contains(a.id) ? 1 : 0);
-      if (selectedCompare != 0) return selectedCompare;
+
+    all.sort((a, b) {
+      final rankCompare = _recommendationRank(
+        b,
+        tabIndex,
+      ).compareTo(_recommendationRank(a, tabIndex));
+      if (rankCompare != 0) return rankCompare;
       return a.name.compareTo(b.name);
     });
-    return result;
+
+    if (_showAll || normalized.isNotEmpty) return all;
+    final recommended = all
+        .where(
+          (item) =>
+              widget.selectedIds.contains(item.id) ||
+              _matchesQuestionResult(item, tabIndex),
+        )
+        .take(12)
+        .toList(growable: false);
+    return recommended;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          '具体的に体験したいものを選んでください',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'カテゴリごとに選べます。選んだ内容はAI候補へ優先して反映します。',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        TabBar(
-          controller: _tabController,
-          isScrollable: false,
-          tabs: [
-            for (final tab in _tabs)
-              Tab(icon: Icon(tab.icon, size: 20), text: tab.label),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        TextField(
-          onChanged: (value) => setState(() => _query = value),
-          decoration: const InputDecoration(
-            hintText: '施設名・メニュー名を検索',
-            prefixIcon: Icon(Icons.search),
-            border: OutlineInputBorder(),
-            isDense: true,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              for (var index = 0; index < _tabs.length; index++)
-                _SpecificWishGrid(
-                  items: _itemsFor(index),
-                  selectedIds: widget.selectedIds,
-                  onToggleItem: widget.onToggleItem,
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxHeight < 300;
+        final gap = compact ? 4.0 : AppSpacing.sm;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Text(
-                '具体的な希望 ${widget.selectedIds.length}件',
-                style: Theme.of(context).textTheme.labelLarge,
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '質問結果に合う候補を表示しています',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (!compact)
+                        Text(
+                          '追加したい体験だけ選んでください。検索時は全件を対象にします。',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+                SegmentedButton<bool>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('おすすめ')),
+                    ButtonSegment(value: true, label: Text('全件')),
+                  ],
+                  selected: {_showAll},
+                  onSelectionChanged: (value) {
+                    setState(() => _showAll = value.first);
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: gap),
+            SizedBox(
+              height: compact ? 40 : 48,
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: false,
+                labelPadding: EdgeInsets.zero,
+                tabs: [
+                  for (final tab in _tabs)
+                    Tab(
+                      height: compact ? 40 : 48,
+                      icon: compact ? null : Icon(tab.icon, size: 20),
+                      text: tab.label,
+                    ),
+                ],
               ),
             ),
-            FilledButton.icon(
-              onPressed: widget.isApplying ? null : widget.onApply,
-              icon: widget.isApplying
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_awesome),
-              label: Text(widget.isApplying ? '反映しています…' : 'この内容で候補を作成'),
+            SizedBox(height: gap),
+            SizedBox(
+              height: compact ? 40 : 48,
+              child: TextField(
+                onChanged: (value) => setState(() => _query = value),
+                decoration: InputDecoration(
+                  hintText: '施設名・メニュー名を検索',
+                  prefixIcon: const Icon(Icons.search),
+                  prefixIconConstraints: compact
+                      ? const BoxConstraints(minWidth: 40, minHeight: 40)
+                      : null,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: compact
+                      ? const EdgeInsets.symmetric(vertical: 8)
+                      : null,
+                ),
+              ),
+            ),
+            SizedBox(height: gap),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  for (var index = 0; index < _tabs.length; index++)
+                    _SpecificWishGrid(
+                      items: _itemsFor(index),
+                      selectedIds: widget.selectedIds,
+                      onToggleItem: widget.onToggleItem,
+                    ),
+                ],
+              ),
+            ),
+            SizedBox(height: gap),
+            SizedBox(
+              height: compact ? 38 : 44,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '具体的な希望 ${widget.selectedIds.length}件',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: widget.isApplying ? null : widget.onApply,
+                    icon: widget.isApplying
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome),
+                    label: Text(
+                      widget.isApplying ? '反映中…' : '候補を作成',
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -708,7 +904,7 @@ class _SpecificWishPickerState extends State<_SpecificWishPicker>
   };
 }
 
-class _SpecificWishGrid extends StatelessWidget {
+class _SpecificWishGrid extends StatefulWidget {
   const _SpecificWishGrid({
     required this.items,
     required this.selectedIds,
@@ -720,68 +916,102 @@ class _SpecificWishGrid extends StatelessWidget {
   final ValueChanged<String> onToggleItem;
 
   @override
+  State<_SpecificWishGrid> createState() => _SpecificWishGridState();
+}
+
+class _SpecificWishGridState extends State<_SpecificWishGrid> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void didUpdateWidget(covariant _SpecificWishGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.items != widget.items && _scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return const Center(child: Text('該当する候補はありません。'));
+    if (widget.items.isEmpty) {
+      return Center(
+        child: Text(
+          'このカテゴリに質問結果と一致する候補はありません。\n「全件」に切り替えると追加できます。',
+          textAlign: TextAlign.center,
+        ),
+      );
     }
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 760 ? 3 : 2;
-        return GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: AppSpacing.sm,
-            mainAxisSpacing: AppSpacing.sm,
-            mainAxisExtent: 74,
-          ),
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            final selected = selectedIds.contains(item.id);
-            return InkWell(
-              onTap: () => onToggleItem(item.id),
-              borderRadius: BorderRadius.circular(12),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? Theme.of(context).colorScheme.primaryContainer
-                      : Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: selected
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.outlineVariant,
+        return Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          interactive: true,
+          child: GridView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              crossAxisSpacing: AppSpacing.sm,
+              mainAxisSpacing: AppSpacing.sm,
+              mainAxisExtent: 70,
+            ),
+            itemCount: widget.items.length,
+            itemBuilder: (context, index) {
+              final item = widget.items[index];
+              final selected = widget.selectedIds.contains(item.id);
+              return InkWell(
+                onTap: () => widget.onToggleItem(item.id),
+                borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 140),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      selected
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
                       color: selected
                           ? Theme.of(context).colorScheme.primary
-                          : null,
+                          : Theme.of(context).colorScheme.outlineVariant,
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        item.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        selected
+                            ? Icons.check_circle
+                            : Icons.add_circle_outline,
+                        color: selected
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );
