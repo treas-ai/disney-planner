@@ -274,6 +274,26 @@ class AppState extends ChangeNotifier {
     _saveAndNotify();
   }
 
+  void clearSelectedFacilitiesForPark(String parkId) {
+    final facilityIds = _selectedFacilities
+        .where((facility) => facility.parkId == parkId)
+        .map((facility) => facility.id)
+        .toSet();
+
+    if (facilityIds.isEmpty) {
+      return;
+    }
+
+    _selectedFacilities.removeWhere((facility) => facilityIds.contains(facility.id));
+
+    for (final facilityId in facilityIds) {
+      _preferencesByFacilityId.remove(facilityId);
+    }
+
+    daySchedule = null;
+    _saveAndNotify();
+  }
+
   void removeFacility(String facilityId) {
     final beforeCount = _selectedFacilities.length;
 

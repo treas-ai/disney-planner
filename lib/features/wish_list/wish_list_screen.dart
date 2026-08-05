@@ -21,6 +21,10 @@ class _WishListScreenState extends State<WishListScreen> {
   WishListController? _wishController;
   GuidedPlanningController? _chatController;
   bool _showList = false;
+  bool _isApplyingGuidedResult = false;
+  bool _showGuidedProcessing = false;
+  int _guidedApplyRequestId = 0;
+  final Set<String> _guidedExplicitIds = <String>{};
 
   WishListController get wishController => _wishController!;
   GuidedPlanningController get chatController => _chatController!;
@@ -58,12 +62,79 @@ class _WishListScreenState extends State<WishListScreen> {
     widget.onCandidateReviewPressed();
   }
 
-  void _applyChatResult() {
-    final selected = chatController.applyToWishList(wishController.allItems);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$selected件をやりたいことへ追加しました。')));
-    setState(() => _showList = true);
+  Future<void> _applyChatResult() async {
+    if (_isApplyingGuidedResult) {
+      return;
+    }
+
+    final requestId = ++_guidedApplyRequestId;
+    setState(() {
+      _isApplyingGuidedResult = true;
+      _showGuidedProcessing = false;
+    });
+
+    Future<void>.delayed(const Duration(milliseconds: 350), () {
+      if (!mounted ||
+          requestId != _guidedApplyRequestId ||
+          !_isApplyingGuidedResult) {
+        return;
+      }
+      setState(() => _showGuidedProcessing = true);
+    });
+
+    try {
+      // UIスレッドへ描画機会を渡しますが、演出目的の待機時間は追加しません。
+      await Future<void>.delayed(Duration.zero);
+      final selectedByQuestion = chatController.applyToWishList(wishController.allItems);
+      wishController.appState.selectWishItems(_guidedExplicitIds);
+      final selected = selectedByQuestion + _guidedExplicitIds.length;
+      if (!mounted || requestId != _guidedApplyRequestId) {
+        return;
+      }
+
+      setState(() => _showList = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$selected件をやりたいことへ反映しました。')),
+      );
+    } finally {
+      if (mounted && requestId == _guidedApplyRequestId) {
+        setState(() {
+          _isApplyingGuidedResult = false;
+          _showGuidedProcessing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _resetWishSelection() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('やりたいことをリセットしますか？'),
+        content: const Text('質問の回答と現在の選択をすべて解除します。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('リセット'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    chatController.restart(clearWishSelection: true);
+    setState(() {
+      _showList = false;
+      _guidedExplicitIds.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('質問の回答とやりたいことの選択をリセットしました。')),
+    );
   }
 
   @override
@@ -83,17 +154,36 @@ class _WishListScreenState extends State<WishListScreen> {
               showList: _showList,
               onWizardPressed: () => setState(() => _showList = false),
               onListPressed: () => setState(() => _showList = true),
+              onResetPressed: _resetWishSelection,
             ),
             Expanded(
-              child: _showList
-                  ? _CompactWishList(
-                      controller: wishController,
-                      onContinue: _applyAndContinue,
-                    )
-                  : _GuidedWizard(
-                      controller: chatController,
-                      onApply: _applyChatResult,
-                    ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: _showList
+                        ? _CompactWishList(
+                            controller: wishController,
+                            onContinue: _applyAndContinue,
+                          )
+                        : _GuidedWizard(
+                            controller: chatController,
+                            items: wishController.allItems,
+                            selectedIds: _guidedExplicitIds,
+                            onToggleItem: (id) {
+                              setState(() {
+                                if (!_guidedExplicitIds.add(id)) {
+                                  _guidedExplicitIds.remove(id);
+                                }
+                              });
+                            },
+                            isApplying: _isApplyingGuidedResult,
+                            onApply: _applyChatResult,
+                          ),
+                  ),
+                  if (_showGuidedProcessing)
+                    const Positioned.fill(child: _GuidedProcessingOverlay()),
+                ],
+              ),
             ),
           ],
         );
@@ -107,11 +197,13 @@ class _ModeSwitcher extends StatelessWidget {
     required this.showList,
     required this.onWizardPressed,
     required this.onListPressed,
+    required this.onResetPressed,
   });
 
   final bool showList;
   final VoidCallback onWizardPressed;
   final VoidCallback onListPressed;
+  final VoidCallback onResetPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +243,12 @@ class _ModeSwitcher extends StatelessWidget {
                     label: const Text('一覧で確認'),
                   ),
           ),
+          const SizedBox(width: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: onResetPressed,
+            icon: const Icon(Icons.restart_alt),
+            label: const Text('リセット'),
+          ),
         ],
       ),
     );
@@ -158,10 +256,21 @@ class _ModeSwitcher extends StatelessWidget {
 }
 
 class _GuidedWizard extends StatelessWidget {
-  const _GuidedWizard({required this.controller, required this.onApply});
+  const _GuidedWizard({
+    required this.controller,
+    required this.items,
+    required this.selectedIds,
+    required this.onToggleItem,
+    required this.isApplying,
+    required this.onApply,
+  });
 
   final GuidedPlanningController controller;
-  final VoidCallback onApply;
+  final List<WishItem> items;
+  final Set<String> selectedIds;
+  final ValueChanged<String> onToggleItem;
+  final bool isApplying;
+  final Future<void> Function() onApply;
 
   @override
   Widget build(BuildContext context) {
@@ -171,10 +280,15 @@ class _GuidedWizard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
+          constraints: const BoxConstraints(maxWidth: 980),
           child: Card(
             child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -194,7 +308,9 @@ class _GuidedWizard extends StatelessWidget {
                       ),
                       const Spacer(),
                       TextButton.icon(
-                        onPressed: controller.restart,
+                        onPressed: () => controller.restart(
+                          clearWishSelection: true,
+                        ),
                         icon: const Icon(Icons.restart_alt, size: 18),
                         label: const Text('最初から'),
                       ),
@@ -227,14 +343,14 @@ class _GuidedWizard extends StatelessWidget {
                   const SizedBox(height: AppSpacing.md),
                   Icon(
                     _stepIcon(controller.step),
-                    size: 42,
+                    size: 30,
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     completed ? controller.summary : controller.question,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -249,7 +365,14 @@ class _GuidedWizard extends StatelessWidget {
                   const SizedBox(height: AppSpacing.md),
                   Expanded(
                     child: completed
-                        ? _CompletionActions(onApply: onApply)
+                        ? _SpecificWishPicker(
+                            parkId: controller.appState.tripSettings.parkId,
+                            items: items,
+                            selectedIds: selectedIds,
+                            onToggleItem: onToggleItem,
+                            isApplying: isApplying,
+                            onApply: onApply,
+                          )
                         : _QuestionOptions(controller: controller),
                   ),
                 ],
@@ -272,77 +395,62 @@ class _GuidedWizard extends StatelessWidget {
   };
 }
 
-class _QuestionOptions extends StatefulWidget {
+class _QuestionOptions extends StatelessWidget {
   const _QuestionOptions({required this.controller});
+
   final GuidedPlanningController controller;
 
   @override
-  State<_QuestionOptions> createState() => _QuestionOptionsState();
-}
-
-class _QuestionOptionsState extends State<_QuestionOptions> {
-  final ScrollController _scrollController = ScrollController();
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 560 ? 2 : 1;
+        final columns = constraints.maxWidth >= 760
+            ? 3
+            : constraints.maxWidth >= 480
+            ? 2
+            : 1;
         final optionCount = controller.options.length;
         final rows = (optionCount / columns).ceil();
-        final desiredHeight = rows * 60.0 + (rows - 1) * 8.0;
-        final needsScroll =
-            desiredHeight >
-            constraints.maxHeight - (controller.isFoodStep ? 64 : 0);
-
-        final grid = GridView.builder(
-          controller: _scrollController,
-          physics: needsScroll
-              ? const ClampingScrollPhysics()
-              : const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: AppSpacing.sm,
-            mainAxisSpacing: AppSpacing.sm,
-            mainAxisExtent: 60,
-          ),
-          itemCount: optionCount,
-          itemBuilder: (context, index) {
-            final option = controller.options[index];
-            return _OptionTile(
-              label: option,
-              selected:
-                  controller.isFoodStep && controller.isOptionSelected(option),
-              onTap: () => controller.answer(option),
-            );
-          },
-        );
+        final actionHeight = controller.isMultiSelectStep ? 52.0 : 0.0;
+        final availableHeight = constraints.maxHeight - actionHeight;
+        final tileHeight = ((availableHeight - (rows - 1) * AppSpacing.sm) / rows)
+            .clamp(66.0, 96.0);
 
         return Column(
           children: [
             Expanded(
-              child: Scrollbar(
-                controller: _scrollController,
-                thumbVisibility: needsScroll,
-                trackVisibility: needsScroll,
-                child: grid,
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: AppSpacing.sm,
+                  mainAxisSpacing: AppSpacing.sm,
+                  mainAxisExtent: tileHeight,
+                ),
+                itemCount: optionCount,
+                itemBuilder: (context, index) {
+                  final option = controller.options[index];
+                  return _OptionTile(
+                    label: option,
+                    description: controller.optionDescription(option),
+                    icon: controller.optionIcon(option),
+                    selected:
+                        controller.isMultiSelectStep &&
+                        controller.isOptionSelected(option),
+                    onTap: () => controller.answer(option),
+                  );
+                },
               ),
             ),
             if (controller.isMultiSelectStep) ...[
               const SizedBox(height: AppSpacing.sm),
               SizedBox(
                 width: double.infinity,
+                height: 44,
                 child: FilledButton.icon(
                   onPressed: controller.confirmCurrentMultiSelection,
                   icon: const Icon(Icons.arrow_forward),
-                  label: const Text('次へ'),
+                  label: const Text('選択内容を確定して次へ'),
                 ),
               ),
             ],
@@ -356,11 +464,15 @@ class _QuestionOptionsState extends State<_QuestionOptions> {
 class _OptionTile extends StatelessWidget {
   const _OptionTile({
     required this.label,
+    required this.description,
+    required this.icon,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
+  final String description;
+  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
@@ -374,28 +486,59 @@ class _OptionTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             border: Border.all(
+              width: selected ? 2 : 1,
               color: selected ? colors.primary : colors.outlineVariant,
             ),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(
-                selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: selected ? colors.primary : colors.onSurfaceVariant,
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? colors.primary.withValues(alpha: 0.12)
+                      : colors.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(
+                  selected ? Icons.check_rounded : icon,
+                  size: 20,
+                  color: selected ? colors.primary : colors.onSurfaceVariant,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          height: 1.15,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -406,20 +549,280 @@ class _OptionTile extends StatelessWidget {
   }
 }
 
-class _CompletionActions extends StatelessWidget {
-  const _CompletionActions({required this.onApply});
 
-  final VoidCallback onApply;
+class _SpecificWishPicker extends StatefulWidget {
+  const _SpecificWishPicker({
+    required this.parkId,
+    required this.items,
+    required this.selectedIds,
+    required this.onToggleItem,
+    required this.isApplying,
+    required this.onApply,
+  });
+
+  final String parkId;
+  final List<WishItem> items;
+  final Set<String> selectedIds;
+  final ValueChanged<String> onToggleItem;
+  final bool isApplying;
+  final Future<void> Function() onApply;
+
+  @override
+  State<_SpecificWishPicker> createState() => _SpecificWishPickerState();
+}
+
+class _SpecificWishPickerState extends State<_SpecificWishPicker>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  String _query = '';
+
+  static const _tabs = <({String label, IconData icon})>[
+    (label: 'アトラクション', icon: Icons.attractions_outlined),
+    (label: 'ショー・パレード', icon: Icons.theater_comedy_outlined),
+    (label: 'フード・ドリンク', icon: Icons.restaurant_outlined),
+    (label: 'グリーティング', icon: Icons.emoji_people_outlined),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _tabs.length, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  List<WishItem> _itemsFor(int tabIndex) {
+    final normalized = _query.trim().toLowerCase();
+    final result = widget.items.where((item) {
+      if (item.parkId != widget.parkId) return false;
+      final categoryMatch = switch (tabIndex) {
+        0 => item.category == WishItemCategory.attraction,
+        1 => item.category == WishItemCategory.entertainment,
+        2 => _foodCategories.contains(item.category),
+        _ => item.category == WishItemCategory.greeting,
+      };
+      if (!categoryMatch) return false;
+      if (normalized.isEmpty) return true;
+      return '${item.name} ${item.venueNames.join(' ')}'
+          .toLowerCase()
+          .contains(normalized);
+    }).toList(growable: false);
+    result.sort((a, b) {
+      final selectedCompare = (widget.selectedIds.contains(b.id) ? 1 : 0)
+          .compareTo(widget.selectedIds.contains(a.id) ? 1 : 0);
+      if (selectedCompare != 0) return selectedCompare;
+      return a.name.compareTo(b.name);
+    });
+    return result;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: SizedBox(
-        width: double.infinity,
-        child: FilledButton.icon(
-          onPressed: onApply,
-          icon: const Icon(Icons.auto_awesome),
-          label: const Text('やりたいことへ反映して確認'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '具体的に体験したいものを選んでください',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'カテゴリごとに選べます。選んだ内容はAI候補へ優先して反映します。',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TabBar(
+          controller: _tabController,
+          isScrollable: false,
+          tabs: [
+            for (final tab in _tabs)
+              Tab(icon: Icon(tab.icon, size: 20), text: tab.label),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextField(
+          onChanged: (value) => setState(() => _query = value),
+          decoration: const InputDecoration(
+            hintText: '施設名・メニュー名を検索',
+            prefixIcon: Icon(Icons.search),
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              for (var index = 0; index < _tabs.length; index++)
+                _SpecificWishGrid(
+                  items: _itemsFor(index),
+                  selectedIds: widget.selectedIds,
+                  onToggleItem: widget.onToggleItem,
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '具体的な希望 ${widget.selectedIds.length}件',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: widget.isApplying ? null : widget.onApply,
+              icon: widget.isApplying
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_awesome),
+              label: Text(widget.isApplying ? '反映しています…' : 'この内容で候補を作成'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static const Set<WishItemCategory> _foodCategories = {
+    WishItemCategory.specialDrink,
+    WishItemCategory.cafeDrink,
+    WishItemCategory.juice,
+    WishItemCategory.soup,
+    WishItemCategory.drinkJelly,
+    WishItemCategory.food,
+    WishItemCategory.dessert,
+    WishItemCategory.snack,
+  };
+}
+
+class _SpecificWishGrid extends StatelessWidget {
+  const _SpecificWishGrid({
+    required this.items,
+    required this.selectedIds,
+    required this.onToggleItem,
+  });
+
+  final List<WishItem> items;
+  final Set<String> selectedIds;
+  final ValueChanged<String> onToggleItem;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const Center(child: Text('該当する候補はありません。'));
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 760 ? 3 : 2;
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: AppSpacing.sm,
+            mainAxisSpacing: AppSpacing.sm,
+            mainAxisExtent: 74,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            final item = items[index];
+            final selected = selectedIds.contains(item.id);
+            return InkWell(
+              onTap: () => onToggleItem(item.id),
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      selected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: selected
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _GuidedProcessingOverlay extends StatelessWidget {
+  const _GuidedProcessingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: colors.surface.withValues(alpha: 0.88),
+      child: Center(
+        child: Card(
+          elevation: 6,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'やりたいことを整理しています…',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  '処理が完了し次第、すぐに一覧を表示します。',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

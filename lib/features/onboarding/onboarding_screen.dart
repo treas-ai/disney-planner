@@ -19,7 +19,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     (
       Icons.auto_awesome,
       '会話でやりたいことを決定',
-      '質問に答えるだけでWish Listを自動作成し、必要な店舗・施設を抽出します。',
+      '質問に答えるだけでやりたいことを自動作成し、必要な店舗・施設を抽出します。',
     ),
     (
       Icons.lock_clock_outlined,

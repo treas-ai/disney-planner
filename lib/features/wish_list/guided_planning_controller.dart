@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
 import '../../domain/entities/wish_item.dart';
@@ -46,17 +46,17 @@ class GuidedPlanningController extends ChangeNotifier {
 
   String get question => switch (step) {
     GuidedPlanningStep.welcome => '$parkNameのやりたいことを質問で整理します。',
-    GuidedPlanningStep.mainFocus => '$parkNameで、特に重視したいものは何ですか？',
-    GuidedPlanningStep.seasonalEvent => '$parkNameで、現在開催中の季節イベントを楽しみたいですか？',
-    GuidedPlanningStep.freeDrink => 'フリードリンク券をどのように楽しみますか？',
-    GuidedPlanningStep.foodInterests => '$parkNameの飲食では何を楽しみたいですか？',
-    GuidedPlanningStep.entertainment => '$parkNameのショーやアトラクションも候補に含めますか？',
+    GuidedPlanningStep.mainFocus => '1日の満足度を上げるため、最優先にしたい体験はどれですか？',
+    GuidedPlanningStep.seasonalEvent => '開催中の季節イベントで、プランへ優先して入れたいものを選んでください。',
+    GuidedPlanningStep.freeDrink => 'フリードリンク券を使う場合、どの範囲をプランへ組み込みますか？',
+    GuidedPlanningStep.foodInterests => '食事や休憩として、プランへ入れたい飲食ジャンルを選んでください。',
+    GuidedPlanningStep.entertainment => '飲食以外の体験を、どこまでプラン候補へ含めますか？',
     GuidedPlanningStep.completed => '$parkNameでの希望を確認してください。',
   };
 
   String get selectionGuide => switch (step) {
     GuidedPlanningStep.seasonalEvent ||
-    GuidedPlanningStep.foodInterests => '複数選択できます。もう一度押すと選択解除できます。',
+    GuidedPlanningStep.foodInterests => '複数選択できます。選択した項目にはチェックが付きます。',
     GuidedPlanningStep.welcome => '「始める」を押してください。',
     GuidedPlanningStep.completed => '',
     _ => '${options.length}つから1つ選択してください。',
@@ -100,6 +100,68 @@ class GuidedPlanningController extends ChangeNotifier {
       '飲食中心にする',
     ],
     GuidedPlanningStep.completed => const [],
+  };
+
+
+
+  String optionDescription(String option) => switch (option) {
+    '始める' => '5つの質問で、実行しやすい候補へ絞り込みます',
+    'グルメを重視' => '食事・限定フード・ドリンクの時間を優先',
+    'ショーを重視' => '公演時刻を軸に1日の流れを組み立てる',
+    'アトラクションを重視' => '乗車できる件数と待ち時間短縮を優先',
+    'キャラクターを重視' => 'グリーティングを優先候補として扱う',
+    'バランスよく' => '飲食・ショー・アトラクションを無理なく配分',
+    '季節限定メニュー' => '期間限定のフードやドリンクを候補に追加',
+    '季節のショー・雰囲気' => '季節公演やイベントらしい体験を優先',
+    'イベントグッズ・スーベニア' => '買い物やスーベニア取得時間も確保',
+    '季節イベントをすべて' => 'メニュー・公演・グッズをまとめて選択',
+    '季節イベントは重視しない' => '通常施設を中心に候補を作成',
+    '限定・店舗限定メニューをできるだけ全部' => '対象メニューを広く拾い、移動中にも配置',
+    'スペシャルドリンクだけ' => '限定ドリンクを中心に短時間で取得',
+    'スープ・ドリンクジュレも含める' => '軽食代わりになる対象メニューも追加',
+    '一覧から自分で選ぶ' => '質問後の一覧画面で個別に選択',
+    '特に重視しない' => 'フリードリンクをプランの優先条件にしない',
+    '飲食メニューをすべて' => 'フード・デザート・対象ドリンクを広く候補化',
+    'スペシャルドリンク' => '季節・期間限定ドリンクを優先',
+    'コーヒー系・ジュース' => '休憩に入れやすい飲み物を候補化',
+    'スープ・ドリンクジュレ' => '短時間で楽しめる軽食系メニューを追加',
+    'フード・デザート' => '食事・軽食・甘いものを候補化',
+    '飲食は選ばない' => '飲食候補を自動追加しない',
+    'ショーも含める' => '公演時刻を考慮してショーを候補に追加',
+    'アトラクションも含める' => '待ち時間を考慮して乗り物を候補に追加',
+    '両方含める' => 'ショーとアトラクションを両方評価',
+    '飲食中心にする' => '飲食候補を中心にし、体験施設は追加しない',
+    _ => '',
+  };
+
+  IconData optionIcon(String option) => switch (option) {
+    '始める' => Icons.play_arrow_rounded,
+    'グルメを重視' => Icons.restaurant_rounded,
+    'ショーを重視' => Icons.theater_comedy_rounded,
+    'アトラクションを重視' => Icons.attractions_rounded,
+    'キャラクターを重視' => Icons.face_rounded,
+    'バランスよく' => Icons.balance_rounded,
+    '季節限定メニュー' => Icons.restaurant_menu_rounded,
+    '季節のショー・雰囲気' => Icons.celebration_rounded,
+    'イベントグッズ・スーベニア' => Icons.shopping_bag_rounded,
+    '季節イベントをすべて' => Icons.select_all_rounded,
+    '季節イベントは重視しない' => Icons.not_interested_rounded,
+    '限定・店舗限定メニューをできるだけ全部' => Icons.local_drink_rounded,
+    'スペシャルドリンクだけ' => Icons.local_cafe_rounded,
+    'スープ・ドリンクジュレも含める' => Icons.soup_kitchen_rounded,
+    '一覧から自分で選ぶ' => Icons.checklist_rounded,
+    '特に重視しない' => Icons.remove_circle_outline_rounded,
+    '飲食メニューをすべて' => Icons.done_all_rounded,
+    'スペシャルドリンク' => Icons.local_bar_rounded,
+    'コーヒー系・ジュース' => Icons.coffee_rounded,
+    'スープ・ドリンクジュレ' => Icons.soup_kitchen_rounded,
+    'フード・デザート' => Icons.cake_rounded,
+    '飲食は選ばない' => Icons.no_food_rounded,
+    'ショーも含める' => Icons.theater_comedy_rounded,
+    'アトラクションも含める' => Icons.attractions_rounded,
+    '両方含める' => Icons.auto_awesome_rounded,
+    '飲食中心にする' => Icons.restaurant_rounded,
+    _ => Icons.check_circle_outline_rounded,
   };
 
   bool get isMultiSelectStep =>
@@ -307,6 +369,7 @@ class GuidedPlanningController extends ChangeNotifier {
         })
         .map((item) => item.id)
         .toSet();
+    appState.clearWishSelection();
     appState.selectWishItems(matches);
     return matches.length;
   }
@@ -331,7 +394,7 @@ class GuidedPlanningController extends ChangeNotifier {
     return '今回の希望\n\n・${parts.join('\n・')}';
   }
 
-  void restart() {
+  void restart({bool clearWishSelection = false}) {
     step = GuidedPlanningStep.welcome;
     preferredCategories.clear();
     _restorePackageSettings();
@@ -342,6 +405,9 @@ class GuidedPlanningController extends ChangeNotifier {
     wantsSeasonalMenus = false;
     wantsSeasonalEntertainment = false;
     wantsSeasonalGoods = false;
+    if (clearWishSelection) {
+      appState.clearWishSelection();
+    }
     notifyListeners();
   }
 

@@ -228,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return _HomeAction(
         title: 'やりたいことを選択',
         description: '乗りたい・見たい・飲みたい・食べたいものを先に選びます。',
-        buttonLabel: 'Wish Listを開く',
+        buttonLabel: 'やりたいことを開く',
         icon: Icons.favorite_border,
         foregroundColor: const Color(0xFF8A2D5C),
         backgroundColor: const Color(0xFFFFEAF4),
@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (selectedFacilities.isEmpty) {
       return _HomeAction(
         title: 'プラン候補を確認',
-        description: 'Wish Listの選択内容を施設へ反映するか、候補を手動で追加してください。',
+        description: 'やりたいことの選択内容を施設へ反映するか、候補を手動で追加してください。',
         buttonLabel: '候補確認を開く',
         icon: Icons.checklist_outlined,
         foregroundColor: const Color(0xFF2457A6),
@@ -501,8 +501,8 @@ class _HomeQuickActions extends StatelessWidget {
                     child: _QuickActionButton(
                       icon: Icons.favorite_border,
                       label: selectedWishCount == 0
-                          ? 'Wishを選ぶ'
-                          : 'Wish $selectedWishCount件',
+                          ? 'やりたいことを選ぶ'
+                          : 'やりたいこと $selectedWishCount件',
                       onPressed: onWishListPressed,
                     ),
                   ),

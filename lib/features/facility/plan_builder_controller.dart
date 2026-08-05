@@ -42,6 +42,11 @@ class PlanBuilderController extends ChangeNotifier {
     _appState.removeFacility(facilityId);
   }
 
+  void clearFacilitiesForPark(String parkId) {
+    _appState.clearSelectedFacilitiesForPark(parkId);
+  }
+
+
   void reorderFacilitiesForPark({
     required String parkId,
     required int oldIndex,
