@@ -6,14 +6,16 @@ class PlanEditorScreen extends StatelessWidget {
   const PlanEditorScreen({
     super.key,
     required this.searchController,
-    required this.onReviewPlanPressed,
+    required this.onWishListPressed,
   });
 
   final TextEditingController searchController;
-  final VoidCallback onReviewPlanPressed;
+  final VoidCallback onWishListPressed;
 
   @override
   Widget build(BuildContext context) {
-    return CandidateReviewScreen(onReviewPlanPressed: onReviewPlanPressed);
+    return CandidateReviewScreen(
+      onWishListPressed: onWishListPressed,
+    );
   }
 }

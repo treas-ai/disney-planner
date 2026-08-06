@@ -153,56 +153,79 @@ class _MobileSettingsLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.only(right: 12, bottom: 96),
-      children: [
-        _ParkSettingsCard(settings: settings, onChanged: controller.updatePark),
-        const SizedBox(height: AppSpacing.sm),
-        _LiveDataSourceSettingsCard(
-          value: controller.liveDataSource,
-          isLoading: controller.isLoadingLiveDataSource,
-          onChanged: controller.updateLiveDataSource,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _VisitSummaryCard(
-          settings: settings,
-          onEntryTimePressed: onEntryTimePressed,
-          onExitTimePressed: onExitTimePressed,
-          onDecreasePeople: controller.decreasePeople,
-          onIncreasePeople: controller.increasePeople,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _ServiceSettingsCard(
-          settings: settings,
-          onHappyEntryChanged: controller.updateHappyEntry,
-          onDpaChanged: controller.updateDpa,
-          onPriorityPassChanged: controller.updatePriorityPass,
-          onSingleRiderChanged: controller.updateSingleRider,
-          onVacationPackageChanged: controller.updateVacationPackage,
-          onFreeDrinkChanged: controller.updateFreeDrinkBenefit,
-          onAttractionVoucherChanged: controller.updateAttractionVoucher,
-          onShowVoucherChanged: controller.updateShowVoucher,
-          onRestaurantReservationChanged:
-              controller.updateRestaurantReservation,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _MealSettingsCard(
-          settings: settings,
-          onBreakfastChanged: controller.updateBreakfast,
-          onLunchChanged: controller.updateLunch,
-          onDinnerChanged: controller.updateDinner,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _ConditionSettingsCard(
-          settings: settings,
-          onRainyChanged: controller.updateRainy,
-          onChildrenChanged: controller.updateChildren,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _DataFreshnessCard(),
-        const SizedBox(height: AppSpacing.sm),
-        _BackupRestoreCard(controller: controller),
-      ],
+    return Scrollbar(
+      thumbVisibility: true,
+      interactive: true,
+      child: ListView(
+        padding: const EdgeInsets.only(right: 12, bottom: 96),
+        children: [
+          const _SettingsIntroCard(),
+          const SizedBox(height: AppSpacing.sm),
+          _ParkSettingsCard(
+            settings: settings,
+            onChanged: controller.updatePark,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _VisitSummaryCard(
+            settings: settings,
+            onEntryTimePressed: onEntryTimePressed,
+            onExitTimePressed: onExitTimePressed,
+            onDecreasePeople: controller.decreasePeople,
+            onIncreasePeople: controller.increasePeople,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _ServiceSettingsCard(
+            settings: settings,
+            onHappyEntryChanged: controller.updateHappyEntry,
+            onDpaChanged: controller.updateDpa,
+            onPriorityPassChanged: controller.updatePriorityPass,
+            onSingleRiderChanged: controller.updateSingleRider,
+            onVacationPackageChanged: controller.updateVacationPackage,
+            onFreeDrinkChanged: controller.updateFreeDrinkBenefit,
+            onAttractionVoucherChanged: controller.updateAttractionVoucher,
+            onShowVoucherChanged: controller.updateShowVoucher,
+            onRestaurantReservationChanged:
+                controller.updateRestaurantReservation,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _MealSettingsCard(
+            settings: settings,
+            onBreakfastChanged: controller.updateBreakfast,
+            onLunchChanged: controller.updateLunch,
+            onDinnerChanged: controller.updateDinner,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _ExpandableSettingsSection(
+            title: '詳細設定',
+            subtitle: '必要な場合だけ変更してください',
+            icon: Icons.tune_outlined,
+            children: [
+              _ConditionSettingsCard(
+                settings: settings,
+                onRainyChanged: controller.updateRainy,
+                onChildrenChanged: controller.updateChildren,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _LiveDataSourceSettingsCard(
+                value: controller.liveDataSource,
+                isLoading: controller.isLoadingLiveDataSource,
+                onChanged: controller.updateLiveDataSource,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _ExpandableSettingsSection(
+            title: 'データ管理・その他',
+            subtitle: 'バックアップ、共有、更新情報',
+            icon: Icons.folder_copy_outlined,
+            children: [
+              const _DataFreshnessCard(),
+              const SizedBox(height: AppSpacing.sm),
+              _BackupRestoreCard(controller: controller),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -222,74 +245,204 @@ class _DesktopSettingsLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(right: 14, bottom: 48),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
+    return Scrollbar(
+      thumbVisibility: true,
+      interactive: true,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(right: 14, bottom: 48),
+        child: Column(
+          children: [
+            const _SettingsIntroCard(),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ParkSettingsCard(
-                  settings: settings,
-                  onChanged: controller.updatePark,
+                Expanded(
+                  child: Column(
+                    children: [
+                      _ParkSettingsCard(
+                        settings: settings,
+                        onChanged: controller.updatePark,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      _VisitSummaryCard(
+                        settings: settings,
+                        onEntryTimePressed: onEntryTimePressed,
+                        onExitTimePressed: onExitTimePressed,
+                        onDecreasePeople: controller.decreasePeople,
+                        onIncreasePeople: controller.increasePeople,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      _MealSettingsCard(
+                        settings: settings,
+                        onBreakfastChanged: controller.updateBreakfast,
+                        onLunchChanged: controller.updateLunch,
+                        onDinnerChanged: controller.updateDinner,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                _LiveDataSourceSettingsCard(
-                  value: controller.liveDataSource,
-                  isLoading: controller.isLoadingLiveDataSource,
-                  onChanged: controller.updateLiveDataSource,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _VisitSummaryCard(
-                  settings: settings,
-                  onEntryTimePressed: onEntryTimePressed,
-                  onExitTimePressed: onExitTimePressed,
-                  onDecreasePeople: controller.decreasePeople,
-                  onIncreasePeople: controller.increasePeople,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _ConditionSettingsCard(
-                  settings: settings,
-                  onRainyChanged: controller.updateRainy,
-                  onChildrenChanged: controller.updateChildren,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    children: [
+                      _ServiceSettingsCard(
+                        settings: settings,
+                        onHappyEntryChanged: controller.updateHappyEntry,
+                        onDpaChanged: controller.updateDpa,
+                        onPriorityPassChanged: controller.updatePriorityPass,
+                        onSingleRiderChanged: controller.updateSingleRider,
+                        onVacationPackageChanged:
+                            controller.updateVacationPackage,
+                        onFreeDrinkChanged:
+                            controller.updateFreeDrinkBenefit,
+                        onAttractionVoucherChanged:
+                            controller.updateAttractionVoucher,
+                        onShowVoucherChanged: controller.updateShowVoucher,
+                        onRestaurantReservationChanged:
+                            controller.updateRestaurantReservation,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      _ExpandableSettingsSection(
+                        title: '詳細設定',
+                        subtitle: '必要な場合だけ変更してください',
+                        icon: Icons.tune_outlined,
+                        children: [
+                          _ConditionSettingsCard(
+                            settings: settings,
+                            onRainyChanged: controller.updateRainy,
+                            onChildrenChanged: controller.updateChildren,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          _LiveDataSourceSettingsCard(
+                            value: controller.liveDataSource,
+                            isLoading: controller.isLoadingLiveDataSource,
+                            onChanged: controller.updateLiveDataSource,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      _ExpandableSettingsSection(
+                        title: 'データ管理・その他',
+                        subtitle: 'バックアップ、共有、更新情報',
+                        icon: Icons.folder_copy_outlined,
+                        children: [
+                          const _DataFreshnessCard(),
+                          const SizedBox(height: AppSpacing.sm),
+                          _BackupRestoreCard(controller: controller),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsIntroCard extends StatelessWidget {
+  const _SettingsIntroCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.auto_awesome_outlined,
+              color: colorScheme.onPrimaryContainer,
+            ),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ServiceSettingsCard(
-                  settings: settings,
-                  onHappyEntryChanged: controller.updateHappyEntry,
-                  onDpaChanged: controller.updateDpa,
-                  onPriorityPassChanged: controller.updatePriorityPass,
-                  onSingleRiderChanged: controller.updateSingleRider,
-                  onVacationPackageChanged: controller.updateVacationPackage,
-                  onFreeDrinkChanged: controller.updateFreeDrinkBenefit,
-                  onAttractionVoucherChanged:
-                      controller.updateAttractionVoucher,
-                  onShowVoucherChanged: controller.updateShowVoucher,
-                  onRestaurantReservationChanged:
-                      controller.updateRestaurantReservation,
+                Text(
+                  '旅行の基本条件を設定します',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                _MealSettingsCard(
-                  settings: settings,
-                  onBreakfastChanged: controller.updateBreakfast,
-                  onLunchChanged: controller.updateLunch,
-                  onDinnerChanged: controller.updateDinner,
+                const SizedBox(height: 3),
+                Text(
+                  '上から順に設定してください。迷う項目は初期値のままでもプランを作成できます。',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                const _DataFreshnessCard(),
-                const SizedBox(height: AppSpacing.sm),
-                _BackupRestoreCard(controller: controller),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ExpandableSettingsSection extends StatelessWidget {
+  const _ExpandableSettingsSection({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.children,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppCard(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(top: AppSpacing.sm),
+          leading: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 19, color: colorScheme.onPrimaryContainer),
+          ),
+          title: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          children: children,
+        ),
       ),
     );
   }
@@ -724,34 +877,34 @@ class _ServiceSettingsCard extends StatelessWidget {
         children: [
           const _SettingsCardHeader(
             title: '利用サービス',
-            subtitle: 'プラン作成時に利用可能なサービス',
+            subtitle: '利用できるサービスだけONにしてください',
             icon: Icons.confirmation_number_outlined,
           ),
           const SizedBox(height: 4),
           _CompactSwitchTile(
             title: 'ハッピーエントリー',
-            subtitle: '対象ホテル宿泊者向けの早期入園',
+            subtitle: '対象ホテル宿泊者は一般開園より早く入園できます',
             icon: Icons.hotel_outlined,
             value: settings.hasHappyEntry,
             onChanged: onHappyEntryChanged,
           ),
           _CompactSwitchTile(
             title: 'ディズニー・プレミアアクセス',
-            subtitle: '有料の時間指定サービス',
+            subtitle: '人気施設を短い待ち時間で利用できる有料サービス',
             icon: Icons.bolt,
             value: settings.canUseDpa,
             onChanged: onDpaChanged,
           ),
           _CompactSwitchTile(
             title: 'プライオリティパス',
-            subtitle: '無料の優先案内サービス',
+            subtitle: '対象施設を無料で優先利用できるサービス',
             icon: Icons.confirmation_number_outlined,
             value: settings.canUsePriorityPass,
             onChanged: onPriorityPassChanged,
           ),
           _CompactSwitchTile(
             title: 'シングルライダー',
-            subtitle: '同行者と別れて空席を利用',
+            subtitle: '同行者と別れて空席を利用し、待ち時間を短縮します',
             icon: Icons.person_outline,
             value: settings.canUseSingleRider,
             onChanged: onSingleRiderChanged,
@@ -759,7 +912,7 @@ class _ServiceSettingsCard extends StatelessWidget {
           const Divider(height: 20),
           _CompactSwitchTile(
             title: 'バケーションパッケージ',
-            subtitle: '利用特典を質問とプランへ自動反映',
+            subtitle: '宿泊プランの特典を質問とスケジュールへ反映します',
             icon: Icons.card_travel_outlined,
             value: settings.usesVacationPackage,
             onChanged: onVacationPackageChanged,
@@ -817,8 +970,8 @@ class _MealSettingsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SettingsCardHeader(
-            title: '食事希望',
-            subtitle: 'スケジュールに組み込む食事',
+            title: '食事の希望',
+            subtitle: '必要な食事を一日の予定へ組み込みます',
             icon: Icons.restaurant_outlined,
           ),
           const SizedBox(height: 4),
@@ -865,8 +1018,8 @@ class _ConditionSettingsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SettingsCardHeader(
-            title: '来園条件',
-            subtitle: '施設の優先順位に影響する条件',
+            title: '優先条件',
+            subtitle: '該当する条件をAIの候補選びへ反映します',
             icon: Icons.tune_outlined,
           ),
           const SizedBox(height: 4),

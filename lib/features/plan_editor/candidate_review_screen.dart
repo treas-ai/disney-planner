@@ -13,10 +13,10 @@ import '../facility/widgets/plan_preference_editor.dart';
 class CandidateReviewScreen extends StatefulWidget {
   const CandidateReviewScreen({
     super.key,
-    required this.onReviewPlanPressed,
+    required this.onWishListPressed,
   });
 
-  final VoidCallback onReviewPlanPressed;
+  final VoidCallback onWishListPressed;
 
   @override
   State<CandidateReviewScreen> createState() => _CandidateReviewScreenState();
@@ -27,6 +27,7 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
   PlanPreferenceController? _preferenceController;
   String _selectedCategory = 'attraction';
   String _filter = 'all';
+  final ScrollController _candidateScrollController = ScrollController();
 
   @override
   void didChangeDependencies() {
@@ -47,6 +48,7 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
     _preferenceController?.removeListener(_refresh);
     _builderController?.dispose();
     _preferenceController?.dispose();
+    _candidateScrollController.dispose();
     super.dispose();
   }
 
@@ -166,75 +168,102 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
       return priority == PriorityLevel.high || priority == PriorityLevel.highest;
     }).length;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-            0,
-          ),
-          child: _ReviewIntroduction(
-            candidateCount: allCandidates.length,
-            mustCount: mustCount,
-            onResetPressed: _resetCandidates,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: _CategoryTabs(
-            categories: categories,
-            selectedId: _selectedCategory,
-            onSelected: (value) {
-              setState(() {
-                _selectedCategory = value;
-              });
-            },
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: _ReviewFilters(
-            value: _filter,
-            onChanged: (value) {
-              setState(() {
-                _filter = value;
-              });
-            },
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Expanded(
-          child: visibleCandidates.isEmpty
-              ? _EmptyCandidates(hasAnyCandidate: allCandidates.isNotEmpty)
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    0,
-                    AppSpacing.md,
-                    110,
-                  ),
-                  itemCount: visibleCandidates.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, index) {
-                    final facility = visibleCandidates[index];
-                    return _CandidateCard(
-                      facility: facility,
-                      preferenceController: preferenceController,
-                      onRemove: () => _builderController?.removeFacility(facility.id),
-                    );
-                  },
-                ),
-        ),
-        _ReviewFooter(
-          candidateCount: allCandidates.length,
-          mustCount: mustCount,
-          onPressed: allCandidates.isEmpty ? null : widget.onReviewPlanPressed,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 600;
+
+        if (allCandidates.isEmpty) {
+          return _NoCandidatesPage(
+            compact: compact,
+            onWishListPressed: widget.onWishListPressed,
+          );
+        }
+
+        return Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                compact ? AppSpacing.xs : AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: _ReviewIntroduction(
+                candidateCount: allCandidates.length,
+                mustCount: mustCount,
+                compact: compact,
+                onResetPressed: _resetCandidates,
+              ),
+            ),
+            SizedBox(height: compact ? AppSpacing.xs : AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: _CategoryTabs(
+                categories: categories,
+                selectedId: _selectedCategory,
+                compact: compact,
+                onSelected: (value) {
+                  setState(() {
+                    _selectedCategory = value;
+                  });
+                  if (_candidateScrollController.hasClients) {
+                    _candidateScrollController.jumpTo(0);
+                  }
+                },
+              ),
+            ),
+            SizedBox(height: compact ? AppSpacing.xs : AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: _ReviewFilters(
+                value: _filter,
+                compact: compact,
+                onChanged: (value) {
+                  setState(() {
+                    _filter = value;
+                  });
+                  if (_candidateScrollController.hasClients) {
+                    _candidateScrollController.jumpTo(0);
+                  }
+                },
+              ),
+            ),
+            SizedBox(height: compact ? AppSpacing.xs : AppSpacing.sm),
+            Expanded(
+              child: visibleCandidates.isEmpty
+                  ? _EmptyCandidates(hasAnyCandidate: true)
+                  : Scrollbar(
+                      controller: _candidateScrollController,
+                      thumbVisibility: compact,
+                      trackVisibility: compact,
+                      interactive: true,
+                      child: ListView.separated(
+                        controller: _candidateScrollController,
+                        primary: false,
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          0,
+                          AppSpacing.md,
+                          AppSpacing.md,
+                        ),
+                        itemCount: visibleCandidates.length,
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(height: AppSpacing.sm),
+                        itemBuilder: (context, index) {
+                          final facility = visibleCandidates[index];
+                          return _CandidateCard(
+                            facility: facility,
+                            preferenceController: preferenceController,
+                            onRemove: () =>
+                                _builderController?.removeFacility(facility.id),
+                          );
+                        },
+                      ),
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -243,48 +272,80 @@ class _ReviewIntroduction extends StatelessWidget {
   const _ReviewIntroduction({
     required this.candidateCount,
     required this.mustCount,
+    required this.compact,
     required this.onResetPressed,
   });
 
   final int candidateCount;
   final int mustCount;
+  final bool compact;
   final VoidCallback onResetPressed;
 
   @override
   Widget build(BuildContext context) {
+    final title = Text(
+      'AI候補を最終調整',
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+    );
+
+    final resetButton = OutlinedButton.icon(
+      onPressed: candidateCount == 0 ? null : onResetPressed,
+      icon: const Icon(Icons.restart_alt, size: 18),
+      label: Text(compact ? 'リセット' : '候補をリセット'),
+    );
+
     return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.auto_awesome_outlined, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'AIが抽出した候補を最終調整',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(child: title),
+                    resetButton,
+                  ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
-                  '$candidateCount件の候補があります。最優先にしたい体験は優先度を高くし、'
-                  '不要な候補だけ削除してください。詳細設定はカードを開いて編集できます。'
-                  '${mustCount > 0 ? ' 現在の必須候補は$mustCount件です。' : ''}',
+                  '$candidateCount件から、優先度と不要な候補を調整します。'
+                  '${mustCount > 0 ? ' 最優先は$mustCount件です。' : ''}',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.auto_awesome_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      title,
+                      const SizedBox(height: 4),
+                      Text(
+                        '$candidateCount件の候補があります。最優先にしたい体験は優先度を高くし、'
+                        '不要な候補だけ削除してください。詳細設定はカードを開いて編集できます。'
+                        '${mustCount > 0 ? ' 現在の最優先候補は$mustCount件です。' : ''}',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                resetButton,
+              ],
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: candidateCount == 0 ? null : onResetPressed,
-            icon: const Icon(Icons.restart_alt, size: 18),
-            label: const Text('候補をリセット'),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -293,37 +354,56 @@ class _CategoryTabs extends StatelessWidget {
   const _CategoryTabs({
     required this.categories,
     required this.selectedId,
+    required this.compact,
     required this.onSelected,
   });
 
   final List<_ReviewCategory> categories;
   final String selectedId;
+  final bool compact;
   final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return SizedBox(
+        height: 52,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          primary: false,
+          clipBehavior: Clip.hardEdge,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          itemCount: categories.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final category = categories[index];
+            return _CategoryTabButton(
+              category: category,
+              selected: selectedId == category.id,
+              compact: true,
+              onPressed: () => onSelected(category.id),
+            );
+          },
+        ),
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return Wrap(
           spacing: 8,
           runSpacing: 8,
           children: categories.map((category) {
-            final selected = selectedId == category.id;
             return SizedBox(
               width: constraints.maxWidth >= 900
                   ? (constraints.maxWidth - 24) / 4
                   : (constraints.maxWidth - 8) / 2,
-              child: selected
-                  ? FilledButton.tonalIcon(
-                      onPressed: () => onSelected(category.id),
-                      icon: Icon(category.icon, size: 18),
-                      label: Text('${category.label} (${category.facilities.length})'),
-                    )
-                  : OutlinedButton.icon(
-                      onPressed: () => onSelected(category.id),
-                      icon: Icon(category.icon, size: 18),
-                      label: Text('${category.label} (${category.facilities.length})'),
-                    ),
+              child: _CategoryTabButton(
+                category: category,
+                selected: selectedId == category.id,
+                compact: false,
+                onPressed: () => onSelected(category.id),
+              ),
             );
           }).toList(growable: false),
         );
@@ -332,23 +412,207 @@ class _CategoryTabs extends StatelessWidget {
   }
 }
 
+class _CategoryTabButton extends StatelessWidget {
+  const _CategoryTabButton({
+    required this.category,
+    required this.selected,
+    required this.compact,
+    required this.onPressed,
+  });
+
+  final _ReviewCategory category;
+  final bool selected;
+  final bool compact;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    final content = Row(
+      children: [
+        Icon(
+          category.icon,
+          size: compact ? 17 : 18,
+          color: selected ? colors.primary : colors.onSurfaceVariant,
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            category.label,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              color: selected ? colors.primary : colors.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Container(
+          height: 24,
+          constraints: const BoxConstraints(minWidth: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? colors.primary
+                : colors.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            '${category.facilities.length}',
+            maxLines: 1,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: selected
+                  ? colors.onPrimary
+                  : colors.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return SizedBox(
+      width: compact ? 188 : double.infinity,
+      height: compact ? 48 : 46,
+      child: Material(
+        color: selected
+            ? colors.primaryContainer
+            : colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: selected ? colors.primary : colors.outlineVariant,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 12 : 14,
+            ),
+            child: content,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ReviewFilters extends StatelessWidget {
-  const _ReviewFilters({required this.value, required this.onChanged});
+  const _ReviewFilters({
+    required this.value,
+    required this.compact,
+    required this.onChanged,
+  });
 
   final String value;
+  final bool compact;
   final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: 'all', label: Text('すべて'), icon: Icon(Icons.list_alt)),
-        ButtonSegment(value: 'must', label: Text('最優先'), icon: Icon(Icons.star_outline)),
-        ButtonSegment(value: 'normal', label: Text('行きたい'), icon: Icon(Icons.check_circle_outline)),
-      ],
-      selected: {value},
-      showSelectedIcon: false,
-      onSelectionChanged: (values) => onChanged(values.first),
+    if (!compact) {
+      return SegmentedButton<String>(
+        segments: const [
+          ButtonSegment(
+            value: 'all',
+            label: Text('すべて'),
+            icon: Icon(Icons.list_alt),
+          ),
+          ButtonSegment(
+            value: 'must',
+            label: Text('最優先'),
+            icon: Icon(Icons.star_outline),
+          ),
+          ButtonSegment(
+            value: 'normal',
+            label: Text('行きたい'),
+            icon: Icon(Icons.check_circle_outline),
+          ),
+        ],
+        selected: {value},
+        showSelectedIcon: false,
+        onSelectionChanged: (values) => onChanged(values.first),
+      );
+    }
+
+    return SizedBox(
+      height: 42,
+      child: Row(
+        children: [
+          Expanded(
+            child: _CompactFilterButton(
+              label: 'すべて',
+              selected: value == 'all',
+              onPressed: () => onChanged('all'),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _CompactFilterButton(
+              label: '最優先',
+              selected: value == 'must',
+              onPressed: () => onChanged('must'),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _CompactFilterButton(
+              label: '行きたい',
+              selected: value == 'normal',
+              onPressed: () => onChanged('normal'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactFilterButton extends StatelessWidget {
+  const _CompactFilterButton({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Material(
+      color: selected ? colors.primaryContainer : colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: selected ? colors.primary : colors.outlineVariant,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Center(
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.fade,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: selected ? colors.primary : colors.onSurfaceVariant,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -492,6 +756,71 @@ class _CandidateCard extends StatelessWidget {
   }
 }
 
+class _NoCandidatesPage extends StatelessWidget {
+  const _NoCandidatesPage({
+    required this.compact,
+    required this.onWishListPressed,
+  });
+
+  final bool compact;
+  final VoidCallback onWishListPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scrollbar(
+      thumbVisibility: compact,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: AppCard(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? AppSpacing.sm : AppSpacing.lg,
+                  vertical: compact ? AppSpacing.lg : 40,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_outlined,
+                      size: compact ? 44 : 56,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'AI候補がありません',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    const Text(
+                      '「やりたいこと」で希望を選び、AI候補を作成してください。',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: onWishListPressed,
+                        icon: const Icon(Icons.favorite_border),
+                        label: const Text('やりたいことへ戻る'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyCandidates extends StatelessWidget {
   const _EmptyCandidates({required this.hasAnyCandidate});
 
@@ -517,38 +846,6 @@ class _EmptyCandidates extends StatelessWidget {
                   ? 'カテゴリまたは表示条件を切り替えてください。'
                   : '「やりたいこと」で質問に答え、候補を抽出してください。',
               textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ReviewFooter extends StatelessWidget {
-  const _ReviewFooter({
-    required this.candidateCount,
-    required this.mustCount,
-    required this.onPressed,
-  });
-
-  final int candidateCount;
-  final int mustCount;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      elevation: 8,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-        child: Row(
-          children: [
-            Expanded(child: Text('候補 $candidateCount件・最優先 $mustCount件')),
-            FilledButton.icon(
-              onPressed: onPressed,
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('この内容でプランを生成'),
             ),
           ],
         ),

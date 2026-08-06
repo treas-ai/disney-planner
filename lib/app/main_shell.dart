@@ -33,6 +33,7 @@ class _MainShellState extends State<MainShell> {
   static const int _todayIndex = 5;
 
   int _currentIndex = _homeIndex;
+  bool _wishListCanContinue = false;
 
   late final TextEditingController _editorSearchController;
   late final FocusNode _editorSearchFocusNode;
@@ -166,6 +167,13 @@ class _MainShellState extends State<MainShell> {
     _onDestinationSelected(_todayIndex);
   }
 
+  void _setWishListCanContinue(bool value) {
+    if (_wishListCanContinue == value) {
+      return;
+    }
+    setState(() => _wishListCanContinue = value);
+  }
+
   void _clearEditorSearch() {
     _editorSearchController.clear();
     _editorSearchFocusNode.requestFocus();
@@ -249,6 +257,7 @@ class _MainShellState extends State<MainShell> {
                       _PlannerFlowActionBar(
                         currentIndex: _currentIndex,
                         flowState: flowState,
+                        wishListCanContinue: _wishListCanContinue,
                         compact: false,
                         onHomePressed: _goToHome,
                         onSettingsPressed: _goToSettings,
@@ -290,6 +299,7 @@ class _MainShellState extends State<MainShell> {
               _PlannerFlowActionBar(
                 currentIndex: _currentIndex,
                 flowState: flowState,
+                wishListCanContinue: _wishListCanContinue,
                 compact: true,
                 onHomePressed: _goToHome,
                 onSettingsPressed: _goToSettings,
@@ -325,10 +335,13 @@ class _MainShellState extends State<MainShell> {
           onSettingsPressed: _goToSettings,
         ),
         const SettingsScreen(),
-        WishListScreen(onCandidateReviewPressed: _goToEditor),
+        WishListScreen(
+          onCandidateReviewPressed: _goToEditor,
+          onFlowContinueAvailabilityChanged: _setWishListCanContinue,
+        ),
         PlanEditorScreen(
           searchController: _editorSearchController,
-          onReviewPlanPressed: _goToReview,
+          onWishListPressed: _goToWishList,
         ),
         const PlanReviewScreen(),
         const TodayPlanScreen(),
@@ -620,6 +633,7 @@ class _PlannerFlowActionBar extends StatelessWidget {
   const _PlannerFlowActionBar({
     required this.currentIndex,
     required this.flowState,
+    required this.wishListCanContinue,
     required this.compact,
     required this.onHomePressed,
     required this.onSettingsPressed,
@@ -631,6 +645,7 @@ class _PlannerFlowActionBar extends StatelessWidget {
 
   final int currentIndex;
   final _PlannerFlowState flowState;
+  final bool wishListCanContinue;
   final bool compact;
 
   final VoidCallback onHomePressed;
@@ -672,8 +687,13 @@ class _PlannerFlowActionBar extends StatelessWidget {
                   _DesktopFlowActions(
                     action: action,
                     currentIndex: currentIndex,
+                    flowState: flowState,
                     onHomePressed: onHomePressed,
+                    onSettingsPressed: onSettingsPressed,
+                    onWishListPressed: onWishListPressed,
                     onEditorPressed: onEditorPressed,
+                    onReviewPressed: onReviewPressed,
+                    onTodayPressed: onTodayPressed,
                   ),
                 ],
               ),
@@ -681,36 +701,81 @@ class _PlannerFlowActionBar extends StatelessWidget {
     );
   }
 
+  _PlannerFlowAction _resolveHomeAction() {
+    if (flowState.selectedWishCount == 0) {
+      return _PlannerFlowAction(
+        title: 'AIとプランを作る',
+        description: 'まずは、乗りたい・見たい・食べたい体験を選びます。',
+        icon: Icons.auto_awesome_outlined,
+        onPressed: onWishListPressed,
+      );
+    }
+
+    if (flowState.selectedFacilityCount == 0) {
+      return _PlannerFlowAction(
+        title: 'AI候補を確認',
+        description: '${flowState.selectedWishCount}件の希望から抽出した候補を調整します。',
+        icon: Icons.checklist_outlined,
+        onPressed: onEditorPressed,
+      );
+    }
+
+    if (!flowState.hasCurrentSchedule) {
+      return _PlannerFlowAction(
+        title: 'プランを生成・確認',
+        description: '${flowState.selectedFacilityCount}件の候補から一日のプランを作成します。',
+        icon: Icons.route_outlined,
+        onPressed: onReviewPressed,
+      );
+    }
+
+    return _PlannerFlowAction(
+      title: '当日の予定を見る',
+      description: '${flowState.scheduleItemCount}件の予定を時系列で確認します。',
+      icon: Icons.event_available_outlined,
+      onPressed: onTodayPressed,
+    );
+  }
+
   _PlannerFlowAction _resolveAction() {
     return switch (currentIndex) {
-      _MainShellState._homeIndex => _PlannerFlowAction(
-        title: '旅行設定へ',
-        description: '来園日・パーク・滞在時間を最初に確認します。',
-        icon: Icons.tune,
-        onPressed: onSettingsPressed,
-      ),
+      _MainShellState._homeIndex => _resolveHomeAction(),
       _MainShellState._settingsIndex => _PlannerFlowAction(
         title: 'やりたいことを選ぶ',
         description: '設定したパークで、達成したいことを選びます。',
         icon: Icons.favorite_border,
         onPressed: onWishListPressed,
       ),
-      _MainShellState._wishListIndex => _PlannerFlowAction(
-        title: 'プラン候補を確認',
-        description: flowState.selectedWishCount == 0
-            ? 'やりたいことを選ばず、施設を手動で追加することもできます。'
-            : '${flowState.selectedWishCount}件のやりたいことから販売店舗・施設を抽出します。',
-        icon: Icons.checklist_outlined,
-        onPressed: onEditorPressed,
-      ),
-      _MainShellState._editorIndex => _PlannerFlowAction(
-        title: 'プランを生成・確認',
-        description: flowState.selectedFacilityCount == 0
-            ? '候補施設を追加するとプランを生成できます。'
-            : '${flowState.selectedFacilityCount}件の候補から一日のプランを作成します。',
-        icon: Icons.arrow_forward,
-        onPressed: onReviewPressed,
-      ),
+      _MainShellState._wishListIndex => wishListCanContinue
+          ? _PlannerFlowAction(
+              title: 'プラン候補を確認',
+              description: flowState.selectedWishCount == 0
+                  ? '一覧から選んだ内容を確認し、候補施設を調整します。'
+                  : '${flowState.selectedWishCount}件のやりたいことから販売店舗・施設を抽出します。',
+              icon: Icons.checklist_outlined,
+              onPressed: onEditorPressed,
+            )
+          : const _PlannerFlowAction(
+              title: 'AI候補を作成してください',
+              description: '回答確認画面の「この回答でAI候補を作成」を押してください。',
+              icon: Icons.auto_awesome_outlined,
+              onPressed: null,
+            ),
+      _MainShellState._editorIndex =>
+        flowState.selectedFacilityCount == 0
+            ? _PlannerFlowAction(
+                title: 'やりたいことへ戻る',
+                description: '希望を選び、AI候補を作成してください。',
+                icon: Icons.favorite_border,
+                onPressed: onWishListPressed,
+              )
+            : _PlannerFlowAction(
+                title: 'プランを生成・確認',
+                description:
+                    '${flowState.selectedFacilityCount}件の候補から一日のプランを作成します。',
+                icon: Icons.arrow_forward,
+                onPressed: onReviewPressed,
+              ),
       _MainShellState._reviewIndex =>
         flowState.hasCurrentSchedule
             ? _PlannerFlowAction(
@@ -763,17 +828,29 @@ class _DesktopFlowActions extends StatelessWidget {
   const _DesktopFlowActions({
     required this.action,
     required this.currentIndex,
+    required this.flowState,
     required this.onHomePressed,
+    required this.onSettingsPressed,
+    required this.onWishListPressed,
     required this.onEditorPressed,
+    required this.onReviewPressed,
+    required this.onTodayPressed,
   });
 
   final _PlannerFlowAction action;
   final int currentIndex;
+  final _PlannerFlowState flowState;
   final VoidCallback onHomePressed;
+  final VoidCallback onSettingsPressed;
+  final VoidCallback onWishListPressed;
   final VoidCallback onEditorPressed;
+  final VoidCallback onReviewPressed;
+  final VoidCallback onTodayPressed;
 
   @override
   Widget build(BuildContext context) {
+    final showHomeShortcuts = currentIndex == _MainShellState._homeIndex;
+
     return Row(
       children: [
         Expanded(
@@ -797,6 +874,46 @@ class _DesktopFlowActions extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
+        if (showHomeShortcuts) ...[
+          _FlowShortcutButton(
+            icon: Icons.favorite_border,
+            label: 'やりたいこと',
+            onPressed: onWishListPressed,
+            emphasized: flowState.selectedWishCount == 0,
+          ),
+          const SizedBox(width: 8),
+          _FlowShortcutButton(
+            icon: Icons.checklist_outlined,
+            label: '候補確認',
+            onPressed: onEditorPressed,
+            emphasized:
+                flowState.selectedWishCount > 0 &&
+                flowState.selectedFacilityCount == 0,
+          ),
+          const SizedBox(width: 8),
+          _FlowShortcutButton(
+            icon: Icons.tune_outlined,
+            label: '来園設定',
+            onPressed: onSettingsPressed,
+          ),
+          if (flowState.hasCurrentSchedule) ...[
+            const SizedBox(width: 8),
+            _FlowShortcutButton(
+              icon: Icons.event_available_outlined,
+              label: '当日の予定',
+              onPressed: onTodayPressed,
+            ),
+          ] else if (flowState.selectedFacilityCount > 0) ...[
+            const SizedBox(width: 8),
+            _FlowShortcutButton(
+              icon: Icons.route_outlined,
+              label: 'プラン確認',
+              onPressed: onReviewPressed,
+              emphasized: true,
+            ),
+          ],
+          const SizedBox(width: 12),
+        ],
         if (currentIndex == _MainShellState._reviewIndex) ...[
           OutlinedButton.icon(
             onPressed: onEditorPressed,
@@ -819,6 +936,43 @@ class _DesktopFlowActions extends StatelessWidget {
           label: Text(action.title),
         ),
       ],
+    );
+  }
+}
+
+class _FlowShortcutButton extends StatelessWidget {
+  const _FlowShortcutButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.emphasized = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 17),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 42),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        foregroundColor:
+            emphasized ? colorScheme.primary : colorScheme.onSurfaceVariant,
+        backgroundColor: emphasized
+            ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+            : null,
+        side: BorderSide(
+          color: emphasized ? colorScheme.primary : colorScheme.outlineVariant,
+        ),
+      ),
     );
   }
 }
@@ -1269,7 +1423,7 @@ class _PlannerFlowAction {
   final String title;
   final String description;
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 }
 
 class _PlannerStep {

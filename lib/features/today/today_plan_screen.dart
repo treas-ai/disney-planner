@@ -1579,13 +1579,21 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                   ),
                 ),
               ),
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 180),
-                crossFadeState: _isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                firstChild: const SizedBox(width: double.infinity),
-                secondChild: _TodayScheduleDetails(item: item),
+              ClipRect(
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeInOut,
+                  alignment: Alignment.topCenter,
+                  child: _isExpanded
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: _TodayScheduleDetails(item: item),
+                        )
+                      : const SizedBox(
+                          width: double.infinity,
+                          height: 0,
+                        ),
+                ),
               ),
             ],
           ],
