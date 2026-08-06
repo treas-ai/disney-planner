@@ -1579,22 +1579,10 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                   ),
                 ),
               ),
-              ClipRect(
-                child: AnimatedSize(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeInOut,
-                  alignment: Alignment.topCenter,
-                  child: _isExpanded
-                      ? Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: _TodayScheduleDetails(item: item),
-                        )
-                      : const SizedBox(
-                          width: double.infinity,
-                          height: 0,
-                        ),
-                ),
-              ),
+              if (_isExpanded) ...[
+                const SizedBox(height: 2),
+                _TodayScheduleDetails(item: item),
+              ],
             ],
           ],
         ),

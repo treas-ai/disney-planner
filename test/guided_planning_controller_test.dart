@@ -10,23 +10,31 @@ class _EmptyFacilityRepository implements FacilityRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('guided planning reaches completed state', () {
     SharedPreferences.setMockInitialValues({});
+
     final state = AppState(
       storage: AppStateStorage(),
       facilityRepository: _EmptyFacilityRepository(),
     );
     final controller = GuidedPlanningController(appState: state);
-    controller.answer('始める');
-    controller.answer('グルメを重視');
+
+    controller.answer('AI質問を始める');
+    controller.answer('フード・ドリンク');
     controller.answer('季節限定メニュー');
-    controller.confirmCurrentMultiSelection();
-    controller.answer('スペシャルドリンク');
-    controller.confirmFoodSelection();
-    controller.answer('飲食中心にする');
+    controller.answer('両方入れたい');
+    controller.answer('季節限定を優先');
+    controller.answer('時間が合えば');
+    controller.answer('フードだけ');
+
     expect(controller.step, GuidedPlanningStep.completed);
+    expect(controller.primaryFocus, GuidedPlanningFocus.food);
+    expect(controller.wantsSeasonalMenus, isTrue);
+    expect(controller.wantsSeasonalEntertainment, isFalse);
+    expect(controller.summaryItems, isNotEmpty);
   });
 }
