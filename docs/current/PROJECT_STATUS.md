@@ -1,4 +1,4 @@
-# Project Status
+﻿# Project Status
 
 Current version: v5.1.1
 
@@ -11,4 +11,5 @@ Required acceptance:
 - flutter test: All tests passed!
 - verify.ps1: Errors: 0
 
-See `DESIGN_V5_1_1.md` and `IMPLEMENTATION_V5_1_1.md`.
+See `../archive/DESIGN_V5_1_1.md` and `../archive/IMPLEMENTATION_V5_1_1.md`.
+

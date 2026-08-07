@@ -1,4 +1,4 @@
-## v7.3.17 hotfix - 2026-08-07
+﻿## v7.3.17 hotfix - 2026-08-07
 
 - 日本語専用カレンダーへ移行後も `DisneyPlannerApp` に残っていた `flutter_localizations` のimportとMaterialAppローカライズ設定を削除。
 - `flutter_localizations` が依存関係に存在しない環境で `flutter analyze` が失敗する問題を修正。
@@ -966,7 +966,7 @@ dart run tool/audit_wish_data.dart
 
 -   Flutter標準に沿ったルート`.gitignore`
 -   Git整理を安全に実行する`setup_git_maintenance.ps1`
--   Git整理手順書`GIT_MAINTENANCE.md`
+-   Git整理手順書`docs/development/GIT_MAINTENANCE.md`
 
 ### 変更
 
@@ -1332,3 +1332,4 @@ dart run tool/audit_wish_data.dart
 -   Settings
 
 ------------------------------------------------------------------------
+

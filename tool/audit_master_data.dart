@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:disney_planner/data/local/master_data/data_quality/master_data_audit_issue.dart';
@@ -55,7 +55,7 @@ Future<void> main(List<String> arguments) async {
   final report = const MasterDataAuditor().audit(
     facilityRowsByFile: rowsByFile,
   );
-  final output = File('MASTER_DATA_AUDIT_REPORT.md');
+  final output = File('docs/audits/MASTER_DATA_AUDIT_REPORT.md');
   await output.writeAsString(_toMarkdown(report));
 
   stdout.writeln('Facilities: ${report.facilityCount}');
@@ -118,3 +118,4 @@ String _severityLabel(MasterDataAuditSeverity severity) {
     MasterDataAuditSeverity.information => 'INFO',
   };
 }
+

@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 Future<void> main() async {
@@ -92,9 +92,10 @@ Future<void> main() async {
   stdout.writeln('Wish items: ${items.length}');
   stdout.writeln('Errors: ${errors.length}');
   stdout.writeln('Warnings: ${warnings.length}');
-  stdout.writeln('Report: WISH_DATA_AUDIT_REPORT.md');
+  stdout.writeln('Report: docs/audits/WISH_DATA_AUDIT_REPORT.md');
 
   if (errors.isNotEmpty) {
     exitCode = 1;
   }
 }
+

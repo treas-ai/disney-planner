@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$SkipVerification
 )
 
@@ -28,12 +28,12 @@ foreach ($path in $trackedPaths) {
 $filesToStage = @(
     ".gitignore",
     "README.md",
-    "CONTRIBUTING.md",
+    "docs/development/CONTRIBUTING.md",
     "CHANGELOG.md",
-    "PROJECT_STATUS.md",
-    "ROADMAP.md",
+    "docs/current/PROJECT_STATUS.md",
+    "docs/current/ROADMAP.md",
     "pubspec.yaml",
-    "GIT_MAINTENANCE.md",
+    "docs/development/GIT_MAINTENANCE.md",
     "setup_git_maintenance.ps1"
 )
 
@@ -69,3 +69,4 @@ Write-Host 'git commit -m "Release v3.3.2 Git Maintenance"'
 Write-Host "git push"
 Write-Host "git tag v3.3.2"
 Write-Host "git push origin v3.3.2"
+

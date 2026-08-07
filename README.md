@@ -1,4 +1,4 @@
-# Disney Planner
+﻿# Disney Planner
 
 **公式アプリと一緒に使うAIディズニープランナー**
 
@@ -76,5 +76,6 @@ flutter run --no-pub -d windows
 dart run tool/audit_master_data.dart
 ```
 
-実行するとプロジェクト直下に`MASTER_DATA_AUDIT_REPORT.md`を生成します。構造エラーと品質警告を分け、TDL/TDSの正式版1.0.0に向けた補完作業へ使用します。
+実行するとプロジェクト直下に`docs/audits/MASTER_DATA_AUDIT_REPORT.md`を生成します。構造エラーと品質警告を分け、TDL/TDSの正式版1.0.0に向けた補完作業へ使用します。
+
 
