@@ -12,6 +12,9 @@ class ScheduleItem {
     this.facilityId,
     this.reason,
     this.note,
+    this.estimatedWaitMinutes,
+    this.experienceMinutes,
+    this.waitEstimateSource,
   });
 
   factory ScheduleItem.fromJson(Map<String, dynamic> json) {
@@ -29,6 +32,9 @@ class ScheduleItem {
       facilityId: json['facilityId'] as String?,
       reason: json['reason'] as String?,
       note: json['note'] as String?,
+      estimatedWaitMinutes: json['estimatedWaitMinutes'] as int?,
+      experienceMinutes: json['experienceMinutes'] as int?,
+      waitEstimateSource: json['waitEstimateSource'] as String?,
     );
   }
 
@@ -44,6 +50,11 @@ class ScheduleItem {
   final String? facilityId;
   final String? reason;
   final String? note;
+
+  /// AI評価用の待ち時間内訳。既存保存データではnullを許容する。
+  final int? estimatedWaitMinutes;
+  final int? experienceMinutes;
+  final String? waitEstimateSource;
 
   String get startTimeLabel {
     return '${startHour.toString().padLeft(2, '0')}:'
@@ -71,6 +82,9 @@ class ScheduleItem {
       'facilityId': facilityId,
       'reason': reason,
       'note': note,
+      'estimatedWaitMinutes': estimatedWaitMinutes,
+      'experienceMinutes': experienceMinutes,
+      'waitEstimateSource': waitEstimateSource,
     };
   }
 }

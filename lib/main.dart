@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'app/app_theme.dart';
 import 'app/main_shell.dart';
 import 'app/state/app_state.dart';

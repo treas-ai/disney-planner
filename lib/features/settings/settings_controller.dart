@@ -23,6 +23,20 @@ class SettingsController extends ChangeNotifier {
 
   AppState get appState => _appState;
 
+  List<String> get visitDayIds => _appState.visitDayIds;
+  String get activeVisitDayId => _appState.activeVisitDayId;
+
+  Future<void> addVisitDay(DateTime date) {
+    final nextPark = settings.parkId == 'tokyo_disneyland'
+        ? 'tokyo_disneysea'
+        : 'tokyo_disneyland';
+    return _appState.addVisitDay(date: date, parkId: nextPark);
+  }
+
+  Future<void> switchVisitDay(String dayId) => _appState.switchVisitDay(dayId);
+  Future<void> removeVisitDay(String dayId) => _appState.removeVisitDay(dayId);
+  void updateVisitDate(DateTime date) => _appState.updateActiveVisitDate(date);
+
   Future<void> resetOnboarding() {
     return const OnboardingPreferences().reset();
   }
@@ -33,6 +47,24 @@ class SettingsController extends ChangeNotifier {
 
   void updatePark(String parkId) {
     _appState.updateTripSettings(settings.copyWith(parkId: parkId));
+  }
+
+  void updateQueueArrivalTime(TimeOfDay time) {
+    _appState.updateTripSettings(
+      settings.copyWith(
+        queueArrivalTimeHour: time.hour,
+        queueArrivalTimeMinute: time.minute,
+      ),
+    );
+  }
+
+  void updateHappyEntryTime(TimeOfDay time) {
+    _appState.updateTripSettings(
+      settings.copyWith(
+        happyEntryTimeHour: time.hour,
+        happyEntryTimeMinute: time.minute,
+      ),
+    );
   }
 
   void updateEntryTime(TimeOfDay time) {

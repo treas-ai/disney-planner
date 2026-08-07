@@ -34,6 +34,8 @@ class _MainShellState extends State<MainShell> {
 
   int _currentIndex = _homeIndex;
   bool _wishListCanContinue = false;
+  final GlobalKey<WishListScreenState> _wishListKey =
+      GlobalKey<WishListScreenState>();
 
   late final TextEditingController _editorSearchController;
   late final FocusNode _editorSearchFocusNode;
@@ -159,6 +161,14 @@ class _MainShellState extends State<MainShell> {
     _onDestinationSelected(_editorIndex);
   }
 
+  Future<void> _applyWishListAndContinue() async {
+    final state = _wishListKey.currentState;
+    if (state == null) {
+      return;
+    }
+    await state.applyAndContinue();
+  }
+
   void _goToReview() {
     _onDestinationSelected(_reviewIndex);
   }
@@ -251,6 +261,7 @@ class _MainShellState extends State<MainShell> {
                           ? _selectSearchSuggestion
                           : null,
                     ),
+                    if (appState.hasMultipleVisitDays) _VisitDaySwitcher(appState: appState, compact: false),
                     const Divider(height: 1),
                     Expanded(child: _buildScreenStack()),
                     if (_shouldShowFlowBar)
@@ -262,7 +273,9 @@ class _MainShellState extends State<MainShell> {
                         onHomePressed: _goToHome,
                         onSettingsPressed: _goToSettings,
                         onWishListPressed: _goToWishList,
-                        onEditorPressed: _goToEditor,
+                        onEditorPressed: _currentIndex == _wishListIndex
+                            ? _applyWishListAndContinue
+                            : _goToEditor,
                         onReviewPressed: _goToReview,
                         onTodayPressed: _goToToday,
                       ),
@@ -293,6 +306,7 @@ class _MainShellState extends State<MainShell> {
                   ? _selectSearchSuggestion
                   : null,
             ),
+            if (appState.hasMultipleVisitDays) _VisitDaySwitcher(appState: appState, compact: true),
             const Divider(height: 1),
             Expanded(child: _buildScreenStack()),
             if (_shouldShowFlowBar)
@@ -304,7 +318,9 @@ class _MainShellState extends State<MainShell> {
                 onHomePressed: _goToHome,
                 onSettingsPressed: _goToSettings,
                 onWishListPressed: _goToWishList,
-                onEditorPressed: _goToEditor,
+                onEditorPressed: _currentIndex == _wishListIndex
+                    ? _applyWishListAndContinue
+                    : _goToEditor,
                 onReviewPressed: _goToReview,
                 onTodayPressed: _goToToday,
               ),
@@ -336,6 +352,7 @@ class _MainShellState extends State<MainShell> {
         ),
         const SettingsScreen(),
         WishListScreen(
+          key: _wishListKey,
           onCandidateReviewPressed: _goToEditor,
           onFlowContinueAvailabilityChanged: _setWishListCanContinue,
         ),
@@ -346,6 +363,41 @@ class _MainShellState extends State<MainShell> {
         const PlanReviewScreen(),
         const TodayPlanScreen(),
       ],
+    );
+  }
+}
+
+class _VisitDaySwitcher extends StatelessWidget {
+  const _VisitDaySwitcher({required this.appState, required this.compact});
+
+  final AppState appState;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerLowest,
+      child: SizedBox(
+        height: compact ? 46 : 52,
+        child: ListView.separated(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 24, vertical: 7),
+          scrollDirection: Axis.horizontal,
+          itemCount: appState.visitDayIds.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final id = appState.visitDayIds[index];
+            final settings = appState.settingsForVisitDay(id);
+            final selected = id == appState.activeVisitDayId;
+            final park = settings.parkId == 'tokyo_disneyland' ? 'ランド' : 'シー';
+            return ChoiceChip(
+              selected: selected,
+              label: Text('${settings.visitDateLabel}  $park'),
+              onSelected: (_) => appState.switchVisitDay(id),
+            );
+          },
+        ),
+      ),
     );
   }
 }

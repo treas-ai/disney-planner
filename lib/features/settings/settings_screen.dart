@@ -10,6 +10,7 @@ import '../../core/widgets/loading_view.dart';
 import '../../data/local/data_freshness_service.dart';
 import '../../domain/entities/data_freshness_info.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/services/entry_prediction_service.dart';
 import '../../domain/enums/live_data_source_type.dart';
 import '../share/share_center_screen.dart';
 import 'settings_controller.dart';
@@ -56,6 +57,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {});
   }
 
+  Future<void> _selectQueueArrivalTime() async {
+    final controller = _controller;
+
+    if (controller == null) {
+      return;
+    }
+
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: controller.settings.queueArrivalTimeHour,
+        minute: controller.settings.queueArrivalTimeMinute,
+      ),
+      helpText: '並び開始時刻を選択',
+      cancelText: 'キャンセル',
+      confirmText: '決定',
+    );
+
+    if (selected != null) {
+      controller.updateQueueArrivalTime(selected);
+    }
+  }
+
+  Future<void> _selectHappyEntryTime() async {
+    final controller = _controller;
+    if (controller == null) return;
+
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: controller.settings.happyEntryTimeHour,
+        minute: controller.settings.happyEntryTimeMinute,
+      ),
+      helpText: '通行証記載の先行入園時刻を選択',
+      cancelText: 'キャンセル',
+      confirmText: '決定',
+    );
+
+    if (selected != null) {
+      controller.updateHappyEntryTime(selected);
+    }
+  }
+
   Future<void> _selectEntryTime() async {
     final controller = _controller;
 
@@ -69,7 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         hour: controller.settings.entryTimeHour,
         minute: controller.settings.entryTimeMinute,
       ),
-      helpText: '入園時刻を選択',
+      helpText: '公式開園予定時刻を選択',
       cancelText: 'キャンセル',
       confirmText: '決定',
     );
@@ -121,6 +165,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             return _DesktopSettingsLayout(
               settings: settings,
               controller: controller,
+              onQueueArrivalTimePressed: _selectQueueArrivalTime,
+              onHappyEntryTimePressed: _selectHappyEntryTime,
               onEntryTimePressed: _selectEntryTime,
               onExitTimePressed: _selectExitTime,
             );
@@ -129,6 +175,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           return _MobileSettingsLayout(
             settings: settings,
             controller: controller,
+            onQueueArrivalTimePressed: _selectQueueArrivalTime,
+            onHappyEntryTimePressed: _selectHappyEntryTime,
             onEntryTimePressed: _selectEntryTime,
             onExitTimePressed: _selectExitTime,
           );
@@ -142,12 +190,16 @@ class _MobileSettingsLayout extends StatelessWidget {
   const _MobileSettingsLayout({
     required this.settings,
     required this.controller,
+    required this.onQueueArrivalTimePressed,
+    required this.onHappyEntryTimePressed,
     required this.onEntryTimePressed,
     required this.onExitTimePressed,
   });
 
   final TripSettings settings;
   final SettingsController controller;
+  final VoidCallback onQueueArrivalTimePressed;
+  final VoidCallback onHappyEntryTimePressed;
   final VoidCallback onEntryTimePressed;
   final VoidCallback onExitTimePressed;
 
@@ -161,6 +213,8 @@ class _MobileSettingsLayout extends StatelessWidget {
         children: [
           const _SettingsIntroCard(),
           const SizedBox(height: AppSpacing.sm),
+          _VisitDaysCard(controller: controller),
+          const SizedBox(height: AppSpacing.sm),
           _ParkSettingsCard(
             settings: settings,
             onChanged: controller.updatePark,
@@ -168,6 +222,8 @@ class _MobileSettingsLayout extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _VisitSummaryCard(
             settings: settings,
+            onQueueArrivalTimePressed: onQueueArrivalTimePressed,
+            onHappyEntryTimePressed: onHappyEntryTimePressed,
             onEntryTimePressed: onEntryTimePressed,
             onExitTimePressed: onExitTimePressed,
             onDecreasePeople: controller.decreasePeople,
@@ -234,12 +290,16 @@ class _DesktopSettingsLayout extends StatelessWidget {
   const _DesktopSettingsLayout({
     required this.settings,
     required this.controller,
+    required this.onQueueArrivalTimePressed,
+    required this.onHappyEntryTimePressed,
     required this.onEntryTimePressed,
     required this.onExitTimePressed,
   });
 
   final TripSettings settings;
   final SettingsController controller;
+  final VoidCallback onQueueArrivalTimePressed;
+  final VoidCallback onHappyEntryTimePressed;
   final VoidCallback onEntryTimePressed;
   final VoidCallback onExitTimePressed;
 
@@ -254,6 +314,8 @@ class _DesktopSettingsLayout extends StatelessWidget {
           children: [
             const _SettingsIntroCard(),
             const SizedBox(height: AppSpacing.sm),
+            _VisitDaysCard(controller: controller),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -267,6 +329,8 @@ class _DesktopSettingsLayout extends StatelessWidget {
                       const SizedBox(height: AppSpacing.sm),
                       _VisitSummaryCard(
                         settings: settings,
+                        onQueueArrivalTimePressed: onQueueArrivalTimePressed,
+                        onHappyEntryTimePressed: onHappyEntryTimePressed,
                         onEntryTimePressed: onEntryTimePressed,
                         onExitTimePressed: onExitTimePressed,
                         onDecreasePeople: controller.decreasePeople,
@@ -336,6 +400,310 @@ class _DesktopSettingsLayout extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+Future<DateTime?> _showJapaneseDatePicker({
+  required BuildContext context,
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+  required String title,
+  required String confirmText,
+}) {
+  return showDialog<DateTime>(
+    context: context,
+    builder: (dialogContext) => _JapaneseDatePickerDialog(
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      title: title,
+      confirmText: confirmText,
+    ),
+  );
+}
+
+class _JapaneseDatePickerDialog extends StatefulWidget {
+  const _JapaneseDatePickerDialog({
+    required this.initialDate,
+    required this.firstDate,
+    required this.lastDate,
+    required this.title,
+    required this.confirmText,
+  });
+
+  final DateTime initialDate;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final String title;
+  final String confirmText;
+
+  @override
+  State<_JapaneseDatePickerDialog> createState() =>
+      _JapaneseDatePickerDialogState();
+}
+
+class _JapaneseDatePickerDialogState
+    extends State<_JapaneseDatePickerDialog> {
+  static const _weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+
+  late DateTime _selectedDate;
+  late DateTime _displayedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = DateTime(
+      widget.initialDate.year,
+      widget.initialDate.month,
+      widget.initialDate.day,
+    );
+    _displayedMonth = DateTime(_selectedDate.year, _selectedDate.month);
+  }
+
+  bool get _canGoPrevious {
+    final previous = DateTime(_displayedMonth.year, _displayedMonth.month - 1);
+    return !previous.isBefore(DateTime(widget.firstDate.year, widget.firstDate.month));
+  }
+
+  bool get _canGoNext {
+    final next = DateTime(_displayedMonth.year, _displayedMonth.month + 1);
+    return !next.isAfter(DateTime(widget.lastDate.year, widget.lastDate.month));
+  }
+
+  void _changeMonth(int offset) {
+    setState(() {
+      _displayedMonth = DateTime(
+        _displayedMonth.year,
+        _displayedMonth.month + offset,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final firstOfMonth = DateTime(_displayedMonth.year, _displayedMonth.month);
+    final daysInMonth = DateTime(
+      _displayedMonth.year,
+      _displayedMonth.month + 1,
+      0,
+    ).day;
+    final leadingEmptyCells = firstOfMonth.weekday % 7;
+    final totalCells = ((leadingEmptyCells + daysInMonth + 6) ~/ 7) * 7;
+
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 420,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.62,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: _canGoPrevious ? () => _changeMonth(-1) : null,
+                  tooltip: '前の月',
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: Text(
+                    '${_displayedMonth.year}年${_displayedMonth.month}月',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _canGoNext ? () => _changeMonth(1) : null,
+                  tooltip: '次の月',
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            GridView.count(
+              crossAxisCount: 7,
+              childAspectRatio: 1.45,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                for (final weekday in _weekdays)
+                  Center(
+                    child: Text(
+                      weekday,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                for (var index = 0; index < totalCells; index++)
+                  if (index < leadingEmptyCells ||
+                      index >= leadingEmptyCells + daysInMonth)
+                    const SizedBox.shrink()
+                  else
+                    Builder(
+                      builder: (context) {
+                        final day = index - leadingEmptyCells + 1;
+                        final date = DateTime(
+                          _displayedMonth.year,
+                          _displayedMonth.month,
+                          day,
+                        );
+                        final isSelected =
+                            date.year == _selectedDate.year &&
+                            date.month == _selectedDate.month &&
+                            date.day == _selectedDate.day;
+                        final isEnabled = !date.isBefore(widget.firstDate) &&
+                            !date.isAfter(widget.lastDate);
+
+                        return Padding(
+                          padding: const EdgeInsets.all(2),
+                          child: InkWell(
+                            onTap: isEnabled
+                                ? () => setState(() => _selectedDate = date)
+                                : null,
+                            borderRadius: BorderRadius.circular(24),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : Colors.transparent,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$day',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: isSelected
+                                        ? colorScheme.onPrimary
+                                        : isEnabled
+                                            ? colorScheme.onSurface
+                                            : colorScheme.onSurfaceVariant
+                                                .withValues(alpha: 0.45),
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '選択中：${_selectedDate.year}年${_selectedDate.month}月${_selectedDate.day}日（${_weekdays[_selectedDate.weekday % 7]}）',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('キャンセル'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_selectedDate),
+          child: Text(widget.confirmText),
+        ),
+      ],
+    );
+  }
+}
+
+class _VisitDaysCard extends StatelessWidget {
+  const _VisitDaysCard({required this.controller});
+
+  final SettingsController controller;
+
+  Future<void> _selectDate(BuildContext context) async {
+    final initial = controller.settings.visitDate ?? DateTime.now();
+    final selected = await _showJapaneseDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2025),
+      lastDate: DateTime(2035),
+      title: '来園日を選択',
+      confirmText: '決定',
+    );
+    if (selected != null) controller.updateVisitDate(selected);
+  }
+
+  Future<void> _addDay(BuildContext context) async {
+    final base = controller.settings.visitDate ?? DateTime.now();
+    final selected = await _showJapaneseDatePicker(
+      context: context,
+      initialDate: base.add(const Duration(days: 1)),
+      firstDate: DateTime(2025),
+      lastDate: DateTime(2035),
+      title: '追加する来園日を選択',
+      confirmText: '追加',
+    );
+    if (selected != null) await controller.addVisitDay(selected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.calendar_month_outlined),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: Text('来園日ごとのプラン', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+                FilledButton.tonalIcon(onPressed: () => _addDay(context), icon: const Icon(Icons.add), label: const Text('日を追加')),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text('各日を独立した1日プランとして保存します。日付を切り替えると、やりたいこと・候補・予約・作成済みプランも切り替わります。', style: theme.textTheme.bodySmall),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final dayId in controller.visitDayIds)
+                  InputChip(
+                    selected: dayId == controller.activeVisitDayId,
+                    avatar: const Icon(Icons.event_outlined, size: 18),
+                    label: Text(controller.appState.settingsForVisitDay(dayId).visitDateLabel),
+                    onPressed: () => controller.switchVisitDay(dayId),
+                    onDeleted: controller.visitDayIds.length > 1 ? () => controller.removeVisitDay(dayId) : null,
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            OutlinedButton.icon(
+              onPressed: () => _selectDate(context),
+              icon: const Icon(Icons.edit_calendar_outlined),
+              label: Text(controller.settings.visitDate == null ? '現在の来園日を設定' : '現在の来園日を変更（${controller.settings.visitDateLabel}）'),
             ),
           ],
         ),
@@ -661,6 +1029,8 @@ class _LiveDataSourceSettingsCard extends StatelessWidget {
 class _VisitSummaryCard extends StatelessWidget {
   const _VisitSummaryCard({
     required this.settings,
+    required this.onQueueArrivalTimePressed,
+    required this.onHappyEntryTimePressed,
     required this.onEntryTimePressed,
     required this.onExitTimePressed,
     required this.onDecreasePeople,
@@ -668,6 +1038,8 @@ class _VisitSummaryCard extends StatelessWidget {
   });
 
   final TripSettings settings;
+  final VoidCallback onQueueArrivalTimePressed;
+  final VoidCallback onHappyEntryTimePressed;
   final VoidCallback onEntryTimePressed;
   final VoidCallback onExitTimePressed;
   final VoidCallback onDecreasePeople;
@@ -675,36 +1047,110 @@ class _VisitSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final prediction = const EntryPredictionService().predict(settings);
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SettingsCardHeader(
             title: '来園時間・人数',
-            subtitle: '滞在時間とグループ人数',
+            subtitle: '並び始める時刻から実際の行動開始を予測します',
             icon: Icons.schedule_outlined,
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _TimeSettingButton(
-                  label: '入園',
-                  time: settings.entryTimeLabel,
-                  icon: Icons.login,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stack = constraints.maxWidth < 430;
+              final buttons = [
+                _TimeSettingButton(
+                  label: '並び開始',
+                  time: settings.queueArrivalTimeLabel,
+                  icon: Icons.people_alt_outlined,
+                  onPressed: onQueueArrivalTimePressed,
+                ),
+                if (settings.hasHappyEntry)
+                  _TimeSettingButton(
+                    label: '先行入園',
+                    time: settings.happyEntryTimeLabel,
+                    icon: Icons.hotel_class_outlined,
+                    onPressed: onHappyEntryTimePressed,
+                  ),
+                _TimeSettingButton(
+                  label: '一般開園', 
+                  time: settings.officialOpeningTimeLabel,
+                  icon: Icons.door_front_door_outlined,
                   onPressed: onEntryTimePressed,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _TimeSettingButton(
+                _TimeSettingButton(
                   label: '退園',
                   time: settings.exitTimeLabel,
                   icon: Icons.logout,
                   onPressed: onExitTimePressed,
                 ),
-              ),
-            ],
+              ];
+
+              if (stack) {
+                return Column(
+                  children: [
+                    for (var index = 0; index < buttons.length; index++) ...[
+                      SizedBox(width: double.infinity, child: buttons[index]),
+                      if (index < buttons.length - 1)
+                        const SizedBox(height: 8),
+                    ],
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  for (var index = 0; index < buttons.length; index++) ...[
+                    Expanded(child: buttons[index]),
+                    if (index < buttons.length - 1)
+                      const SizedBox(width: 8),
+                  ],
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        prediction.usesHappyEntryModel
+                            ? '先行入園予測 ${prediction.expectedEntryLabel}'
+                            : '予測入園 ${prediction.expectedEntryLabel}',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        '施設利用可能 ${prediction.firstFacilityAvailableLabel} '
+                        '（入園後操作 ${prediction.postEntryOperationMinutes}分・'
+                        '運営開始待ち ${prediction.facilityOpeningWaitMinutes}分）',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           _PeopleCounter(

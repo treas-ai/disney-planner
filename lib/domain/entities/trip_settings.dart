@@ -1,8 +1,13 @@
 class TripSettings {
   const TripSettings({
     required this.parkId,
+    this.visitDateIso = '',
     required this.entryTimeHour,
     required this.entryTimeMinute,
+    this.queueArrivalTimeHour = 7,
+    this.queueArrivalTimeMinute = 0,
+    this.happyEntryTimeHour = 8,
+    this.happyEntryTimeMinute = 45,
     required this.exitTimeHour,
     required this.exitTimeMinute,
     required this.numberOfPeople,
@@ -24,8 +29,13 @@ class TripSettings {
 
   factory TripSettings.initial() => const TripSettings(
     parkId: 'tokyo_disneysea',
+    visitDateIso: '',
     entryTimeHour: 9,
     entryTimeMinute: 0,
+    queueArrivalTimeHour: 7,
+    queueArrivalTimeMinute: 0,
+    happyEntryTimeHour: 8,
+    happyEntryTimeMinute: 45,
     exitTimeHour: 21,
     exitTimeMinute: 0,
     numberOfPeople: 1,
@@ -47,8 +57,13 @@ class TripSettings {
 
   factory TripSettings.fromJson(Map<String, dynamic> json) => TripSettings(
     parkId: json['parkId'] as String? ?? 'tokyo_disneysea',
+    visitDateIso: json['visitDateIso'] as String? ?? '',
     entryTimeHour: json['entryTimeHour'] as int? ?? 9,
     entryTimeMinute: json['entryTimeMinute'] as int? ?? 0,
+    queueArrivalTimeHour: json['queueArrivalTimeHour'] as int? ?? 7,
+    queueArrivalTimeMinute: json['queueArrivalTimeMinute'] as int? ?? 0,
+    happyEntryTimeHour: json['happyEntryTimeHour'] as int? ?? 8,
+    happyEntryTimeMinute: json['happyEntryTimeMinute'] as int? ?? 45,
     exitTimeHour: json['exitTimeHour'] as int? ?? 21,
     exitTimeMinute: json['exitTimeMinute'] as int? ?? 0,
     numberOfPeople: json['numberOfPeople'] as int? ?? 1,
@@ -70,8 +85,13 @@ class TripSettings {
   );
 
   final String parkId;
+  final String visitDateIso;
   final int entryTimeHour;
   final int entryTimeMinute;
+  final int queueArrivalTimeHour;
+  final int queueArrivalTimeMinute;
+  final int happyEntryTimeHour;
+  final int happyEntryTimeMinute;
   final int exitTimeHour;
   final int exitTimeMinute;
   final int numberOfPeople;
@@ -90,17 +110,40 @@ class TripSettings {
   final bool isRainy;
   final bool hasChildren;
 
+  DateTime? get visitDate {
+    if (visitDateIso.isEmpty) return null;
+    return DateTime.tryParse(visitDateIso);
+  }
+
+  String get visitDateLabel {
+    final date = visitDate;
+    if (date == null) return '来園日未設定';
+    return '${date.month}/${date.day}';
+  }
+
   String get entryTimeLabel =>
       '${entryTimeHour.toString().padLeft(2, '0')}:'
       '${entryTimeMinute.toString().padLeft(2, '0')}';
+  String get officialOpeningTimeLabel => entryTimeLabel;
+  String get queueArrivalTimeLabel =>
+      '${queueArrivalTimeHour.toString().padLeft(2, '0')}:'
+      '${queueArrivalTimeMinute.toString().padLeft(2, '0')}';
+  String get happyEntryTimeLabel =>
+      '${happyEntryTimeHour.toString().padLeft(2, '0')}:'
+      '${happyEntryTimeMinute.toString().padLeft(2, '0')}';
   String get exitTimeLabel =>
       '${exitTimeHour.toString().padLeft(2, '0')}:'
       '${exitTimeMinute.toString().padLeft(2, '0')}';
 
   Map<String, dynamic> toJson() => {
     'parkId': parkId,
+    'visitDateIso': visitDateIso,
     'entryTimeHour': entryTimeHour,
     'entryTimeMinute': entryTimeMinute,
+    'queueArrivalTimeHour': queueArrivalTimeHour,
+    'queueArrivalTimeMinute': queueArrivalTimeMinute,
+    'happyEntryTimeHour': happyEntryTimeHour,
+    'happyEntryTimeMinute': happyEntryTimeMinute,
     'exitTimeHour': exitTimeHour,
     'exitTimeMinute': exitTimeMinute,
     'numberOfPeople': numberOfPeople,
@@ -122,8 +165,13 @@ class TripSettings {
 
   TripSettings copyWith({
     String? parkId,
+    String? visitDateIso,
     int? entryTimeHour,
     int? entryTimeMinute,
+    int? queueArrivalTimeHour,
+    int? queueArrivalTimeMinute,
+    int? happyEntryTimeHour,
+    int? happyEntryTimeMinute,
     int? exitTimeHour,
     int? exitTimeMinute,
     int? numberOfPeople,
@@ -143,8 +191,16 @@ class TripSettings {
     bool? hasChildren,
   }) => TripSettings(
     parkId: parkId ?? this.parkId,
+    visitDateIso: visitDateIso ?? this.visitDateIso,
     entryTimeHour: entryTimeHour ?? this.entryTimeHour,
     entryTimeMinute: entryTimeMinute ?? this.entryTimeMinute,
+    queueArrivalTimeHour:
+        queueArrivalTimeHour ?? this.queueArrivalTimeHour,
+    queueArrivalTimeMinute:
+        queueArrivalTimeMinute ?? this.queueArrivalTimeMinute,
+    happyEntryTimeHour: happyEntryTimeHour ?? this.happyEntryTimeHour,
+    happyEntryTimeMinute:
+        happyEntryTimeMinute ?? this.happyEntryTimeMinute,
     exitTimeHour: exitTimeHour ?? this.exitTimeHour,
     exitTimeMinute: exitTimeMinute ?? this.exitTimeMinute,
     numberOfPeople: numberOfPeople ?? this.numberOfPeople,

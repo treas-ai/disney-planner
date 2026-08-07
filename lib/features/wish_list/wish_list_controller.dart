@@ -6,6 +6,7 @@ import '../../domain/entities/facility.dart';
 import '../../domain/entities/wish_event_pack.dart';
 import '../../domain/entities/wish_item.dart';
 import '../../domain/enums/facility_category.dart';
+import '../../domain/enums/dining_location_type.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wish_item_category.dart';
 import '../../domain/repositories/facility_repository.dart';
@@ -81,9 +82,6 @@ class WishListController extends ChangeNotifier {
     items.sort((left, right) {
       final leftState = appState.wishStateFor(left.id);
       final rightState = appState.wishStateFor(right.id);
-      if (leftState.selected != rightState.selected) {
-        return leftState.selected ? -1 : 1;
-      }
       final priorityCompare = rightState.priority.compareTo(leftState.priority);
       if (priorityCompare != 0) {
         return priorityCompare;
@@ -177,6 +175,31 @@ class WishListController extends ChangeNotifier {
     notifyListeners();
   }
 
+  int get selectedCandidateOptionCount {
+    return allItems
+        .where((item) {
+          final state = appState.wishStateFor(item.id);
+          return state.selected && !state.completed;
+        })
+        .fold<int>(
+          0,
+          (total, item) =>
+              total + (item.venueFacilityIds.isEmpty ? 1 : item.venueFacilityIds.length),
+        );
+  }
+
+  int get selectedDistinctFacilityCandidateCount {
+    return allItems
+        .where((item) {
+          final state = appState.wishStateFor(item.id);
+          return state.selected && !state.completed;
+        })
+        .expand((item) => item.venueFacilityIds)
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .length;
+  }
+
   Future<int> applySelectedItemsToPlan() async {
     final selected = allItems
         .where((item) {
@@ -217,7 +240,8 @@ class WishListController extends ChangeNotifier {
       FacilityCategory.attraction ||
       FacilityCategory.show ||
       FacilityCategory.parade ||
-      FacilityCategory.greeting => true,
+      FacilityCategory.greeting ||
+      FacilityCategory.restaurant => true,
       _ => false,
     };
   }
@@ -228,6 +252,10 @@ class WishListController extends ChangeNotifier {
       FacilityCategory.greeting => WishItemCategory.greeting,
       FacilityCategory.show ||
       FacilityCategory.parade => WishItemCategory.entertainment,
+      FacilityCategory.restaurant =>
+        facility.diningLocationType == DiningLocationType.disneyHotel
+            ? WishItemCategory.hotelRestaurant
+            : WishItemCategory.restaurant,
       _ => WishItemCategory.other,
     };
 

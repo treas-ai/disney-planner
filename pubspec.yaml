@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 7.1.2+7120
+version: 7.3.12+73120
 
 environment:
   sdk: ^3.12.2
@@ -11,7 +11,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.5
   sqflite: ^2.4.3

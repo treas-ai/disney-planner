@@ -10,6 +10,8 @@ enum WishItemCategory {
   food('フード'),
   dessert('デザート'),
   snack('スナック'),
+  restaurant('パーク内レストラン'),
+  hotelRestaurant('ホテルレストラン'),
   goods('グッズ'),
   souvenir('スーベニア'),
   photo('フォトスポット'),

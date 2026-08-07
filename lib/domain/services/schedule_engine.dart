@@ -4,6 +4,7 @@ import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
 import '../entities/schedule_item.dart';
 import '../entities/trip_settings.dart';
+import 'entry_prediction_service.dart';
 import '../enums/facility_access_method.dart';
 import '../enums/facility_category.dart';
 import '../enums/fixed_time_status.dart';
@@ -28,10 +29,10 @@ class ScheduleEngine {
   final RouteOptimizer routeOptimizer;
   final EventImpactEngine eventImpactEngine;
 
-  static const int _entryDurationMinutes = 15;
   static const int _movementDurationMinutes = 15;
   static const int _sameAreaMovementMinutes = 5;
   static const int _fallbackMealDurationMinutes = 60;
+  static const int _fallbackInParkRestaurantOpenMinutes = 10 * 60;
 
   DaySchedule generate({
     required TripSettings settings,
@@ -41,10 +42,10 @@ class ScheduleEngine {
   }) {
     final items = <ScheduleItem>[];
 
-    final entryMinutes = _toMinutes(
-      settings.entryTimeHour,
-      settings.entryTimeMinute,
-    );
+    final entryPrediction = const EntryPredictionService().predict(settings);
+    final entryMinutes = entryPrediction.expectedEntryMinutes;
+    final planningStartMinutes =
+        entryPrediction.firstFacilityAvailableMinutes;
 
     final exitMinutes = _toMinutes(
       settings.exitTimeHour,
@@ -52,7 +53,7 @@ class ScheduleEngine {
     );
 
     final entryEndMinutes = _minimum(
-      entryMinutes + _entryDurationMinutes,
+      planningStartMinutes,
       exitMinutes,
     );
 
@@ -63,7 +64,13 @@ class ScheduleEngine {
         type: ScheduleItemType.entry,
         startMinutes: entryMinutes,
         endMinutes: entryEndMinutes,
-        reason: '設定された入園時間です。',
+        reason: entryPrediction.usesHappyEntryModel
+            ? '並び開始${entryPrediction.queueArrivalLabel}、'
+                'ハッピーエントリー${entryPrediction.admissionStartLabel}、'
+                '一般開園${entryPrediction.officialOpeningLabel}を考慮しました。'
+            : '並び開始${entryPrediction.queueArrivalLabel}と'
+                '公式開園予定${entryPrediction.officialOpeningLabel}から'
+                '予測した入園時間です。',
       ),
     );
 
@@ -135,8 +142,11 @@ class ScheduleEngine {
         })
         .toList(growable: false);
 
-    final optimizedFacilities = routeOptimizer.optimize(
-      facilities: regularFacilities,
+    final optimizedFacilities = _prioritizeMorningAttractions(
+      routeOptimizer.optimize(
+        facilities: regularFacilities,
+        preferences: preferences,
+      ),
       preferences: preferences,
     );
 
@@ -195,7 +205,10 @@ class ScheduleEngine {
         movementMinutes: movementMinutes,
       );
 
-      final durationMinutes = _resolveFacilityDuration(facility);
+      final durationMinutes = _resolvePlannedFacilityDuration(
+        facility: facility,
+        preference: preference,
+      );
 
       final firstAvailableStart = _findAvailableStart(
         requestedStartMinutes: requestedStartMinutes,
@@ -257,6 +270,15 @@ class ScheduleEngine {
             waitDecision: waitDecision,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
+          estimatedWaitMinutes: facility.category == FacilityCategory.attraction
+              ? durationMinutes - _resolveFacilityDuration(facility)
+              : null,
+          experienceMinutes: facility.category == FacilityCategory.attraction
+              ? _resolveFacilityDuration(facility)
+              : null,
+          waitEstimateSource: facility.category == FacilityCategory.attraction
+              ? _waitEstimateSource(facility: facility, preference: preference)
+              : null,
         ),
       );
 
@@ -994,6 +1016,41 @@ class ScheduleEngine {
         );
   }
 
+
+  List<Facility> _prioritizeMorningAttractions(
+    List<Facility> facilities, {
+    required List<PlanPreference> preferences,
+  }) {
+    if (facilities.length <= 1) {
+      return facilities;
+    }
+
+    // 入園直後は、営業時間待ちの飲食施設を先頭に置かず、
+    // 実際に利用できるアトラクションを優先する。
+    // 先頭2枠だけを朝一枠として扱い、それ以降は既存の
+    // RouteOptimizer の順序を維持して影響範囲を限定する。
+    final morningAttractions = facilities.where((facility) {
+      if (facility.category != FacilityCategory.attraction || !facility.isOpen) {
+        return false;
+      }
+      final preference = _findPreference(
+        facilityId: facility.id,
+        preferences: preferences,
+      );
+      return preference?.fixedTimeStatus != FixedTimeStatus.confirmed;
+    }).take(2).toList(growable: false);
+
+    if (morningAttractions.isEmpty) {
+      return facilities;
+    }
+
+    final morningIds = morningAttractions.map((facility) => facility.id).toSet();
+    return <Facility>[
+      ...morningAttractions,
+      ...facilities.where((facility) => !morningIds.contains(facility.id)),
+    ];
+  }
+
   int _applyFacilitySpecificStartPriority({
     required Facility facility,
     required PlanPreference? preference,
@@ -1027,6 +1084,62 @@ class ScheduleEngine {
     return 60;
   }
 
+  int _resolvePlannedFacilityDuration({
+    required Facility facility,
+    required PlanPreference? preference,
+  }) {
+    final experienceMinutes = _resolveFacilityDuration(facility);
+
+    if (facility.category != FacilityCategory.attraction) {
+      return experienceMinutes;
+    }
+
+    final method = preference?.accessMethod ?? FacilityAccessMethod.standby;
+    final usesShortenedQueue =
+        (method == FacilityAccessMethod.dpa && facility.supportsDpa) ||
+        (method == FacilityAccessMethod.priorityPass &&
+            facility.supportsPriorityPass) ||
+        (method == FacilityAccessMethod.standbyPass &&
+            facility.supportsStandbyPass) ||
+        (preference?.useDpa == true && facility.supportsDpa) ||
+        (preference?.usePriorityPass == true &&
+            facility.supportsPriorityPass) ||
+        (preference?.useStandbyPass == true && facility.supportsStandbyPass);
+
+    // DPA/PP等でも入場から乗車までの時間は0分ではないため、
+    // 最低限のキュー・乗降バッファを確保する。
+    if (usesShortenedQueue) {
+      return experienceMinutes + 10;
+    }
+
+    final knownWaitMinutes = facility.waitTime?.minutes;
+    final fallbackWaitMinutes = switch (facility.priority.name) {
+      'highest' => 60,
+      'high' => 45,
+      'medium' => 30,
+      _ => 20,
+    };
+
+    return experienceMinutes + (knownWaitMinutes ?? fallbackWaitMinutes);
+  }
+
+  String _waitEstimateSource({
+    required Facility facility,
+    required PlanPreference? preference,
+  }) {
+    final method = preference?.accessMethod ?? FacilityAccessMethod.standby;
+    final shortened =
+        (method == FacilityAccessMethod.dpa && facility.supportsDpa) ||
+        (method == FacilityAccessMethod.priorityPass && facility.supportsPriorityPass) ||
+        (method == FacilityAccessMethod.standbyPass && facility.supportsStandbyPass) ||
+        (preference?.useDpa == true && facility.supportsDpa) ||
+        (preference?.usePriorityPass == true && facility.supportsPriorityPass) ||
+        (preference?.useStandbyPass == true && facility.supportsStandbyPass);
+    if (shortened) return 'パス利用時の暫定バッファ';
+    if (facility.waitTime != null) return '施設の待ち時間データ';
+    return '待ち時間データ未登録のため優先度別の安全側暫定値';
+  }
+
   int? _adjustStartForOperatingHours({
     required Facility facility,
     required int requestedStartMinutes,
@@ -1036,11 +1149,16 @@ class ScheduleEngine {
     final operatingHours = facility.operatingHours;
 
     if (operatingHours == null) {
-      if (requestedStartMinutes + durationMinutes > exitMinutes) {
+      final fallbackOpenMinutes = _fallbackOpeningMinutes(facility);
+      final adjustedStart = fallbackOpenMinutes == null
+          ? requestedStartMinutes
+          : _maximum(requestedStartMinutes, fallbackOpenMinutes);
+
+      if (adjustedStart + durationMinutes > exitMinutes) {
         return null;
       }
 
-      return requestedStartMinutes;
+      return adjustedStart;
     }
 
     final openMinutes = _toMinutes(
@@ -1064,6 +1182,19 @@ class ScheduleEngine {
     }
 
     return adjustedStart;
+  }
+
+
+  int? _fallbackOpeningMinutes(Facility facility) {
+    // パーク内レストランの営業時間データが未登録の場合、
+    // 入園直後へ誤配置しないよう安全側に10:00開店として扱う。
+    // ホテル・リゾート外施設は朝食営業があり得るため対象外。
+    if (facility.category == FacilityCategory.restaurant &&
+        facility.diningLocationType.name == 'inPark') {
+      return _fallbackInParkRestaurantOpenMinutes;
+    }
+
+    return null;
   }
 
   bool _fitsOperatingHours({
@@ -1533,6 +1664,9 @@ class ScheduleEngine {
     String? facilityId,
     String? reason,
     String? note,
+    int? estimatedWaitMinutes,
+    int? experienceMinutes,
+    String? waitEstimateSource,
   }) {
     return ScheduleItem(
       id: id,
@@ -1545,6 +1679,9 @@ class ScheduleEngine {
       facilityId: facilityId,
       reason: reason,
       note: note,
+      estimatedWaitMinutes: estimatedWaitMinutes,
+      experienceMinutes: experienceMinutes,
+      waitEstimateSource: waitEstimateSource,
     );
   }
 

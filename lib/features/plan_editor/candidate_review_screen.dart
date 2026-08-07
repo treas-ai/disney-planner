@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../../app/dependency/service_locator.dart';
 import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/enums/facility_category.dart';
+import '../../domain/enums/fixed_time_status.dart';
 import '../../domain/enums/priority_level.dart';
 import '../facility/plan_builder_controller.dart';
 import '../facility/plan_preference_controller.dart';
 import '../facility/widgets/plan_preference_editor.dart';
+import '../wish_list/wish_list_controller.dart';
 
 class CandidateReviewScreen extends StatefulWidget {
   const CandidateReviewScreen({
@@ -25,6 +28,7 @@ class CandidateReviewScreen extends StatefulWidget {
 class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
   PlanBuilderController? _builderController;
   PlanPreferenceController? _preferenceController;
+  WishListController? _wishListController;
   String _selectedCategory = 'attraction';
   String _filter = 'all';
   final ScrollController _candidateScrollController = ScrollController();
@@ -40,6 +44,12 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
     _builderController = PlanBuilderController(appState)..addListener(_refresh);
     _preferenceController = PlanPreferenceController(appState)
       ..addListener(_refresh);
+    _wishListController = WishListController(
+      appState: appState,
+      facilityRepository: ServiceLocator.facilityRepository,
+    )
+      ..addListener(_refresh)
+      ..load();
   }
 
   @override
@@ -48,6 +58,8 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
     _preferenceController?.removeListener(_refresh);
     _builderController?.dispose();
     _preferenceController?.dispose();
+    _wishListController?.removeListener(_refresh);
+    _wishListController?.dispose();
     _candidateScrollController.dispose();
     super.dispose();
   }
@@ -98,6 +110,7 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
     final parkId = appState.tripSettings.parkId;
     final allCandidates = appState.selectedFacilitiesForPark(parkId);
     final preferenceController = _preferenceController;
+    final wishListController = _wishListController;
 
     if (preferenceController == null) {
       return const Center(child: CircularProgressIndicator());
@@ -189,6 +202,10 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
                 0,
               ),
               child: _ReviewIntroduction(
+                selectedWishCount: appState.selectedWishCount,
+                candidateOptionCount:
+                    wishListController?.selectedCandidateOptionCount ??
+                    allCandidates.length,
                 candidateCount: allCandidates.length,
                 mustCount: mustCount,
                 compact: compact,
@@ -270,12 +287,16 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
 
 class _ReviewIntroduction extends StatelessWidget {
   const _ReviewIntroduction({
+    required this.selectedWishCount,
+    required this.candidateOptionCount,
     required this.candidateCount,
     required this.mustCount,
     required this.compact,
     required this.onResetPressed,
   });
 
+  final int selectedWishCount;
+  final int candidateOptionCount;
   final int candidateCount;
   final int mustCount;
   final bool compact;
@@ -313,8 +334,16 @@ class _ReviewIntroduction extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
+                _CandidateCountSummary(
+                  selectedWishCount: selectedWishCount,
+                  candidateOptionCount: candidateOptionCount,
+                  candidateCount: candidateCount,
+                  compact: true,
+                ),
+                const SizedBox(height: 6),
                 Text(
-                  '$candidateCount件から、優先度と不要な候補を調整します。'
+                  'プランには選んだ体験をそのまま大量追加しません。'
+                  '複数店舗で利用できる商品は、候補枠を保持したまま移動しやすい1店舗へ絞ります。'
                   '${mustCount > 0 ? ' 最優先は$mustCount件です。' : ''}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
@@ -334,9 +363,18 @@ class _ReviewIntroduction extends StatelessWidget {
                     children: [
                       title,
                       const SizedBox(height: 4),
+                      _CandidateCountSummary(
+                        selectedWishCount: selectedWishCount,
+                        candidateOptionCount: candidateOptionCount,
+                        candidateCount: candidateCount,
+                        compact: false,
+                      ),
+                      const SizedBox(height: 6),
                       Text(
-                        '$candidateCount件の候補があります。最優先にしたい体験は優先度を高くし、'
-                        '不要な候補だけ削除してください。詳細設定はカードを開いて編集できます。'
+                        '候補枠はAIが比較できる選択肢です。対象施設が候補枠より少ないのは、'
+                        '同じ店舗が複数の商品候補に含まれているためです。'
+                        '実際のプランでは、前後の予定と移動に合わせて最適な店舗だけを採用します。'
+                        ' 最優先にしたい体験は優先度を高くし、不要な候補だけ削除してください。'
                         '${mustCount > 0 ? ' 現在の最優先候補は$mustCount件です。' : ''}',
                       ),
                     ],
@@ -346,6 +384,68 @@ class _ReviewIntroduction extends StatelessWidget {
                 resetButton,
               ],
             ),
+    );
+  }
+}
+
+
+class _CandidateCountSummary extends StatelessWidget {
+  const _CandidateCountSummary({
+    required this.selectedWishCount,
+    required this.candidateOptionCount,
+    required this.candidateCount,
+    required this.compact,
+  });
+
+  final int selectedWishCount;
+  final int candidateOptionCount;
+  final int candidateCount;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <Widget>[
+      _CountBadge(label: 'やりたいこと', count: selectedWishCount),
+      const Icon(Icons.arrow_forward, size: 16),
+      _CountBadge(label: '候補枠', count: candidateOptionCount),
+      const Icon(Icons.arrow_forward, size: 16),
+      _CountBadge(label: '対象施設', count: candidateCount),
+    ];
+
+    if (compact) {
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: items,
+      );
+    }
+    return Row(children: items);
+  }
+}
+
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.label, required this.count});
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Text(
+        '$label $count件',
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+      ),
     );
   }
 }
@@ -630,6 +730,7 @@ class _CandidateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = AppStateScope.of(context);
     final preference = preferenceController.getPreference(facility.id);
     if (preference == null) {
       return const SizedBox.shrink();
@@ -687,6 +788,12 @@ class _CandidateCard extends StatelessWidget {
           PlanPreferenceEditor(
             facility: facility,
             preference: preference,
+            vacationPackageEnabled: appState.tripSettings.usesVacationPackage,
+            vacationPackageShowVoucherEnabled:
+                appState.tripSettings.hasShowVoucher,
+            vacationPackageRestaurantEnabled:
+                appState.tripSettings.hasRestaurantReservation,
+            visitDate: appState.tripSettings.visitDate,
             onPriorityChanged: (value) => preferenceController.updatePriority(
               facilityId: facility.id,
               priority: value,
@@ -712,15 +819,30 @@ class _CandidateCard extends StatelessWidget {
               facilityId: facility.id,
               value: value,
             ),
-            onReservationTimeChanged: (value) => preferenceController.updateReservationTime(
-              facilityId: facility.id,
-              value: value,
-            ),
-            onScheduledAccessTimeChanged: (value) =>
-                preferenceController.updateScheduledAccessTime(
-              facilityId: facility.id,
-              value: value,
-            ),
+            onReservationTimeChanged: (value) {
+              preferenceController.updateReservationTime(
+                facilityId: facility.id,
+                value: value,
+              );
+              preferenceController.updateFixedTimeStatus(
+                facilityId: facility.id,
+                status: value.trim().isEmpty
+                    ? FixedTimeStatus.none
+                    : FixedTimeStatus.confirmed,
+              );
+            },
+            onScheduledAccessTimeChanged: (value) {
+              preferenceController.updateScheduledAccessTime(
+                facilityId: facility.id,
+                value: value,
+              );
+              preferenceController.updateFixedTimeStatus(
+                facilityId: facility.id,
+                status: value.trim().isEmpty
+                    ? FixedTimeStatus.none
+                    : FixedTimeStatus.confirmed,
+              );
+            },
             onLotteryFallbackActionChanged: (value) =>
                 preferenceController.updateLotteryFallbackAction(
               facilityId: facility.id,
@@ -756,7 +878,7 @@ class _CandidateCard extends StatelessWidget {
   }
 }
 
-class _NoCandidatesPage extends StatelessWidget {
+class _NoCandidatesPage extends StatefulWidget {
   const _NoCandidatesPage({
     required this.compact,
     required this.onWishListPressed,
@@ -766,10 +888,26 @@ class _NoCandidatesPage extends StatelessWidget {
   final VoidCallback onWishListPressed;
 
   @override
+  State<_NoCandidatesPage> createState() => _NoCandidatesPageState();
+}
+
+class _NoCandidatesPageState extends State<_NoCandidatesPage> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scrollbar(
-      thumbVisibility: compact,
+      controller: _scrollController,
+      thumbVisibility: widget.compact,
       child: SingleChildScrollView(
+        controller: _scrollController,
+        primary: false,
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Center(
           child: ConstrainedBox(
@@ -777,15 +915,15 @@ class _NoCandidatesPage extends StatelessWidget {
             child: AppCard(
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: compact ? AppSpacing.sm : AppSpacing.lg,
-                  vertical: compact ? AppSpacing.lg : 40,
+                  horizontal: widget.compact ? AppSpacing.sm : AppSpacing.lg,
+                  vertical: widget.compact ? AppSpacing.lg : 40,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.auto_awesome_outlined,
-                      size: compact ? 44 : 56,
+                      size: widget.compact ? 44 : 56,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -805,7 +943,7 @@ class _NoCandidatesPage extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: onWishListPressed,
+                        onPressed: widget.onWishListPressed,
                         icon: const Icon(Icons.favorite_border),
                         label: const Text('やりたいことへ戻る'),
                       ),

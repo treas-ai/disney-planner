@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_spacing.dart';
@@ -11,6 +12,7 @@ import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/entities/schedule_validation_issue.dart';
+import '../../domain/services/plan_text_exporter.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
@@ -151,6 +153,45 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     );
   }
 
+  Future<void> _showPlanTextExport() async {
+    final controller = _controller;
+    final schedule = controller?.schedule;
+
+    if (controller == null || schedule == null) {
+      return;
+    }
+
+    final appState = AppStateScope.of(context);
+    const exporter = PlanTextExporter();
+
+    final simpleText = exporter.export(
+      schedule: schedule,
+      settings: appState.tripSettings,
+      parkName: controller.selectedParkName,
+      preferences: appState.planPreferences,
+      validationIssues: controller.validationIssues,
+      format: PlanTextExportFormat.simple,
+    );
+    final evaluationText = exporter.export(
+      schedule: schedule,
+      settings: appState.tripSettings,
+      parkName: controller.selectedParkName,
+      preferences: appState.planPreferences,
+      validationIssues: controller.validationIssues,
+      format: PlanTextExportFormat.evaluation,
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return _PlanTextExportDialog(
+          simpleText: simpleText,
+          evaluationText: evaluationText,
+        );
+      },
+    );
+  }
+
   Future<void> _confirmClearSchedule() async {
     final controller = _controller;
 
@@ -214,6 +255,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
               onGeneratePressed: _generateSchedule,
               onClearPressed: _confirmClearSchedule,
               onOptimizePressed: _showPlanOptimization,
+              onExportPressed: _showPlanTextExport,
               isOptimizing: _optimizationController?.isLoading ?? false,
             );
           }
@@ -224,6 +266,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
             onGeneratePressed: _generateSchedule,
             onClearPressed: _confirmClearSchedule,
             onOptimizePressed: _showPlanOptimization,
+            onExportPressed: _showPlanTextExport,
             isOptimizing: _optimizationController?.isLoading ?? false,
           );
         },
@@ -239,6 +282,7 @@ class _MobilePlanReviewLayout extends StatelessWidget {
     required this.onGeneratePressed,
     required this.onClearPressed,
     required this.onOptimizePressed,
+    required this.onExportPressed,
     required this.isOptimizing,
   });
 
@@ -247,6 +291,7 @@ class _MobilePlanReviewLayout extends StatelessWidget {
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
   final VoidCallback onOptimizePressed;
+  final VoidCallback onExportPressed;
   final bool isOptimizing;
 
   @override
@@ -266,6 +311,7 @@ class _MobilePlanReviewLayout extends StatelessWidget {
             onGeneratePressed: onGeneratePressed,
             onClearPressed: onClearPressed,
             onOptimizePressed: onOptimizePressed,
+            onExportPressed: onExportPressed,
             isOptimizing: isOptimizing,
           ),
           if (controller.errorMessage != null) ...[
@@ -300,6 +346,7 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
     required this.onGeneratePressed,
     required this.onClearPressed,
     required this.onOptimizePressed,
+    required this.onExportPressed,
     required this.isOptimizing,
   });
 
@@ -308,6 +355,7 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
   final VoidCallback onOptimizePressed;
+  final VoidCallback onExportPressed;
   final bool isOptimizing;
 
   @override
@@ -326,6 +374,7 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                   onGeneratePressed: onGeneratePressed,
                   onClearPressed: onClearPressed,
                   onOptimizePressed: onOptimizePressed,
+                  onExportPressed: onExportPressed,
                   isOptimizing: isOptimizing,
                 ),
                 if (controller.errorMessage != null) ...[
@@ -375,6 +424,7 @@ class _PlanOverviewCard extends StatelessWidget {
     required this.onGeneratePressed,
     required this.onClearPressed,
     required this.onOptimizePressed,
+    required this.onExportPressed,
     required this.isOptimizing,
   });
 
@@ -382,6 +432,7 @@ class _PlanOverviewCard extends StatelessWidget {
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
   final VoidCallback onOptimizePressed;
+  final VoidCallback onExportPressed;
   final bool isOptimizing;
 
   @override
@@ -495,6 +546,15 @@ class _PlanOverviewCard extends StatelessWidget {
                       )
                     : const Icon(Icons.psychology_alt_outlined, size: 19),
                 label: Text(isOptimizing ? 'AI改善中...' : 'AIでもっと良くする'),
+              ),
+            ),
+            const SizedBox(height: 7),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onExportPressed,
+                icon: const Icon(Icons.text_snippet_outlined, size: 19),
+                label: const Text('プランを文章で出力'),
               ),
             ),
             const SizedBox(height: 7),
@@ -1564,4 +1624,123 @@ class _ScheduleItemVisualStyle {
   final IconData icon;
   final Color color;
   final Color backgroundColor;
+}
+
+class _PlanTextExportDialog extends StatefulWidget {
+  const _PlanTextExportDialog({
+    required this.simpleText,
+    required this.evaluationText,
+  });
+
+  final String simpleText;
+  final String evaluationText;
+
+  @override
+  State<_PlanTextExportDialog> createState() => _PlanTextExportDialogState();
+}
+
+class _PlanTextExportDialogState extends State<_PlanTextExportDialog> {
+  final ScrollController _scrollController = ScrollController();
+  PlanTextExportFormat _format = PlanTextExportFormat.simple;
+
+  String get _text => switch (_format) {
+    PlanTextExportFormat.simple => widget.simpleText,
+    PlanTextExportFormat.evaluation => widget.evaluationText,
+  };
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: _text));
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('プラン文章をコピーしました。')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+
+    return AlertDialog(
+      title: const Text('プランを文章で出力'),
+      content: SizedBox(
+        width: size.width < 700 ? size.width : 680,
+        height: size.height * 0.65,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SegmentedButton<PlanTextExportFormat>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: PlanTextExportFormat.simple,
+                  icon: Icon(Icons.short_text),
+                  label: Text('簡易版'),
+                ),
+                ButtonSegment(
+                  value: PlanTextExportFormat.evaluation,
+                  icon: Icon(Icons.analytics_outlined),
+                  label: Text('AI評価用'),
+                ),
+              ],
+              selected: {_format},
+              onSelectionChanged: (values) {
+                setState(() => _format = values.first);
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                child: Scrollbar(
+                  controller: _scrollController,
+                  thumbVisibility: true,
+                  interactive: true,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    child: SelectableText(
+                      _text,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        height: 1.5,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('閉じる'),
+        ),
+        FilledButton.icon(
+          onPressed: _copy,
+          icon: const Icon(Icons.copy),
+          label: const Text('コピー'),
+        ),
+      ],
+    );
+  }
 }

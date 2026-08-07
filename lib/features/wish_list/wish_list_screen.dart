@@ -20,10 +20,10 @@ class WishListScreen extends StatefulWidget {
   final ValueChanged<bool> onFlowContinueAvailabilityChanged;
 
   @override
-  State<WishListScreen> createState() => _WishListScreenState();
+  State<WishListScreen> createState() => WishListScreenState();
 }
 
-class _WishListScreenState extends State<WishListScreen> {
+class WishListScreenState extends State<WishListScreen> {
   WishListController? _wishController;
   GuidedPlanningController? _chatController;
   bool _showList = false;
@@ -72,7 +72,7 @@ class _WishListScreenState extends State<WishListScreen> {
     super.dispose();
   }
 
-  Future<void> _applyAndContinue() async {
+  Future<void> applyAndContinue() async {
     final added = await wishController.applySelectedItemsToPlan();
     if (!mounted) {
       return;
@@ -213,7 +213,6 @@ class _WishListScreenState extends State<WishListScreen> {
                     child: _showList
                         ? _CompactWishList(
                             controller: wishController,
-                            onContinue: _applyAndContinue,
                           )
                         : _GuidedWizard(
                             controller: chatController,
@@ -1524,10 +1523,9 @@ class _GuidedProcessingOverlay extends StatelessWidget {
 }
 
 class _CompactWishList extends StatefulWidget {
-  const _CompactWishList({required this.controller, required this.onContinue});
+  const _CompactWishList({required this.controller});
 
   final WishListController controller;
-  final VoidCallback onContinue;
 
   @override
   State<_CompactWishList> createState() => _CompactWishListState();
@@ -1546,7 +1544,6 @@ class _CompactWishListState extends State<_CompactWishList> {
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     final controller = widget.controller;
-    final onContinue = widget.onContinue;
     final items = controller.visibleItems;
     final showFreeDrink =
         appState.tripSettings.usesVacationPackage &&
@@ -1562,20 +1559,34 @@ class _CompactWishListState extends State<_CompactWishList> {
               Expanded(
                 child: Text(
                   '現在楽しめるもの ${items.length}件・選択 '
-                  '${appState.selectedWishCount}件',
+                  '${appState.selectedWishCount}件・候補枠 '
+                  '${controller.selectedCandidateOptionCount}件',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              FilledButton.icon(
-                onPressed: onContinue,
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('候補確認へ'),
-              ),
             ],
           ),
         ),
+        if (controller.selectedCandidateOptionCount >
+            controller.selectedDistinctFacilityCandidateCount)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '複数メニューで同じ店舗を利用できる場合も、販売店舗はすべて候補に保持します。'
+                '候補確認では同一店舗をまとめて表示します。',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: TextField(
@@ -1701,6 +1712,16 @@ class _CompactWishListState extends State<_CompactWishList> {
         },
       ),
       const _WishGroupDefinition(
+        title: 'パーク内レストラン',
+        icon: Icons.restaurant_menu_outlined,
+        categories: {WishItemCategory.restaurant},
+      ),
+      const _WishGroupDefinition(
+        title: 'ホテルレストラン',
+        icon: Icons.hotel_outlined,
+        categories: {WishItemCategory.hotelRestaurant},
+      ),
+      const _WishGroupDefinition(
         title: '乗りたい',
         icon: Icons.attractions_outlined,
         categories: {WishItemCategory.attraction},
@@ -1755,7 +1776,7 @@ class _CompactWishListState extends State<_CompactWishList> {
     parts.add(
       item.venueNames.length == 1
           ? item.venueNames.first
-          : '${item.venueNames.length}店舗',
+          : '${item.venueNames.length}店舗から最適なお店を選びます',
     );
     return parts.join('・');
   }

@@ -29,6 +29,25 @@ class AppState extends ChangeNotifier {
 
   TripSettings tripSettings = TripSettings.initial();
 
+  final List<String> _visitDayOrder = <String>['day-1'];
+  final Map<String, Map<String, dynamic>> _visitDayStates = {};
+  String _activeVisitDayId = 'day-1';
+
+  List<String> get visitDayIds => List<String>.unmodifiable(_visitDayOrder);
+  String get activeVisitDayId => _activeVisitDayId;
+  bool get hasMultipleVisitDays => _visitDayOrder.length > 1;
+
+  TripSettings settingsForVisitDay(String dayId) {
+    if (dayId == _activeVisitDayId) return tripSettings;
+    final raw = _visitDayStates[dayId]?['tripSettings'];
+    if (raw is Map) {
+      return TripSettings.fromJson({
+        for (final entry in raw.entries) entry.key.toString(): entry.value,
+      });
+    }
+    return TripSettings.initial();
+  }
+
   final List<Facility> _selectedFacilities = [];
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
   final Map<String, WishItemState> _wishStatesByItemId = {};
@@ -89,6 +108,32 @@ class AppState extends ChangeNotifier {
       final json = await _storage.load();
 
       if (json == null) {
+        return;
+      }
+
+      final rawVisitDayStates = json['visitDayStates'];
+      if (rawVisitDayStates is Map && rawVisitDayStates.isNotEmpty) {
+        _visitDayStates.clear();
+        for (final entry in rawVisitDayStates.entries) {
+          if (entry.value is Map) {
+            _visitDayStates[entry.key.toString()] = {
+              for (final stateEntry in (entry.value as Map).entries)
+                stateEntry.key.toString(): stateEntry.value,
+            };
+          }
+        }
+        final order = _readStringList(json['visitDayOrder']);
+        _visitDayOrder
+          ..clear()
+          ..addAll(order.where(_visitDayStates.containsKey));
+        if (_visitDayOrder.isEmpty) {
+          _visitDayOrder.addAll(_visitDayStates.keys);
+        }
+        final savedActive = json['activeVisitDayId'] as String?;
+        _activeVisitDayId = savedActive != null && _visitDayStates.containsKey(savedActive)
+            ? savedActive
+            : _visitDayOrder.first;
+        await _restoreDayState(_visitDayStates[_activeVisitDayId]!);
         return;
       }
 
@@ -178,6 +223,8 @@ class AppState extends ChangeNotifier {
       _scheduleRedoHistory
         ..clear()
         ..addAll(_readScheduleList(json['scheduleRedoHistory']));
+
+      _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
     } catch (error, stackTrace) {
       debugPrint('AppStateの復元に失敗しました: $error');
 
@@ -226,11 +273,17 @@ class AppState extends ChangeNotifier {
     daySchedule = null;
     _scheduleUndoHistory.clear();
     _scheduleRedoHistory.clear();
+    _visitDayOrder
+      ..clear()
+      ..add('day-1');
+    _visitDayStates.clear();
+    _activeVisitDayId = 'day-1';
 
     notifyListeners();
   }
 
   Map<String, dynamic> toJson() {
+    _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
     return {
       'tripSettings': tripSettings.toJson(),
       'selectedFacilityIds': _selectedFacilities
@@ -249,7 +302,59 @@ class AppState extends ChangeNotifier {
       'scheduleRedoHistory': _scheduleRedoHistory
           .map((schedule) => schedule.toJson())
           .toList(),
+      'visitDayOrder': _visitDayOrder,
+      'activeVisitDayId': _activeVisitDayId,
+      'visitDayStates': _visitDayStates,
     };
+  }
+
+  Future<void> addVisitDay({required DateTime date, required String parkId}) async {
+    _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
+    final normalized = DateTime(date.year, date.month, date.day);
+    var dayId = normalized.toIso8601String().split('T').first;
+    var suffix = 2;
+    while (_visitDayStates.containsKey(dayId)) {
+      dayId = '${normalized.toIso8601String().split('T').first}-$suffix';
+      suffix++;
+    }
+    final settings = TripSettings.initial().copyWith(
+      visitDateIso: normalized.toIso8601String(),
+      parkId: parkId,
+      numberOfPeople: tripSettings.numberOfPeople,
+    );
+    _visitDayStates[dayId] = _emptyDayState(settings);
+    _visitDayOrder.add(dayId);
+    _activeVisitDayId = dayId;
+    await _restoreDayState(_visitDayStates[dayId]!);
+    _saveAndNotify();
+  }
+
+  Future<void> switchVisitDay(String dayId) async {
+    if (dayId == _activeVisitDayId || !_visitDayStates.containsKey(dayId)) return;
+    _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
+    _activeVisitDayId = dayId;
+    await _restoreDayState(_visitDayStates[dayId]!);
+    notifyListeners();
+    await save();
+  }
+
+  Future<void> removeVisitDay(String dayId) async {
+    if (_visitDayOrder.length <= 1 || !_visitDayStates.containsKey(dayId)) return;
+    final index = _visitDayOrder.indexOf(dayId);
+    _visitDayOrder.remove(dayId);
+    _visitDayStates.remove(dayId);
+    if (_activeVisitDayId == dayId) {
+      _activeVisitDayId = _visitDayOrder[index.clamp(0, _visitDayOrder.length - 1).toInt()];
+      await _restoreDayState(_visitDayStates[_activeVisitDayId]!);
+    }
+    _saveAndNotify();
+  }
+
+  void updateActiveVisitDate(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    tripSettings = tripSettings.copyWith(visitDateIso: normalized.toIso8601String());
+    daySchedule = null;
+    _saveAndNotify();
   }
 
   void updateTripSettings(TripSettings settings) {
@@ -892,12 +997,80 @@ class AppState extends ChangeNotifier {
     return value.whereType<String>().toList(growable: false);
   }
 
+  Map<String, dynamic> _currentDayStateJson() {
+    return {
+      'tripSettings': tripSettings.toJson(),
+      'selectedFacilityIds': _selectedFacilities.map((facility) => facility.id).toList(),
+      'planPreferences': _preferencesByFacilityId.values.map((value) => value.toJson()).toList(),
+      'wishItemStates': _wishStatesByItemId.values.map((value) => value.toJson()).toList(),
+      'daySchedule': daySchedule?.toJson(),
+      'scheduleUndoHistory': _scheduleUndoHistory.map((value) => value.toJson()).toList(),
+      'scheduleRedoHistory': _scheduleRedoHistory.map((value) => value.toJson()).toList(),
+    };
+  }
+
+  Map<String, dynamic> _emptyDayState(TripSettings settings) {
+    return {
+      'tripSettings': settings.toJson(),
+      'selectedFacilityIds': <String>[],
+      'planPreferences': <dynamic>[],
+      'wishItemStates': <dynamic>[],
+      'daySchedule': null,
+      'scheduleUndoHistory': <dynamic>[],
+      'scheduleRedoHistory': <dynamic>[],
+    };
+  }
+
+  Future<void> _restoreDayState(Map<String, dynamic> state) async {
+    final rawSettings = state['tripSettings'];
+    if (rawSettings is Map) {
+      tripSettings = TripSettings.fromJson({
+        for (final entry in rawSettings.entries) entry.key.toString(): entry.value,
+      });
+    }
+    await _restoreSelectedFacilities(_readStringList(state['selectedFacilityIds']));
+    _preferencesByFacilityId.clear();
+    final rawPreferences = state['planPreferences'];
+    if (rawPreferences is List) {
+      for (final item in rawPreferences.whereType<Map>()) {
+        final preference = PlanPreference.fromJson({
+          for (final entry in item.entries) entry.key.toString(): entry.value,
+        });
+        if (isFacilitySelected(preference.facilityId)) {
+          _preferencesByFacilityId[preference.facilityId] = preference;
+        }
+      }
+    }
+    _createMissingPreferences();
+    _wishStatesByItemId.clear();
+    final rawWishStates = state['wishItemStates'];
+    if (rawWishStates is List) {
+      for (final item in rawWishStates.whereType<Map>()) {
+        final value = WishItemState.fromJson({
+          for (final entry in item.entries) entry.key.toString(): entry.value,
+        });
+        if (value.itemId.isNotEmpty) _wishStatesByItemId[value.itemId] = value;
+      }
+    }
+    final rawSchedule = state['daySchedule'];
+    daySchedule = rawSchedule is Map
+        ? DaySchedule.fromJson({for (final entry in rawSchedule.entries) entry.key.toString(): entry.value})
+        : null;
+    _scheduleUndoHistory
+      ..clear()
+      ..addAll(_readScheduleList(state['scheduleUndoHistory']));
+    _scheduleRedoHistory
+      ..clear()
+      ..addAll(_readScheduleList(state['scheduleRedoHistory']));
+  }
+
   void _invalidateScheduleAndSave() {
     daySchedule = null;
     _saveAndNotify();
   }
 
   void _saveAndNotify() {
+    _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
     notifyListeners();
     save();
   }

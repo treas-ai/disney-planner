@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../data/local/onboarding_preferences.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import 'app_theme.dart';
