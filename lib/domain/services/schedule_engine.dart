@@ -39,6 +39,7 @@ class ScheduleEngine {
     required List<Facility> facilities,
     required List<PlanPreference> preferences,
     List<EventImpact> eventImpacts = const [],
+    Map<String, double> morningScores = const {},
   }) {
     final items = <ScheduleItem>[];
     final visitDate = settings.visitDate ?? DateTime.now();
@@ -170,6 +171,7 @@ class ScheduleEngine {
         preferences: preferences,
       ),
       preferences: preferences,
+      morningScores: morningScores,
     );
 
     var currentMinutes = entryEndMinutes;
@@ -1045,6 +1047,7 @@ class ScheduleEngine {
   List<Facility> _prioritizeMorningAttractions(
     List<Facility> facilities, {
     required List<PlanPreference> preferences,
+    Map<String, double> morningScores = const {},
   }) {
     if (facilities.length <= 1) {
       return facilities;
@@ -1063,15 +1066,32 @@ class ScheduleEngine {
         preferences: preferences,
       );
       return preference?.fixedTimeStatus != FixedTimeStatus.confirmed;
-    }).take(2).toList(growable: false);
+    }).toList(growable: false)
+      ..sort((a, b) {
+        final aScore = morningScores[a.id];
+        final bScore = morningScores[b.id];
+        if (aScore != null || bScore != null) {
+          final scoreCompare = (bScore ?? double.negativeInfinity)
+              .compareTo(aScore ?? double.negativeInfinity);
+          if (scoreCompare != 0) return scoreCompare;
+        }
+        final aPref = _findPreference(facilityId: a.id, preferences: preferences);
+        final bPref = _findPreference(facilityId: b.id, preferences: preferences);
+        final priorityCompare = (bPref?.priority.value ?? b.priority.value)
+            .compareTo(aPref?.priority.value ?? a.priority.value);
+        if (priorityCompare != 0) return priorityCompare;
+        return a.displayOrder.compareTo(b.displayOrder);
+      });
 
-    if (morningAttractions.isEmpty) {
+    final topMorningAttractions = morningAttractions.take(2).toList(growable: false);
+
+    if (topMorningAttractions.isEmpty) {
       return facilities;
     }
 
-    final morningIds = morningAttractions.map((facility) => facility.id).toSet();
+    final morningIds = topMorningAttractions.map((facility) => facility.id).toSet();
     return <Facility>[
-      ...morningAttractions,
+      ...topMorningAttractions,
       ...facilities.where((facility) => !morningIds.contains(facility.id)),
     ];
   }

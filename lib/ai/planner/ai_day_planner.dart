@@ -49,6 +49,7 @@ class AiDayPlanner {
       availableMinutes: availableMinutes,
       targetBand: targetBand,
       targetDate: targetDate,
+      hasHappyEntry: settings.hasHappyEntry,
     );
     final selected = scoringEngine.selectRealisticCount(
       scored: ranked,
@@ -76,6 +77,10 @@ class AiDayPlanner {
       facilities: selectedFacilities,
       preferences: allocation.preferences,
       eventImpacts: eventImpacts,
+      morningScores: {
+        for (final candidate in ranked)
+          candidate.facility.id: candidate.firstMoveScore ?? candidate.score,
+      },
     );
 
     return AiPlanResult(
