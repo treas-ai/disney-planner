@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'master_data_validator.dart';
@@ -83,6 +85,9 @@ class MasterDataLoader {
       'open_minute': row['openMinute'],
       'close_hour': row['closeHour'],
       'close_minute': row['closeMinute'],
+      'operating_schedules_json': row['operatingSchedules'] == null
+          ? null
+          : jsonEncode(row['operatingSchedules']),
       'priority': row['priority'] ?? 'medium',
       'status': row['status'] ?? 'open',
       'description': row['description'],
@@ -100,6 +105,11 @@ class MasterDataLoader {
       'requires_reservation': _boolToInteger(row['requiresReservation']),
       'is_seasonal': _boolToInteger(row['isSeasonal']),
       'is_operating': _boolToInteger(row['isOperating'], defaultValue: true),
+      'operating_status': row['operatingStatus'] ?? 'operating',
+      'closure_start_date': row['closureStartDate'],
+      'closure_end_date': row['closureEndDate'],
+      'operating_status_note': row['operatingStatusNote'],
+      'operating_status_checked_at': row['operatingStatusCheckedAt'],
       'min_height': row['minHeight'],
       'target_age': row['targetAge'],
       'display_order': row['displayOrder'] ?? 0,

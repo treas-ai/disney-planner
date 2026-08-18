@@ -41,6 +41,17 @@ class ScheduleEngine {
     List<EventImpact> eventImpacts = const [],
   }) {
     final items = <ScheduleItem>[];
+    final visitDate = settings.visitDate ?? DateTime.now();
+
+    final operationalFacilities = facilities.where((facility) {
+      if (!facility.canAddToPlanAt(visitDate)) {
+        return false;
+      }
+
+      // 営業時間未登録は「休止」ではないため候補から消さない。\n      // 休止・終了は canAddToPlanAt() でハード除外し、\n      // 日別営業時間が登録済みならその時間枠を優先する。
+
+      return true;
+    }).toList(growable: false);
 
     final entryPrediction = const EntryPredictionService().predict(settings);
     final entryMinutes = entryPrediction.expectedEntryMinutes;
@@ -76,31 +87,34 @@ class ScheduleEngine {
 
     final fixedRestaurantFacilityIds = _addConfirmedRestaurantReservations(
       items: items,
-      facilities: facilities,
+      facilities: operationalFacilities,
       preferences: preferences,
       entryMinutes: entryEndMinutes,
       exitMinutes: exitMinutes,
+      targetDate: visitDate,
     );
 
     final fixedPerformanceFacilityIds = _addFixedPerformanceFacilities(
       items: items,
-      facilities: facilities,
+      facilities: operationalFacilities,
       preferences: preferences,
       entryMinutes: entryEndMinutes,
       exitMinutes: exitMinutes,
+      targetDate: visitDate,
     );
 
     final fixedAccessFacilityIds = _addFixedAccessFacilities(
       items: items,
-      facilities: facilities,
+      facilities: operationalFacilities,
       preferences: preferences,
       entryMinutes: entryEndMinutes,
       exitMinutes: exitMinutes,
+      targetDate: visitDate,
     );
 
     final mealPlan = mealPlanner.plan(
       settings: settings,
-      facilities: facilities,
+      facilities: operationalFacilities,
       preferences: preferences,
     );
 
@@ -114,6 +128,7 @@ class ScheduleEngine {
         preferences: preferences,
         entryMinutes: entryEndMinutes,
         exitMinutes: exitMinutes,
+        targetDate: visitDate,
       );
     }
 
@@ -125,7 +140,7 @@ class ScheduleEngine {
       exitMinutes: exitMinutes,
     );
 
-    final regularFacilities = facilities
+    final regularFacilities = operationalFacilities
         .where((facility) {
           final isAssignedRestaurant =
               facility.category == FacilityCategory.restaurant &&
@@ -161,10 +176,6 @@ class ScheduleEngine {
     String? previousAreaId;
 
     for (final facility in optimizedFacilities) {
-      if (!facility.isOpen) {
-        continue;
-      }
-
       final preference = _findPreference(
         facilityId: facility.id,
         preferences: preferences,
@@ -233,6 +244,7 @@ class ScheduleEngine {
         requestedStartMinutes: firstAvailableStart,
         durationMinutes: durationMinutes,
         exitMinutes: exitMinutes,
+        targetDate: visitDate,
       );
 
       if (adjustedStartMinutes == null) {
@@ -254,6 +266,7 @@ class ScheduleEngine {
         facility: facility,
         startMinutes: finalStartMinutes,
         durationMinutes: durationMinutes,
+        targetDate: visitDate,
       )) {
         continue;
       }
@@ -332,12 +345,13 @@ class ScheduleEngine {
     required List<PlanPreference> preferences,
     required int entryMinutes,
     required int exitMinutes,
+    required DateTime targetDate,
   }) {
     final added = <String>{};
     final candidates =
         facilities
             .where((facility) {
-              if (!facility.isOpen || !facility.isRestaurant) {
+              if (!facility.isRestaurant) {
                 return false;
               }
               final preference = _findPreference(
@@ -382,6 +396,7 @@ class ScheduleEngine {
         facility: facility,
         startMinutes: start,
         durationMinutes: diningDuration,
+        targetDate: targetDate,
       )) {
         continue;
       }
@@ -418,12 +433,13 @@ class ScheduleEngine {
     required List<PlanPreference> preferences,
     required int entryMinutes,
     required int exitMinutes,
+    required DateTime targetDate,
   }) {
     final addedFacilityIds = <String>{};
 
     final candidates = facilities
         .where((facility) {
-          return facility.isOpen && _isShowOrParade(facility);
+          return _isShowOrParade(facility);
         })
         .map((facility) {
           return _FixedPerformanceCandidate(
@@ -522,6 +538,7 @@ class ScheduleEngine {
     required List<PlanPreference> preferences,
     required int entryMinutes,
     required int exitMinutes,
+    required DateTime targetDate,
   }) {
     final addedFacilityIds = <String>{};
 
@@ -538,8 +555,7 @@ class ScheduleEngine {
         .where((candidate) {
           final preference = candidate.preference;
 
-          if (!candidate.facility.isOpen ||
-              preference == null ||
+          if (preference == null ||
               preference.fixedTimeStatus != FixedTimeStatus.confirmed ||
               !preference.hasScheduledAccessTime ||
               _isShowOrParade(candidate.facility) ||
@@ -588,6 +604,7 @@ class ScheduleEngine {
         facility: facility,
         startMinutes: fixedStartMinutes,
         durationMinutes: durationMinutes,
+        targetDate: targetDate,
       )) {
         continue;
       }
@@ -689,12 +706,9 @@ class ScheduleEngine {
     required List<PlanPreference> preferences,
     required int entryMinutes,
     required int exitMinutes,
+    required DateTime targetDate,
   }) {
     final facility = assignment.facility;
-
-    if (!facility.isOpen) {
-      return;
-    }
 
     final preference = _findPreference(
       facilityId: facility.id,
@@ -736,6 +750,7 @@ class ScheduleEngine {
         facility: facility,
         startMinutes: requestedStartMinutes,
         durationMinutes: durationMinutes,
+        targetDate: targetDate,
       )) {
         return;
       }
@@ -777,6 +792,7 @@ class ScheduleEngine {
       requestedStartMinutes: requestedStartMinutes,
       durationMinutes: durationMinutes,
       exitMinutes: exitMinutes,
+      targetDate: targetDate,
     );
 
     if (adjustedStartMinutes == null) {
@@ -803,6 +819,7 @@ class ScheduleEngine {
       facility: facility,
       startMinutes: startMinutes,
       durationMinutes: durationMinutes,
+      targetDate: targetDate,
     )) {
       return;
     }
@@ -1038,7 +1055,7 @@ class ScheduleEngine {
     // 先頭2枠だけを朝一枠として扱い、それ以降は既存の
     // RouteOptimizer の順序を維持して影響範囲を限定する。
     final morningAttractions = facilities.where((facility) {
-      if (facility.category != FacilityCategory.attraction || !facility.isOpen) {
+      if (facility.category != FacilityCategory.attraction) {
         return false;
       }
       final preference = _findPreference(
@@ -1153,10 +1170,11 @@ class ScheduleEngine {
     required int requestedStartMinutes,
     required int durationMinutes,
     required int exitMinutes,
+    required DateTime targetDate,
   }) {
-    final operatingHours = facility.operatingHours;
+    final windows = facility.operatingWindowsFor(targetDate);
 
-    if (operatingHours == null) {
+    if (windows.isEmpty) {
       final fallbackOpenMinutes = _fallbackOpeningMinutes(facility);
       final adjustedStart = fallbackOpenMinutes == null
           ? requestedStartMinutes
@@ -1169,34 +1187,27 @@ class ScheduleEngine {
       return adjustedStart;
     }
 
-    final openMinutes = _toMinutes(
-      operatingHours.open.hour,
-      operatingHours.open.minute,
-    );
+    final sorted = [...windows]
+      ..sort((a, b) => a.open.compareTo(b.open));
 
-    final closeMinutes = _toMinutes(
-      operatingHours.close.hour,
-      operatingHours.close.minute,
-    );
+    for (final window in sorted) {
+      final openMinutes = _toMinutes(window.open.hour, window.open.minute);
+      final closeMinutes = _toMinutes(window.close.hour, window.close.minute);
+      final adjustedStart = _maximum(requestedStartMinutes, openMinutes);
+      final end = adjustedStart + durationMinutes;
 
-    final adjustedStart = _maximum(requestedStartMinutes, openMinutes);
-
-    if (adjustedStart + durationMinutes > closeMinutes) {
-      return null;
+      if (end <= closeMinutes && end <= exitMinutes) {
+        return adjustedStart;
+      }
     }
 
-    if (adjustedStart + durationMinutes > exitMinutes) {
-      return null;
-    }
-
-    return adjustedStart;
+    return null;
   }
 
-
   int? _fallbackOpeningMinutes(Facility facility) {
-    // パーク内レストランの営業時間データが未登録の場合、
-    // 入園直後へ誤配置しないよう安全側に10:00開店として扱う。
-    // ホテル・リゾート外施設は朝食営業があり得るため対象外。
+    // 来園日未設定のデバッグ等では従来互換として10:00を使う。
+    // 来園日設定済みの本番プランでは、上流で公式営業時間不明の
+    // レストラン・ショップを自動配置対象から除外する。
     if (facility.category == FacilityCategory.restaurant &&
         facility.diningLocationType.name == 'inPark') {
       return _fallbackInParkRestaurantOpenMinutes;
@@ -1209,26 +1220,21 @@ class ScheduleEngine {
     required Facility facility,
     required int startMinutes,
     required int durationMinutes,
+    required DateTime targetDate,
   }) {
-    final operatingHours = facility.operatingHours;
+    final windows = facility.operatingWindowsFor(targetDate);
 
-    if (operatingHours == null) {
+    if (windows.isEmpty) {
       return true;
     }
 
-    final openMinutes = _toMinutes(
-      operatingHours.open.hour,
-      operatingHours.open.minute,
-    );
-
-    final closeMinutes = _toMinutes(
-      operatingHours.close.hour,
-      operatingHours.close.minute,
-    );
-
     final endMinutes = startMinutes + durationMinutes;
 
-    return startMinutes >= openMinutes && endMinutes <= closeMinutes;
+    return windows.any((window) {
+      final openMinutes = _toMinutes(window.open.hour, window.open.minute);
+      final closeMinutes = _toMinutes(window.close.hour, window.close.minute);
+      return startMinutes >= openMinutes && endMinutes <= closeMinutes;
+    });
   }
 
   bool _hasBreakfastTime(TripSettings settings) {

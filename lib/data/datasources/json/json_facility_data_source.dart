@@ -128,6 +128,7 @@ class JsonFacilityDataSource implements FacilityDataSource {
       'open_minute': row['openMinute'],
       'close_hour': row['closeHour'],
       'close_minute': row['closeMinute'],
+      'operating_schedules_json': row['operatingSchedules'],
       'priority': row['priority'],
       'status': row['status'],
       'description': row['description'],

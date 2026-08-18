@@ -321,7 +321,8 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
       score -= 45;
     }
 
-    if (!facility.isOpen) {
+    final targetDate = settings.visitDate ?? DateTime.now();
+    if (!facility.canAddToPlanAt(targetDate)) {
       score -= 1000;
     }
 

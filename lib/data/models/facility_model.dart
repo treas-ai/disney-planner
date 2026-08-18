@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../domain/entities/facility.dart';
 import '../../domain/enums/dining_location_type.dart';
 import '../../domain/enums/facility_category.dart';
@@ -40,6 +42,9 @@ class FacilityModel {
         longitude: _readDouble(map['longitude']),
       ),
       operatingHours: _readOperatingHours(map, targetDate: date),
+      operatingHoursByDate: _readOperatingHoursByDate(
+        map['operating_schedules_json'],
+      ),
       waitTime: _readWaitTime(map),
       reservation: _readReservation(map),
       priority: _readPriorityLevel(map['priority']),
@@ -106,6 +111,9 @@ class FacilityModel {
       'open_minute': facility.operatingHours?.open.minute,
       'close_hour': facility.operatingHours?.close.hour,
       'close_minute': facility.operatingHours?.close.minute,
+      'operating_schedules_json': _encodeOperatingHoursByDate(
+        facility.operatingHoursByDate,
+      ),
       'priority': facility.priority.name,
       'status': facility.status.name,
       'description': facility.description,
@@ -273,6 +281,129 @@ class FacilityModel {
         closeMinute,
       ),
     );
+  }
+
+
+  static Map<String, List<OperatingHours>> _readOperatingHoursByDate(
+    Object? value,
+  ) {
+    if (value == null) {
+      return const <String, List<OperatingHours>>{};
+    }
+
+    Object? decoded = value;
+    if (value is String) {
+      if (value.trim().isEmpty) {
+        return const <String, List<OperatingHours>>{};
+      }
+      try {
+        decoded = jsonDecode(value);
+      } catch (_) {
+        return const <String, List<OperatingHours>>{};
+      }
+    }
+
+    if (decoded is! Map) {
+      return const <String, List<OperatingHours>>{};
+    }
+
+    final result = <String, List<OperatingHours>>{};
+
+    for (final entry in decoded.entries) {
+      final dateKey = entry.key.toString();
+      final date = DateTime.tryParse(dateKey);
+      final rawWindows = entry.value;
+
+      if (date == null || rawWindows is! List) {
+        continue;
+      }
+
+      final windows = <OperatingHours>[];
+      for (final raw in rawWindows) {
+        if (raw is! Map) {
+          continue;
+        }
+
+        final open = _parseClock(raw['open']);
+        final close = _parseClock(raw['close']);
+        if (open == null || close == null) {
+          continue;
+        }
+
+        windows.add(
+          OperatingHours(
+            open: DateTime(
+              date.year,
+              date.month,
+              date.day,
+              open.$1,
+              open.$2,
+            ),
+            close: DateTime(
+              date.year,
+              date.month,
+              date.day,
+              close.$1,
+              close.$2,
+            ),
+          ),
+        );
+      }
+
+      result[dateKey] = List<OperatingHours>.unmodifiable(windows);
+    }
+
+    return Map<String, List<OperatingHours>>.unmodifiable(result);
+  }
+
+  static (int, int)? _parseClock(Object? value) {
+    if (value is! String) {
+      return null;
+    }
+
+    final parts = value.trim().split(':');
+    if (parts.length != 2) {
+      return null;
+    }
+
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+
+    return (hour, minute);
+  }
+
+  static String? _encodeOperatingHoursByDate(
+    Map<String, List<OperatingHours>> value,
+  ) {
+    if (value.isEmpty) {
+      return null;
+    }
+
+    final encoded = <String, Object?>{};
+    for (final entry in value.entries) {
+      encoded[entry.key] = [
+        for (final window in entry.value)
+          {
+            'open':
+                '${window.open.hour.toString().padLeft(2, '0')}:'
+                '${window.open.minute.toString().padLeft(2, '0')}',
+            'close':
+                '${window.close.hour.toString().padLeft(2, '0')}:'
+                '${window.close.minute.toString().padLeft(2, '0')}',
+          },
+      ];
+    }
+
+    return jsonEncode(encoded);
   }
 
   static WaitTime? _readWaitTime(Map<String, Object?> map) {

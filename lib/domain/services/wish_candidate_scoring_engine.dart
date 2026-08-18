@@ -26,10 +26,14 @@ class WishCandidateScoringEngine {
     required List<TimeBandWaitProfile> waitProfiles,
     required int availableMinutes,
     WaitTimeBand targetBand = WaitTimeBand.afterLunch,
+    DateTime? targetDate,
   }) {
     final preferenceById = {for (final item in preferences) item.facilityId: item};
     final profileById = {for (final item in waitProfiles) item.facilityId: item};
-    final scored = facilities.where((facility) => facility.isOpen).map((facility) {
+    final date = targetDate ?? DateTime.now();
+    final scored = facilities
+        .where((facility) => facility.canAddToPlanAt(date))
+        .map((facility) {
       final preference = preferenceById[facility.id];
       final range = profileById[facility.id]?.rangeFor(targetBand);
       final predictedWait = range?.typicalMinutes ?? facility.waitTime?.minutes ?? 30;

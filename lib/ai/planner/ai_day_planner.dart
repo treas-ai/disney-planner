@@ -31,12 +31,24 @@ class AiDayPlanner {
     WaitTimeBand targetBand = WaitTimeBand.afterLunch,
   }) {
     final availableMinutes = _availableMinutes(settings);
+    final targetDate = settings.visitDate ?? DateTime.now();
+    final operationalFacilities = facilities.where((facility) {
+      if (!facility.canAddToPlanAt(targetDate)) {
+        return false;
+      }
+
+      // 営業時間未登録は「休止」ではないため候補から消さない。
+
+      return true;
+    }).toList(growable: false);
+
     final ranked = scoringEngine.score(
-      facilities: facilities,
+      facilities: operationalFacilities,
       preferences: preferences,
       waitProfiles: waitProfiles,
       availableMinutes: availableMinutes,
       targetBand: targetBand,
+      targetDate: targetDate,
     );
     final selected = scoringEngine.selectRealisticCount(
       scored: ranked,
@@ -55,7 +67,7 @@ class AiDayPlanner {
           );
 
     final selectedIds = selected.map((item) => item.facility.id).toSet();
-    final selectedFacilities = facilities
+    final selectedFacilities = operationalFacilities
         .where((facility) => selectedIds.contains(facility.id))
         .toList(growable: false);
 
@@ -75,6 +87,7 @@ class AiDayPlanner {
       generatedAt: DateTime.now(),
     );
   }
+
 
   int _availableMinutes(TripSettings settings) {
     final entry = settings.entryTimeHour * 60 + settings.entryTimeMinute;

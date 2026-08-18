@@ -65,9 +65,10 @@ class ScheduleController extends ChangeNotifier {
   }
 
   List<Facility> get unavailableSelectedFacilities {
+    final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
     return List<Facility>.unmodifiable(
       selectedFacilitiesForCurrentPark
-          .where((facility) => !facility.isOpen)
+          .where((facility) => !facility.canAddToPlanAt(targetDate))
           .toList(growable: false),
     );
   }
@@ -189,8 +190,9 @@ class ScheduleController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
       final availableFacilities = selectedFacilitiesForCurrentPark
-          .where((facility) => facility.isOpen)
+          .where((facility) => facility.canAddToPlanAt(targetDate))
           .toList(growable: false);
 
       if (availableFacilities.isEmpty) {
@@ -214,7 +216,7 @@ class ScheduleController extends ChangeNotifier {
       final settings = _appState.tripSettings;
       final preferences = await _performanceResolver.resolve(
         parkId: selectedParkId,
-        date: DateTime.now(),
+        date: targetDate,
         entryMinutes: settings.entryTimeHour * 60 + settings.entryTimeMinute,
         exitMinutes: settings.exitTimeHour * 60 + settings.exitTimeMinute,
         facilities: availableFacilities,

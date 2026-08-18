@@ -20,6 +20,7 @@ class Facility {
     required this.category,
     required this.coordinate,
     this.operatingHours,
+    this.operatingHoursByDate = const <String, List<OperatingHours>>{},
     this.waitTime,
     this.reservation,
     this.priority = PriorityLevel.medium,
@@ -77,6 +78,9 @@ class Facility {
   final Coordinate coordinate;
 
   final OperatingHours? operatingHours;
+
+  /// 公式サイト等から確認した日付別の運営時間。複数営業枠にも対応する。
+  final Map<String, List<OperatingHours>> operatingHoursByDate;
   final WaitTime? waitTime;
   final Reservation? reservation;
 
@@ -228,25 +232,89 @@ class Facility {
       return false;
     }
 
+    final target = _dateOnly(targetDateTime);
+
     switch (operatingStatus) {
       case FacilityOperatingStatus.operating:
-        return true;
-
       case FacilityOperatingStatus.scheduledClosure:
-        final startDate = closureStartDate;
-
-        if (startDate == null) {
-          return true;
-        }
-
-        return _dateOnly(targetDateTime).isBefore(_dateOnly(startDate));
+        return !_isInsideClosurePeriod(target);
 
       case FacilityOperatingStatus.temporarilyClosed:
       case FacilityOperatingStatus.seasonalClosed:
       case FacilityOperatingStatus.longTermClosed:
+        if (closureStartDate != null || closureEndDate != null) {
+          return !_isInsideClosurePeriod(target);
+        }
+        return false;
+
       case FacilityOperatingStatus.permanentlyClosed:
         return false;
     }
+  }
+
+  /// 指定日の公式確認済み運営時間を返す。
+  /// 日付別データがない場合は従来の単一営業時間をフォールバックとして返す。
+  List<OperatingHours> operatingWindowsFor(DateTime targetDate) {
+    final key = _dateKey(targetDate);
+    final daily = operatingHoursByDate[key];
+
+    if (daily != null) {
+      return List<OperatingHours>.unmodifiable(daily);
+    }
+
+    final fallback = operatingHours;
+    if (fallback == null) {
+      return const <OperatingHours>[];
+    }
+
+    return <OperatingHours>[
+      OperatingHours(
+        open: DateTime(
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
+          fallback.open.hour,
+          fallback.open.minute,
+        ),
+        close: DateTime(
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
+          fallback.close.hour,
+          fallback.close.minute,
+        ),
+      ),
+    ];
+  }
+
+  bool hasVerifiedOperatingHoursFor(DateTime targetDate) {
+    return operatingHoursByDate.containsKey(_dateKey(targetDate)) ||
+        operatingHours != null;
+  }
+
+  bool _isInsideClosurePeriod(DateTime target) {
+    final start = closureStartDate == null ? null : _dateOnly(closureStartDate!);
+    final end = closureEndDate == null ? null : _dateOnly(closureEndDate!);
+
+    if (start == null && end == null) {
+      return false;
+    }
+
+    if (start != null && target.isBefore(start)) {
+      return false;
+    }
+
+    if (end != null && target.isAfter(end)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  String _dateKey(DateTime value) {
+    return '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
   }
 
   String get operatingStatusDisplayLabel {

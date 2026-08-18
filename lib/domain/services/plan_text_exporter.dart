@@ -47,6 +47,7 @@ class PlanTextExporter {
       ..writeln('Disney Planner 簡易プラン')
       ..writeln()
       ..writeln('パーク：$parkName')
+      ..writeln('来園日：${settings.visitDateLabel}')
       ..writeln('並び開始：${entryPrediction.queueArrivalLabel}')
       ..writeln('予測入園：${entryPrediction.expectedEntryLabel}')
       ..writeln(
@@ -77,6 +78,7 @@ class PlanTextExporter {
       ..writeln()
       ..writeln('【基本情報】')
       ..writeln('パーク：$parkName')
+      ..writeln('来園日：${settings.visitDateLabel}')
       ..writeln('並び開始：${entryPrediction.queueArrivalLabel}')
       ..writeln('公式開園予定：${entryPrediction.officialOpeningLabel}')
       ..writeln(

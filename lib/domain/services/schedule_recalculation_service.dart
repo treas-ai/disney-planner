@@ -68,7 +68,8 @@ class ScheduleRecalculationService {
             );
             return false;
           }
-          if (!facility.isOpen) {
+          final targetDate = request.settings.visitDate ?? request.now;
+          if (!facility.canAddToPlanAt(targetDate)) {
             warnings.add('${facility.name}は営業対象外のため再配置対象から除外しました。');
             return false;
           }

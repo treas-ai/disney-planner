@@ -33,7 +33,9 @@ class WishListController extends ChangeNotifier {
   bool freeDrinkOnly = false;
   String query = '';
 
-  DateTime get effectiveDate => DateTime.now();
+  /// Wish の表示判定は「今日」ではなく来園日を優先する。
+  DateTime get effectiveDate =>
+      appState.tripSettings.visitDate ?? DateTime.now();
 
   List<WishItem> get allLoadedItems {
     final byId = <String, WishItem>{};
