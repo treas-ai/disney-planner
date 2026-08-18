@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/schedule_recalculation_request.dart';
 import '../../domain/entities/schedule_recalculation_result.dart';
+import '../../domain/entities/weather_snapshot.dart';
+import '../../domain/enums/live_weather_condition.dart';
 import '../../domain/services/schedule_recalculation_service.dart';
 import '../live/live_controller.dart';
 
@@ -62,6 +64,13 @@ class ScheduleRecalculationController extends ChangeNotifier {
           preferences: _appState.planPreferences,
           waitTimes: waitTimes.cast(),
           operatingStatuses: operating.cast(),
+          weather: _appState.tripSettings.isRainy
+              ? WeatherSnapshot(
+                  condition: LiveWeatherCondition.rain,
+                  updatedAt: _liveController.now,
+                )
+              : null,
+          passStatuses: _liveController.liveDataController.passStatuses,
         ),
       );
       return _pendingResult;

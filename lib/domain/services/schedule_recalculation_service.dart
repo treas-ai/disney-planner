@@ -1,20 +1,25 @@
 import '../entities/day_schedule.dart';
+import '../entities/facility.dart';
 import '../entities/live_operating_status.dart';
 import '../entities/schedule_change.dart';
 import '../entities/schedule_item.dart';
 import '../entities/schedule_recalculation_request.dart';
 import '../entities/schedule_recalculation_result.dart';
+import '../entities/replanning_context.dart';
 import '../enums/fixed_time_status.dart';
 import '../enums/schedule_change_type.dart';
 import '../enums/schedule_item_type.dart';
 import 'schedule_engine.dart';
+import 'realtime_replanning_service.dart';
 
 class ScheduleRecalculationService {
   const ScheduleRecalculationService({
     this.scheduleEngine = const ScheduleEngine(),
+    this.replanningService = const RealtimeReplanningService(),
   });
 
   final ScheduleEngine scheduleEngine;
+  final RealtimeReplanningService replanningService;
 
   ScheduleRecalculationResult createProposal(
     ScheduleRecalculationRequest request,
@@ -88,9 +93,44 @@ class ScheduleRecalculationService {
         .where((preference) => eligibleIds.contains(preference.facilityId))
         .toList(growable: false);
 
+    final currentFacility = _latestFacility(
+      preserved: preserved,
+      facilities: request.facilities,
+    );
+    final nextFixed = _nextConfirmedFixed(
+      request: request,
+      nowMinutes: nowMinutes,
+    );
+    final nextDestination = nextFixed == null
+        ? null
+        : _facilityById(request.facilities, nextFixed.facilityId);
+
+    final replanningContext = ReplanningContext(
+      now: request.now,
+      facilities: eligibleFacilities,
+      preferences: eligiblePreferences,
+      nextFixedStartMinutes: nextFixed == null ? null : _start(nextFixed),
+      currentFacility: currentFacility,
+      nextDestination: nextDestination,
+      weather: request.weather,
+      passStatuses: request.passStatuses,
+      fatigueLevel: request.fatigueLevel,
+      hasBaggage: request.hasBaggage,
+      hotelBreakAvailable: request.hotelBreakAvailable,
+    );
+
+    final replanningSuggestions = replanningService.assess(replanningContext);
+    for (final suggestion in replanningSuggestions) {
+      warnings.add('再計画候補: ${suggestion.title} - ${suggestion.reason}');
+    }
+
+    final prioritizedFacilities = replanningService.prioritizeForCurrentWeather(
+      replanningContext,
+    );
+
     final generated = scheduleEngine.generate(
       settings: request.settings,
-      facilities: eligibleFacilities,
+      facilities: prioritizedFacilities,
       preferences: eligiblePreferences,
     );
 
@@ -131,6 +171,45 @@ class ScheduleRecalculationService {
       warnings: List<String>.unmodifiable(warnings),
       createdAt: DateTime.now(),
     );
+  }
+
+
+  ScheduleItem? _nextConfirmedFixed({
+    required ScheduleRecalculationRequest request,
+    required int nowMinutes,
+  }) {
+    final preferenceById = {
+      for (final preference in request.preferences)
+        preference.facilityId: preference,
+    };
+    final candidates = request.currentSchedule.items.where((item) {
+      final facilityId = item.facilityId;
+      if (facilityId == null || _start(item) <= nowMinutes) return false;
+      return preferenceById[facilityId]?.fixedTimeStatus ==
+          FixedTimeStatus.confirmed;
+    }).toList(growable: false)
+      ..sort((a, b) => _start(a).compareTo(_start(b)));
+    return candidates.isEmpty ? null : candidates.first;
+  }
+
+  Facility? _latestFacility({
+    required List<ScheduleItem> preserved,
+    required List<Facility> facilities,
+  }) {
+    final facilityItems = preserved
+        .where((item) => item.facilityId != null)
+        .toList(growable: false)
+      ..sort((a, b) => _end(b).compareTo(_end(a)));
+    if (facilityItems.isEmpty) return null;
+    return _facilityById(facilities, facilityItems.first.facilityId);
+  }
+
+  Facility? _facilityById(List<Facility> facilities, String? facilityId) {
+    if (facilityId == null) return null;
+    for (final facility in facilities) {
+      if (facility.id == facilityId) return facility;
+    }
+    return null;
   }
 
   List<ScheduleChange> _buildChanges(

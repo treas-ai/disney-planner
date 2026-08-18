@@ -1,4 +1,15 @@
-﻿## v7.3.17 hotfix - 2026-08-07
+﻿## AI Planner Phase 3 - 2026-08-18
+
+- 現地状況変化に対応する `RealtimeReplanningService` を追加。
+- 次の固定予定まで90分以上ある場合、中間プランの再生成候補を提示。
+- 雨・豪雨時は屋外Wishを削除せず、同優先度では屋内候補を優先。
+- 雨天かつ疲労・荷物がある場合にホテル休憩・再入園案を候補化。
+- DPA / Priority Passが利用不可になった場合、通常利用へ自動変更せず代替案の再評価を提示。
+- Phase 2のRoute Pickupを、固定予定前15分の安全バッファを守って収まる場合のみ再計画候補として提示。
+- Todayの再計算へ雨天設定とLive Pass状態を接続。
+- Phase 3回帰テストを5件追加。
+
+## v7.3.17 hotfix - 2026-08-07
 
 - 日本語専用カレンダーへ移行後も `DisneyPlannerApp` に残っていた `flutter_localizations` のimportとMaterialAppローカライズ設定を削除。
 - `flutter_localizations` が依存関係に存在しない環境で `flutter analyze` が失敗する問題を修正。
