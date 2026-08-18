@@ -42,6 +42,15 @@ class RouteOptimizer {
       return preferredTimeComparison;
     }
 
+    // 早く営業終了する施設は、同じ希望時間帯の中で後回しにしすぎない。
+    // 朝一アトラクションはScheduleEngine側で別途保護される。
+    final closingComparison = _closingUrgencyScore(
+      first.facility,
+    ).compareTo(_closingUrgencyScore(second.facility));
+    if (closingComparison != 0) {
+      return closingComparison;
+    }
+
     final areaComparison = first.facility.areaId.compareTo(
       second.facility.areaId,
     );
@@ -63,6 +72,15 @@ class RouteOptimizer {
     }
 
     return first.originalIndex.compareTo(second.originalIndex);
+  }
+
+  int _closingUrgencyScore(Facility facility) {
+    final hours = facility.operatingHours;
+    if (hours == null) return 24 * 60;
+
+    final closeMinutes = hours.close.hour * 60 + hours.close.minute;
+    // 18時以前に終了する施設のみ明確な「早仕舞い」として優先する。
+    return closeMinutes <= 18 * 60 ? closeMinutes : 24 * 60;
   }
 
   int _preferredTimeScore(PreferredTime? preferredTime) {

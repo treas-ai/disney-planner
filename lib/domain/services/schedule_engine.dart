@@ -137,8 +137,15 @@ class ScheduleEngine {
           );
 
           final isFixedAccess = fixedAccessFacilityIds.contains(facility.id);
+          final preference = _findPreference(
+            facilityId: facility.id,
+            preferences: preferences,
+          );
 
-          return !isAssignedRestaurant && !isFixedPerformance && !isFixedAccess;
+          return !isAssignedRestaurant &&
+              !isFixedPerformance &&
+              !isFixedAccess &&
+              !(preference?.isExcluded ?? false);
         })
         .toList(growable: false);
 
@@ -267,6 +274,7 @@ class ScheduleEngine {
             previousAreaId: previousAreaId,
             currentAreaId: facility.areaId,
             durationMinutes: durationMinutes,
+            scheduledStartMinutes: finalStartMinutes,
             waitDecision: waitDecision,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
@@ -1253,10 +1261,12 @@ class ScheduleEngine {
 
         final itemEnd = _itemEndMinutes(item);
 
+        final protectedItemStart = _protectedStartMinutes(item, itemStart);
+
         if (_timesOverlap(
           candidateStart,
           candidateStart + durationMinutes,
-          itemStart,
+          protectedItemStart,
           itemEnd,
         )) {
           overlappingItem = item;
@@ -1272,6 +1282,14 @@ class ScheduleEngine {
     }
 
     return null;
+  }
+
+  int _protectedStartMinutes(ScheduleItem item, int itemStart) {
+    // 確定予定の直前を自由時間として埋めない。
+    // 施設間移動・入場待機の最低限の安全余白として15分確保する。
+    final isConfirmedFixed = item.id.startsWith('fixed_');
+    if (!isConfirmedFixed) return itemStart;
+    return _maximum(0, itemStart - 15);
   }
 
   bool _isTimeRangeAvailable({
@@ -1432,6 +1450,7 @@ class ScheduleEngine {
     required String? previousAreaId,
     required String currentAreaId,
     required int durationMinutes,
+    required int scheduledStartMinutes,
     required _WaitToleranceDecision waitDecision,
   }) {
     final reasons = <String>[];
@@ -1488,6 +1507,15 @@ class ScheduleEngine {
       reasons.add('プライオリティ・シーティング対応施設です。');
     }
 
+    final closingReason = _buildClosingUrgencyReason(
+      facility: facility,
+      scheduledStartMinutes: scheduledStartMinutes,
+      durationMinutes: durationMinutes,
+    );
+    if (closingReason != null) {
+      reasons.add(closingReason);
+    }
+
     final waitReason = _buildWaitReason(waitDecision);
 
     if (waitReason != null) {
@@ -1511,6 +1539,23 @@ class ScheduleEngine {
     reasons.add('所要時間を$durationMinutes分として配置しました。');
 
     return reasons.where((reason) => reason.isNotEmpty).join(' ');
+  }
+
+  String? _buildClosingUrgencyReason({
+    required Facility facility,
+    required int scheduledStartMinutes,
+    required int durationMinutes,
+  }) {
+    final hours = facility.operatingHours;
+    if (hours == null) return null;
+
+    final closeMinutes = _toMinutes(hours.close.hour, hours.close.minute);
+    final minutesUntilClose = closeMinutes - scheduledStartMinutes;
+    if (minutesUntilClose < durationMinutes || minutesUntilClose > 120) {
+      return null;
+    }
+
+    return '営業終了まで約$minutesUntilClose分のため、後回しにすると利用機会を失う可能性を考慮しました。';
   }
 
   String _accessMethodReason({

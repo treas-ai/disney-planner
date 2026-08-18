@@ -27,6 +27,7 @@ class PlanPreference {
     this.fixedTimeStatus = FixedTimeStatus.none,
     this.selectedPerformanceIndex,
     this.lotteryFallbackAction = LotteryFallbackAction.alternativeFacility,
+    this.isExcluded = false,
   });
 
   factory PlanPreference.initial({required String facilityId}) {
@@ -48,6 +49,7 @@ class PlanPreference {
       fixedTimeStatus: FixedTimeStatus.none,
       selectedPerformanceIndex: null,
       lotteryFallbackAction: LotteryFallbackAction.alternativeFacility,
+      isExcluded: false,
       memo: '',
       createdAt: DateTime.now(),
     );
@@ -107,6 +109,7 @@ class PlanPreference {
         (action) => action.name == json['lotteryFallbackAction'],
         orElse: () => LotteryFallbackAction.alternativeFacility,
       ),
+      isExcluded: json['isExcluded'] as bool? ?? false,
       memo: json['memo'] as String? ?? '',
       createdAt:
           DateTime.tryParse(json['createdAt'] as String? ?? '') ??
@@ -143,6 +146,10 @@ class PlanPreference {
   final int? selectedPerformanceIndex;
 
   final LotteryFallbackAction lotteryFallbackAction;
+
+  /// 今回のプランでは利用しないという明示的な意思。
+  /// 旧保存データとの互換性のため既定値はfalse。
+  final bool isExcluded;
 
   final String memo;
   final DateTime createdAt;
@@ -182,6 +189,7 @@ class PlanPreference {
       'fixedTimeStatus': fixedTimeStatus.name,
       'selectedPerformanceIndex': selectedPerformanceIndex,
       'lotteryFallbackAction': lotteryFallbackAction.name,
+      'isExcluded': isExcluded,
       'memo': memo,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -206,6 +214,7 @@ class PlanPreference {
     int? selectedPerformanceIndex,
     bool clearSelectedPerformanceIndex = false,
     LotteryFallbackAction? lotteryFallbackAction,
+    bool? isExcluded,
     String? memo,
     DateTime? createdAt,
   }) {
@@ -231,6 +240,7 @@ class PlanPreference {
           : selectedPerformanceIndex ?? this.selectedPerformanceIndex,
       lotteryFallbackAction:
           lotteryFallbackAction ?? this.lotteryFallbackAction,
+      isExcluded: isExcluded ?? this.isExcluded,
       memo: memo ?? this.memo,
       createdAt: createdAt ?? this.createdAt,
     );
