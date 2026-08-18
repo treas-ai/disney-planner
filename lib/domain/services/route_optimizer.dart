@@ -1,9 +1,14 @@
 import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
 import '../enums/preferred_time.dart';
+import 'facility_proximity_service.dart';
 
 class RouteOptimizer {
-  const RouteOptimizer();
+  const RouteOptimizer({
+    this.proximityService = const FacilityProximityService(),
+  });
+
+  final FacilityProximityService proximityService;
 
   List<Facility> optimize({
     required List<Facility> facilities,
@@ -27,10 +32,63 @@ class RouteOptimizer {
         .toList();
 
     indexedFacilities.sort(_compareFacilities);
+    final proximityOptimized = _optimizeLocalRuns(indexedFacilities);
 
     return List.unmodifiable(
-      indexedFacilities.map((item) => item.facility).toList(),
+      proximityOptimized.map((item) => item.facility).toList(),
     );
+  }
+
+  List<_IndexedFacility> _optimizeLocalRuns(List<_IndexedFacility> sorted) {
+    final result = <_IndexedFacility>[];
+    var index = 0;
+    while (index < sorted.length) {
+      final first = sorted[index];
+      var end = index + 1;
+      while (end < sorted.length && _sameLocalRun(first, sorted[end])) {
+        end++;
+      }
+
+      final run = sorted.sublist(index, end);
+      if (run.length <= 2) {
+        result.addAll(run);
+      } else {
+        // 最初の候補は既存ロジックの判断を尊重し、その後だけ近い順にする。
+        final remaining = run.sublist(1).toList();
+        var current = run.first;
+        result.add(current);
+        while (remaining.isNotEmpty) {
+          remaining.sort((a, b) {
+            final aDistance = proximityService.distanceMeters(
+              current.facility,
+              a.facility,
+            );
+            final bDistance = proximityService.distanceMeters(
+              current.facility,
+              b.facility,
+            );
+            final distanceCompare = aDistance.compareTo(bDistance);
+            if (distanceCompare != 0) return distanceCompare;
+            return a.originalIndex.compareTo(b.originalIndex);
+          });
+          current = remaining.removeAt(0);
+          result.add(current);
+        }
+      }
+      index = end;
+    }
+    return result;
+  }
+
+  bool _sameLocalRun(_IndexedFacility a, _IndexedFacility b) {
+    if (a.facility.areaId != b.facility.areaId) return false;
+    if (_preferredTimeScore(a.preference?.preferredTime) !=
+        _preferredTimeScore(b.preference?.preferredTime)) {
+      return false;
+    }
+    final aPriority = a.preference?.priority.value ?? a.facility.priority.value;
+    final bPriority = b.preference?.priority.value ?? b.facility.priority.value;
+    return aPriority == bPriority;
   }
 
   int _compareFacilities(_IndexedFacility first, _IndexedFacility second) {
