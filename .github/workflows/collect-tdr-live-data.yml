@@ -27,6 +27,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Record schedule diagnostic
+        run: python3 tool/log_schedule_diagnostic.py
+
       - name: Collect TDL/TDS waits and DPA states
         run: python3 tool/github_collect_themeparks_wiki.py
         continue-on-error: true
@@ -34,13 +37,13 @@ jobs:
       - name: Commit new observations
         shell: bash
         run: |
-          if [ -z "$(git status --porcelain -- tool/wait_data/github_history tool/wait_data/dpa_history tool/wait_data/unmatched)" ]; then
+          if [ -z "$(git status --porcelain -- tool/wait_data/github_history tool/wait_data/dpa_history tool/wait_data/unmatched tool/wait_data/schedule_diagnostics.csv)" ]; then
             echo "No new observations."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tool/wait_data/github_history tool/wait_data/dpa_history tool/wait_data/unmatched
+          git add tool/wait_data/github_history tool/wait_data/dpa_history tool/wait_data/unmatched tool/wait_data/schedule_diagnostics.csv
           git commit -m "data: collect TDR live observations [skip ci]"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
