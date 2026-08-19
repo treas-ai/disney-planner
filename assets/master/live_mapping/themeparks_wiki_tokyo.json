@@ -38,8 +38,13 @@
       "swissfamilytreehouse": "tdl_adventureland_swiss_family_treehouse",
       "theenchantedtikiroomstitchpresentsalohaekomomai": "tdl_adventureland_tiki_room",
       "splashmountain": "tdl_critter_country_splash_mountain",
-      "beaverbrothersexplorercanoes": "tdl_critter_country_beaver_brothers_explorer_canoes"
-    }
+      "beaverbrothersexplorercanoes": "tdl_critter_country_beaver_brothers_explorer_canoes",
+      "Westernland Shootin' Gallery": "tdl_westernland_shooting_gallery"
+    },
+    "sourceEntityAliases": {
+      "4876ec54-92ed-4b0c-8b1b-292ba89c61c": "tdl_westernland_shooting_gallery"
+    },
+    "ignoredSourceEntityIds": []
   },
   "tokyo_disneysea": {
     "entityId": "67b290d5-3478-4f23-b601-2f8fb71ba803",
@@ -71,7 +76,17 @@
       "mermaidlagoontheater": "tds_ml_a_006",
       "thewhirlpool": "tds_ml_a_007",
       "20000leaguesunderthesea": "tds_mi_a_001",
-      "journeytothecenteroftheearth": "tds_mi_a_002"
-    }
+      "journeytothecenteroftheearth": "tds_mi_a_002",
+      "DisneySea Electric Railway (American Waterfront)": "tds_aw_a_004",
+      "DisneySea Electric Railway (Port Discovery)": "tds_pd_a_003"
+    },
+    "sourceEntityAliases": {
+      "2daf12ac-21fd-4bfd-bbf6-0c98bed03e8f": "tds_aw_a_004",
+      "a744918-42c0-427d-8947-c3dbd1abf8d5": "tds_pd_a_003"
+    },
+    "ignoredSourceEntityIds": [
+      "8dbc5d52-ef41-406d-aaad-eb2e6bb3eaea",
+      "de24aae5-66b9-469f-91f6-ef6c3f3b665c"
+    ]
   }
 }

@@ -67,6 +67,12 @@ def append_rows(path: Path, header: list[str], rows: list[dict[str, object]]) ->
 
 def collect_park(park_id: str, park: dict, now_jst: datetime) -> tuple[int, int, int]:
     aliases = {normalize(k): str(v) for k, v in (park.get("aliases") or {}).items()}
+    source_aliases = {
+        str(k): str(v) for k, v in (park.get("sourceEntityAliases") or {}).items()
+    }
+    ignored_source_ids = {
+        str(value) for value in (park.get("ignoredSourceEntityIds") or [])
+    }
     payload = fetch_json(str(park["entityId"]))
     entries = payload.get("liveData") or []
 
@@ -88,7 +94,9 @@ def collect_park(park_id: str, park: dict, now_jst: datetime) -> tuple[int, int,
         status = str(entry.get("status") or "")
         observed = str(entry.get("lastUpdated") or datetime.now(timezone.utc).isoformat())
         queue = entry.get("queue") if isinstance(entry.get("queue"), dict) else {}
-        local_id = aliases.get(normalize(name), "")
+        if source_id in ignored_source_ids:
+            continue
+        local_id = source_aliases.get(source_id) or aliases.get(normalize(name), "")
 
         standby = queue.get("STANDBY") if isinstance(queue.get("STANDBY"), dict) else None
         if entity_type.upper() == "ATTRACTION" and standby is not None:
