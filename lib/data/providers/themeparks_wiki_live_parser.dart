@@ -51,9 +51,9 @@ class ThemeParksWikiLiveParser {
     final queue = rawQueue is Map
         ? Map<String, dynamic>.from(rawQueue)
         : <String, dynamic>{};
-    final standby = queue['STANDBY'] as Map<String, dynamic>?;
-    final single = queue['SINGLE_RIDER'] as Map<String, dynamic>?;
-    final paid = queue['PAID_RETURN_TIME'] as Map<String, dynamic>?;
+    final standby = _stringMap(queue['STANDBY']);
+    final single = _stringMap(queue['SINGLE_RIDER']);
+    final paid = _stringMap(queue['PAID_RETURN_TIME']);
     final rawShows = row['showtimes'] as List<dynamic>? ?? const [];
     return ThemeParksWikiLiveEntry(
       sourceEntityId: row['id']?.toString() ?? row['entityId']?.toString() ?? '',
@@ -79,6 +79,11 @@ class ThemeParksWikiLiveParser {
         'CLOSED' => LiveOperationAvailability.closed,
         _ => LiveOperationAvailability.unknown,
       };
+
+  Map<String, dynamic>? _stringMap(Object? value) {
+    if (value is! Map) return null;
+    return Map<String, dynamic>.from(value);
+  }
 
   int? _intValue(Object? value) {
     if (value is int) return value;
