@@ -2,7 +2,8 @@ name: Schedule Test
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # Offset from the common :00/:05 boundaries to reduce scheduler congestion.
+    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
   workflow_dispatch:
 
 jobs:
