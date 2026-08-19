@@ -14,7 +14,6 @@ class _VisitSummaryCard extends StatelessWidget {
     final enabledServices = <String>[
       if (settings.hasHappyEntry) 'ハッピーエントリー',
       if (settings.canUseDpa) 'DPA',
-      if (settings.canUsePriorityPass) 'プライオリティパス',
       if (settings.canUseSingleRider) 'シングルライダー',
     ];
 

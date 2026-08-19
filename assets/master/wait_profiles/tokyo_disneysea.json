@@ -1,6 +1,315 @@
 {
   "parkId": "tokyo_disneysea",
-  "status": "not_calculated",
-  "note": "施設別の時間帯プロファイルは履歴データ分析後に生成する。",
-  "items": []
+  "status": "seed_observation",
+  "note": "初期検証用。2026-08-02の公開待ち時間観測系列を広い時間帯Profileへ集約。継続収集後に置換する。",
+  "items": [
+    {
+      "facilityId": "tds_fs_a_001",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 60,
+          "typicalMinutes": 120,
+          "maxMinutes": 140
+        },
+        "beforeLunch": {
+          "minMinutes": 90,
+          "typicalMinutes": 140,
+          "maxMinutes": 140
+        },
+        "afterLunch": {
+          "minMinutes": 70,
+          "typicalMinutes": 75,
+          "maxMinutes": 80
+        },
+        "aroundShows": {
+          "minMinutes": 70,
+          "typicalMinutes": 90,
+          "maxMinutes": 100
+        },
+        "beforeDinner": {
+          "minMinutes": 70,
+          "typicalMinutes": 90,
+          "maxMinutes": 90
+        },
+        "afterDinner": {
+          "minMinutes": 80,
+          "typicalMinutes": 80,
+          "maxMinutes": 90
+        },
+        "beforeClosing": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 40
+        }
+      },
+      "source": "TDR Waits dashboard seed observation (2026-08-02)",
+      "calculatedAt": "2026-08-19T00:00:00.000",
+      "sampleCount": 23
+    },
+    {
+      "facilityId": "tds_fs_a_002",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 15,
+          "typicalMinutes": 30,
+          "maxMinutes": 40
+        },
+        "beforeLunch": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 40
+        },
+        "afterLunch": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 30
+        },
+        "aroundShows": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 30
+        },
+        "beforeDinner": {
+          "minMinutes": 20,
+          "typicalMinutes": 20,
+          "maxMinutes": 25
+        },
+        "afterDinner": {
+          "minMinutes": 20,
+          "typicalMinutes": 20,
+          "maxMinutes": 20
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 10
+        }
+      },
+      "source": "TDR Waits dashboard seed observation (2026-08-02)",
+      "calculatedAt": "2026-08-19T00:00:00.000",
+      "sampleCount": 25
+    },
+    {
+      "facilityId": "tds_fs_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 50
+        },
+        "beforeLunch": {
+          "minMinutes": 30,
+          "typicalMinutes": 35,
+          "maxMinutes": 40
+        },
+        "afterLunch": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 40
+        },
+        "aroundShows": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 30
+        },
+        "beforeDinner": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 20
+        },
+        "afterDinner": {
+          "minMinutes": 15,
+          "typicalMinutes": 25,
+          "maxMinutes": 25
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 15
+        }
+      },
+      "source": "TDR Waits dashboard seed observation (2026-08-02)",
+      "calculatedAt": "2026-08-19T00:00:00.000",
+      "sampleCount": 25
+    },
+    {
+      "facilityId": "tds_mh_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 80,
+          "typicalMinutes": 90,
+          "maxMinutes": 140
+        },
+        "beforeLunch": {
+          "minMinutes": 100,
+          "typicalMinutes": 100,
+          "maxMinutes": 120
+        },
+        "afterLunch": {
+          "minMinutes": 70,
+          "typicalMinutes": 90,
+          "maxMinutes": 100
+        },
+        "aroundShows": {
+          "minMinutes": 70,
+          "typicalMinutes": 90,
+          "maxMinutes": 100
+        },
+        "beforeDinner": {
+          "minMinutes": 90,
+          "typicalMinutes": 100,
+          "maxMinutes": 100
+        },
+        "afterDinner": {
+          "minMinutes": 100,
+          "typicalMinutes": 100,
+          "maxMinutes": 120
+        },
+        "beforeClosing": {
+          "minMinutes": 70,
+          "typicalMinutes": 90,
+          "maxMinutes": 90
+        }
+      },
+      "source": "TDR Waits dashboard seed observation (2026-08-02)",
+      "calculatedAt": "2026-08-19T00:00:00.000",
+      "sampleCount": 23
+    },
+    {
+      "facilityId": "tds_aw_a_002",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 50,
+          "typicalMinutes": 80,
+          "maxMinutes": 80
+        },
+        "beforeLunch": {
+          "minMinutes": 30,
+          "typicalMinutes": 40,
+          "maxMinutes": 50
+        },
+        "afterLunch": {
+          "minMinutes": 30,
+          "typicalMinutes": 40,
+          "maxMinutes": 40
+        },
+        "aroundShows": {
+          "minMinutes": 30,
+          "typicalMinutes": 40,
+          "maxMinutes": 50
+        },
+        "beforeDinner": {
+          "minMinutes": 30,
+          "typicalMinutes": 40,
+          "maxMinutes": 50
+        },
+        "afterDinner": {
+          "minMinutes": 40,
+          "typicalMinutes": 40,
+          "maxMinutes": 40
+        },
+        "beforeClosing": {
+          "minMinutes": 30,
+          "typicalMinutes": 40,
+          "maxMinutes": 40
+        }
+      },
+      "source": "TDR Waits dashboard seed observation (2026-08-02)",
+      "calculatedAt": "2026-08-19T00:00:00.000",
+      "sampleCount": 23
+    },
+    {
+      "facilityId": "tds_aw_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 120,
+          "typicalMinutes": 140,
+          "maxMinutes": 160
+        },
+        "beforeLunch": {
+          "minMinutes": 70,
+          "typicalMinutes": 85,
+          "maxMinutes": 140
+        },
+        "afterLunch": {
+          "minMinutes": 80,
+          "typicalMinutes": 80,
+          "maxMinutes": 90
+        },
+        "aroundShows": {
+          "minMinutes": 80,
+          "typicalMinutes": 105,
+          "maxMinutes": 120
+        },
+        "beforeDinner": {
+          "minMinutes": 80,
+          "typicalMinutes": 80,
+          "maxMinutes": 100
+        },
+        "afterDinner": {
+          "minMinutes": 80,
+          "typicalMinutes": 100,
+          "maxMinutes": 100
+        },
+        "beforeClosing": {
+          "minMinutes": 60,
+          "typicalMinutes": 80,
+          "maxMinutes": 90
+        }
+      },
+      "source": "TDR Waits dashboard seed observation (2026-08-02)",
+      "calculatedAt": "2026-08-19T00:00:00.000",
+      "sampleCount": 24
+    },
+    {
+      "facilityId": "tds_mi_a_002",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 90,
+          "typicalMinutes": 100,
+          "maxMinutes": 100
+        },
+        "beforeLunch": {
+          "minMinutes": 60,
+          "typicalMinutes": 70,
+          "maxMinutes": 90
+        },
+        "afterLunch": {
+          "minMinutes": 60,
+          "typicalMinutes": 75,
+          "maxMinutes": 90
+        },
+        "aroundShows": {
+          "minMinutes": 60,
+          "typicalMinutes": 60,
+          "maxMinutes": 70
+        },
+        "beforeDinner": {
+          "minMinutes": 60,
+          "typicalMinutes": 60,
+          "maxMinutes": 70
+        },
+        "afterDinner": {
+          "minMinutes": 50,
+          "typicalMinutes": 60,
+          "maxMinutes": 70
+        },
+        "beforeClosing": {
+          "minMinutes": 30,
+          "typicalMinutes": 40,
+          "maxMinutes": 60
+        }
+      },
+      "source": "TDR Waits dashboard seed observation (2026-08-02)",
+      "calculatedAt": "2026-08-19T00:00:00.000",
+      "sampleCount": 23
+    }
+  ]
 }

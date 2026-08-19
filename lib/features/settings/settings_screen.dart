@@ -234,7 +234,6 @@ class _MobileSettingsLayout extends StatelessWidget {
             settings: settings,
             onHappyEntryChanged: controller.updateHappyEntry,
             onDpaChanged: controller.updateDpa,
-            onPriorityPassChanged: controller.updatePriorityPass,
             onSingleRiderChanged: controller.updateSingleRider,
             onVacationPackageChanged: controller.updateVacationPackage,
             onFreeDrinkChanged: controller.updateFreeDrinkBenefit,
@@ -354,7 +353,6 @@ class _DesktopSettingsLayout extends StatelessWidget {
                         settings: settings,
                         onHappyEntryChanged: controller.updateHappyEntry,
                         onDpaChanged: controller.updateDpa,
-                        onPriorityPassChanged: controller.updatePriorityPass,
                         onSingleRiderChanged: controller.updateSingleRider,
                         onVacationPackageChanged:
                             controller.updateVacationPackage,
@@ -1295,7 +1293,6 @@ class _ServiceSettingsCard extends StatelessWidget {
     required this.settings,
     required this.onHappyEntryChanged,
     required this.onDpaChanged,
-    required this.onPriorityPassChanged,
     required this.onSingleRiderChanged,
     required this.onVacationPackageChanged,
     required this.onFreeDrinkChanged,
@@ -1307,7 +1304,6 @@ class _ServiceSettingsCard extends StatelessWidget {
   final TripSettings settings;
   final ValueChanged<bool> onHappyEntryChanged;
   final ValueChanged<bool> onDpaChanged;
-  final ValueChanged<bool> onPriorityPassChanged;
   final ValueChanged<bool> onSingleRiderChanged;
   final ValueChanged<bool> onVacationPackageChanged;
   final ValueChanged<bool> onFreeDrinkChanged;
@@ -1340,13 +1336,6 @@ class _ServiceSettingsCard extends StatelessWidget {
             icon: Icons.bolt,
             value: settings.canUseDpa,
             onChanged: onDpaChanged,
-          ),
-          _CompactSwitchTile(
-            title: 'プライオリティパス',
-            subtitle: '対象施設を無料で優先利用できるサービス',
-            icon: Icons.confirmation_number_outlined,
-            value: settings.canUsePriorityPass,
-            onChanged: onPriorityPassChanged,
           ),
           _CompactSwitchTile(
             title: 'シングルライダー',

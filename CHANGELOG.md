@@ -1,3 +1,8 @@
+## Dynamic Wait-Time Scoring Integration
+- Historical wait profile based First Move saving score
+- AI guided attraction selection ranks by wait-time saving
+- Schedule generation receives the same morning score
+
 ﻿## Operational Status Integration - 2026-08-18
 
 - 来園日を基準にアトラクションの休止期間を判定するよう修正し、`DateTime.now()`依存を廃止。

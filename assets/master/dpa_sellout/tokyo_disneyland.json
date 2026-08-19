@@ -1,0 +1,32 @@
+{
+  "parkId": "tokyo_disneyland",
+  "status": "seed_statistics",
+  "checkedAt": "2026-08-19T00:00:00.000",
+  "note": "初期DPA完売統計。TDL値は2026-03公開統計のためTDSより古く、低い信頼度で扱う。",
+  "items": [
+    {
+      "facilityId": "tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast",
+      "parkId": "tokyo_disneyland",
+      "averageSelloutTime": "11:53",
+      "sampleCount": 30,
+      "source": "TDR Waits published 30-day average in 2026-03-15 analysis",
+      "checkedAt": "2026-08-19T00:00:00.000"
+    },
+    {
+      "facilityId": "tdl_tomorrowland_baymax_happy_ride",
+      "parkId": "tokyo_disneyland",
+      "averageSelloutTime": "16:12",
+      "sampleCount": 30,
+      "source": "TDR Waits published 30-day average in 2026-03-15 analysis",
+      "checkedAt": "2026-08-19T00:00:00.000"
+    },
+    {
+      "facilityId": "tdl_critter_country_splash_mountain",
+      "parkId": "tokyo_disneyland",
+      "averageSelloutTime": "17:12",
+      "sampleCount": 30,
+      "source": "TDR Waits published 30-day average in 2026-03-15 analysis",
+      "checkedAt": "2026-08-19T00:00:00.000"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import '../../data/repositories/crowd_factor_repository_impl.dart';
+import '../../domain/services/wish_candidate_scoring_engine.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/dependency/service_locator.dart';
@@ -240,11 +242,21 @@ class ScheduleController extends ChangeNotifier {
       final eventImpacts = await ServiceLocator.eventImpactRepository
           .loadEventImpacts(parkId: selectedParkId);
 
+      final waitProfiles = await const CrowdFactorRepositoryImpl().loadWaitProfiles(parkId: selectedParkId);
+      final morningRanking = const WishCandidateScoringEngine().score(
+        facilities: availableFacilities,
+        preferences: preferences,
+        waitProfiles: waitProfiles,
+        availableMinutes: (settings.exitTimeHour * 60 + settings.exitTimeMinute) - (settings.entryTimeHour * 60 + settings.entryTimeMinute),
+        targetDate: targetDate,
+        hasHappyEntry: settings.hasHappyEntry,
+      );
       final generatedSchedule = _scheduleEngine.generate(
         settings: _appState.tripSettings,
         facilities: availableFacilities,
         preferences: preferences,
         eventImpacts: eventImpacts,
+        morningScores: {for (final candidate in morningRanking) candidate.facility.id: candidate.firstMoveScore ?? candidate.score},
       );
 
       _appState.updateDaySchedule(generatedSchedule);

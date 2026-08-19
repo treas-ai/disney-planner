@@ -110,7 +110,7 @@ class WishListScreenState extends State<WishListScreen> {
     try {
       // UIスレッドへ描画機会を渡しますが、演出目的の待機時間は追加しません。
       await Future<void>.delayed(Duration.zero);
-      final selected = chatController.applyToWishList(
+      final selected = await chatController.applyToWishListWithDynamicScoring(
         wishController.allItems,
       );
       if (!mounted || requestId != _guidedApplyRequestId) {

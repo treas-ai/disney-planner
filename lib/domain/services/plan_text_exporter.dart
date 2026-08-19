@@ -106,7 +106,6 @@ class PlanTextExporter {
       ..writeln('【利用可能なサービス】')
       ..writeln('ハッピーエントリー：${_enabled(settings.hasHappyEntry)}')
       ..writeln('DPA：${_enabled(settings.canUseDpa)}')
-      ..writeln('プライオリティパス：${_enabled(settings.canUsePriorityPass)}')
       ..writeln('シングルライダー：${_enabled(settings.canUseSingleRider)}')
       ..writeln('バケーションパッケージ：${_enabled(settings.usesVacationPackage)}')
       ..writeln(
@@ -152,10 +151,6 @@ class PlanTextExporter {
       ..writeln('予定数：${schedule.items.length}件')
       ..writeln('固定・時間指定候補：${_fixedPreferenceCount(preferences)}件')
       ..writeln('DPA予定候補：${_accessCount(preferences, FacilityAccessMethod.dpa)}件')
-      ..writeln(
-        'PP予定候補：'
-        '${_accessCount(preferences, FacilityAccessMethod.priorityPass)}件',
-      )
       ..writeln()
       ..writeln('【検証結果】');
 

@@ -2,6 +2,7 @@ import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
 import '../entities/time_band_wait_profile.dart';
 import '../enums/wait_time_band.dart';
+import 'dynamic_wait_scoring_service.dart';
 
 class WishCandidateScore {
   const WishCandidateScore({
@@ -23,7 +24,9 @@ class WishCandidateScore {
 }
 
 class WishCandidateScoringEngine {
-  const WishCandidateScoringEngine();
+  const WishCandidateScoringEngine({this.dynamicWaitScoringService = const DynamicWaitScoringService()});
+
+  final DynamicWaitScoringService dynamicWaitScoringService;
 
   List<WishCandidateScore> score({
     required List<Facility> facilities,
@@ -44,9 +47,7 @@ class WishCandidateScoringEngine {
       final profile = profileById[facility.id];
       final range = profile?.rangeFor(targetBand);
       final predictedWait = range?.typicalMinutes ?? facility.waitTime?.minutes ?? 30;
-      final openingWait = profile?.rangeFor(WaitTimeBand.afterOpening)?.typicalMinutes ?? predictedWait;
-      final laterWait = profile?.rangeFor(WaitTimeBand.beforeLunch)?.typicalMinutes ?? predictedWait;
-      final deferLoss = (laterWait - openingWait).clamp(0, 240);
+      final waitScore = dynamicWaitScoringService.evaluate(facilityId: facility.id, profiles: waitProfiles, facilityCurrentWaitMinutes: facility.waitTime?.minutes, fallbackMinutes: predictedWait);
       final priority = preference?.priority.value ?? facility.priority.value;
       final totalMinutes = facility.durationMinutes + predictedWait;
       var value = priority * 30.0;
@@ -55,21 +56,37 @@ class WishCandidateScoringEngine {
       if (facility.supportsDpa && predictedWait >= 60) value += 12;
       if (totalMinutes > availableMinutes) value -= 1000;
 
-      // 朝一は「入口から近い」ではなく、希望度と後回し損失を中心に評価する。
-      // DPA/PP対象だから朝一から外すのではなく、取得手段がある分だけ小さく調整する。
-      var firstMove = priority * 24.0 + deferLoss * 1.15 - openingWait * 0.18;
-      if (hasHappyEntry) firstMove += 8;
-      if (facility.supportsDpa) firstMove -= 4;
-      if (facility.supportsPriorityPass) firstMove -= 2;
-      if (preference?.preferredTime.name == 'morning') firstMove += 18;
-
+      // First Move は待ち時間節約を中心にしつつ、施設そのものの目的地価値も評価する。
+      // Priority Pass は評価対象外。DPAのみ現行の代替手段として扱う。
+      final baseExperienceValue = switch (priority) {
+        >= 5 => 40.0,
+        4 => 20.0,
+        3 => 10.0,
+        2 => 5.0,
+        _ => 0.0,
+      };
+      var firstMove = waitScore.savingMinutes.toDouble();
+      firstMove += baseExperienceValue;
+      if (facility.isSeasonal) firstMove += 12;
+      if (hasHappyEntry && waitScore.savingMinutes > 0) firstMove += 8;
+      if (facility.supportsDpa && !waitScore.usedFallback) firstMove -= 12;
+      if (preference?.preferredTime.name == 'morning') firstMove += 15;
       final firstReasons = <String>[
-        '希望度$priority/5',
-        '開園直後の予測待ち時間$openingWait分',
-        if (deferLoss > 0) '後回しで約$deferLoss分待ち時間増の見込み',
-        if (hasHappyEntry) 'ハッピーエントリー効果を考慮',
-        if (facility.supportsDpa) 'DPAで代替可能性あり',
-        if (facility.supportsPriorityPass) 'PPで代替可能性あり',
+        '朝一予測${waitScore.openingMinutes}分',
+        '通常時間帯代表${waitScore.normalMinutes}分',
+        '朝一で約${waitScore.savingMinutes}分節約見込み',
+        '待ち時間データ: ${waitScore.source}',
+        'サンプル数${waitScore.sampleCount}件',
+        '信頼度${waitScore.confidence.name}',
+        '施設基礎価値${baseExperienceValue.round()}点',
+        if (facility.isSeasonal) '期間限定施設 +12',
+        if (hasHappyEntry && waitScore.savingMinutes > 0)
+          'ハッピーエントリー効果を考慮',
+        if (facility.supportsDpa && !waitScore.usedFallback)
+          'DPA代替可能性を減点',
+        if (facility.supportsDpa && waitScore.usedFallback)
+          '待ち時間DB不足のためDPA減点は保留',
+        'Priority Passは評価対象外',
         '入口からの距離は朝一スコアに不使用',
       ];
       return WishCandidateScore(

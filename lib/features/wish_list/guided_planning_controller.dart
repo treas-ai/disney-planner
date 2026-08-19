@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../app/state/app_state.dart';
+import '../../app/dependency/service_locator.dart';
+import '../../data/repositories/crowd_factor_repository_impl.dart';
+import '../../domain/entities/facility.dart';
+import '../../domain/enums/facility_category.dart';
+import '../../domain/services/dynamic_wait_scoring_service.dart';
 import '../../domain/entities/wish_item.dart';
 import '../../domain/enums/wish_item_category.dart';
 
@@ -579,6 +584,157 @@ class GuidedPlanningController extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  Future<int> applyToWishListWithDynamicScoring(List<WishItem> items) async {
+    final parkId = appState.tripSettings.parkId;
+    final date = appState.tripSettings.visitDate ?? DateTime.now();
+    final parkItems = items.where((item) => item.parkId == parkId && item.isAvailableOn(date)).toList(growable: false);
+    final facilities = await ServiceLocator.facilityRepository.getFacilitiesByParkId(parkId);
+    final operationalById = <String, Facility>{for (final f in facilities) if (f.canAddToPlanAt(date)) f.id: f};
+    final profiles = await const CrowdFactorRepositoryImpl().loadWaitProfiles(parkId: parkId);
+    const waitScorer = DynamicWaitScoringService();
+
+    double activeContentValue(WishItem item) {
+      var score = 0.0;
+      if (item.eventPackId != 'facility_master') score += 18;
+      score += switch (item.category) {
+        WishItemCategory.specialDrink => 20,
+        WishItemCategory.drinkJelly => 18,
+        WishItemCategory.goods => 20,
+        WishItemCategory.souvenir => 18,
+        WishItemCategory.food => 14,
+        WishItemCategory.dessert => 14,
+        WishItemCategory.snack => 12,
+        WishItemCategory.entertainment => 16,
+        _ => 0,
+      };
+      if (item.freeDrinkEligible && hasFreeDrinkBenefit) score += 10;
+      final daysRemaining = item.endDate.difference(date).inDays;
+      if (daysRemaining >= 0 && daysRemaining <= 14) {
+        score += 12;
+      } else if (daysRemaining >= 0 && daysRemaining <= 30) {
+        score += 6;
+      }
+      return score;
+    }
+
+    final contentBoostByFacility = <String, double>{};
+    for (final content in parkItems) {
+      final value = activeContentValue(content);
+      if (value <= 0) continue;
+      for (final facilityId in content.venueFacilityIds) {
+        if (!operationalById.containsKey(facilityId)) continue;
+        contentBoostByFacility[facilityId] =
+            (contentBoostByFacility[facilityId] ?? 0) + value;
+      }
+    }
+
+    double attractionScore(WishItem item) {
+      final venues = item.venueFacilityIds
+          .map((id) => operationalById[id])
+          .whereType<Facility>()
+          .where((f) => f.category == FacilityCategory.attraction);
+      var best = double.negativeInfinity;
+      for (final facility in venues) {
+        final wait = waitScorer.evaluate(
+          facilityId: facility.id,
+          profiles: profiles,
+          facilityCurrentWaitMinutes: facility.waitTime?.minutes,
+        );
+        final priority = facility.priority.value;
+        final baseExperienceValue = switch (priority) {
+          >= 5 => 40.0,
+          4 => 20.0,
+          3 => 10.0,
+          2 => 5.0,
+          _ => 0.0,
+        };
+        var score = wait.savingMinutes.toDouble() + baseExperienceValue;
+        score += contentBoostByFacility[facility.id] ?? 0;
+        if (facility.isSeasonal) score += 12;
+        if (appState.tripSettings.hasHappyEntry &&
+            wait.savingMinutes > 0) {
+          score += 8;
+        }
+        if (facility.supportsDpa && !wait.usedFallback) score -= 12;
+        if (score > best) best = score;
+      }
+      return best;
+    }
+
+    double wishContentScore(WishItem item) {
+      var score = activeContentValue(item);
+      for (final facilityId in item.venueFacilityIds) {
+        score += (contentBoostByFacility[facilityId] ?? 0) * 0.25;
+      }
+      return score;
+    }
+
+    final selected = <String>{};
+
+    void addLimited(
+      bool Function(WishItem item) test,
+      int limit, {
+      bool rankAttractions = false,
+      bool rankActiveContent = false,
+    }) {
+      var candidates = parkItems.where(test).toList(growable: false);
+      if (rankAttractions) {
+        candidates = [...candidates]
+          ..sort((a, b) => attractionScore(b).compareTo(attractionScore(a)));
+      } else if (rankActiveContent) {
+        candidates = [...candidates]
+          ..sort((a, b) => wishContentScore(b).compareTo(wishContentScore(a)));
+      }
+      selected.addAll(candidates.take(limit).map((item) => item.id));
+    }
+
+    if (wantsAttractions) addLimited((item) => item.category == WishItemCategory.attraction, primaryFocus == GuidedPlanningFocus.attractions ? 8 : 5, rankAttractions: true);
+    if (wantsEntertainment) {
+      addLimited(
+        (item) =>
+            item.category == WishItemCategory.entertainment &&
+            (!wantsSeasonalEntertainment ||
+                item.eventPackId != 'facility_master'),
+        primaryFocus == GuidedPlanningFocus.entertainment ? 4 : 2,
+        rankActiveContent: true,
+      );
+    }
+    if (preferredCategories.contains(WishItemCategory.greeting)) addLimited((item) => item.category == WishItemCategory.greeting, primaryFocus == GuidedPlanningFocus.characters ? 3 : 1);
+    final foodCategories = preferredCategories.intersection(_foodCategories);
+    if (foodCategories.isNotEmpty || wantsSeasonalMenus) {
+      addLimited(
+        (item) {
+          if (hasFreeDrinkBenefit && item.freeDrinkEligible) return false;
+          return foodCategories.contains(item.category) ||
+              (wantsSeasonalMenus &&
+                  _foodCategories.contains(item.category) &&
+                  item.eventPackId != 'facility_master');
+        },
+        primaryFocus == GuidedPlanningFocus.food ? 8 : 4,
+        rankActiveContent: true,
+      );
+    }
+    if (hasFreeDrinkBenefit && wantsFeaturedFreeDrinkMenus) {
+      addLimited(
+        (item) => item.freeDrinkEligible,
+        freeDrinkPreferenceAnswer == '積極的に活用したい' ? 5 : 3,
+        rankActiveContent: true,
+      );
+    }
+    if (wantsSeasonalGoods) {
+      addLimited(
+        (item) =>
+            item.category == WishItemCategory.goods ||
+            item.category == WishItemCategory.souvenir,
+        4,
+        rankActiveContent: true,
+      );
+    }
+    appState.clearWishSelection();
+    appState.selectWishItems(selected);
+    return selected.length;
   }
 
   int applyToWishList(List<WishItem> items) {
