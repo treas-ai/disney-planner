@@ -2,11 +2,12 @@ name: Collect TDR live data
 
 on:
   schedule:
-    # 08:00-22:00 JST, every 5 minutes.
-    # GitHub cron is UTC: 23:00-23:55 UTC = 08:00-08:55 JST,
-    # 00:00-12:55 UTC = 09:00-21:55 JST, and 13:00 UTC = 22:00 JST.
-    - cron: '*/5 0-12,23 * * *'
-    - cron: '0 13 * * *'
+    # 08:00-21:55 JST, every 5 minutes.
+    - cron: '*/5 8-21 * * *'
+      timezone: 'Asia/Tokyo'
+    # Final collection at 22:00 JST.
+    - cron: '0 22 * * *'
+      timezone: 'Asia/Tokyo'
   workflow_dispatch:
 
 permissions:
