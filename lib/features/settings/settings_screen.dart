@@ -1016,8 +1016,15 @@ class _LiveDataSourceSettingsCard extends StatelessWidget {
             LiveDataSourceType.mock => '動作確認用のサンプルデータを使用します。',
             LiveDataSourceType.manual => '公式アプリを見ながら手動入力した待ち時間を使用します。',
             LiveDataSourceType.official =>
-              '自動取得の接続先は準備中です。取得できない場合はサンプルデータへ切り替えます。',
+              'ThemeParks.wikiから現在の待ち時間・運営状況を取得します。取得できない場合はサンプルデータへ切り替えます。',
           }, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Powered by ThemeParks.wiki',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
