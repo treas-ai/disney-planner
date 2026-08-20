@@ -1,94 +1,102 @@
+# Disney Planner Roadmap
 
-## v3.2 - Park Intelligence（実装）
+更新日: 2026-08-20  
+現在の安定タグ: **v7.4.2**
 
-- Event Impact Engine
-- イベント影響を移動・スケジュール・AIへ統合
-- 確認済みデータのみ登録
-## v3.3 — AI Intelligence（実装）
+## 完了済みの主要基盤
 
-- AI判断の優先度・信頼度・スコア
-- 提案理由の構造化
-- Event Impactとの統合
+これまでのv3〜v7系で、以下の主要基盤を段階的に実装済みです。
 
-## v3.3.2 Git Maintenance（完了対象）
+- TDL/TDSマスターデータ分離・監査
+- Live Operation Foundation / Official Data Service Foundation
+- Wish List、候補確認、プラン生成、Today再計算
+- AI Planner Phase 1〜4
+- 運営状況・来園日ベースの休止判定
+- 動的待ち時間スコアリング
+- 移動時間・イベント影響・AI判断基盤
+- 履歴・Undo/Redo・共有基盤
+- ThemeParks.wiki待ち時間／DPA収集基盤
 
-- `.gitignore`整備
-- 生成ファイルのGit追跡解除
-- Git運用手順の標準化
-- 次版から`git add .`を通常利用
+## v7.4.x — TDR Live Data Collection（現在）
 
-## v3.4 Tokyo Disney Resort Data Quality
+### v7.4.1まで
 
-- 自動監査基盤
-- 不足データの可視化
-- 後続版で監査結果に基づきTDL/TDSを補完
+- GitHub Actions用の軽量Pythonコレクタを導入
+- TDL/TDS待ち時間を日別CSVへ保存
+- DPA状態を別履歴へ保存
+- unmatched施設を記録
+- schedule diagnosticsを追加
+- GitHub Actions標準scheduleの実行遅延を診断
+- 外部スケジューラから `workflow_dispatch` を起動する方式へ移行
+- JST 08:00〜21:55を5分間隔、22:00を最終収集として運用開始
 
-## v3.5 Live Operation Foundation
+### v7.4.2（完了）
 
-- パーク営業時間・天候・混雑・施設運営状態の統合モデル
-- Repository InterfaceとMock実装
-- AIコンシェルジュ連携
-- 次版で外部データ取得実装へ差し替え
-## v3.7（完了対象）
+- `Anna and Elsa's Frozen Journey` の正規化aliasを修正
+- DisneySea Electric Railway (Port Discovery) のThemeParks.wiki UUIDマッピングを修正
+- TDSライブデータの施設対応精度を改善
 
-- Official Data Service Foundation
-- Mock／Official切替基盤
-- キャッシュとオフラインフォールバック
+## 次の作業 — Live Data Quality Stabilization
 
-## v3.8（検討）
+優先順位順に進めます。
 
-- 外部サービス接続方式の選定とConnector実装
-## v3.8（完了対象）
+1. **v7.4.2反映後のunmatched再確認**
+   - GitHub Actionsを実行
+   - `tokyo_disneysea: ... 0 unmatched` を確認
+   - 過去のunmatchedファイルは「現在も未対応」と誤解しないよう整理方針を決める
 
-- Manual Live Data Input
-- 公式アプリ補助としての安全な現在値入力
+2. **5分周期の実運用確認**
+   - cron-job.orgの実行履歴を確認
+   - GitHub Actionsの起動時刻と `schedule_diagnostics.csv` を比較
+   - 08:00〜22:00の欠測・重複を把握
 
-## v3.9（予定）
+3. **履歴データ品質監査**
+   - `observedAt`、施設ID、待ち時間、status、sourceEntityIdを検証
+   - DPA履歴のstate / returnStart / returnEndを検証
+   - 同一観測の重複排除が期待どおりか確認
 
+4. **履歴集約の安定化**
+   - `assets/master/wait_profiles/` と `crowd_factors/` の再生成経路を確認
+   - GitHub収集履歴を既存のHistoricalWaitProfileGeneratorへ確実に接続
+
+5. **予測ロジックへの接続**
+   - 曜日・時間帯・混雑傾向を履歴から算出
+   - 朝一候補評価と将来待ち時間予測へ利用
+   - データ不足時は固定人気値を捏造せず、信頼度を下げる
+
+## 次の改善 — Git運用
+
+現在、自動収集Botが `main` に直接観測データをコミットするため、開発者のpushと競合し `fetch first` が発生することがあります。
+
+候補:
+
+- 収集データ専用ブランチへ分離
+- Artifact / 外部ストレージ等への保存方式を検討
+- mainへ反映する集約結果だけを限定的にコミット
+
+**強制pushで解決しないこと。** 現状は `git pull --rebase origin main` を基本とします。
+
+## その後の開発候補
+
+- 待ち時間予測の精度評価UI
+- DPA / PP / 運営状態を含むリアルタイム再計画強化
 - ホテル・レストラン予約連携強化
-- Version 1.0.0向けUI・UX最終調整
-## v3.9〜v3.11（統合完了対象）
+- 実地テストでの入力負担・候補選択・AI配置評価
+- PC・スマホ・同行者間共有の改善
+- 公開版に向けたUI/UX最終調整
 
-- プラン履歴・Undo/Redo
-- 矛盾チェック・固定予定表示
-- 現地モード
-- バックアップ・復元
-- 初回案内・データ更新日
+## リリース判定
 
-## 次段階
+各実装単位で以下を満たすことを基本とします。
 
-- v4.0.0-rc1：全画面統合試験と公開準備
-## v4.0.0（実地テスト版）
+```powershell
+.\verify.ps1
+```
 
-- PC・スマホ・同行者間のデータ共有
-- URL／JSONを中心としたカメラ不要の共有
-- QRコードは補助機能
+期待結果:
 
-## 実地テスト後
+- `flutter analyze --no-pub` → No issues found!
+- `flutter test --no-pub` → All tests passed!
+- Verification completed.
 
-- パーク内で得た操作性・AI順序・待ち時間入力の改善を反映
-## v4.0.1
-
-- GitHub Pages自動デプロイ
-- 公開デモを常にmain最新版へ同期
-## v4.2〜v4.5（統合完了対象）
-
-- Wish List
-- AIプラン統合
-- イベントパック更新基盤
-- 2026夏イベントパック
-
-## 次段階
-
-- 実地テストで入力負担・店舗選択・AI配置を評価
-- 2026夏データの追加確認と修正
-## v4.6.0
-
-- 旅行設定 → Wish → 候補確認 → プラン → 当日の操作順
-- 入力作業をWish中心へ集約
-## v5.0.0
-
-- 質問形式の旅行相談フロー
-- Wish自動選択と候補施設連携
-- 当日案内をTodayへ統合
-
+ライブデータ関連では加えて、GitHub Actionsログと保存CSVの実データを確認します。

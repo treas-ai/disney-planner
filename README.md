@@ -1,68 +1,64 @@
-﻿# Disney Planner
+# Disney Planner
 
 **公式アプリと一緒に使うAIディズニープランナー**
 
-Disney Plannerは、ディズニー公式アプリの代替ではありません。公式アプリでチケット、予約、公式待ち時間、公式マップなどを確認しながら、事前計画、当日のスケジュール管理、再計算、将来のAI予測を支援するFlutterアプリです。
+Disney Plannerはディズニー公式アプリの代替ではありません。チケット、予約、公式待ち時間、公式マップなどは公式アプリで確認し、本アプリは事前計画、当日のスケジュール管理、再計算、待ち時間履歴の活用、AIによる候補評価を補助します。
+
+## 現在の開発状態
+
+- 現在の安定タグ: **v7.4.2**
+- `flutter analyze --no-pub`: **No issues found!**（直近確認）
+- `flutter test --no-pub`: **All tests passed!**（直近確認）
+- TDL/TDS待ち時間・DPA状態の自動収集基盤: **稼働開始**
+- ThemeParks.wiki施設マッピング: v7.4.2でTDSの追加修正
+
+詳細は `docs/current/PROJECT_STATUS.md` と `docs/current/ROADMAP.md` を参照してください。
 
 ## 現在の主な機能
 
-- 施設検索と絞り込み
-- プラン編集
-- 固定予定管理
-- スケジュール生成
-- Today画面
-- 手入力待ち時間
-- ローカルリアルタイムデータ基盤
-- 残り予定の再計算、比較、承認、Undo
-- 移動時間エンジン基盤
-- 行動履歴・AI学習データ基盤
+- 旅行設定 → Wish List → 候補確認 → プラン生成の計画フロー
+- TDL/TDS施設検索・絞り込み
+- 固定予定、予約、DPA/PP等を考慮したスケジュール生成
+- Today画面と残り予定の再計算・比較・承認・Undo
+- 運営状況・来園日ベースの休止判定
+- 移動時間エンジン
+- 待ち時間履歴・AI学習データ基盤
+- 待ち時間予測と動的スコアリング基盤
+- AIプラン最適化・リアルタイム再計画基盤
+- ローカル共有・履歴基盤
 
-## v2.5の方針
+## TDRライブデータ収集
 
-公式マップ画像は使用しません。独自の相対位置、エリア接続、確認済み移動時間をデータとして扱い、最短移動時間と到着予定時刻を計算します。
+ThemeParks.wiki の公開live APIから、東京ディズニーランド／東京ディズニーシーの待ち時間とDPA状態を収集します。
+
+現在は GitHub Actions の `workflow_dispatch` を外部スケジューラから起動し、**JST 08:00〜21:55を5分間隔、22:00に最終1回**の収集を行う構成です。GitHub Actions標準のscheduled実行は遅延が大きかったため、5分周期の主トリガーには使用しません。
+
+保存先:
+
+- 待ち時間: `tool/wait_data/github_history/YYYY/MM/YYYY-MM-DD_<parkId>.csv`
+- DPA状態: `tool/wait_data/dpa_history/YYYY/MM/YYYY-MM-DD_<parkId>.csv`
+- 未マッピング: `tool/wait_data/unmatched/<parkId>.txt`
+- スケジュール診断: `tool/wait_data/schedule_diagnostics.csv`
+
+施設対応表は `assets/master/live_mapping/themeparks_wiki_tokyo.json` です。v7.4.2では `Anna and Elsa's Frozen Journey` と DisneySea Electric Railway (Port Discovery) のマッピングを修正しました。
+
+詳しくは `tool/wait_data/README.md` と `docs/current/THEMEPARKS_WIKI_UNMATCHED_FIX.md` を参照してください。
+
+## 待ち時間データの利用方針
+
+収集した履歴は、将来的な待ち時間予測・朝一候補評価・動的スケジュール最適化の入力に使用します。予測値は公式情報ではなく、公式アプリの確認を前提とした参考値として扱います。
+
+次の重点は、**収集品質の監視 → unmatched解消確認 → 履歴集約 → 予測ロジックへの安定接続**です。
 
 ## 開発環境
 
-```powershell
-flutter pub get
-flutter analyze
-flutter run -d windows
-```
-
-
-## v2.6の方針
-
-手動入力した待ち時間などの実利用データを、取得元と品質を含む履歴として保存します。予測値と実測・入力値を分離し、v2.7の待ち時間予測に利用できる基盤を整えます。
-
-## AI待ち時間予測
-
-v2.7では、手入力した現在待ち時間と蓄積された履歴から、将来の待ち時間を参考予測します。予測は公式情報ではなく、予測範囲・信頼度・根拠を併記します。
-## AIプラン最適化
-v2.8では、現在のプランを採点し、固定予定を保護した改善案を提示します。提案はユーザー承認後にのみ反映されます。
-
-
-## AIコンシェルジュ
-v2.9では、現在のプランをもとに次の行動を案内するローカルAIコンシェルジュを搭載しています。公式情報は公式アプリで確認します。
-
-
-## 東京ディズニーシー対応
-
-v3.0からTDL/TDSのマスターデータを分離し、公式アプリを補助するプラン作成用データとして管理します。変動する運営情報は公式アプリで確認してください。
-
-## Git運用
-
-Flutterの生成ファイルは`.gitignore`で除外します。通常のリリースでは次を実行します。
+通常確認:
 
 ```powershell
-git add .
-git commit -m "Release vX.X"
-git push
-
-git tag vX.X
-git push origin vX.X
+.\verify.ps1
 ```
 
-依存関係を変更していない通常確認では、不要な依存解決を避けるため`--no-pub`を使用できます。
+個別確認:
 
 ```powershell
 flutter analyze --no-pub
@@ -70,12 +66,37 @@ flutter test --no-pub
 flutter run --no-pub -d windows
 ```
 
+依存関係を変更した場合のみ、必要に応じて `flutter pub get` を実行します。
+
 ## マスターデータ監査
 
 ```powershell
 dart run tool/audit_master_data.dart
 ```
 
-実行するとプロジェクト直下に`docs/audits/MASTER_DATA_AUDIT_REPORT.md`を生成します。構造エラーと品質警告を分け、TDL/TDSの正式版1.0.0に向けた補完作業へ使用します。
+監査結果は `docs/audits/MASTER_DATA_AUDIT_REPORT.md` に出力します。
 
+## Git運用
 
+自動収集Botが `main` に観測データをコミットするため、ローカルpush時に `fetch first` が発生することがあります。その場合は強制pushせず、次を使用します。
+
+```powershell
+git pull --rebase origin main
+git push origin main
+```
+
+リリースタグ例:
+
+```powershell
+git tag -a vX.X.X -m "vX.X.X <summary>"
+git push origin vX.X.X
+```
+
+今後は、開発用 `main` と自動収集データの競合を減らすため、収集データの保存ブランチ／保存方式の分離を検討します。
+
+## 外部サービスと注意事項
+
+- ThemeParks.wiki: ライブデータ取得元。アプリ表示時はクレジットを維持します。
+- cron-job.org: 5分周期の外部トリガーとして利用中。
+- GitHub PAT等の秘密情報はリポジトリ、README、スクリーンショット、チャットへ貼り付けません。
+- 公式情報は必ずディズニー公式アプリ／公式サイトを優先します。
