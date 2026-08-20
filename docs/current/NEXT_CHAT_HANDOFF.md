@@ -113,3 +113,13 @@ git push origin main
 初回はv7.4.4を `main` に反映した後、プロジェクト直下で `./setup_live_data_branch.ps1` を1回実行する。その後 `Collect TDR live data` を手動実行し、`live-data` だけが更新され `main` が動かないことを確認する。
 
 実プラン確認では、現状 `ScheduleEngine` の推定待ち時間が `wait_profiles` を直接使わず安全側暫定値へフォールバックすることが判明している。Git運用安定化の受入後、次の実装課題としてwait profile→ScheduleEngine接続を行う。
+
+## v7.4.6引き継ぎ — Wait Profile Coverage Audit
+
+実プランでv7.4.5のwait profile→ScheduleEngine接続は確認済み。ロジャーラビット、カリブ、ジャングルクルーズ等は実績値へ変化した。
+
+次の原因調査で、ThemeParks.wiki履歴の `observedAt` はUTC (`Z`) なのにHistoricalWaitProfileGeneratorがUTCのhour/minuteをそのままTDR時間帯としていたことを特定。これが午後以降の0/0/0が多い主要因。v7.4.6候補でUTC→JST変換を実装し、7帯の回帰テストを追加する。
+
+さらに `tool/audit_wait_profile_coverage.py` を追加。日次 `Rebuild TDR wait profiles` はlive-dataを使ってprofile再生成後にcoverage reportも生成する。unmatchedファイルはappend-onlyではなく現在未解決だけにする。
+
+次回はv7.4.6 ZIP上書き→`./verify.ps1`→mainへpush→`Rebuild TDR wait profiles`を手動実行→生成された `docs/current/WAIT_PROFILE_COVERAGE_AUDIT.md` と再生成profileを確認する。

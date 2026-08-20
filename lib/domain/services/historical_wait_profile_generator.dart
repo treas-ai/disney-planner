@@ -90,7 +90,11 @@ class HistoricalWaitProfileGenerator {
   String _season(int month) => month == 12 || month <= 2 ? 'winter' : month <= 5 ? 'spring' : month <= 8 ? 'summer' : 'autumn';
 
   WaitTimeBand _bandFor(DateTime time) {
-    final minute = time.hour * 60 + time.minute;
+    // ThemeParks.wiki履歴はUTC (Z) で保存されるため、
+    // 東京ディズニーリゾートの時間帯判定はJSTへ変換してから行う。
+    // timezone packageに依存せず、TDRは通年UTC+9（DSTなし）として扱う。
+    final local = time.isUtc ? time.add(const Duration(hours: 9)) : time;
+    final minute = local.hour * 60 + local.minute;
     if (minute < 660) return WaitTimeBand.afterOpening;
     if (minute < 720) return WaitTimeBand.beforeLunch;
     if (minute < 900) return WaitTimeBand.afterLunch;

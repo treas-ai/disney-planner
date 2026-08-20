@@ -5,7 +5,8 @@
 ## Current release
 
 - Stable tag: **v7.4.4**
-- Implementation candidate: **v7.4.5 — Wait profile schedule integration**
+- `main` reflected candidate: **v7.4.5 — Wait profile schedule integration**
+- Implementation candidate: **v7.4.6 — Wait Profile Coverage Audit**
 - Application branch: `main`
 - Raw live-data branch: `live-data`（v7.4.4で作成・実運用確認済み）
 - Design policy: 既存のDesign Freezeを尊重し、ライブデータ基盤はUIを不用意に変更しない
@@ -70,3 +71,17 @@ ThemeParks.wikiからTDL/TDSの待ち時間・DPA状態を自動収集する基�
 v7.4.4までの `ScheduleEngine` は、`Facility.waitTime` が無い通常待機アトラクションを優先度別20/30/45/60分で見積もっていた。`wait_profiles` は朝一候補スコアには使われていたが、スケジュールの `estimatedWaitMinutes` / 拘束時間 / `waitEstimateSource` には未接続だった。
 
 v7.4.5候補では `ScheduleEngine.generate()` に `waitProfiles` を任意入力として追加し、Plan ReviewとAiDayPlannerから既存ロード済みprofilesを渡す。予定開始時刻をHistoricalWaitProfileGeneratorと同じ時間帯境界へ変換し、該当profileの `typicalMinutes` を通常待機の推定値へ使用する。0/0/0レンジは「サンプル無し」として安全側フォールバックへ戻す。DPA/PP/Standby Passの10分暫定バッファと `Facility.waitTime` の優先は維持する。
+
+## v7.4.6 candidate — coverage audit and JST band fix
+
+実プランでprofile接続自体は成功した一方、午後以降の多くが0/0/0となる原因を調査し、ThemeParks.wikiのUTC timestampをJSTへ変換せず時間帯分類していた問題を特定した。v7.4.6では `HistoricalWaitProfileGenerator` がUTC入力をJSTへ変換してから `afterOpening`〜`beforeClosing` の7帯へ分類する。既存履歴を再生成すれば過去の午後・夕方観測も正しい帯へ再配置される。
+
+`tool/audit_wait_profile_coverage.py` は以下を監査する。
+
+1. mapped + active attractionなのにprofileが無い施設
+2. 7時間帯の生サンプル不足（raw historyがある場合は件数ベース）
+3. masterに存在しないmapping target / profile ID
+4. active master attractionでmappingが無い候補（自動修正はしない）
+5. current unmatchedのうち現行alias/source alias/ignoreでも解決できない項目
+
+collectorのunmatchedファイルはappend-onlyを廃止し「現在の未解決集合」に変更する。

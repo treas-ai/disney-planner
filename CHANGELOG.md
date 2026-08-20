@@ -1,3 +1,12 @@
+## v7.4.6 candidate - Wait Profile Coverage Audit
+
+- Add `tool/audit_wait_profile_coverage.py` to list missing profiles, missing time-band coverage, invalid mapping targets, active attractions without mappings, and unresolved unmatched entries.
+- Fix wait-profile time-band classification for ThemeParks.wiki UTC timestamps by converting UTC to JST before assigning the seven TDR time bands.
+- Add a regression test covering all seven JST bands from UTC observations.
+- Change collector unmatched files from append-only history to the current unresolved set; resolved/ignored historical entries no longer remain forever.
+- Daily `Rebuild TDR wait profiles` now regenerates `docs/current/WAIT_PROFILE_COVERAGE_AUDIT.md` from the `live-data` branch and commits the report with generated profiles.
+- Keep facility IDs conservative: the audit reports possible mapping gaps but never invents or auto-creates mappings.
+
 
 ## v7.4.5 candidate - Wait profile schedule integration
 

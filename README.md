@@ -7,7 +7,8 @@ Disney Plannerはディズニー公式アプリの代替ではありません。
 ## 現在の開発状態
 
 - 現在の安定タグ: **v7.4.4**
-- 次期候補: **v7.4.5 — Wait profile schedule integration**
+- `main` 反映済み候補: **v7.4.5 — Wait profile schedule integration**
+- 次期候補: **v7.4.6 — Wait Profile Coverage Audit**
 - `flutter analyze --no-pub`: **No issues found!**（直近確認）
 - `flutter test --no-pub`: **All tests passed!**（直近確認）
 - TDL/TDS待ち時間・DPA状態の自動収集基盤: **稼働開始**
@@ -115,3 +116,9 @@ git push origin vX.X.X
 ## v7.4.5候補 — wait_profiles のスケジュール接続
 
 `wait_profiles` は朝一候補評価には既に使われていますが、v7.4.4までは `ScheduleEngine` の各施設の推定待ち時間・拘束時間には未接続でした。v7.4.5候補では、予定開始時刻を時間帯へ変換し、同一 `facilityId` / `parkId` の実績プロファイル中央値を通常待機の推定待ち時間へ使います。該当時間帯に有効な実績値が無い場合だけ従来の安全側フォールバックを維持します。
+
+## v7.4.6候補 — Wait Profile Coverage Audit
+
+実プランで実績profileの接続は確認できましたが、時間帯の多くが0/0/0になる原因を追跡した結果、ThemeParks.wikiの `observedAt` はUTC (`Z`) なのに、`HistoricalWaitProfileGenerator` がUTC時刻のままTDRの時間帯へ分類していたことを確認しました。v7.4.6候補ではUTCをJSTへ変換してから7時間帯へ分類します。
+
+また `tool/audit_wait_profile_coverage.py` を追加し、profile未生成施設、時間帯別サンプル不足、マッピング対象不整合、現在のunmatchedを一覧化します。日次profile再生成Workflowでもこの監査を実行し、`docs/current/WAIT_PROFILE_COVERAGE_AUDIT.md` を更新します。施設IDは自動推測・捏造せず、疑わしい項目は監査結果として残します。

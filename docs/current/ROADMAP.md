@@ -117,3 +117,22 @@
 - `estimatedWaitMinutes`、拘束時間、AI評価用の推定根拠を同一の予測値へ統一
 - データ無し・0/0/0時間帯は従来の安全側フォールバックを維持
 - 統合テストを追加してprofile存在時にフォールバックへ落ちる回帰を防止
+
+## v7.4.6 — Wait Profile Coverage Audit（次）
+
+- UTC `observedAt` をJSTへ変換して7時間帯を再生成する
+- profile未生成施設をmapped/active master基準で一覧化する
+- raw historyを使って時間帯別sample countを監査する
+- masterに存在しないmapping target / profile IDを検出する
+- unmatchedは現在の未解決集合だけを保持する
+- 日次profile rebuildでcoverage reportも更新する
+- facility IDは自動推測せず、未解決は人手確認へ残す
+
+受入条件:
+
+1. `./verify.ps1` が成功
+2. `Rebuild TDR wait profiles` 手動実行が成功
+3. `WAIT_PROFILE_COVERAGE_AUDIT.md` が生成される
+4. 8/19〜8/20等の既存午後データがafterLunch以降へ正しく配分される
+5. current unmatchedが0ならunmatchedファイルが削除される
+6. mapping targetのmaster不整合が0であること

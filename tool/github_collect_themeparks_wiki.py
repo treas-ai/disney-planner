@@ -144,10 +144,14 @@ def collect_park(park_id: str, park: dict, now_jst: datetime) -> tuple[int, int,
     dpa_count = append_rows(dpa_path, DPA_HEADER, dpas)
 
     unmatched_path = UNMATCHED_ROOT / f"{park_id}.txt"
+    # Keep this file as the *current* unresolved set rather than an append-only
+    # historical log. Otherwise already-fixed aliases remain forever and make
+    # coverage/mapping audits look broken even when the current run resolved them.
     if unmatched:
         unmatched_path.parent.mkdir(parents=True, exist_ok=True)
-        existing = set(unmatched_path.read_text(encoding="utf-8").splitlines()) if unmatched_path.exists() else set()
-        unmatched_path.write_text("\n".join(sorted(existing | unmatched)) + "\n", encoding="utf-8")
+        unmatched_path.write_text("\n".join(sorted(unmatched)) + "\n", encoding="utf-8")
+    elif unmatched_path.exists():
+        unmatched_path.unlink()
 
     return wait_count, dpa_count, len(unmatched)
 

@@ -101,3 +101,17 @@ v7.4.4候補では次の役割分担にします。
 ## クレジット
 
 表示・予測にThemeParks.wikiデータを利用する場合、アプリ内の `Powered by ThemeParks.wiki` クレジットを維持します。
+
+## Coverage audit (v7.4.6)
+
+Run from the project root:
+
+```powershell
+python tool/audit_wait_profile_coverage.py --data-root tool/wait_data
+```
+
+In GitHub Actions the daily profile rebuild uses `.live-data/tool/wait_data`, so the report includes the raw live-data branch. The report is written to `docs/current/WAIT_PROFILE_COVERAGE_AUDIT.md`. The audit never invents facility mappings.
+
+ThemeParks.wiki timestamps are UTC (`Z`). Wait profile time bands are Tokyo local time and therefore must be classified after conversion to JST (UTC+9).
+
+`unmatched/<park>.txt` now represents only the unresolved entries from the latest collection run. If the latest run has zero unmatched entries, the old file is removed.
