@@ -1,5 +1,13 @@
 # 新チャット引き継ぎプロンプト
 
+## 2026-08-20 v7.4.4確定後の最新引き継ぎ
+
+- `v7.4.4` タグ作成・push済み。
+- `live-data` ブランチを作成し、cron-job.org → workflow_dispatch → GitHub Actionsの5分収集が `live-data` だけを更新することを実運用で確認済み。`main` への5分Bot commit競合は解消。
+- `wait_profiles` / `crowd_factors` 再生成と既存81テストは成功済み。
+- 実際のTDL評価プランでは全施設が「待ち時間データ未登録のため優先度別の安全側暫定値」となり、調査の結果 `wait_profiles` が朝一順位には使われる一方、`ScheduleEngine` の推定待ち時間へ渡されていないことを特定。
+- 次の最優先は v7.4.5: `wait_profiles` をScheduleEngineの通常待機推定・拘束時間・推定根拠へ接続する。
+
 以下を新しいChatGPTチャットの最初のメッセージとして貼り付けてください。
 
 ---
@@ -10,7 +18,7 @@ Disney Planner（Flutter）の開発を前チャットから引き継いでく�
 
 - プロジェクト: Disney Planner
 - ブランチ: `main`
-- 現在の安定タグ: **v7.4.2**
+- 現在の安定タグ: **v7.4.4**
 - v7.4.2: `Fix TDS live data facility mappings`
 - 直近の `verify.ps1` は `flutter analyze --no-pub: No issues found!` / `flutter test --no-pub: All tests passed!`
 - README / Roadmap / Project Status / wait_data README は2026-08-20時点へ更新済み
@@ -98,7 +106,7 @@ git push origin main
 ---
 
 
-## v7.4.4候補で追加するGit運用変更
+## v7.4.4で追加したGit運用変更
 
 5分ごとのraw観測データは `main` ではなく `live-data` へ保存する。`main` の最新collector/mappingを使い、出力先だけ別checkoutへ向ける。月次圧縮も `live-data`、日次wait profile再生成は `live-data` を入力として集約JSONだけ `main` へ反映する。
 

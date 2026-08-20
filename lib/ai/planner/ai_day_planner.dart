@@ -77,6 +77,7 @@ class AiDayPlanner {
       facilities: selectedFacilities,
       preferences: allocation.preferences,
       eventImpacts: eventImpacts,
+      waitProfiles: waitProfiles,
       morningScores: {
         for (final candidate in ranked)
           candidate.facility.id: candidate.firstMoveScore ?? candidate.score,

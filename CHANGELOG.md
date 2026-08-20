@@ -1,3 +1,13 @@
+
+## v7.4.5 candidate - Wait profile schedule integration
+
+- `ScheduleEngine.generate()` に既存の `TimeBandWaitProfile` を渡せるよう拡張。
+- 通常待機アトラクションは、予定開始時刻に対応する時間帯の実績 `typicalMinutes` を推定待ち時間として使用。
+- `estimatedWaitMinutes`、施設拘束時間、`waitEstimateSource` を同じ予測結果から生成。
+- `Facility.waitTime` がある場合は従来どおり現在値を優先し、DPA/PP/Standby Passの10分暫定バッファも維持。
+- サンプル無し時間帯の0/0/0レンジを実待ち0分と誤認せず、安全側フォールバックへ戻す。
+- `schedule_engine_wait_profile_integration_test.dart` を追加し、profile反映と0/0/0安全策を回帰テスト。
+
 ## Dynamic Wait-Time Scoring Integration
 - Historical wait profile based First Move saving score
 - AI guided attraction selection ranks by wait-time saving
@@ -1372,7 +1382,7 @@ dart run tool/audit_wish_data.dart
 ------------------------------------------------------------------------
 
 
-## v7.4.4 candidate - Live data branch separation
+## v7.4.4 - Live data branch separation
 
 - Separate frequent TDR raw observation commits from the application `main` branch.
 - `Collect TDR live data` now runs the collector code from `main` but writes wait/DPA/unmatched/diagnostic files to `live-data`.

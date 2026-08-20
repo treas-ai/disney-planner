@@ -6,8 +6,8 @@ Disney Plannerはディズニー公式アプリの代替ではありません。
 
 ## 現在の開発状態
 
-- 現在の安定タグ: **v7.4.2**
-- 次期候補: **v7.4.4 — Live data branch separation**
+- 現在の安定タグ: **v7.4.4**
+- 次期候補: **v7.4.5 — Wait profile schedule integration**
 - `flutter analyze --no-pub`: **No issues found!**（直近確認）
 - `flutter test --no-pub`: **All tests passed!**（直近確認）
 - TDL/TDS待ち時間・DPA状態の自動収集基盤: **稼働開始**
@@ -34,7 +34,7 @@ ThemeParks.wiki の公開live APIから、東京ディズニーランド／東�
 
 現在は GitHub Actions の `workflow_dispatch` を外部スケジューラから起動し、**JST 08:00〜21:55を5分間隔、22:00に最終1回**の収集を行う構成です。GitHub Actions標準のscheduled実行は遅延が大きかったため、5分周期の主トリガーには使用しません。
 
-保存ブランチ: **`live-data`**（v7.4.4候補から。アプリ開発の `main` と分離）
+保存ブランチ: **`live-data`**（v7.4.4で正式導入。アプリ開発の `main` と分離）
 
 保存先:
 
@@ -81,7 +81,7 @@ dart run tool/audit_master_data.dart
 
 ## Git運用
 
-v7.4.4候補では、5分ごとの生観測データと月次圧縮結果を **`live-data`** ブランチへ分離します。`main` はFlutterアプリ、設定、集約済み `wait_profiles` / `crowd_factors` を保持します。これにより5分ごとのBot commitが通常の開発pushと競合しません。
+v7.4.4では、5分ごとの生観測データと月次圧縮結果を **`live-data`** ブランチへ分離しました。`main` はFlutterアプリ、設定、集約済み `wait_profiles` / `crowd_factors` を保持します。これにより5分ごとのBot commitが通常の開発pushと競合しません。
 
 初回だけ、v7.4.4を `main` へpushした後に次を実行します。
 
@@ -111,3 +111,7 @@ git push origin vX.X.X
 - cron-job.org: 5分周期の外部トリガーとして利用中。
 - GitHub PAT等の秘密情報はリポジトリ、README、スクリーンショット、チャットへ貼り付けません。
 - 公式情報は必ずディズニー公式アプリ／公式サイトを優先します。
+
+## v7.4.5候補 — wait_profiles のスケジュール接続
+
+`wait_profiles` は朝一候補評価には既に使われていますが、v7.4.4までは `ScheduleEngine` の各施設の推定待ち時間・拘束時間には未接続でした。v7.4.5候補では、予定開始時刻を時間帯へ変換し、同一 `facilityId` / `parkId` の実績プロファイル中央値を通常待機の推定待ち時間へ使います。該当時間帯に有効な実績値が無い場合だけ従来の安全側フォールバックを維持します。

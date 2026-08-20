@@ -4,6 +4,7 @@ import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
 import '../entities/schedule_item.dart';
 import '../entities/trip_settings.dart';
+import '../entities/time_band_wait_profile.dart';
 import 'entry_prediction_service.dart';
 import '../enums/facility_access_method.dart';
 import '../enums/facility_category.dart';
@@ -11,6 +12,7 @@ import '../enums/fixed_time_status.dart';
 import '../enums/lottery_fallback_action.dart';
 import '../enums/preferred_time.dart';
 import '../enums/schedule_item_type.dart';
+import '../enums/wait_time_band.dart';
 import 'event_impact_engine.dart';
 import 'meal_planner.dart';
 import 'route_optimizer.dart';
@@ -39,6 +41,7 @@ class ScheduleEngine {
     required List<Facility> facilities,
     required List<PlanPreference> preferences,
     List<EventImpact> eventImpacts = const [],
+    List<TimeBandWaitProfile> waitProfiles = const [],
     Map<String, double> morningScores = const {},
   }) {
     final items = <ScheduleItem>[];
@@ -225,9 +228,16 @@ class ScheduleEngine {
         movementMinutes: movementMinutes,
       );
 
+      final waitEstimate = _resolveWaitEstimate(
+        facility: facility,
+        preference: preference,
+        waitProfiles: waitProfiles,
+        scheduledStartMinutes: requestedStartMinutes,
+      );
       final durationMinutes = _resolvePlannedFacilityDuration(
         facility: facility,
         preference: preference,
+        waitEstimate: waitEstimate,
       );
 
       final firstAvailableStart = _findAvailableStart(
@@ -294,13 +304,13 @@ class ScheduleEngine {
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
           estimatedWaitMinutes: facility.category == FacilityCategory.attraction
-              ? durationMinutes - _resolveFacilityDuration(facility)
+              ? waitEstimate.waitMinutes
               : null,
           experienceMinutes: facility.category == FacilityCategory.attraction
               ? _resolveFacilityDuration(facility)
               : null,
           waitEstimateSource: facility.category == FacilityCategory.attraction
-              ? _waitEstimateSource(facility: facility, preference: preference)
+              ? waitEstimate.source
               : null,
         ),
       );
@@ -1132,6 +1142,7 @@ class ScheduleEngine {
   int _resolvePlannedFacilityDuration({
     required Facility facility,
     required PlanPreference? preference,
+    _WaitEstimate? waitEstimate,
   }) {
     final experienceMinutes = _resolveFacilityDuration(facility);
 
@@ -1157,20 +1168,15 @@ class ScheduleEngine {
       return experienceMinutes + 10;
     }
 
-    final knownWaitMinutes = facility.waitTime?.minutes;
-    final fallbackWaitMinutes = switch (facility.priority.name) {
-      'highest' => 60,
-      'high' => 45,
-      'medium' => 30,
-      _ => 20,
-    };
-
-    return experienceMinutes + (knownWaitMinutes ?? fallbackWaitMinutes);
+    return experienceMinutes +
+        (waitEstimate?.waitMinutes ?? _fallbackWaitMinutes(facility));
   }
 
-  String _waitEstimateSource({
+  _WaitEstimate _resolveWaitEstimate({
     required Facility facility,
     required PlanPreference? preference,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required int scheduledStartMinutes,
   }) {
     final method = preference?.accessMethod ?? FacilityAccessMethod.standby;
     final shortened =
@@ -1180,9 +1186,67 @@ class ScheduleEngine {
         (preference?.useDpa == true && facility.supportsDpa) ||
         (preference?.usePriorityPass == true && facility.supportsPriorityPass) ||
         (preference?.useStandbyPass == true && facility.supportsStandbyPass);
-    if (shortened) return 'パス利用時の暫定バッファ';
-    if (facility.waitTime != null) return '施設の待ち時間データ';
-    return '待ち時間データ未登録のため優先度別の安全側暫定値';
+
+    if (shortened) {
+      return const _WaitEstimate(
+        waitMinutes: 10,
+        source: 'パス利用時の暫定バッファ',
+      );
+    }
+
+    if (facility.waitTime != null) {
+      return _WaitEstimate(
+        waitMinutes: facility.waitTime!.minutes,
+        source: '施設の待ち時間データ',
+      );
+    }
+
+    TimeBandWaitProfile? profile;
+    for (final item in waitProfiles) {
+      if (item.facilityId == facility.id && item.parkId == facility.parkId) {
+        profile = item;
+        break;
+      }
+    }
+
+    if (profile != null) {
+      final band = _waitTimeBandForMinutes(scheduledStartMinutes);
+      final range = profile.rangeFor(band);
+
+      // HistoricalWaitProfileGenerator はサンプルが無い時間帯を
+      // 0/0/0として保持する。これを「待ち時間0分」と誤認しない。
+      if (range != null && range.typicalMinutes > 0) {
+        return _WaitEstimate(
+          waitMinutes: range.typicalMinutes,
+          source:
+              '実績待ち時間プロファイル（${band.label}、${profile.source}、サンプル${profile.sampleCount}件）',
+        );
+      }
+    }
+
+    return _WaitEstimate(
+      waitMinutes: _fallbackWaitMinutes(facility),
+      source: '待ち時間データ未登録のため優先度別の安全側暫定値',
+    );
+  }
+
+  int _fallbackWaitMinutes(Facility facility) {
+    return switch (facility.priority.name) {
+      'highest' => 60,
+      'high' => 45,
+      'medium' => 30,
+      _ => 20,
+    };
+  }
+
+  WaitTimeBand _waitTimeBandForMinutes(int minutes) {
+    if (minutes < 11 * 60) return WaitTimeBand.afterOpening;
+    if (minutes < 12 * 60) return WaitTimeBand.beforeLunch;
+    if (minutes < 15 * 60) return WaitTimeBand.afterLunch;
+    if (minutes < 17 * 60) return WaitTimeBand.aroundShows;
+    if (minutes < 18 * 60) return WaitTimeBand.beforeDinner;
+    if (minutes < 20 * 60) return WaitTimeBand.afterDinner;
+    return WaitTimeBand.beforeClosing;
   }
 
   int? _adjustStartForOperatingHours({
@@ -1808,6 +1872,13 @@ class _FixedAccessCandidate {
 
   final Facility facility;
   final PlanPreference? preference;
+}
+
+class _WaitEstimate {
+  const _WaitEstimate({required this.waitMinutes, required this.source});
+
+  final int waitMinutes;
+  final String source;
 }
 
 class _WaitToleranceDecision {

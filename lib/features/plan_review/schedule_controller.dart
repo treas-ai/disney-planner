@@ -256,6 +256,7 @@ class ScheduleController extends ChangeNotifier {
         facilities: availableFacilities,
         preferences: preferences,
         eventImpacts: eventImpacts,
+        waitProfiles: waitProfiles,
         morningScores: {for (final candidate in morningRanking) candidate.facility.id: candidate.firstMoveScore ?? candidate.score},
       );
 

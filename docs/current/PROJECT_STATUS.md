@@ -4,10 +4,10 @@
 
 ## Current release
 
-- Stable tag: **v7.4.2**
-- Implementation candidate: **v7.4.4 — Live data branch separation**
+- Stable tag: **v7.4.4**
+- Implementation candidate: **v7.4.5 — Wait profile schedule integration**
 - Application branch: `main`
-- Raw live-data branch: `live-data`（v7.4.4適用後に作成）
+- Raw live-data branch: `live-data`（v7.4.4で作成・実運用確認済み）
 - Design policy: 既存のDesign Freezeを尊重し、ライブデータ基盤はUIを不用意に変更しない
 
 ## Verification
@@ -53,9 +53,9 @@ ThemeParks.wikiからTDL/TDSの待ち時間・DPA状態を自動収集する基�
 4. Frozen Journeyが `tds_fs_a_001` として待ち時間CSVへ保存されること
 5. 5分周期の自動起動が継続していること
 
-## Git branch separation — v7.4.4 candidate
+## Git branch separation — v7.4.4
 
-5分ごとの生観測データを `main` へ直接commitする方式は、通常開発のpushと継続的に競合することが確認されました。v7.4.4候補では次の構成へ変更します。
+5分ごとの生観測データを `main` へ直接commitする方式は、通常開発のpushと継続的に競合することが確認されました。v7.4.4で次の構成へ変更しました。
 
 - `main`: Flutterコード、マスター、Workflow、集約済み `wait_profiles` / `crowd_factors`
 - `live-data`: `github_history`、`dpa_history`、`unmatched`、`schedule_diagnostics.csv` と月次archive
@@ -64,3 +64,9 @@ ThemeParks.wikiからTDL/TDSの待ち時間・DPA状態を自動収集する基�
 - 日次profile再生成: `live-data` を読み、集約JSONだけ `main` へcommit
 
 初回セットアップはv7.4.4をmainへpush後に `./setup_live_data_branch.ps1` を1回実行します。これにより5分Botによる `main` の `fetch first` 競合を解消します。
+
+## v7.4.5 candidate — wait profile schedule integration
+
+v7.4.4までの `ScheduleEngine` は、`Facility.waitTime` が無い通常待機アトラクションを優先度別20/30/45/60分で見積もっていた。`wait_profiles` は朝一候補スコアには使われていたが、スケジュールの `estimatedWaitMinutes` / 拘束時間 / `waitEstimateSource` には未接続だった。
+
+v7.4.5候補では `ScheduleEngine.generate()` に `waitProfiles` を任意入力として追加し、Plan ReviewとAiDayPlannerから既存ロード済みprofilesを渡す。予定開始時刻をHistoricalWaitProfileGeneratorと同じ時間帯境界へ変換し、該当profileの `typicalMinutes` を通常待機の推定値へ使用する。0/0/0レンジは「サンプル無し」として安全側フォールバックへ戻す。DPA/PP/Standby Passの10分暫定バッファと `Facility.waitTime` の優先は維持する。
