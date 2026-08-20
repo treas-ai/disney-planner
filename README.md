@@ -7,6 +7,7 @@ Disney Plannerはディズニー公式アプリの代替ではありません。
 ## 現在の開発状態
 
 - 現在の安定タグ: **v7.4.2**
+- 次期候補: **v7.4.4 — Live data branch separation**
 - `flutter analyze --no-pub`: **No issues found!**（直近確認）
 - `flutter test --no-pub`: **All tests passed!**（直近確認）
 - TDL/TDS待ち時間・DPA状態の自動収集基盤: **稼働開始**
@@ -31,7 +32,9 @@ Disney Plannerはディズニー公式アプリの代替ではありません。
 
 ThemeParks.wiki の公開live APIから、東京ディズニーランド／東京ディズニーシーの待ち時間とDPA状態を収集します。
 
-現在は GitHub Actions の `workflow_dispatch` を外部スケジューラから起動し、**JST 08:00〜21:55を5分間隔、22:00に最終1回**の収集を行う構成です。GitHub Actions標準のscheduled実行は遅延と重複起動が確認されたため無効化し、外部スケジューラからの `workflow_dispatch` のみを収集トリガーとして使用します。
+現在は GitHub Actions の `workflow_dispatch` を外部スケジューラから起動し、**JST 08:00〜21:55を5分間隔、22:00に最終1回**の収集を行う構成です。GitHub Actions標準のscheduled実行は遅延が大きかったため、5分周期の主トリガーには使用しません。
+
+保存ブランチ: **`live-data`**（v7.4.4候補から。アプリ開発の `main` と分離）
 
 保存先:
 
@@ -78,7 +81,15 @@ dart run tool/audit_master_data.dart
 
 ## Git運用
 
-自動収集Botが `main` に観測データをコミットするため、ローカルpush時に `fetch first` が発生することがあります。その場合は強制pushせず、次を使用します。
+v7.4.4候補では、5分ごとの生観測データと月次圧縮結果を **`live-data`** ブランチへ分離します。`main` はFlutterアプリ、設定、集約済み `wait_profiles` / `crowd_factors` を保持します。これにより5分ごとのBot commitが通常の開発pushと競合しません。
+
+初回だけ、v7.4.4を `main` へpushした後に次を実行します。
+
+```powershell
+.\setup_live_data_branch.ps1
+```
+
+日次のwait profile再生成は23:35 JSTに `live-data` を読み、集約JSONだけを `main` へcommitします。この1日1回のcommitと手動pushが重なった場合だけ、強制pushせずrebaseします。
 
 ```powershell
 git pull --rebase origin main

@@ -5,18 +5,39 @@ import 'package:disney_planner/data/importers/historical_wait_data_importer.dart
 import 'package:disney_planner/domain/entities/historical_wait_record.dart';
 import 'package:disney_planner/domain/services/historical_wait_profile_generator.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
+  final dataRoot = _readDataRoot(args);
+  stdout.writeln('wait data root: $dataRoot');
   for (final parkId in const ['tokyo_disneyland', 'tokyo_disneysea']) {
-    await _rebuild(parkId);
+    await _rebuild(parkId, dataRoot);
   }
 }
 
-Future<void> _rebuild(String parkId) async {
+String _readDataRoot(List<String> args) {
+  for (var i = 0; i < args.length; i++) {
+    if (args[i] == '--data-root') {
+      if (i + 1 >= args.length || args[i + 1].trim().isEmpty) {
+        throw ArgumentError('Expected a path after --data-root');
+      }
+      return args[i + 1];
+    }
+    if (args[i].startsWith('--data-root=')) {
+      final value = args[i].substring('--data-root='.length).trim();
+      if (value.isEmpty) {
+        throw ArgumentError('Expected a path after --data-root=');
+      }
+      return value;
+    }
+  }
+  return 'tool/wait_data';
+}
+
+Future<void> _rebuild(String parkId, String dataRoot) async {
   final records = <HistoricalWaitRecord>[];
   final importer = const HistoricalWaitDataImporter();
 
   // Keep compatibility with manually collected legacy history.
-  final legacy = File('tool/wait_data/history/$parkId.csv');
+  final legacy = File('$dataRoot/history/$parkId.csv');
   if (legacy.existsSync()) {
     final result = importer.importCsv(
       await legacy.readAsString(),
@@ -25,7 +46,7 @@ Future<void> _rebuild(String parkId) async {
     if (result.isValid) records.addAll(result.records);
   }
 
-  final root = Directory('tool/wait_data/github_history');
+  final root = Directory('$dataRoot/github_history');
   if (root.existsSync()) {
     final files = root
         .listSync(recursive: true)
@@ -48,7 +69,7 @@ Future<void> _rebuild(String parkId) async {
     }
   }
 
-  final archiveRoot = Directory('tool/wait_data/archive/github_history');
+  final archiveRoot = Directory('$dataRoot/archive/github_history');
   if (archiveRoot.existsSync()) {
     final files = archiveRoot
         .listSync(recursive: true)

@@ -69,11 +69,12 @@ Disney Planner側:
 
 ## 次に最優先でやること
 
-1. 外部 `workflow_dispatch` の5分周期が08:00〜22:00の1日分で欠測なく継続するか最終監査する。
-2. GitHub標準scheduleは外部dispatchとの重複を避けるため無効化済み。外部cronの実行履歴と `schedule_diagnostics.csv` を照合する。
-3. Frozen Journeyは `tds_fs_a_001` としてCSV保存確認済み。過去unmatched 5件も現在のmapping / ignore設定で処理済み。
+1. GitHub Actionsの `Collect TDR live data` をv7.4.2状態で実行／最新実行を確認する。
+2. 最新ログで `tokyo_disneysea: ... 0 unmatched` になったか確認する。
+3. Frozen Journeyが `tds_fs_a_001` として `github_history` CSVへ保存されたか確認する。
 4. `tool/wait_data/unmatched/tokyo_disneysea.txt` は過去検出値が残る仕様なので、ファイルの存在だけで失敗判定しない。
-5. 1日分の収集品質が確認できたら、GitHub収集履歴 → wait_profiles/crowd_factors → 待ち時間予測・動的スコアリングへの接続を確認する。
+5. 5分周期の実行履歴と `schedule_diagnostics.csv` を確認し、欠測・重複を評価する。
+6. その後、GitHub収集履歴 → wait_profiles/crowd_factors → 待ち時間予測・動的スコアリングへの接続を確認する。
 
 ## Git運用上の注意
 
@@ -95,3 +96,12 @@ git push origin main
 まず私に大量の説明をするのではなく、現在のZIP／リポジトリ内容を確認して、上記の「次に最優先でやること」の1から再開してください。必要な確認画面やコマンドを初心者向けに案内してください。
 
 ---
+
+
+## v7.4.4候補で追加するGit運用変更
+
+5分ごとのraw観測データは `main` ではなく `live-data` へ保存する。`main` の最新collector/mappingを使い、出力先だけ別checkoutへ向ける。月次圧縮も `live-data`、日次wait profile再生成は `live-data` を入力として集約JSONだけ `main` へ反映する。
+
+初回はv7.4.4を `main` に反映した後、プロジェクト直下で `./setup_live_data_branch.ps1` を1回実行する。その後 `Collect TDR live data` を手動実行し、`live-data` だけが更新され `main` が動かないことを確認する。
+
+実プラン確認では、現状 `ScheduleEngine` の推定待ち時間が `wait_profiles` を直接使わず安全側暫定値へフォールバックすることが判明している。Git運用安定化の受入後、次の実装課題としてwait profile→ScheduleEngine接続を行う。

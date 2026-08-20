@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import re
 import sys
 import urllib.error
@@ -17,9 +18,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "assets/master/live_mapping/themeparks_wiki_tokyo.json"
-DATA_ROOT = ROOT / "tool/wait_data/github_history"
-DPA_ROOT = ROOT / "tool/wait_data/dpa_history"
-UNMATCHED_ROOT = ROOT / "tool/wait_data/unmatched"
+WAIT_DATA_ROOT = Path(os.environ.get("DISNEY_PLANNER_WAIT_DATA_ROOT", str(ROOT / "tool/wait_data")))
+DATA_ROOT = WAIT_DATA_ROOT / "github_history"
+DPA_ROOT = WAIT_DATA_ROOT / "dpa_history"
+UNMATCHED_ROOT = WAIT_DATA_ROOT / "unmatched"
 JST = timezone(timedelta(hours=9))
 USER_AGENT = "DisneyPlanner/1.0 GitHub wait-history collector"
 

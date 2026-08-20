@@ -15,7 +15,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "tool" / "wait_data" / "schedule_diagnostics.csv"
+WAIT_DATA_ROOT = Path(os.environ.get("DISNEY_PLANNER_WAIT_DATA_ROOT", str(ROOT / "tool" / "wait_data")))
+OUT = WAIT_DATA_ROOT / "schedule_diagnostics.csv"
 JST = timezone(timedelta(hours=9))
 
 HEADER = [

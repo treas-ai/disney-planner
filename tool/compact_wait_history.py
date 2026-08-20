@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import csv
 import gzip
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+WAIT_DATA_ROOT = Path(os.environ.get("DISNEY_PLANNER_WAIT_DATA_ROOT", str(ROOT / "tool" / "wait_data")))
 JST = timezone(timedelta(hours=9))
 SOURCES = (
     ("github_history", "waits"),
@@ -28,7 +30,7 @@ def previous_month(now: datetime) -> tuple[int, int]:
 
 
 def compact_folder(folder: str, label: str, park: str, year: int, month: int) -> int:
-    month_dir = ROOT / "tool/wait_data" / folder / f"{year:04d}" / f"{month:02d}"
+    month_dir = WAIT_DATA_ROOT / folder / f"{year:04d}" / f"{month:02d}"
     if not month_dir.exists():
         return 0
 
@@ -36,7 +38,7 @@ def compact_folder(folder: str, label: str, park: str, year: int, month: int) ->
     if not files:
         return 0
 
-    archive_dir = ROOT / "tool/wait_data" / "archive" / folder / f"{year:04d}"
+    archive_dir = WAIT_DATA_ROOT / "archive" / folder / f"{year:04d}"
     archive_dir.mkdir(parents=True, exist_ok=True)
     output = archive_dir / f"{year:04d}-{month:02d}_{park}_{label}.csv.gz"
 
@@ -71,7 +73,7 @@ def compact_folder(folder: str, label: str, park: str, year: int, month: int) ->
     except OSError:
         pass
 
-    print(f"{folder}/{park}: {len(files)} daily files -> {output.relative_to(ROOT)} ({len(rows)} rows)")
+    print(f"{folder}/{park}: {len(files)} daily files -> {output.relative_to(WAIT_DATA_ROOT)} ({len(rows)} rows)")
     return len(files)
 
 

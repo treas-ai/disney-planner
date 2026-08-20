@@ -1,11 +1,3 @@
-## v7.4.3 candidate - 2026-08-20
-
-- 外部スケジューラの `workflow_dispatch` が5分周期で安定していることを確認。
-- GitHub Actions標準scheduleが遅延し、外部dispatchと重複実行される状態を確認。
-- `Collect TDR live data` の標準scheduleトリガーを削除し、外部 `workflow_dispatch` に一本化。
-- Frozen Journeyが `tds_fs_a_001` として待ち時間CSVへ保存されることを確認。
-- 過去unmatched 5件が現在のmapping / ignore設定で処理済みであることを確認。
-
 ## Dynamic Wait-Time Scoring Integration
 - Historical wait profile based First Move saving score
 - AI guided attraction selection ranks by wait-time saving
@@ -1379,3 +1371,13 @@ dart run tool/audit_wish_data.dart
 
 ------------------------------------------------------------------------
 
+
+## v7.4.4 candidate - Live data branch separation
+
+- Separate frequent TDR raw observation commits from the application `main` branch.
+- `Collect TDR live data` now runs the collector code from `main` but writes wait/DPA/unmatched/diagnostic files to `live-data`.
+- Remove GitHub scheduled triggers from the 5-minute collector; cron-job.org `workflow_dispatch` remains the production trigger.
+- Monthly history compaction now operates on `live-data`.
+- Daily wait-profile rebuild reads raw history from `live-data` and commits only generated `wait_profiles` / `crowd_factors` to `main`.
+- Add configurable wait-data roots to the Python collector/diagnostic/compaction tools and `--data-root` support to the Dart rebuild tool.
+- Add `setup_live_data_branch.ps1` for one-time beginner-friendly creation of the remote `live-data` branch.

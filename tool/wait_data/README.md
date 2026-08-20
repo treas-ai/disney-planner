@@ -41,6 +41,8 @@ GitHub PATは外部スケジューラ側の認証情報としてのみ保持し�
 
 ## GitHub収集データ
 
+v7.4.4候補以降、以下のrawデータは **`live-data` ブランチ** に保存します。5分ごとのBot commitは `main` を更新しません。
+
 - 待ち時間: `tool/wait_data/github_history/YYYY/MM/YYYY-MM-DD_<parkId>.csv`
 - DPA状態: `tool/wait_data/dpa_history/YYYY/MM/YYYY-MM-DD_<parkId>.csv`
 - 未マッピング施設: `tool/wait_data/unmatched/<parkId>.txt`
@@ -70,23 +72,31 @@ v7.4.2で以下を修正済みです。
 
 ## 履歴の集約
 
-収集履歴は既存の `HistoricalWaitDataImporter` / `HistoricalWaitProfileGenerator` 系へ接続し、最終的に以下へ集約する方針です。
+収集履歴は既存の `HistoricalWaitDataImporter` / `HistoricalWaitProfileGenerator` 系へ接続します。`rebuild_github_wait_profiles.dart` は `--data-root` を受け取れるため、GitHub Actionsでは `.live-data/tool/wait_data` を入力として使用します。ローカルで引数を省略した場合は従来どおり `tool/wait_data` を読みます。
+
+最終的に以下へ集約します。
 
 - `assets/master/wait_profiles/<parkId>.json`
 - `assets/master/crowd_factors/<parkId>.json`
 
 次段階ではGitHub収集履歴からの集約経路と予測ロジックへの接続を重点確認します。
 
-## Git競合について
+## Gitブランチ分離
 
-自動収集Workflowが `main` に観測データをcommitするため、ローカルpushと競合する場合があります。
+v7.4.4候補では次の役割分担にします。
+
+- `main`: アプリコード、設定、集約済み予測JSON
+- `live-data`: 5分ごとのraw wait/DPA、unmatched、schedule diagnostics、月次archive
+
+初回だけv7.4.4をmainへpush後に実行:
 
 ```powershell
-git pull --rebase origin main
-git push origin main
+.\setup_live_data_branch.ps1
 ```
 
-強制pushは使用しません。将来的には収集データ専用ブランチ等への分離を検討します。
+`Collect TDR live data` は `main` をソースコードとしてcheckoutし、同時に `live-data` を `.live-data` へcheckoutします。Pythonツールの `DISNEY_PLANNER_WAIT_DATA_ROOT` を `.live-data/tool/wait_data` へ向けるため、最新コードを使いつつrawデータだけを安全に分離できます。
+
+日次 `Rebuild TDR wait profiles` は `live-data` を読み、`assets/master/wait_profiles` と `crowd_factors` の集約結果だけを `main` へ反映します。
 
 ## クレジット
 

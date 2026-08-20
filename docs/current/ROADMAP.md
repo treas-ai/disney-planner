@@ -40,15 +40,15 @@
 
 優先順位順に進めます。
 
-1. **v7.4.2反映後のmapping確認（確認済み）**
-   - Frozen Journeyが `tds_fs_a_001` としてCSVへ保存されることを確認
-   - 過去unmatched 5件が現在のmapping / ignore設定で処理済みであることを確認
+1. **v7.4.2反映後のunmatched再確認**
+   - GitHub Actionsを実行
+   - `tokyo_disneysea: ... 0 unmatched` を確認
+   - 過去のunmatchedファイルは「現在も未対応」と誤解しないよう整理方針を決める
 
-2. **5分周期の実運用安定化（進行中）**
-   - 外部 `workflow_dispatch` が5分刻みで継続していることを確認
-   - GitHub標準scheduleの遅延・重複起動を確認
-   - 標準scheduleを無効化し、外部スケジューラへ一本化
-   - 08:00〜22:00の1日分について欠測・重複を最終監査
+2. **5分周期の実運用確認**
+   - cron-job.orgの実行履歴を確認
+   - GitHub Actionsの起動時刻と `schedule_diagnostics.csv` を比較
+   - 08:00〜22:00の欠測・重複を把握
 
 3. **履歴データ品質監査**
    - `observedAt`、施設ID、待ち時間、status、sourceEntityIdを検証
@@ -64,17 +64,26 @@
    - 朝一候補評価と将来待ち時間予測へ利用
    - データ不足時は固定人気値を捏造せず、信頼度を下げる
 
-## 次の改善 — Git運用
+## v7.4.4候補 — Git運用安定化
 
-現在、自動収集Botが `main` に直接観測データをコミットするため、開発者のpushと競合し `fetch first` が発生することがあります。
+採用方針: **収集データ専用 `live-data` ブランチへ分離**
 
-候補:
+- 5分ごとのraw wait/DPA/unmatched/diagnostic commitは `live-data` のみ
+- collectorとmappingは `main` の最新版を使用
+- 月次圧縮も `live-data` で実行
+- 日次profile再生成は `live-data` を入力にし、集約結果だけ `main` へ反映
+- GitHub標準scheduleは5分collectorから削除し、cron-job.orgの `workflow_dispatch` に一本化
 
-- 収集データ専用ブランチへ分離
-- Artifact / 外部ストレージ等への保存方式を検討
-- mainへ反映する集約結果だけを限定的にコミット
+この変更の受入条件:
 
-**強制pushで解決しないこと。** 現状は `git pull --rebase origin main` を基本とします。
+1. `live-data` を一度作成
+2. 手動 `Collect TDR live data` が成功
+3. 新しいwait/DPAデータが `live-data` のみに追加される
+4. 収集後も `main` のHEADが動かない
+5. `Rebuild TDR wait profiles` が `live-data` を読み込める
+6. `verify.ps1` が成功
+
+その後の最優先は、生成済み `wait_profiles` をScheduleEngineの実待ち時間推定へ接続することです。
 
 ## その後の開発候補
 
