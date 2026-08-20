@@ -40,15 +40,15 @@
 
 優先順位順に進めます。
 
-1. **v7.4.2反映後のunmatched再確認**
-   - GitHub Actionsを実行
-   - `tokyo_disneysea: ... 0 unmatched` を確認
-   - 過去のunmatchedファイルは「現在も未対応」と誤解しないよう整理方針を決める
+1. **v7.4.2反映後のmapping確認（確認済み）**
+   - Frozen Journeyが `tds_fs_a_001` としてCSVへ保存されることを確認
+   - 過去unmatched 5件が現在のmapping / ignore設定で処理済みであることを確認
 
-2. **5分周期の実運用確認**
-   - cron-job.orgの実行履歴を確認
-   - GitHub Actionsの起動時刻と `schedule_diagnostics.csv` を比較
-   - 08:00〜22:00の欠測・重複を把握
+2. **5分周期の実運用安定化（進行中）**
+   - 外部 `workflow_dispatch` が5分刻みで継続していることを確認
+   - GitHub標準scheduleの遅延・重複起動を確認
+   - 標準scheduleを無効化し、外部スケジューラへ一本化
+   - 08:00〜22:00の1日分について欠測・重複を最終監査
 
 3. **履歴データ品質監査**
    - `observedAt`、施設ID、待ち時間、status、sourceEntityIdを検証

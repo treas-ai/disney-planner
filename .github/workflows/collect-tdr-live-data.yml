@@ -1,13 +1,9 @@
 name: Collect TDR live data
 
 on:
-  schedule:
-    # 08:00-21:55 JST, every 5 minutes.
-    - cron: '*/5 8-21 * * *'
-      timezone: 'Asia/Tokyo'
-    # Final collection at 22:00 JST.
-    - cron: '0 22 * * *'
-      timezone: 'Asia/Tokyo'
+  # Frequent collection is triggered by the external scheduler via GitHub API.
+  # GitHub's native schedule was intentionally removed because it produced
+  # delayed duplicate runs alongside the stable 5-minute workflow_dispatch.
   workflow_dispatch:
 
 permissions:

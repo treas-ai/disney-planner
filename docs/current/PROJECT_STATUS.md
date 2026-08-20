@@ -20,7 +20,7 @@
 
 **TDR Live Data Quality Stabilization**
 
-ThemeParks.wikiからTDL/TDSの待ち時間・DPA状態を自動収集する基盤が稼働しています。GitHub Actions標準scheduleは5分周期として安定しなかったため、外部スケジューラから `workflow_dispatch` を起動しています。
+ThemeParks.wikiからTDL/TDSの待ち時間・DPA状態を自動収集する基盤が稼働しています。GitHub Actions標準scheduleは5分周期として安定せず、外部スケジューラの `workflow_dispatch` と重複起動することも確認されたため、標準scheduleを無効化しました。現在は外部スケジューラからの `workflow_dispatch` のみを使用します。
 
 運用時間:
 
@@ -41,15 +41,14 @@ ThemeParks.wikiからTDL/TDSの待ち時間・DPA状態を自動収集する基�
   - → `annaandelsasfrozenjourney`
 - DisneySea Electric Railway (Port Discovery) source UUID mapping corrected.
 
-## Immediate acceptance check
+## Acceptance check result
 
-次回作業では最初に以下を確認すること。
+2026-08-20の確認結果:
 
-1. v7.4.2がGitHub `main` とタグへ反映済みであること
-2. `Collect TDR live data` を1回実行すること
-3. TDSの最新ログでunmatched件数を確認すること
-4. Frozen Journeyが `tds_fs_a_001` として待ち時間CSVへ保存されること
-5. 5分周期の自動起動が継続していること
+1. Frozen Journeyは `tds_fs_a_001` / `9fb0c97c-ebf7-4c25-8ea7-a3f4fe2aa9ec` として待ち時間CSVへ保存済み。
+2. 過去のunmatched 5件は、現在のmappingではalias / source UUID mapping / ignore設定のいずれかで処理済み。
+3. 外部 `workflow_dispatch` は08:00以降5分刻みで継続しており、確認区間では欠測なし。
+4. GitHub標準scheduleによる遅延した追加実行が混在していたため、重複トリガーを防ぐ目的で標準scheduleを無効化。
 
 ## Known operational issue
 

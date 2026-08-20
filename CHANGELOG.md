@@ -1,3 +1,11 @@
+## v7.4.3 candidate - 2026-08-20
+
+- 外部スケジューラの `workflow_dispatch` が5分周期で安定していることを確認。
+- GitHub Actions標準scheduleが遅延し、外部dispatchと重複実行される状態を確認。
+- `Collect TDR live data` の標準scheduleトリガーを削除し、外部 `workflow_dispatch` に一本化。
+- Frozen Journeyが `tds_fs_a_001` として待ち時間CSVへ保存されることを確認。
+- 過去unmatched 5件が現在のmapping / ignore設定で処理済みであることを確認。
+
 ## Dynamic Wait-Time Scoring Integration
 - Historical wait profile based First Move saving score
 - AI guided attraction selection ranks by wait-time saving

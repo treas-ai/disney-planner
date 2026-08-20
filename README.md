@@ -31,7 +31,7 @@ Disney Plannerはディズニー公式アプリの代替ではありません。
 
 ThemeParks.wiki の公開live APIから、東京ディズニーランド／東京ディズニーシーの待ち時間とDPA状態を収集します。
 
-現在は GitHub Actions の `workflow_dispatch` を外部スケジューラから起動し、**JST 08:00〜21:55を5分間隔、22:00に最終1回**の収集を行う構成です。GitHub Actions標準のscheduled実行は遅延が大きかったため、5分周期の主トリガーには使用しません。
+現在は GitHub Actions の `workflow_dispatch` を外部スケジューラから起動し、**JST 08:00〜21:55を5分間隔、22:00に最終1回**の収集を行う構成です。GitHub Actions標準のscheduled実行は遅延と重複起動が確認されたため無効化し、外部スケジューラからの `workflow_dispatch` のみを収集トリガーとして使用します。
 
 保存先:
 
