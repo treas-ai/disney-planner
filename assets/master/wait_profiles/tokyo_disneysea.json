@@ -1,50 +1,316 @@
 {
   "parkId": "tokyo_disneysea",
-  "status": "seed_observation",
-  "note": "初期検証用。2026-08-02の公開待ち時間観測系列を広い時間帯Profileへ集約。継続収集後に置換する。",
+  "status": "generated",
+  "source": "ThemeParks.wiki accumulated history",
+  "sampleCount": 565,
+  "generatedAt": "2026-08-20T03:14:41.955641Z",
   "items": [
     {
-      "facilityId": "tds_fs_a_001",
+      "facilityId": "tds_ac_a_002",
       "parkId": "tokyo_disneysea",
       "ranges": {
         "afterOpening": {
-          "minMinutes": 60,
-          "typicalMinutes": 120,
-          "maxMinutes": 140
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 25
         },
         "beforeLunch": {
-          "minMinutes": 90,
-          "typicalMinutes": 140,
-          "maxMinutes": 140
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 10
         },
         "afterLunch": {
-          "minMinutes": 70,
-          "typicalMinutes": 75,
-          "maxMinutes": 80
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "aroundShows": {
-          "minMinutes": 70,
-          "typicalMinutes": 90,
-          "maxMinutes": 100
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "beforeDinner": {
-          "minMinutes": 70,
-          "typicalMinutes": 90,
-          "maxMinutes": 90
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "afterDinner": {
-          "minMinutes": 80,
-          "typicalMinutes": 80,
-          "maxMinutes": 90
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "beforeClosing": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 40
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         }
       },
-      "source": "TDR Waits dashboard seed observation (2026-08-02)",
-      "calculatedAt": "2026-08-19T00:00:00.000",
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 20
+    },
+    {
+      "facilityId": "tds_ml_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 10,
+          "typicalMinutes": 20,
+          "maxMinutes": 25
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 28
+    },
+    {
+      "facilityId": "tds_ac_a_001",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 13
+    },
+    {
+      "facilityId": "tds_pd_a_001",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 40,
+          "typicalMinutes": 60,
+          "maxMinutes": 70
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 20
+    },
+    {
+      "facilityId": "tds_ac_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 9
+    },
+    {
+      "facilityId": "tds_ml_a_002",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 10,
+          "typicalMinutes": 25,
+          "maxMinutes": 30
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 22
+    },
+    {
+      "facilityId": "tds_pd_a_002",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 50
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
       "sampleCount": 23
     },
     {
@@ -52,264 +318,792 @@
       "parkId": "tokyo_disneysea",
       "ranges": {
         "afterOpening": {
-          "minMinutes": 15,
+          "minMinutes": 20,
           "typicalMinutes": 30,
-          "maxMinutes": 40
+          "maxMinutes": 60
         },
         "beforeLunch": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 40
-        },
-        "afterLunch": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 30
-        },
-        "aroundShows": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 30
-        },
-        "beforeDinner": {
-          "minMinutes": 20,
-          "typicalMinutes": 20,
-          "maxMinutes": 25
-        },
-        "afterDinner": {
-          "minMinutes": 20,
-          "typicalMinutes": 20,
-          "maxMinutes": 20
-        },
-        "beforeClosing": {
           "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 10
-        }
-      },
-      "source": "TDR Waits dashboard seed observation (2026-08-02)",
-      "calculatedAt": "2026-08-19T00:00:00.000",
-      "sampleCount": 25
-    },
-    {
-      "facilityId": "tds_fs_a_003",
-      "parkId": "tokyo_disneysea",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 15,
-          "typicalMinutes": 20,
-          "maxMinutes": 50
-        },
-        "beforeLunch": {
-          "minMinutes": 30,
-          "typicalMinutes": 35,
-          "maxMinutes": 40
-        },
-        "afterLunch": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 40
-        },
-        "aroundShows": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 30
-        },
-        "beforeDinner": {
-          "minMinutes": 15,
-          "typicalMinutes": 20,
-          "maxMinutes": 20
-        },
-        "afterDinner": {
-          "minMinutes": 15,
-          "typicalMinutes": 25,
-          "maxMinutes": 25
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
+          "typicalMinutes": 10,
           "maxMinutes": 15
-        }
-      },
-      "source": "TDR Waits dashboard seed observation (2026-08-02)",
-      "calculatedAt": "2026-08-19T00:00:00.000",
-      "sampleCount": 25
-    },
-    {
-      "facilityId": "tds_mh_a_003",
-      "parkId": "tokyo_disneysea",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 80,
-          "typicalMinutes": 90,
-          "maxMinutes": 140
-        },
-        "beforeLunch": {
-          "minMinutes": 100,
-          "typicalMinutes": 100,
-          "maxMinutes": 120
         },
         "afterLunch": {
-          "minMinutes": 70,
-          "typicalMinutes": 90,
-          "maxMinutes": 100
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "aroundShows": {
-          "minMinutes": 70,
-          "typicalMinutes": 90,
-          "maxMinutes": 100
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "beforeDinner": {
-          "minMinutes": 90,
-          "typicalMinutes": 100,
-          "maxMinutes": 100
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "afterDinner": {
-          "minMinutes": 100,
-          "typicalMinutes": 100,
-          "maxMinutes": 120
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "beforeClosing": {
-          "minMinutes": 70,
-          "typicalMinutes": 90,
-          "maxMinutes": 90
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         }
       },
-      "source": "TDR Waits dashboard seed observation (2026-08-02)",
-      "calculatedAt": "2026-08-19T00:00:00.000",
-      "sampleCount": 23
-    },
-    {
-      "facilityId": "tds_aw_a_002",
-      "parkId": "tokyo_disneysea",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 50,
-          "typicalMinutes": 80,
-          "maxMinutes": 80
-        },
-        "beforeLunch": {
-          "minMinutes": 30,
-          "typicalMinutes": 40,
-          "maxMinutes": 50
-        },
-        "afterLunch": {
-          "minMinutes": 30,
-          "typicalMinutes": 40,
-          "maxMinutes": 40
-        },
-        "aroundShows": {
-          "minMinutes": 30,
-          "typicalMinutes": 40,
-          "maxMinutes": 50
-        },
-        "beforeDinner": {
-          "minMinutes": 30,
-          "typicalMinutes": 40,
-          "maxMinutes": 50
-        },
-        "afterDinner": {
-          "minMinutes": 40,
-          "typicalMinutes": 40,
-          "maxMinutes": 40
-        },
-        "beforeClosing": {
-          "minMinutes": 30,
-          "typicalMinutes": 40,
-          "maxMinutes": 40
-        }
-      },
-      "source": "TDR Waits dashboard seed observation (2026-08-02)",
-      "calculatedAt": "2026-08-19T00:00:00.000",
-      "sampleCount": 23
-    },
-    {
-      "facilityId": "tds_aw_a_003",
-      "parkId": "tokyo_disneysea",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 120,
-          "typicalMinutes": 140,
-          "maxMinutes": 160
-        },
-        "beforeLunch": {
-          "minMinutes": 70,
-          "typicalMinutes": 85,
-          "maxMinutes": 140
-        },
-        "afterLunch": {
-          "minMinutes": 80,
-          "typicalMinutes": 80,
-          "maxMinutes": 90
-        },
-        "aroundShows": {
-          "minMinutes": 80,
-          "typicalMinutes": 105,
-          "maxMinutes": 120
-        },
-        "beforeDinner": {
-          "minMinutes": 80,
-          "typicalMinutes": 80,
-          "maxMinutes": 100
-        },
-        "afterDinner": {
-          "minMinutes": 80,
-          "typicalMinutes": 100,
-          "maxMinutes": 100
-        },
-        "beforeClosing": {
-          "minMinutes": 60,
-          "typicalMinutes": 80,
-          "maxMinutes": 90
-        }
-      },
-      "source": "TDR Waits dashboard seed observation (2026-08-02)",
-      "calculatedAt": "2026-08-19T00:00:00.000",
-      "sampleCount": 24
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 28
     },
     {
       "facilityId": "tds_mi_a_002",
       "parkId": "tokyo_disneysea",
       "ranges": {
         "afterOpening": {
-          "minMinutes": 90,
-          "typicalMinutes": 100,
-          "maxMinutes": 100
+          "minMinutes": 80,
+          "typicalMinutes": 120,
+          "maxMinutes": 140
         },
         "beforeLunch": {
-          "minMinutes": 60,
-          "typicalMinutes": 70,
-          "maxMinutes": 90
-        },
-        "afterLunch": {
-          "minMinutes": 60,
-          "typicalMinutes": 75,
-          "maxMinutes": 90
-        },
-        "aroundShows": {
-          "minMinutes": 60,
-          "typicalMinutes": 60,
-          "maxMinutes": 70
-        },
-        "beforeDinner": {
-          "minMinutes": 60,
-          "typicalMinutes": 60,
-          "maxMinutes": 70
-        },
-        "afterDinner": {
           "minMinutes": 50,
           "typicalMinutes": 60,
-          "maxMinutes": 70
+          "maxMinutes": 60
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         },
         "beforeClosing": {
-          "minMinutes": 30,
-          "typicalMinutes": 40,
-          "maxMinutes": 60
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
         }
       },
-      "source": "TDR Waits dashboard seed observation (2026-08-02)",
-      "calculatedAt": "2026-08-19T00:00:00.000",
-      "sampleCount": 23
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 20
+    },
+    {
+      "facilityId": "tds_ac_a_004",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 15
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 5
+    },
+    {
+      "facilityId": "tds_mi_a_001",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 10,
+          "typicalMinutes": 25,
+          "maxMinutes": 50
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 34
+    },
+    {
+      "facilityId": "tds_ml_a_005",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 10,
+          "typicalMinutes": 30,
+          "maxMinutes": 40
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 21
+    },
+    {
+      "facilityId": "tds_aw_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 90,
+          "typicalMinutes": 120,
+          "maxMinutes": 160
+        },
+        "beforeLunch": {
+          "minMinutes": 70,
+          "typicalMinutes": 70,
+          "maxMinutes": 70
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 22
+    },
+    {
+      "facilityId": "tds_ml_a_007",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 10,
+          "typicalMinutes": 20,
+          "maxMinutes": 30
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 27
+    },
+    {
+      "facilityId": "tds_lrd_a_002",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 50,
+          "typicalMinutes": 80,
+          "maxMinutes": 120
+        },
+        "beforeLunch": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 40
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 31
+    },
+    {
+      "facilityId": "tds_aw_a_001",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 40
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 20,
+          "maxMinutes": 20
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 64
+    },
+    {
+      "facilityId": "tds_fs_a_004",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 10,
+          "typicalMinutes": 30,
+          "maxMinutes": 40
+        },
+        "beforeLunch": {
+          "minMinutes": 15,
+          "typicalMinutes": 25,
+          "maxMinutes": 25
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 25
+    },
+    {
+      "facilityId": "tds_aw_a_002",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 60,
+          "typicalMinutes": 100,
+          "maxMinutes": 140
+        },
+        "beforeLunch": {
+          "minMinutes": 50,
+          "typicalMinutes": 60,
+          "maxMinutes": 60
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 32
+    },
+    {
+      "facilityId": "tds_fs_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 20,
+          "typicalMinutes": 50,
+          "maxMinutes": 70
+        },
+        "beforeLunch": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 15
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 28
+    },
+    {
+      "facilityId": "tds_aw_a_004",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 20
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 35
+    },
+    {
+      "facilityId": "tds_pd_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 25
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 10
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 17
+    },
+    {
+      "facilityId": "tds_mh_a_003",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 90,
+          "typicalMinutes": 140,
+          "maxMinutes": 180
+        },
+        "beforeLunch": {
+          "minMinutes": 70,
+          "typicalMinutes": 70,
+          "maxMinutes": 70
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 26
+    },
+    {
+      "facilityId": "tds_aw_a_005",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 7
+    },
+    {
+      "facilityId": "tds_mh_a_001",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 25
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 4
+    },
+    {
+      "facilityId": "tds_fs_a_001",
+      "parkId": "tokyo_disneysea",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 140,
+          "typicalMinutes": 180,
+          "maxMinutes": 200
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "afterDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.950620Z",
+      "sampleCount": 4
     }
   ]
 }

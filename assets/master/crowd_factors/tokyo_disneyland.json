@@ -1,6 +1,1353 @@
 {
   "parkId": "tokyo_disneyland",
-  "status": "not_calculated",
-  "note": "公開されている過去待ち時間の収集・監査後に生成する。",
-  "items": []
+  "status": "generated",
+  "source": "ThemeParks.wiki accumulated history",
+  "sampleCount": 461,
+  "generatedAt": "2026-08-20T03:14:41.893094Z",
+  "items": [
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_big_thunder_mountain",
+      "factor": 1.25,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:07:25.137Z",
+      "sampleEnd": "2026-08-19T11:26:42.867Z",
+      "sampleCount": 18,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_big_thunder_mountain",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:07:25.137Z",
+      "sampleEnd": "2026-08-20T02:14:17.607Z",
+      "sampleCount": 27,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_big_thunder_mountain",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.304Z",
+      "sampleEnd": "2026-08-20T02:14:17.607Z",
+      "sampleCount": 9,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.158Z",
+      "sampleEnd": "2026-08-19T11:57:00.627Z",
+      "sampleCount": 23,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.158Z",
+      "sampleEnd": "2026-08-20T02:22:47.625Z",
+      "sampleCount": 31,
+      "excludedCount": 0,
+      "confidence": "medium",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast",
+      "factor": 1.2,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.467Z",
+      "sampleEnd": "2026-08-20T02:22:47.625Z",
+      "sampleCount": 8,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_monsters_inc_ride_and_go_seek",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:04:14.906Z",
+      "sampleEnd": "2026-08-19T11:33:20.906Z",
+      "sampleCount": 18,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_monsters_inc_ride_and_go_seek",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:04:14.906Z",
+      "sampleEnd": "2026-08-20T02:26:32.728Z",
+      "sampleCount": 30,
+      "excludedCount": 0,
+      "confidence": "medium",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_monsters_inc_ride_and_go_seek",
+      "factor": 1.1428571428571428,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.434Z",
+      "sampleEnd": "2026-08-20T02:26:32.728Z",
+      "sampleCount": 12,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_mickeys_philharmagic",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.696Z",
+      "sampleEnd": "2026-08-19T05:51:47.465Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_mickeys_philharmagic",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.696Z",
+      "sampleEnd": "2026-08-20T00:02:43.332Z",
+      "sampleCount": 3,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_mickeys_philharmagic",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.332Z",
+      "sampleEnd": "2026-08-20T00:02:43.332Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_tiki_room",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.302Z",
+      "sampleEnd": "2026-08-19T01:02:08.302Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_tiki_room",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.302Z",
+      "sampleEnd": "2026-08-20T01:01:29.806Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_tiki_room",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T01:01:29.806Z",
+      "sampleEnd": "2026-08-20T01:01:29.806Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_stitch_encounter",
+      "factor": 1.5,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.366Z",
+      "sampleEnd": "2026-08-19T01:41:39.882Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_stitch_encounter",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.366Z",
+      "sampleEnd": "2026-08-20T01:01:29.841Z",
+      "sampleCount": 3,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_stitch_encounter",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T01:01:29.841Z",
+      "sampleEnd": "2026-08-20T01:01:29.841Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_mark_twain_riverboat",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.321Z",
+      "sampleEnd": "2026-08-19T01:02:08.321Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_mark_twain_riverboat",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.321Z",
+      "sampleEnd": "2026-08-20T01:01:29.819Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_mark_twain_riverboat",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T01:01:29.819Z",
+      "sampleEnd": "2026-08-20T01:01:29.819Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_peter_pans_flight",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.136Z",
+      "sampleEnd": "2026-08-19T10:45:35.091Z",
+      "sampleCount": 17,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_peter_pans_flight",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.136Z",
+      "sampleEnd": "2026-08-20T02:00:38.897Z",
+      "sampleCount": 27,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_peter_pans_flight",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.319Z",
+      "sampleEnd": "2026-08-20T02:00:38.897Z",
+      "sampleCount": 10,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_cinderella_fairy_tale_hall",
+      "factor": 2.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.341Z",
+      "sampleEnd": "2026-08-19T07:34:32.798Z",
+      "sampleCount": 10,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_cinderella_fairy_tale_hall",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.341Z",
+      "sampleEnd": "2026-08-20T01:54:48.737Z",
+      "sampleCount": 13,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_cinderella_fairy_tale_hall",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T01:01:29.825Z",
+      "sampleEnd": "2026-08-20T01:54:48.737Z",
+      "sampleCount": 3,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_goofys_paint_and_play_house",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.354Z",
+      "sampleEnd": "2026-08-19T09:34:26.878Z",
+      "sampleCount": 11,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_goofys_paint_and_play_house",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.354Z",
+      "sampleEnd": "2026-08-20T02:29:31.865Z",
+      "sampleCount": 14,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_goofys_paint_and_play_house",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T01:01:29.834Z",
+      "sampleEnd": "2026-08-20T02:29:31.865Z",
+      "sampleCount": 3,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_country_bear_theater",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.313Z",
+      "sampleEnd": "2026-08-19T01:02:08.313Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_country_bear_theater",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.313Z",
+      "sampleEnd": "2026-08-20T01:01:29.812Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_country_bear_theater",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T01:01:29.812Z",
+      "sampleEnd": "2026-08-20T01:01:29.812Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_pirates_of_the_caribbean",
+      "factor": 0.6666666666666666,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:01:04.882Z",
+      "sampleEnd": "2026-08-19T11:33:20.878Z",
+      "sampleCount": 13,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_pirates_of_the_caribbean",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:01:04.882Z",
+      "sampleEnd": "2026-08-20T02:03:14.215Z",
+      "sampleCount": 21,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_pirates_of_the_caribbean",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.284Z",
+      "sampleEnd": "2026-08-20T02:03:14.215Z",
+      "sampleCount": 8,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_its_a_small_world",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:10:35.947Z",
+      "sampleEnd": "2026-08-19T10:33:01.698Z",
+      "sampleCount": 11,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_its_a_small_world",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:10:35.947Z",
+      "sampleEnd": "2026-08-20T02:26:32.723Z",
+      "sampleCount": 18,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_its_a_small_world",
+      "factor": 0.5,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.347Z",
+      "sampleEnd": "2026-08-20T02:26:32.723Z",
+      "sampleCount": 7,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_jungle_cruise",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.128Z",
+      "sampleEnd": "2026-08-19T11:33:20.888Z",
+      "sampleCount": 21,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_jungle_cruise",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.128Z",
+      "sampleEnd": "2026-08-20T02:03:14.227Z",
+      "sampleCount": 27,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_adventureland_jungle_cruise",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.290Z",
+      "sampleEnd": "2026-08-20T02:03:14.227Z",
+      "sampleCount": 6,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_alices_tea_party",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.723Z",
+      "sampleEnd": "2026-08-19T10:33:01.708Z",
+      "sampleCount": 11,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_alices_tea_party",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.723Z",
+      "sampleEnd": "2026-08-20T02:11:14.338Z",
+      "sampleCount": 15,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_alices_tea_party",
+      "factor": 2.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.357Z",
+      "sampleEnd": "2026-08-20T02:11:14.338Z",
+      "sampleCount": 4,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_minnies_house",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.740Z",
+      "sampleEnd": "2026-08-19T08:39:22.984Z",
+      "sampleCount": 3,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_minnies_house",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.740Z",
+      "sampleEnd": "2026-08-20T00:02:43.380Z",
+      "sampleCount": 4,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_minnies_house",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.380Z",
+      "sampleEnd": "2026-08-20T00:02:43.380Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_roger_rabbits_car_toon_spin",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.144Z",
+      "sampleEnd": "2026-08-19T11:50:51.954Z",
+      "sampleCount": 21,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_roger_rabbits_car_toon_spin",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.144Z",
+      "sampleEnd": "2026-08-20T02:20:26.488Z",
+      "sampleCount": 28,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_roger_rabbits_car_toon_spin",
+      "factor": 0.8,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.368Z",
+      "sampleEnd": "2026-08-20T02:20:26.488Z",
+      "sampleCount": 7,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_critter_country_splash_mountain",
+      "factor": 1.125,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.331Z",
+      "sampleEnd": "2026-08-19T10:17:19.708Z",
+      "sampleCount": 20,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_critter_country_splash_mountain",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.331Z",
+      "sampleEnd": "2026-08-20T02:29:31.856Z",
+      "sampleCount": 33,
+      "excludedCount": 0,
+      "confidence": "medium",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_critter_country_splash_mountain",
+      "factor": 0.875,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:03:15.095Z",
+      "sampleEnd": "2026-08-20T02:29:31.856Z",
+      "sampleCount": 13,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_baymax_happy_ride",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.375Z",
+      "sampleEnd": "2026-08-19T10:36:14.116Z",
+      "sampleCount": 23,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_baymax_happy_ride",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:02:08.375Z",
+      "sampleEnd": "2026-08-20T02:11:14.405Z",
+      "sampleCount": 37,
+      "excludedCount": 0,
+      "confidence": "medium",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_baymax_happy_ride",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.459Z",
+      "sampleEnd": "2026-08-20T02:11:14.405Z",
+      "sampleCount": 14,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_star_tours",
+      "factor": 0.6666666666666666,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.151Z",
+      "sampleEnd": "2026-08-19T11:48:35.540Z",
+      "sampleCount": 22,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_star_tours",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:13:34.151Z",
+      "sampleEnd": "2026-08-20T02:05:56.943Z",
+      "sampleCount": 32,
+      "excludedCount": 0,
+      "confidence": "medium",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_tomorrowland_star_tours",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.424Z",
+      "sampleEnd": "2026-08-20T02:05:56.943Z",
+      "sampleCount": 10,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_chip_and_dales_treehouse",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.749Z",
+      "sampleEnd": "2026-08-19T00:01:57.749Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_chip_and_dales_treehouse",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.749Z",
+      "sampleEnd": "2026-08-20T00:02:43.392Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_chip_and_dales_treehouse",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.392Z",
+      "sampleEnd": "2026-08-20T00:02:43.392Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_donalds_boat",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.767Z",
+      "sampleEnd": "2026-08-19T00:01:57.767Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_donalds_boat",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.767Z",
+      "sampleEnd": "2026-08-20T00:02:43.415Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_donalds_boat",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.415Z",
+      "sampleEnd": "2026-08-20T00:02:43.415Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_snow_whites_adventures",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:37:10.223Z",
+      "sampleEnd": "2026-08-19T11:10:36.364Z",
+      "sampleCount": 16,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_snow_whites_adventures",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:37:10.223Z",
+      "sampleEnd": "2026-08-20T01:34:51.722Z",
+      "sampleCount": 21,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_snow_whites_adventures",
+      "factor": 0.75,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.325Z",
+      "sampleEnd": "2026-08-20T01:34:51.722Z",
+      "sampleCount": 5,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_pinocchios_daring_journey",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:55:34.950Z",
+      "sampleEnd": "2026-08-19T10:45:35.101Z",
+      "sampleCount": 17,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_pinocchios_daring_journey",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:55:34.950Z",
+      "sampleEnd": "2026-08-20T00:58:20.639Z",
+      "sampleCount": 19,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_fantasyland_pinocchios_daring_journey",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.338Z",
+      "sampleEnd": "2026-08-20T00:58:20.639Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_gadgets_go_coaster",
+      "factor": 1.2,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:55:34.968Z",
+      "sampleEnd": "2026-08-19T11:48:35.533Z",
+      "sampleCount": 14,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_gadgets_go_coaster",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:55:34.968Z",
+      "sampleEnd": "2026-08-20T01:40:37.947Z",
+      "sampleCount": 21,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_toontown_gadgets_go_coaster",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.402Z",
+      "sampleEnd": "2026-08-20T01:40:37.947Z",
+      "sampleCount": 7,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_shooting_gallery",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.653Z",
+      "sampleEnd": "2026-08-19T10:07:19.748Z",
+      "sampleCount": 19,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_shooting_gallery",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T00:01:57.653Z",
+      "sampleEnd": "2026-08-20T02:23:27.975Z",
+      "sampleCount": 21,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_shooting_gallery",
+      "factor": 0.5,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T00:02:43.297Z",
+      "sampleEnd": "2026-08-20T02:23:27.975Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_omnibus",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:38:03.902Z",
+      "sampleEnd": "2026-08-19T06:33:51.695Z",
+      "sampleCount": 3,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_omnibus",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T01:38:03.902Z",
+      "sampleEnd": "2026-08-20T01:37:35.463Z",
+      "sampleCount": 4,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_omnibus",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T01:37:35.463Z",
+      "sampleEnd": "2026-08-20T01:37:35.463Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_tom_sawyer_island_rafts",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T02:02:52.450Z",
+      "sampleEnd": "2026-08-19T02:02:52.450Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:3"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_tom_sawyer_island_rafts",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-19T02:02:52.450Z",
+      "sampleEnd": "2026-08-20T02:02:17.044Z",
+      "sampleCount": 2,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "season:summer"
+      ]
+    },
+    {
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_westernland_tom_sawyer_island_rafts",
+      "factor": 1.0,
+      "source": "ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-08-20T03:14:41.881114Z",
+      "sampleStart": "2026-08-20T02:02:17.044Z",
+      "sampleEnd": "2026-08-20T02:02:17.044Z",
+      "sampleCount": 1,
+      "excludedCount": 0,
+      "confidence": "low",
+      "methodVersion": "5.1.1",
+      "dimensions": [
+        "weekday:4"
+      ]
+    }
+  ]
 }
