@@ -4,9 +4,9 @@
 
 ## Current release
 
-- Stable tag: **v7.4.4**
-- `main` reflected candidate: **v7.4.5 — Wait profile schedule integration**
-- Implementation candidate: **v7.4.6 — Wait Profile Coverage Audit**
+- Stable tag: **v7.4.6**
+- `main` reflected: **v7.4.6 — Wait Profile Coverage Audit**
+- Implementation candidate: **v7.4.7 — Nearest-band wait profile fallback**
 - Application branch: `main`
 - Raw live-data branch: `live-data`（v7.4.4で作成・実運用確認済み）
 - Design policy: 既存のDesign Freezeを尊重し、ライブデータ基盤はUIを不用意に変更しない
@@ -85,3 +85,8 @@ v7.4.5候補では `ScheduleEngine.generate()` に `waitProfiles` を任意入�
 5. current unmatchedのうち現行alias/source alias/ignoreでも解決できない項目
 
 collectorのunmatchedファイルはappend-onlyを廃止し「現在の未解決集合」に変更する。
+
+
+## v7.4.7 candidate — nearest-band fallback
+
+時間帯profileの対象帯が0/0/0の場合、同一施設内の最短距離にある有効帯を参照する。左右同距離なら代表待ち時間が大きい方を安全側として採用する。全帯に有効値が無い施設は補完対象外とし、従来の優先度別フォールバックへ戻す。リアルタイム/施設待ち時間とパス利用処理の優先順位は維持する。

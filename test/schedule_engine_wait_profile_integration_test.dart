@@ -105,4 +105,66 @@ void main() {
     expect(item.estimatedWaitMinutes, 30);
     expect(item.waitEstimateSource, '待ち時間データ未登録のため優先度別の安全側暫定値');
   });
+
+  test('missing target band uses the nearest valid band from the same facility', () {
+    final facility = _attraction();
+    final profile = TimeBandWaitProfile(
+      facilityId: facility.id,
+      parkId: facility.parkId,
+      ranges: const {
+        WaitTimeBand.afterOpening: WaitTimeRange(
+          minMinutes: 10, typicalMinutes: 20, maxMinutes: 30),
+        WaitTimeBand.beforeLunch: WaitTimeRange(
+          minMinutes: 0, typicalMinutes: 0, maxMinutes: 0),
+        WaitTimeBand.afterLunch: WaitTimeRange(
+          minMinutes: 25, typicalMinutes: 35, maxMinutes: 45),
+      },
+      source: 'ThemeParks.wiki GitHub history',
+      calculatedAt: DateTime.utc(2026, 8, 21),
+      sampleCount: 50,
+    );
+
+    final settings = _settings().copyWith(entryTimeHour: 11, entryTimeMinute: 0);
+    final schedule = const ScheduleEngine().generate(
+      settings: settings,
+      facilities: [facility],
+      preferences: [PlanPreference.initial(facilityId: facility.id)],
+      waitProfiles: [profile],
+    );
+    final item = schedule.items.singleWhere((item) => item.facilityId == facility.id);
+
+    // beforeLunch is equally close to afterOpening and afterLunch.
+    // The safer (larger typicalMinutes) afterLunch value wins.
+    expect(item.estimatedWaitMinutes, 35);
+    expect(item.waitEstimateSource, contains('昼前を昼後から近接参照'));
+  });
+
+  test('profile with no valid bands keeps the priority fallback', () {
+    final facility = _attraction();
+    final profile = TimeBandWaitProfile(
+      facilityId: facility.id,
+      parkId: facility.parkId,
+      ranges: const {
+        WaitTimeBand.afterOpening: WaitTimeRange(
+          minMinutes: 0, typicalMinutes: 0, maxMinutes: 0),
+        WaitTimeBand.beforeLunch: WaitTimeRange(
+          minMinutes: 0, typicalMinutes: 0, maxMinutes: 0),
+      },
+      source: 'ThemeParks.wiki GitHub history',
+      calculatedAt: DateTime.utc(2026, 8, 21),
+      sampleCount: 0,
+    );
+
+    final schedule = const ScheduleEngine().generate(
+      settings: _settings(),
+      facilities: [facility],
+      preferences: [PlanPreference.initial(facilityId: facility.id)],
+      waitProfiles: [profile],
+    );
+    final item = schedule.items.singleWhere((item) => item.facilityId == facility.id);
+
+    expect(item.estimatedWaitMinutes, 30);
+    expect(item.waitEstimateSource, '待ち時間データ未登録のため優先度別の安全側暫定値');
+  });
+
 }

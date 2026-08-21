@@ -6,9 +6,9 @@ Disney Plannerはディズニー公式アプリの代替ではありません。
 
 ## 現在の開発状態
 
-- 現在の安定タグ: **v7.4.4**
-- `main` 反映済み候補: **v7.4.5 — Wait profile schedule integration**
-- 次期候補: **v7.4.6 — Wait Profile Coverage Audit**
+- 現在の安定タグ: **v7.4.6**
+- `main` 反映済み: **v7.4.6 — Wait Profile Coverage Audit**
+- 次期候補: **v7.4.7 — Nearest-band wait profile fallback**
 - `flutter analyze --no-pub`: **No issues found!**（直近確認）
 - `flutter test --no-pub`: **All tests passed!**（直近確認）
 - TDL/TDS待ち時間・DPA状態の自動収集基盤: **稼働開始**
@@ -122,3 +122,7 @@ git push origin vX.X.X
 実プランで実績profileの接続は確認できましたが、時間帯の多くが0/0/0になる原因を追跡した結果、ThemeParks.wikiの `observedAt` はUTC (`Z`) なのに、`HistoricalWaitProfileGenerator` がUTC時刻のままTDRの時間帯へ分類していたことを確認しました。v7.4.6候補ではUTCをJSTへ変換してから7時間帯へ分類します。
 
 また `tool/audit_wait_profile_coverage.py` を追加し、profile未生成施設、時間帯別サンプル不足、マッピング対象不整合、現在のunmatchedを一覧化します。日次profile再生成Workflowでもこの監査を実行し、`docs/current/WAIT_PROFILE_COVERAGE_AUDIT.md` を更新します。施設IDは自動推測・捏造せず、疑わしい項目は監査結果として残します。
+
+## v7.4.7候補 — 欠損時間帯の近接実績参照
+
+対象時間帯の実績が0/0/0でも、同一施設の別時間帯に有効な実績があれば最も近い時間帯の `typicalMinutes` を利用します。同距離なら安全側として大きい代表値を採用します。施設全体に有効実績が無い場合は従来の優先度別フォールバックを維持し、架空の実績値は生成しません。

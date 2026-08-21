@@ -1,3 +1,12 @@
+## v7.4.7 candidate - Nearest-band wait profile fallback
+
+- `ScheduleEngine` で対象時間帯の `typicalMinutes` が0/未登録の場合、同一施設の最も近い有効時間帯を参照するよう変更。
+- 前後が同距離の場合は安全側として `typicalMinutes` が大きい時間帯を採用。
+- 施設全体に有効な実績帯が無い場合は補完せず、従来の優先度別20/30/45/60分フォールバックを維持。
+- `Facility.waitTime` とDPA/PP/Standby Passの既存優先順位は変更なし。
+- `waitEstimateSource` に「対象帯を参照帯から近接参照」と記録し、推定根拠を可視化。
+- 回帰テストに近接帯補完・同距離安全側選択・全帯無効時フォールバックを追加。
+
 ## v7.4.6 candidate - Wait Profile Coverage Audit
 - Rebuild Workflowの生成後 `git pull --rebase` を廃止し、未コミット作業ツリーによる exit code 128 を防止。
 

@@ -5,6 +5,7 @@ import '../entities/plan_preference.dart';
 import '../entities/schedule_item.dart';
 import '../entities/trip_settings.dart';
 import '../entities/time_band_wait_profile.dart';
+import '../entities/wait_time_range.dart';
 import 'entry_prediction_service.dart';
 import '../enums/facility_access_method.dart';
 import '../enums/facility_category.dart';
@@ -1222,12 +1223,63 @@ class ScheduleEngine {
               '実績待ち時間プロファイル（${band.label}、${profile.source}、サンプル${profile.sampleCount}件）',
         );
       }
+
+      // 対象帯だけ観測が無い場合は、同じ施設の最も近い時間帯の
+      // 実績を参照する。施設全体に有効実績が無い場合は補完せず、
+      // 従来の安全側フォールバックへ戻す。
+      final nearest = _nearestValidWaitRange(profile: profile, targetBand: band);
+      if (nearest != null) {
+        return _WaitEstimate(
+          waitMinutes: nearest.range.typicalMinutes,
+          source:
+              '実績待ち時間プロファイル（${band.label}を${nearest.band.label}から近接参照、${profile.source}、サンプル${profile.sampleCount}件）',
+        );
+      }
     }
 
     return _WaitEstimate(
       waitMinutes: _fallbackWaitMinutes(facility),
       source: '待ち時間データ未登録のため優先度別の安全側暫定値',
     );
+  }
+
+
+  _NearestWaitRange? _nearestValidWaitRange({
+    required TimeBandWaitProfile profile,
+    required WaitTimeBand targetBand,
+  }) {
+    const orderedBands = <WaitTimeBand>[
+      WaitTimeBand.afterOpening,
+      WaitTimeBand.beforeLunch,
+      WaitTimeBand.afterLunch,
+      WaitTimeBand.aroundShows,
+      WaitTimeBand.beforeDinner,
+      WaitTimeBand.afterDinner,
+      WaitTimeBand.beforeClosing,
+    ];
+
+    final targetIndex = orderedBands.indexOf(targetBand);
+    if (targetIndex < 0) return null;
+
+    _NearestWaitRange? best;
+    var bestDistance = orderedBands.length + 1;
+
+    for (var index = 0; index < orderedBands.length; index++) {
+      final band = orderedBands[index];
+      final range = profile.rangeFor(band);
+      if (range == null || range.typicalMinutes <= 0) continue;
+
+      final distance = (index - targetIndex).abs();
+      if (distance < bestDistance ||
+          (distance == bestDistance &&
+              (best == null ||
+                  range.typicalMinutes > best.range.typicalMinutes))) {
+        best = _NearestWaitRange(band: band, range: range);
+        bestDistance = distance;
+      }
+    }
+
+    return best;
   }
 
   int _fallbackWaitMinutes(Facility facility) {
@@ -1902,4 +1954,12 @@ class _WaitToleranceDecision {
   final bool exceededButKept;
 
   final String? reason;
+}
+
+
+class _NearestWaitRange {
+  const _NearestWaitRange({required this.band, required this.range});
+
+  final WaitTimeBand band;
+  final WaitTimeRange range;
 }
