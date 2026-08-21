@@ -89,6 +89,9 @@ void main() {
     expect(ranges[WaitTimeBand.beforeDinner]!.typicalMinutes, 50);
     expect(ranges[WaitTimeBand.afterDinner]!.typicalMinutes, 60);
     expect(ranges[WaitTimeBand.beforeClosing]!.typicalMinutes, 70);
+    for (final band in WaitTimeBand.values) {
+      expect(ranges[band]!.sampleCount, 1);
+    }
   });
 
 }

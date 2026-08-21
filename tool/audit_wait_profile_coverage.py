@@ -235,6 +235,24 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
             lines.append("- All generated active-attraction profiles cover all seven bands.")
         lines.append("")
 
+        lines += ["### 2b. Low-confidence time bands (<3 samples)", ""]
+        low_confidence = []
+        if by_band:
+            for fid in sorted(profile_items):
+                if fid not in active_attractions:
+                    continue
+                for key, label, _, _ in BANDS:
+                    count = by_band[fid].get(key, 0)
+                    if 0 < count < 3:
+                        low_confidence.append((fid, label, count))
+        if low_confidence:
+            for fid, label, count in low_confidence:
+                name = active_attractions.get(fid, {}).get("name", "")
+                lines.append(f"- `{fid}` — {name}: {label} = {count} samples")
+        else:
+            lines.append("- None in available raw history.")
+        lines.append("")
+
         lines += ["### 3. Facility-ID mapping audit", ""]
         if invalid_targets:
             actionable += len(invalid_targets)
@@ -269,6 +287,7 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
         "## Interpretation",
         "",
         "- A 0/0/0 range is treated as unavailable by the scheduling engine and is therefore reported as missing coverage.",
+        "- v7.4.8 stores sampleCount per time band; nearest-band fallback requires at least 3 samples. Direct-band observations remain usable even when thin, but the source text exposes the exact band sample count.",
         "- ThemeParks.wiki timestamps are UTC; time-band coverage must be classified after conversion to JST.",
         "- An active master attraction without mapping is not automatically an error; some source entities do not expose a standby wait queue.",
         "",

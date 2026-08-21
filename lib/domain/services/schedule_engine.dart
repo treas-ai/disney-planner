@@ -1220,7 +1220,7 @@ class ScheduleEngine {
         return _WaitEstimate(
           waitMinutes: range.typicalMinutes,
           source:
-              '実績待ち時間プロファイル（${band.label}、${profile.source}、サンプル${profile.sampleCount}件）',
+              '実績待ち時間プロファイル（${band.label}、${profile.source}、時間帯サンプル${range.sampleCount ?? profile.sampleCount}件）',
         );
       }
 
@@ -1232,7 +1232,7 @@ class ScheduleEngine {
         return _WaitEstimate(
           waitMinutes: nearest.range.typicalMinutes,
           source:
-              '実績待ち時間プロファイル（${band.label}を${nearest.band.label}から近接参照、${profile.source}、サンプル${profile.sampleCount}件）',
+              '実績待ち時間プロファイル（${band.label}を${nearest.band.label}から近接参照、${profile.source}、時間帯サンプル${nearest.range.sampleCount ?? profile.sampleCount}件）',
         );
       }
     }
@@ -1268,6 +1268,11 @@ class ScheduleEngine {
       final band = orderedBands[index];
       final range = profile.rangeFor(band);
       if (range == null || range.typicalMinutes <= 0) continue;
+
+      // 近接時間帯は別時間帯からの外挿なので、薄い実績は採用しない。
+      // 現行の施設×時間帯サンプル数の中央値が約3件のため3件を最低条件とする。
+      // legacy profileではsampleCountがnullなので、再生成までは従来挙動を維持する。
+      if (range.sampleCount != null && range.sampleCount! < 3) continue;
 
       final distance = (index - targetIndex).abs();
       if (distance < bestDistance ||

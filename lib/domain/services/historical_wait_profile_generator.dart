@@ -75,8 +75,20 @@ class HistoricalWaitProfileGenerator {
   }
 
   WaitTimeRange _range(List<int> values) {
-    if (values.isEmpty) return const WaitTimeRange(minMinutes: 0, typicalMinutes: 0, maxMinutes: 0);
-    return WaitTimeRange(minMinutes: _percentile(values, 0.1), typicalMinutes: _percentile(values, 0.5), maxMinutes: _percentile(values, 0.9));
+    if (values.isEmpty) {
+      return const WaitTimeRange(
+        minMinutes: 0,
+        typicalMinutes: 0,
+        maxMinutes: 0,
+        sampleCount: 0,
+      );
+    }
+    return WaitTimeRange(
+      minMinutes: _percentile(values, 0.1),
+      typicalMinutes: _percentile(values, 0.5),
+      maxMinutes: _percentile(values, 0.9),
+      sampleCount: values.length,
+    );
   }
 
   int _percentile(List<int> values, double percentile) {

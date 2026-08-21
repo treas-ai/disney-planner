@@ -134,3 +134,11 @@ git push origin main
 さらに `tool/audit_wait_profile_coverage.py` を追加。日次 `Rebuild TDR wait profiles` はlive-dataを使ってprofile再生成後にcoverage reportも生成する。unmatchedファイルはappend-onlyではなく現在未解決だけにする。
 
 次回はv7.4.6 ZIP上書き→`./verify.ps1`→mainへpush→`Rebuild TDR wait profiles`を手動実行→生成された `docs/current/WAIT_PROFILE_COVERAGE_AUDIT.md` と再生成profileを確認する。
+
+
+## v7.4.8 Wait Profile Confidence（候補）
+- `WaitTimeRange` に時間帯ごとの `sampleCount` を保存する。
+- 直接該当する時間帯は実績値を使用し、根拠に「時間帯サンプルN件」を表示する。
+- 欠損時間帯の近接参照は、参照元時間帯に3件以上の実績がある場合だけ使用する。
+- 1〜2件しかない時間帯は近接外挿に使用せず、別の十分な近接帯が無ければ従来の安全側フォールバックへ戻す。
+- 施設全体の `sampleCount` は互換性のため維持する。

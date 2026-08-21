@@ -1,3 +1,9 @@
+
+## v7.4.8 - Wait Profile Confidence（候補）
+- 時間帯ごとのサンプル数を `WaitTimeRange.sampleCount` として永続化。
+- 近接時間帯フォールバックは3サンプル以上の時間帯だけを採用。
+- 推定根拠を施設全体件数ではなく時間帯サンプル件数表示へ変更。
+- Coverage Auditに1〜2件の低信頼時間帯一覧を追加。
 ## v7.4.7 candidate - Nearest-band wait profile fallback
 
 - `ScheduleEngine` で対象時間帯の `typicalMinutes` が0/未登録の場合、同一施設の最も近い有効時間帯を参照するよう変更。
