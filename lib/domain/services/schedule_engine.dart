@@ -145,10 +145,15 @@ class ScheduleEngine {
       exitMinutes: exitMinutes,
     );
 
+    final hasRequestedMealSlot =
+        settings.wantsBreakfast || settings.wantsLunch || settings.wantsDinner;
+
     final regularFacilities = operationalFacilities
         .where((facility) {
+          final isRestaurant =
+              facility.category == FacilityCategory.restaurant;
           final isAssignedRestaurant =
-              facility.category == FacilityCategory.restaurant &&
+              isRestaurant &&
               (mealPlan.assignedFacilityIds.contains(facility.id) ||
                   fixedRestaurantFacilityIds.contains(facility.id));
 
@@ -162,26 +167,50 @@ class ScheduleEngine {
             preferences: preferences,
           );
 
-          return !isAssignedRestaurant &&
-              !isFixedPerformance &&
-              !isFixedAccess &&
-              !(preference?.isExcluded ?? false);
+          if (isAssignedRestaurant ||
+              isFixedPerformance ||
+              isFixedAccess ||
+              (preference?.isExcluded ?? false)) {
+            return false;
+          }
+
+          // When meal slots are requested, MealPlanner owns restaurant
+          // selection. This prevents every selected restaurant from being
+          // inserted again as an ordinary facility. If no meal slot is
+          // requested, preserve the long-standing behavior that an explicitly
+          // selected restaurant can still be scheduled as a normal wish item.
+          if (isRestaurant && hasRequestedMealSlot) {
+            return false;
+          }
+
+          return true;
         })
         .toList(growable: false);
 
-    final optimizedFacilities = _prioritizeMorningAttractions(
-      routeOptimizer.optimize(
-        facilities: regularFacilities,
-        preferences: preferences,
-      ),
+    final optimizedFacilities = routeOptimizer.optimize(
+      facilities: regularFacilities,
       preferences: preferences,
-      morningScores: morningScores,
     );
 
     var currentMinutes = entryEndMinutes;
     String? previousAreaId;
+    final remainingFacilities = optimizedFacilities.toList(growable: true);
 
-    for (final facility in optimizedFacilities) {
+    while (remainingFacilities.isNotEmpty) {
+      final nextDecision = _selectNextWaitAwareFacility(
+        remainingFacilities: remainingFacilities,
+        routeOrder: optimizedFacilities,
+        preferences: preferences,
+        waitProfiles: waitProfiles,
+        currentMinutes: currentMinutes,
+        previousAreaId: previousAreaId,
+        eventImpacts: eventImpacts,
+        settings: settings,
+        morningScores: morningScores,
+      );
+      final facility = nextDecision.facility;
+      remainingFacilities.remove(facility);
+
       final preference = _findPreference(
         facilityId: facility.id,
         preferences: preferences,
@@ -284,7 +313,40 @@ class ScheduleEngine {
         continue;
       }
 
-      final endMinutes = finalStartMinutes + durationMinutes;
+      final finalWaitEstimate = finalStartMinutes == requestedStartMinutes
+          ? waitEstimate
+          : _resolveWaitEstimate(
+              facility: facility,
+              preference: preference,
+              waitProfiles: waitProfiles,
+              scheduledStartMinutes: finalStartMinutes,
+            );
+      final finalDurationMinutes = _resolvePlannedFacilityDuration(
+        facility: facility,
+        preference: preference,
+        waitEstimate: finalWaitEstimate,
+      );
+
+      if (finalDurationMinutes != durationMinutes) {
+        final refitStart = _findAvailableStart(
+          requestedStartMinutes: finalStartMinutes,
+          durationMinutes: finalDurationMinutes,
+          items: items,
+          exitMinutes: exitMinutes,
+        );
+        if (refitStart == null ||
+            refitStart != finalStartMinutes ||
+            !_fitsOperatingHours(
+              facility: facility,
+              startMinutes: finalStartMinutes,
+              durationMinutes: finalDurationMinutes,
+              targetDate: visitDate,
+            )) {
+          continue;
+        }
+      }
+
+      final endMinutes = finalStartMinutes + finalDurationMinutes;
 
       items.add(
         _createScheduleItem(
@@ -299,19 +361,20 @@ class ScheduleEngine {
             preference: preference,
             previousAreaId: previousAreaId,
             currentAreaId: facility.areaId,
-            durationMinutes: durationMinutes,
+            durationMinutes: finalDurationMinutes,
             scheduledStartMinutes: finalStartMinutes,
             waitDecision: waitDecision,
+            waitTimingReason: nextDecision.reason,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
           estimatedWaitMinutes: facility.category == FacilityCategory.attraction
-              ? waitEstimate.waitMinutes
+              ? finalWaitEstimate.waitMinutes
               : null,
           experienceMinutes: facility.category == FacilityCategory.attraction
               ? _resolveFacilityDuration(facility)
               : null,
           waitEstimateSource: facility.category == FacilityCategory.attraction
-              ? waitEstimate.source
+              ? finalWaitEstimate.source
               : null,
         ),
       );
@@ -1055,56 +1118,230 @@ class ScheduleEngine {
   }
 
 
-  List<Facility> _prioritizeMorningAttractions(
-    List<Facility> facilities, {
+  _NextFacilityDecision _selectNextWaitAwareFacility({
+    required List<Facility> remainingFacilities,
+    required List<Facility> routeOrder,
     required List<PlanPreference> preferences,
-    Map<String, double> morningScores = const {},
+    required List<TimeBandWaitProfile> waitProfiles,
+    required int currentMinutes,
+    required String? previousAreaId,
+    required List<EventImpact> eventImpacts,
+    required TripSettings settings,
+    required Map<String, double> morningScores,
   }) {
-    if (facilities.length <= 1) {
-      return facilities;
+    if (remainingFacilities.length == 1) {
+      return _NextFacilityDecision(facility: remainingFacilities.single);
     }
 
-    // 入園直後は、営業時間待ちの飲食施設を先頭に置かず、
-    // 実際に利用できるアトラクションを優先する。
-    // 先頭2枠だけを朝一枠として扱い、それ以降は既存の
-    // RouteOptimizer の順序を維持して影響範囲を限定する。
-    final morningAttractions = facilities.where((facility) {
-      if (facility.category != FacilityCategory.attraction) {
-        return false;
-      }
+    final scored = <_WaitAwareCandidate>[];
+    for (final facility in remainingFacilities) {
       final preference = _findPreference(
         facilityId: facility.id,
         preferences: preferences,
       );
-      return preference?.fixedTimeStatus != FixedTimeStatus.confirmed;
-    }).toList(growable: false)
-      ..sort((a, b) {
-        final aScore = morningScores[a.id];
-        final bScore = morningScores[b.id];
-        if (aScore != null || bScore != null) {
-          final scoreCompare = (bScore ?? double.negativeInfinity)
-              .compareTo(aScore ?? double.negativeInfinity);
-          if (scoreCompare != 0) return scoreCompare;
-        }
-        final aPref = _findPreference(facilityId: a.id, preferences: preferences);
-        final bPref = _findPreference(facilityId: b.id, preferences: preferences);
-        final priorityCompare = (bPref?.priority.value ?? b.priority.value)
-            .compareTo(aPref?.priority.value ?? a.priority.value);
-        if (priorityCompare != 0) return priorityCompare;
-        return a.displayOrder.compareTo(b.displayOrder);
-      });
+      final preferredTime =
+          preference?.preferredTime ?? PreferredTime.anytime;
+      final allocation = timeAllocator.allocate(
+        settings: settings,
+        preferredTime: preferredTime,
+      );
+      final preferredStartMinutes = _toMinutes(
+        allocation.startHour,
+        allocation.startMinute,
+      );
+      final movementMinutes = _calculateMovementMinutes(
+        previousAreaId: previousAreaId,
+        currentAreaId: facility.areaId,
+        atMinutes: currentMinutes,
+        eventImpacts: eventImpacts,
+      );
+      final candidateStart = _maximum(
+        currentMinutes + movementMinutes,
+        preferredStartMinutes,
+      );
 
-    final topMorningAttractions = morningAttractions.take(2).toList(growable: false);
+      final routeIndex = routeOrder.indexOf(facility);
+      final priority =
+          preference?.priority.value ?? facility.priority.value;
+      final timing = _waitTimingOpportunity(
+        facility: facility,
+        preference: preference,
+        waitProfiles: waitProfiles,
+        scheduledStartMinutes: candidateStart,
+      );
 
-    if (topMorningAttractions.isEmpty) {
-      return facilities;
+      // Existing route / preference ordering remains the baseline.
+      // Wait-time variation is strong enough to override it only when
+      // historical data shows a meaningful opportunity or loss.
+      var score = 100.0;
+      score -= (routeIndex < 0 ? routeOrder.length : routeIndex) * 4.0;
+      score += priority * 10.0;
+      score -= movementMinutes * 0.8;
+
+      final startDelay = candidateStart - currentMinutes;
+      if (startDelay > 0) {
+        score -= startDelay * 0.7;
+      }
+
+      final openingScore = morningScores[facility.id];
+      if (openingScore != null) {
+        // 朝一専用スコアは上位2件の固定配置には使わず、
+        // 全候補を毎回比較する補助点としてのみ使う。
+        score += openingScore.clamp(-20.0, 100.0).toDouble() * 0.25;
+      }
+
+      final currentEstimate = _resolveWaitEstimate(
+        facility: facility,
+        preference: preference,
+        waitProfiles: waitProfiles,
+        scheduledStartMinutes: candidateStart,
+      );
+      if (facility.category == FacilityCategory.attraction &&
+          !_usesShortenedQueue(facility: facility, preference: preference)) {
+        // 同程度の後回し損失なら、今実際に短く乗れる施設を優先する。
+        score -= currentEstimate.waitMinutes * 0.25;
+      }
+
+      if (timing != null) {
+        // Positive: delaying becomes worse -> use now.
+        // Negative: a reliably shorter later band exists -> defer if possible.
+        // Missing a low-wait window can cost much more than a small route
+        // saving. Give measured near-term wait growth enough weight to reorder
+        // otherwise-similar attractions.
+        score += timing.delayPenaltyMinutes * 3.0;
+      }
+
+      scored.add(
+        _WaitAwareCandidate(
+          facility: facility,
+          score: score,
+          timing: timing,
+        ),
+      );
     }
 
-    final morningIds = topMorningAttractions.map((facility) => facility.id).toSet();
-    return <Facility>[
-      ...topMorningAttractions,
-      ...facilities.where((facility) => !morningIds.contains(facility.id)),
+    scored.sort((a, b) {
+      final scoreCompare = b.score.compareTo(a.score);
+      if (scoreCompare != 0) return scoreCompare;
+      return routeOrder.indexOf(a.facility).compareTo(
+            routeOrder.indexOf(b.facility),
+          );
+    });
+
+    final best = scored.first;
+    final timing = best.timing;
+    String? reason;
+    if (timing != null && timing.delayPenaltyMinutes >= 15) {
+      reason =
+          'この時間帯を逃すと、同施設の信頼できる後続時間帯より'
+          '待ち時間が約${timing.delayPenaltyMinutes}分増える見込みのため、'
+          '現在の利用を優先しました。';
+    } else if (timing != null && timing.delayPenaltyMinutes <= -15) {
+      // This can still be selected because priority / route / preferred-time
+      // constraints outweigh the future saving. Explain only when it wins.
+      reason =
+          '後の時間帯に約${-timing.delayPenaltyMinutes}分短い実績がありますが、'
+          '優先度・移動・希望時間を合わせて現在の配置を選びました。';
+    }
+
+    return _NextFacilityDecision(
+      facility: best.facility,
+      reason: reason,
+    );
+  }
+
+  _WaitTimingOpportunity? _waitTimingOpportunity({
+    required Facility facility,
+    required PlanPreference? preference,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required int scheduledStartMinutes,
+  }) {
+    if (facility.category != FacilityCategory.attraction ||
+        facility.waitTime != null ||
+        _usesShortenedQueue(facility: facility, preference: preference)) {
+      return null;
+    }
+
+    TimeBandWaitProfile? profile;
+    for (final item in waitProfiles) {
+      if (item.facilityId == facility.id && item.parkId == facility.parkId) {
+        profile = item;
+        break;
+      }
+    }
+    if (profile == null) return null;
+
+    const orderedBands = <WaitTimeBand>[
+      WaitTimeBand.afterOpening,
+      WaitTimeBand.beforeLunch,
+      WaitTimeBand.afterLunch,
+      WaitTimeBand.aroundShows,
+      WaitTimeBand.beforeDinner,
+      WaitTimeBand.afterDinner,
+      WaitTimeBand.beforeClosing,
     ];
+    final currentBand = _waitTimeBandForMinutes(scheduledStartMinutes);
+    final currentIndex = orderedBands.indexOf(currentBand);
+    if (currentIndex < 0) return null;
+
+    final currentRange = profile.rangeFor(currentBand);
+    if (!_isReliableTimingRange(currentRange)) {
+      return null;
+    }
+
+    // Compare against the *near-term* bands rather than the cheapest band
+    // anywhere later in the day.  Looking at the whole remaining day could
+    // hide an important morning opportunity when (for example) an attraction
+    // becomes very busy at lunch but gets shorter again near closing.
+    //
+    // The next two reliable bands represent the practical cost of postponing
+    // this attraction while the planner schedules other wishes first.
+    const lookAheadReliableBands = 2;
+    final futureCandidates = <({WaitTimeBand band, int waitMinutes})>[];
+    for (var index = currentIndex + 1;
+        index < orderedBands.length &&
+            futureCandidates.length < lookAheadReliableBands;
+        index++) {
+      final band = orderedBands[index];
+      final range = profile.rangeFor(band);
+      if (!_isReliableTimingRange(range)) continue;
+      futureCandidates.add((
+        band: band,
+        waitMinutes: range!.typicalMinutes,
+      ));
+    }
+
+    if (futureCandidates.isEmpty) {
+      return null;
+    }
+
+    // For "use it now" urgency, the relevant risk is the largest wait that
+    // is likely to be encountered after postponing.  This lets multiple
+    // morning-sensitive attractions compete by how costly it is to miss their
+    // current low-wait window.
+    var representativeFuture = futureCandidates.first;
+    for (final candidate in futureCandidates.skip(1)) {
+      if (candidate.waitMinutes > representativeFuture.waitMinutes) {
+        representativeFuture = candidate;
+      }
+    }
+
+    return _WaitTimingOpportunity(
+      currentBand: currentBand,
+      currentWaitMinutes: currentRange!.typicalMinutes,
+      bestFutureBand: representativeFuture.band,
+      bestFutureWaitMinutes: representativeFuture.waitMinutes,
+      delayPenaltyMinutes:
+          representativeFuture.waitMinutes - currentRange.typicalMinutes,
+    );
+  }
+
+  bool _isReliableTimingRange(WaitTimeRange? range) {
+    if (range == null || range.typicalMinutes <= 0) return false;
+    // v7.5.0 ordering decisions are stricter than display-only estimates.
+    // A different ordering can affect the whole day, so thin bands are not
+    // allowed to move facilities around.
+    return range.sampleCount == null || range.sampleCount! >= 3;
   }
 
   int _applyFacilitySpecificStartPriority({
@@ -1140,6 +1377,22 @@ class ScheduleEngine {
     return 60;
   }
 
+  bool _usesShortenedQueue({
+    required Facility facility,
+    required PlanPreference? preference,
+  }) {
+    final method = preference?.accessMethod ?? FacilityAccessMethod.standby;
+    return (method == FacilityAccessMethod.dpa && facility.supportsDpa) ||
+        (method == FacilityAccessMethod.priorityPass &&
+            facility.supportsPriorityPass) ||
+        (method == FacilityAccessMethod.standbyPass &&
+            facility.supportsStandbyPass) ||
+        (preference?.useDpa == true && facility.supportsDpa) ||
+        (preference?.usePriorityPass == true &&
+            facility.supportsPriorityPass) ||
+        (preference?.useStandbyPass == true && facility.supportsStandbyPass);
+  }
+
   int _resolvePlannedFacilityDuration({
     required Facility facility,
     required PlanPreference? preference,
@@ -1151,17 +1404,10 @@ class ScheduleEngine {
       return experienceMinutes;
     }
 
-    final method = preference?.accessMethod ?? FacilityAccessMethod.standby;
-    final usesShortenedQueue =
-        (method == FacilityAccessMethod.dpa && facility.supportsDpa) ||
-        (method == FacilityAccessMethod.priorityPass &&
-            facility.supportsPriorityPass) ||
-        (method == FacilityAccessMethod.standbyPass &&
-            facility.supportsStandbyPass) ||
-        (preference?.useDpa == true && facility.supportsDpa) ||
-        (preference?.usePriorityPass == true &&
-            facility.supportsPriorityPass) ||
-        (preference?.useStandbyPass == true && facility.supportsStandbyPass);
+    final usesShortenedQueue = _usesShortenedQueue(
+      facility: facility,
+      preference: preference,
+    );
 
     // DPA/PP等でも入場から乗車までの時間は0分ではないため、
     // 最低限のキュー・乗降バッファを確保する。
@@ -1599,6 +1845,7 @@ class ScheduleEngine {
     required int durationMinutes,
     required int scheduledStartMinutes,
     required _WaitToleranceDecision waitDecision,
+    String? waitTimingReason,
   }) {
     final reasons = <String>[];
 
@@ -1661,6 +1908,10 @@ class ScheduleEngine {
     );
     if (closingReason != null) {
       reasons.add(closingReason);
+    }
+
+    if (waitTimingReason != null && waitTimingReason.trim().isNotEmpty) {
+      reasons.add(waitTimingReason);
     }
 
     final waitReason = _buildWaitReason(waitDecision);
@@ -1936,6 +2187,47 @@ class _WaitEstimate {
 
   final int waitMinutes;
   final String source;
+}
+
+
+class _NextFacilityDecision {
+  const _NextFacilityDecision({
+    required this.facility,
+    this.reason,
+  });
+
+  final Facility facility;
+  final String? reason;
+}
+
+class _WaitAwareCandidate {
+  const _WaitAwareCandidate({
+    required this.facility,
+    required this.score,
+    required this.timing,
+  });
+
+  final Facility facility;
+  final double score;
+  final _WaitTimingOpportunity? timing;
+}
+
+class _WaitTimingOpportunity {
+  const _WaitTimingOpportunity({
+    required this.currentBand,
+    required this.currentWaitMinutes,
+    required this.bestFutureBand,
+    required this.bestFutureWaitMinutes,
+    required this.delayPenaltyMinutes,
+  });
+
+  final WaitTimeBand currentBand;
+  final int currentWaitMinutes;
+  final WaitTimeBand bestFutureBand;
+  final int bestFutureWaitMinutes;
+
+  /// Positive means "doing it later is worse"; negative means later is better.
+  final int delayPenaltyMinutes;
 }
 
 class _WaitToleranceDecision {

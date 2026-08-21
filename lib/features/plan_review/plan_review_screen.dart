@@ -168,7 +168,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
       schedule: schedule,
       settings: appState.tripSettings,
       parkName: controller.selectedParkName,
-      preferences: appState.planPreferences,
+      preferences: controller.preferencesForExport,
       validationIssues: controller.validationIssues,
       format: PlanTextExportFormat.simple,
     );
@@ -176,7 +176,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
       schedule: schedule,
       settings: appState.tripSettings,
       parkName: controller.selectedParkName,
-      preferences: appState.planPreferences,
+      preferences: controller.preferencesForExport,
       validationIssues: controller.validationIssues,
       format: PlanTextExportFormat.evaluation,
     );

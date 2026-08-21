@@ -46,7 +46,13 @@ class WishCandidateScoringEngine {
       final preference = preferenceById[facility.id];
       final profile = profileById[facility.id];
       final range = profile?.rangeFor(targetBand);
-      final predictedWait = range?.typicalMinutes ?? facility.waitTime?.minutes ?? 30;
+      final reliableRange = range != null &&
+              range.typicalMinutes > 0 &&
+              (range.sampleCount == null || range.sampleCount! >= 3)
+          ? range
+          : null;
+      final predictedWait =
+          reliableRange?.typicalMinutes ?? facility.waitTime?.minutes ?? 30;
       final waitScore = dynamicWaitScoringService.evaluate(facilityId: facility.id, profiles: waitProfiles, facilityCurrentWaitMinutes: facility.waitTime?.minutes, fallbackMinutes: predictedWait);
       final priority = preference?.priority.value ?? facility.priority.value;
       final totalMinutes = facility.durationMinutes + predictedWait;

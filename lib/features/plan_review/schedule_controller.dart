@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import '../../app/dependency/service_locator.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
+import '../../domain/entities/dpa_strategy.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_validation_issue.dart';
 import '../../domain/enums/fixed_time_status.dart';
+import '../../domain/enums/dpa_strategy_type.dart';
 import '../../data/local/local_performance_schedule_repository.dart';
 import '../../domain/services/official_performance_preference_resolver.dart';
+import '../../domain/services/dpa_auto_allocator.dart';
 import '../../domain/services/schedule_engine.dart';
 import '../../domain/services/schedule_validator.dart';
 
@@ -21,7 +24,9 @@ class ScheduleController extends ChangeNotifier {
 
   final AppState _appState;
   final ScheduleEngine _scheduleEngine = const ScheduleEngine();
+  final DpaAutoAllocator _dpaAutoAllocator = const DpaAutoAllocator();
   final ScheduleValidator _scheduleValidator = const ScheduleValidator();
+  List<PlanPreference>? _generatedPreferences;
   final OfficialPerformancePreferenceResolver _performanceResolver =
       OfficialPerformancePreferenceResolver(
         repository: LocalPerformanceScheduleRepository(),
@@ -33,6 +38,11 @@ class ScheduleController extends ChangeNotifier {
   DaySchedule? get schedule {
     return _appState.daySchedule;
   }
+
+  List<PlanPreference> get preferencesForExport =>
+      List<PlanPreference>.unmodifiable(
+        _generatedPreferences ?? _appState.planPreferences,
+      );
 
   String get selectedParkId {
     return _appState.tripSettings.parkId;
@@ -242,22 +252,47 @@ class ScheduleController extends ChangeNotifier {
       final eventImpacts = await ServiceLocator.eventImpactRepository
           .loadEventImpacts(parkId: selectedParkId);
 
-      final waitProfiles = await const CrowdFactorRepositoryImpl().loadWaitProfiles(parkId: selectedParkId);
+      final waitProfiles = await const CrowdFactorRepositoryImpl()
+          .loadWaitProfiles(parkId: selectedParkId);
+      final availableMinutes =
+          (settings.exitTimeHour * 60 + settings.exitTimeMinute) -
+          (settings.entryTimeHour * 60 + settings.entryTimeMinute);
       final morningRanking = const WishCandidateScoringEngine().score(
         facilities: availableFacilities,
         preferences: preferences,
         waitProfiles: waitProfiles,
-        availableMinutes: (settings.exitTimeHour * 60 + settings.exitTimeMinute) - (settings.entryTimeHour * 60 + settings.entryTimeMinute),
+        availableMinutes: availableMinutes,
         targetDate: targetDate,
         hasHappyEntry: settings.hasHappyEntry,
       );
+
+      var generatedPreferences = preferences;
+      if (settings.canUseDpa) {
+        final allocation = _dpaAutoAllocator.allocate(
+          strategy: const DpaStrategy(
+            type: DpaStrategyType.highCongestionOnly,
+            maxUses: 1,
+          ),
+          candidates: morningRanking,
+          preferences: preferences,
+        );
+        generatedPreferences = allocation.preferences;
+      }
+      _generatedPreferences = List<PlanPreference>.unmodifiable(
+        generatedPreferences,
+      );
+
       final generatedSchedule = _scheduleEngine.generate(
         settings: _appState.tripSettings,
         facilities: availableFacilities,
-        preferences: preferences,
+        preferences: generatedPreferences,
         eventImpacts: eventImpacts,
         waitProfiles: waitProfiles,
-        morningScores: {for (final candidate in morningRanking) candidate.facility.id: candidate.firstMoveScore ?? candidate.score},
+        morningScores: {
+          for (final candidate in morningRanking)
+            candidate.facility.id:
+                candidate.firstMoveScore ?? candidate.score,
+        },
       );
 
       _appState.updateDaySchedule(generatedSchedule);
@@ -278,6 +313,7 @@ class ScheduleController extends ChangeNotifier {
 
   void clearSchedule() {
     errorMessage = null;
+    _generatedPreferences = null;
 
     _appState.clearDaySchedule();
   }

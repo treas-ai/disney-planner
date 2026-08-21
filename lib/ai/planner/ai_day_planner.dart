@@ -5,6 +5,7 @@ import 'package:disney_planner/domain/entities/facility.dart';
 import 'package:disney_planner/domain/entities/plan_preference.dart';
 import 'package:disney_planner/domain/entities/time_band_wait_profile.dart';
 import 'package:disney_planner/domain/entities/trip_settings.dart';
+import 'package:disney_planner/domain/enums/dpa_strategy_type.dart';
 import 'package:disney_planner/domain/enums/wait_time_band.dart';
 import 'package:disney_planner/domain/services/dpa_auto_allocator.dart';
 import 'package:disney_planner/domain/services/schedule_engine.dart';
@@ -56,9 +57,18 @@ class AiDayPlanner {
       availableMinutes: availableMinutes,
     );
 
-    final allocation = settings.canUseDpa
+    final effectiveDpaStrategy = settings.canUseDpa
+        ? (dpaStrategy.isEnabled
+              ? dpaStrategy
+              : const DpaStrategy(
+                  type: DpaStrategyType.highCongestionOnly,
+                  maxUses: 1,
+                ))
+        : const DpaStrategy.disabled();
+
+    final allocation = effectiveDpaStrategy.isEnabled
         ? dpaAllocator.allocate(
-            strategy: dpaStrategy,
+            strategy: effectiveDpaStrategy,
             candidates: selected,
             preferences: preferences,
           )

@@ -1416,3 +1416,26 @@ dart run tool/audit_wish_data.dart
 - Daily wait-profile rebuild reads raw history from `live-data` and commits only generated `wait_profiles` / `crowd_factors` to `main`.
 - Add configurable wait-data roots to the Python collector/diagnostic/compaction tools and `--data-root` support to the Dart rebuild tool.
 - Add `setup_live_data_branch.ps1` for one-time beginner-friendly creation of the remote `live-data` branch.
+
+## v7.5.0 - Wait-aware Schedule Optimization（候補）
+
+- AIプラン生成で施設の時間帯別待ち時間変動を配置順に反映
+- 「今行かないと後で大幅に混む」施設を後回し損失として評価
+- 朝一しか比較的空いていない施設が複数ある場合、後回し損失・優先度・移動を比較して朝枠を競合解決
+- 後の時間帯が明確に空く施設は、固定予定等を壊さない範囲で後回し候補にする
+- 配置順変更には時間帯サンプル3件以上のprofileのみ使用
+- 固定予定や営業時間調整で実開始時刻が変わった場合、待ち時間と拘束時間を最終時刻で再評価
+## v7.5.0 candidate fix2
+- 朝一上位2件の固定先頭化を廃止し、全候補を毎回 wait-aware 再評価。
+- 後回し損失、現在待ち時間、朝一価値、優先度、移動、希望時間を統合して次施設を選択。
+- DPA利用可かつ高混雑DPA対象がある場合、AIが保守的に最大1件を自動割当。
+- AI自動DPAは生成結果用のPreferenceとして保持し、評価用プランにもDPA利用を表示。
+- 食事枠に採用されなかったレストランを通常施設として大量配置しない。
+- 配置順やDPA判断に使う時間帯profileは3サンプル以上を原則とする。
+
+
+
+## v7.5.0 candidate fix4 — near-term wait-loss ordering
+- Wait-aware ordering now compares the next two reliable time bands instead of the cheapest band anywhere later in the day.
+- This prevents a late-day wait drop from hiding a large morning-to-midday wait increase.
+- Near-term wait growth receives stronger ordering weight so multiple morning-sensitive attractions compete by the cost of postponement.

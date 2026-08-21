@@ -1,5 +1,6 @@
 import '../entities/dpa_strategy.dart';
 import '../entities/plan_preference.dart';
+import '../enums/facility_access_method.dart';
 import '../enums/facility_category.dart';
 import 'dpa_strategy_engine.dart';
 import 'wish_candidate_scoring_engine.dart';
@@ -38,8 +39,19 @@ class DpaAutoAllocator {
     final byId = {for (final item in preferences) item.facilityId: item};
     final updated = <PlanPreference>[];
     for (final candidate in candidates) {
-      final existing = byId[candidate.facility.id] ?? PlanPreference.initial(facilityId: candidate.facility.id);
-      updated.add(existing.copyWith(useDpa: ids.contains(candidate.facility.id)));
+      final existing = byId[candidate.facility.id] ??
+          PlanPreference.initial(facilityId: candidate.facility.id);
+      final selectedForDpa = ids.contains(candidate.facility.id);
+      updated.add(
+        existing.copyWith(
+          useDpa: selectedForDpa,
+          accessMethod: selectedForDpa
+              ? FacilityAccessMethod.dpa
+              : existing.accessMethod == FacilityAccessMethod.dpa
+                  ? FacilityAccessMethod.standby
+                  : existing.accessMethod,
+        ),
+      );
     }
     return DpaAutoAllocationResult(
       preferences: List.unmodifiable(updated),

@@ -99,8 +99,9 @@ collectorのunmatchedファイルはappend-onlyを廃止し「現在の未解決
 - 1〜2件しかない時間帯は近接外挿に使用せず、別の十分な近接帯が無ければ従来の安全側フォールバックへ戻す。
 - 施設全体の `sampleCount` は互換性のため維持する。
 
+## v7.5.0 candidate fix2
+- 朝一上位2件の固定先頭化を廃止し、全候補の後回し損失を逐次比較する。
+- DPA利用可なら高混雑対象へ最大1件を自動配分する。
+- 食事枠未採用のレストランは通常施設として配置しない。
+- 戦略判断には3サンプル以上の時間帯profileを使う。
 
-## v7.5.0 candidate fix4 — near-term wait-loss ordering
-- Wait-aware ordering now compares the next two reliable time bands instead of the cheapest band anywhere later in the day.
-- This prevents a late-day wait drop from hiding a large morning-to-midday wait increase.
-- Near-term wait growth receives stronger ordering weight so multiple morning-sensitive attractions compete by the cost of postponement.
