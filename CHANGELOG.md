@@ -1,4 +1,5 @@
 ## v7.4.6 candidate - Wait Profile Coverage Audit
+- Rebuild Workflowの生成後 `git pull --rebase` を廃止し、未コミット作業ツリーによる exit code 128 を防止。
 
 - Add `tool/audit_wait_profile_coverage.py` to list missing profiles, missing time-band coverage, invalid mapping targets, active attractions without mappings, and unresolved unmatched entries.
 - Fix wait-profile time-band classification for ThemeParks.wiki UTC timestamps by converting UTC to JST before assigning the seven TDR time bands.

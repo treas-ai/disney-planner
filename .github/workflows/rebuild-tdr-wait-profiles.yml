@@ -57,5 +57,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add assets/master/wait_profiles assets/master/crowd_factors docs/current/WAIT_PROFILE_COVERAGE_AUDIT.md
           git commit -m "data: rebuild TDR wait profiles [skip ci]"
-          git pull --rebase origin main
+          # main no longer receives the 5-minute live-data commits.
+          # Do not pull/rebase after generation: the workspace can contain
+          # non-committed state from dependency setup or the nested live-data
+          # checkout. If main changes concurrently, push fails safely and the
+          # next workflow run rebuilds from the latest main.
           git push origin HEAD:main
