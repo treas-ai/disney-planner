@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-08-22T23:54:04+09:00
+Generated: 2026-08-23T23:55:34+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 28
-- Profile source observations: 1734
+- Profile source observations: 2261
 
 ### 1. Profile missing facilities
 
@@ -34,7 +34,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_minnies_house` — ミニーの家: no usable samples in 昼前, 昼過ぎ, 夕食後, 閉園前
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
-- `tdl_westernland_shooting_gallery` — ウエスタンランド・シューティングギャラリー: no usable samples in 閉園前
 - `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: no usable samples in 開園直後, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
 - `tdl_world_bazaar_omnibus` — オムニバス: no usable samples in 昼前, 夕食前, 夕食後, 閉園前
 
@@ -46,10 +45,10 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_fantasyland_mickeys_philharmagic` — ミッキーのフィルハーマジック: 夕食前 = 1 samples
 - `tdl_fantasyland_pinocchios_daring_journey` — ピノキオの冒険旅行: 閉園前 = 1 samples
 - `tdl_tomorrowland_baymax_happy_ride` — ベイマックスのハッピーライド: 閉園前 = 1 samples
-- `tdl_toontown_goofys_paint_and_play_house` — グーフィーのペイント＆プレイハウス: 夕食前 = 2 samples
 - `tdl_toontown_minnies_house` — ミニーの家: ショー前後 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食後 = 1 samples
+- `tdl_westernland_shooting_gallery` — ウエスタンランド・シューティングギャラリー: 閉園前 = 1 samples
 
 ### 3. Facility-ID mapping audit
 
@@ -61,7 +60,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 25
-- Profile source observations: 2271
+- Profile source observations: 2983
 
 ### 1. Profile missing facilities
 
@@ -73,7 +72,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - `tds_ac_a_003` — シンドバッド・ストーリーブック・ヴォヤッジ: no usable samples in 閉園前
 - `tds_ac_a_004` — マジックランプシアター: no usable samples in 昼前, 閉園前
-- `tds_aw_a_005` — ビッグシティ・ヴィークル: no usable samples in 開園直後, 昼前, 昼過ぎ, 夕食前
+- `tds_aw_a_005` — ビッグシティ・ヴィークル: no usable samples in 開園直後, 昼前, 昼過ぎ
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: no usable samples in 開園直後, 昼前, 昼過ぎ
 - `tds_pd_a_002` — ニモ＆フレンズ・シーライダー: no usable samples in 閉園前
 - `tds_pd_a_003` — ディズニーシー・エレクトリックレールウェイ（ポートディスカバリー）: no usable samples in 昼前
@@ -85,13 +84,11 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tds_ac_a_004` — マジックランプシアター: 昼過ぎ = 2 samples
 - `tds_ac_a_004` — マジックランプシアター: ショー前後 = 2 samples
 - `tds_ac_a_004` — マジックランプシアター: 夕食前 = 1 samples
+- `tds_aw_a_005` — ビッグシティ・ヴィークル: 夕食前 = 2 samples
 - `tds_aw_a_005` — ビッグシティ・ヴィークル: 閉園前 = 2 samples
-- `tds_fs_a_003` — ピーターパンのネバーランドアドベンチャー: 昼前 = 2 samples
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
-- `tds_mi_a_002` — センター・オブ・ジ・アース: 昼前 = 1 samples
+- `tds_mi_a_002` — センター・オブ・ジ・アース: 昼前 = 2 samples
 - `tds_ml_a_002` — ジャンピン・ジェリーフィッシュ: 閉園前 = 2 samples
-- `tds_ml_a_003` — スカットルのスクーター: 閉園前 = 1 samples
-- `tds_pd_a_001` — アクアトピア: 夕食前 = 2 samples
 
 ### 3. Facility-ID mapping audit
 
