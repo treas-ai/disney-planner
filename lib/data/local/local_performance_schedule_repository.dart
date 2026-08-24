@@ -44,6 +44,29 @@ class LocalPerformanceScheduleRepository
     return List<PerformanceTimeOption>.unmodifiable(result);
   }
 
+
+  @override
+  Future<List<PerformanceTimeOption>> findParkOptions({
+    required String parkId,
+    required DateTime date,
+  }) async {
+    final allOptions = await _load();
+    final dateKey = _dateKey(date);
+
+    final result = allOptions
+        .where((option) {
+          return option.parkId == parkId && _dateKey(option.date) == dateKey;
+        })
+        .toList(growable: false)
+      ..sort((left, right) {
+        final byTime = left.startTime.compareTo(right.startTime);
+        if (byTime != 0) return byTime;
+        return left.performanceIndex.compareTo(right.performanceIndex);
+      });
+
+    return List<PerformanceTimeOption>.unmodifiable(result);
+  }
+
   Future<List<PerformanceTimeOption>> _load() async {
     final cached = _cache;
     if (cached != null) {

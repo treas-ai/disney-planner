@@ -13,7 +13,7 @@ class _VisitSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabledServices = <String>[
       if (settings.hasHappyEntry) 'ハッピーエントリー',
-      if (settings.canUseDpa) 'DPA',
+      if (settings.canUseDpa) 'アトラクションDPA最大${settings.attractionDpaMaxUses}個',
       if (settings.canUseSingleRider) 'シングルライダー',
     ];
 

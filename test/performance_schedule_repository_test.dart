@@ -27,4 +27,33 @@ void main() {
     expect(options, hasLength(1));
     expect(options.single.startTime, '20:15');
   });
+
+  test('8月29日のパーク全体公演を時刻順で取得できる', () async {
+    final repository = LocalPerformanceScheduleRepository();
+    final options = await repository.findParkOptions(
+      parkId: 'tokyo_disneyland',
+      date: DateTime(2026, 8, 29),
+    );
+
+    expect(options, isNotEmpty);
+    expect(
+      options.any(
+        (option) =>
+            option.facilityId ==
+                'tdl_world_bazaar_electrical_parade_dreamlights' &&
+            option.startTime == '19:45',
+      ),
+      isTrue,
+    );
+    expect(
+      options.any(
+        (option) =>
+            option.facilityId ==
+                'tdl_world_bazaar_reach_for_the_stars' &&
+            option.startTime == '20:55',
+      ),
+      isTrue,
+    );
+  });
+
 }

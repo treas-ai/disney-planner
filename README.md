@@ -141,3 +141,26 @@ AIプラン生成は、配置後に待ち時間を表示するだけでなく、
 ### v7.5.0 candidate fix2
 AIプラン生成は「朝一2件」を固定せず、各予定の配置後に残り全候補を再評価します。朝一しか空きにくい施設が複数ある場合は、後回ししたときの待ち時間増加、現在待ち時間、優先度、移動時間、希望時間を比較して朝枠を配分します。DPA利用設定が有効な場合は、十分な待ち時間削減が見込める対象を最大1件だけ保守的に自動割当します。未採用レストランは通常施設として追加しません。
 
+## v7.5.2 candidate — Simple DPA / Entry Request Strategy
+- 施設ごとのDPA指定を基本操作から外し、旅行設定で「アトラクションDPA 最大0〜3個」を指定する。
+- AIの事前DPA自動配分はアトラクションだけを対象にし、設定上限以内で高効果候補へ配分する。
+- ショー／パレードDPAはアトラクションDPA上限へ含めない。エントリー受付を先に行い、落選時のみ「DPAを検討」を既定フォールバックにする。
+- 既存の施設別DPA・時刻指定は詳細設定／当日確定情報として互換維持する。
+- 旧保存データの `canUseDpa=true` はアトラクションDPA最大1個として移行する。
+
+
+
+## v7.5.2 candidate fix — whole-day DPA and evening reuse
+- Attraction DPA allocation now evaluates the resulting whole-day schedule instead of ranking a facility in isolation.
+- `maximum N` remains a ceiling: an extra DPA is used only when the simulated day plan improves.
+- High-priority wish candidates remain available as reserve candidates so meal/show anchors do not create avoidable multi-hour gaps.
+- Shows and parades without a resolved performance time are not inserted into arbitrary free slots; resolved/entry-request performance times remain fixed anchors.
+- Evening free time can therefore be reused by remaining wanted attractions around fixed show/parade plans rather than being treated as automatically bad or automatically filled.
+
+### Whole-day open-time handling (v7.5.2 candidate fix2)
+AIプランは希望施設・食事・固定公演を配置した後、60分以上の長い空白を自由時間として明示します。17:00以降はショー・パレード鑑賞にも使える自由枠として表示しますが、実在する公演時刻は捏造しません。公式/選択済みの公演時刻が解決できた場合は固定公演を優先します。
+
+## v7.5.2 candidate — Official performance opportunity awareness
+- 長時間の自由枠を「ショー・パレード」と曖昧表示せず、来園日・対象パークに一致する `performance_schedules.json` の公式公演時刻を候補として表示する。
+- 未選択のショーを自動予約・当選扱いにはしない。選択済みで公演時刻が解決されたショー／パレードは従来どおり固定予定を優先する。
+- エントリー受付対象／DPA対象も候補表示に付記する。

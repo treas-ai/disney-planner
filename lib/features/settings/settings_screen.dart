@@ -233,7 +233,7 @@ class _MobileSettingsLayout extends StatelessWidget {
           _ServiceSettingsCard(
             settings: settings,
             onHappyEntryChanged: controller.updateHappyEntry,
-            onDpaChanged: controller.updateDpa,
+            onAttractionDpaMaxUsesChanged: controller.updateAttractionDpaMaxUses,
             onSingleRiderChanged: controller.updateSingleRider,
             onVacationPackageChanged: controller.updateVacationPackage,
             onFreeDrinkChanged: controller.updateFreeDrinkBenefit,
@@ -352,7 +352,7 @@ class _DesktopSettingsLayout extends StatelessWidget {
                       _ServiceSettingsCard(
                         settings: settings,
                         onHappyEntryChanged: controller.updateHappyEntry,
-                        onDpaChanged: controller.updateDpa,
+                        onAttractionDpaMaxUsesChanged: controller.updateAttractionDpaMaxUses,
                         onSingleRiderChanged: controller.updateSingleRider,
                         onVacationPackageChanged:
                             controller.updateVacationPackage,
@@ -1299,7 +1299,7 @@ class _ServiceSettingsCard extends StatelessWidget {
   const _ServiceSettingsCard({
     required this.settings,
     required this.onHappyEntryChanged,
-    required this.onDpaChanged,
+    required this.onAttractionDpaMaxUsesChanged,
     required this.onSingleRiderChanged,
     required this.onVacationPackageChanged,
     required this.onFreeDrinkChanged,
@@ -1310,7 +1310,7 @@ class _ServiceSettingsCard extends StatelessWidget {
 
   final TripSettings settings;
   final ValueChanged<bool> onHappyEntryChanged;
-  final ValueChanged<bool> onDpaChanged;
+  final ValueChanged<int> onAttractionDpaMaxUsesChanged;
   final ValueChanged<bool> onSingleRiderChanged;
   final ValueChanged<bool> onVacationPackageChanged;
   final ValueChanged<bool> onFreeDrinkChanged;
@@ -1326,7 +1326,7 @@ class _ServiceSettingsCard extends StatelessWidget {
         children: [
           const _SettingsCardHeader(
             title: '利用サービス',
-            subtitle: '利用できるサービスだけONにしてください',
+            subtitle: 'DPA上限など、当日使えるサービスを設定します',
             icon: Icons.confirmation_number_outlined,
           ),
           const SizedBox(height: 4),
@@ -1337,12 +1337,26 @@ class _ServiceSettingsCard extends StatelessWidget {
             value: settings.hasHappyEntry,
             onChanged: onHappyEntryChanged,
           ),
-          _CompactSwitchTile(
-            title: 'ディズニー・プレミアアクセス',
-            subtitle: '人気施設を短い待ち時間で利用できる有料サービス',
-            icon: Icons.bolt,
-            value: settings.canUseDpa,
-            onChanged: onDpaChanged,
+          const SizedBox(height: AppSpacing.sm),
+          DropdownButtonFormField<int>(
+            initialValue: settings.attractionDpaMaxUses,
+            decoration: const InputDecoration(
+              labelText: 'アトラクションDPA',
+              helperText: 'AIが自動配分してよい上限です。ショーDPAは別扱いです。',
+              prefixIcon: Icon(Icons.bolt),
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 0, child: Text('使わない')),
+              DropdownMenuItem(value: 1, child: Text('最大1個')),
+              DropdownMenuItem(value: 2, child: Text('最大2個')),
+              DropdownMenuItem(value: 3, child: Text('最大3個')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                onAttractionDpaMaxUsesChanged(value);
+              }
+            },
           ),
           _CompactSwitchTile(
             title: 'シングルライダー',

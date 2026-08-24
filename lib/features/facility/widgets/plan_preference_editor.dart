@@ -544,6 +544,7 @@ String _fallbackLabel(LotteryFallbackAction action) {
     LotteryFallbackAction.alternativeFacility => '別の施設へ行く',
     LotteryFallbackAction.freeSeating => '自由席・自由鑑賞を利用',
     LotteryFallbackAction.retryLater => '後で再検討',
+    LotteryFallbackAction.dpaIfAvailable => 'DPAを検討',
     LotteryFallbackAction.skip => 'この施設を諦める',
   };
 }

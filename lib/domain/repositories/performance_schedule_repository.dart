@@ -6,4 +6,10 @@ abstract interface class PerformanceScheduleRepository {
     required String facilityId,
     required DateTime date,
   });
+
+  Future<List<PerformanceTimeOption>> findParkOptions({
+    required String parkId,
+    required DateTime date,
+  });
+
 }

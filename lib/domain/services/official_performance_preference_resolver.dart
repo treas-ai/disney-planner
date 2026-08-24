@@ -51,8 +51,12 @@ class OfficialPerformancePreferenceResolver {
         continue;
       }
 
+      final isEntryRequestPlan =
+          facility.requiresEntryRequest && current.usesEntryRequest;
       preferenceById[facility.id] = current.copyWith(
-        fixedTimeStatus: FixedTimeStatus.confirmed,
+        fixedTimeStatus: isEntryRequestPlan
+            ? FixedTimeStatus.planned
+            : FixedTimeStatus.confirmed,
         selectedPerformanceIndex: selected.performanceIndex,
         preferredPerformanceTime: selected.startTime,
       );

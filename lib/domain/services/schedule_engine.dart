@@ -2,6 +2,7 @@ import '../entities/day_schedule.dart';
 import '../entities/event_impact.dart';
 import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
+import '../entities/official_performance_opportunity.dart';
 import '../entities/schedule_item.dart';
 import '../entities/trip_settings.dart';
 import '../entities/time_band_wait_profile.dart';
@@ -44,6 +45,7 @@ class ScheduleEngine {
     List<EventImpact> eventImpacts = const [],
     List<TimeBandWaitProfile> waitProfiles = const [],
     Map<String, double> morningScores = const {},
+    List<OfficialPerformanceOpportunity> officialPerformanceOpportunities = const [],
   }) {
     final items = <ScheduleItem>[];
     final visitDate = settings.visitDate ?? DateTime.now();
@@ -180,6 +182,13 @@ class ScheduleEngine {
           // requested, preserve the long-standing behavior that an explicitly
           // selected restaurant can still be scheduled as a normal wish item.
           if (isRestaurant && hasRequestedMealSlot) {
+            return false;
+          }
+
+          // Shows/parades are time-fixed experiences. If an official/selected
+          // performance time has not been resolved, never drop them into an
+          // arbitrary free slot as if they were a normal attraction.
+          if (_isShowOrParade(facility)) {
             return false;
           }
 
@@ -383,6 +392,17 @@ class ScheduleEngine {
       previousAreaId = facility.areaId;
     }
 
+    // Make long unused periods explicit instead of silently leaving multi-hour
+    // holes in the generated day. These are flexible blocks, not invented
+    // show times: actual shows/parades are still scheduled only when a
+    // performance time has been resolved.
+    _addFlexibleOpenTimeBlocks(
+      items: items,
+      entryMinutes: entryEndMinutes,
+      exitMinutes: exitMinutes,
+      officialPerformanceOpportunities: officialPerformanceOpportunities,
+    );
+
     final latestScheduledEnd = items.fold<int>(
       exitMinutes,
       (latest, item) => _maximum(latest, _itemEndMinutes(item)),
@@ -527,9 +547,13 @@ class ScheduleEngine {
           );
         })
         .where((candidate) {
-          return candidate.preference?.fixedTimeStatus ==
-                  FixedTimeStatus.confirmed &&
-              candidate.preference?.hasPreferredPerformanceTime == true;
+          final preference = candidate.preference;
+          if (preference == null || !preference.hasPreferredPerformanceTime) {
+            return false;
+          }
+          return preference.fixedTimeStatus == FixedTimeStatus.confirmed ||
+              (preference.fixedTimeStatus == FixedTimeStatus.planned &&
+                  preference.accessMethod == FacilityAccessMethod.entryRequest);
         })
         .toList(growable: true);
 
@@ -714,6 +738,88 @@ class ScheduleEngine {
     }
 
     return addedFacilityIds;
+  }
+
+  void _addFlexibleOpenTimeBlocks({
+    required List<ScheduleItem> items,
+    required int entryMinutes,
+    required int exitMinutes,
+    required List<OfficialPerformanceOpportunity> officialPerformanceOpportunities,
+  }) {
+    const minimumGapMinutes = 60;
+    const eveningStartMinutes = 17 * 60;
+
+    final occupied = items
+        .where((item) => item.type != ScheduleItemType.entry && item.type != ScheduleItemType.exit)
+        .toList(growable: false)
+      ..sort((first, second) =>
+          _itemStartMinutes(first).compareTo(_itemStartMinutes(second)));
+
+    final gaps = <({int start, int end})>[];
+    var cursor = entryMinutes;
+    for (final item in occupied) {
+      final start = _itemStartMinutes(item);
+      final end = _itemEndMinutes(item);
+      if (start - cursor >= minimumGapMinutes) {
+        gaps.add((start: cursor, end: start));
+      }
+      if (end > cursor) cursor = end;
+    }
+    if (exitMinutes - cursor >= minimumGapMinutes) {
+      gaps.add((start: cursor, end: exitMinutes));
+    }
+
+    for (var index = 0; index < gaps.length; index++) {
+      final gap = gaps[index];
+      final isEvening = gap.end > eveningStartMinutes;
+      final blockStart = isEvening
+          ? _maximum(gap.start, eveningStartMinutes)
+          : gap.start;
+      if (gap.end - blockStart < minimumGapMinutes) continue;
+
+      final officialOptions = officialPerformanceOpportunities
+          .where((option) {
+            return option.startMinutes >= blockStart &&
+                option.startMinutes < gap.end;
+          })
+          .toList(growable: false)
+        ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
+
+      final hasOfficialOptions = officialOptions.isNotEmpty;
+      final optionText = officialOptions
+          .map((option) => option.displayLabel)
+          .join('、');
+
+      items.add(
+        _createScheduleItem(
+          id: 'flex_open_time_$index',
+          title: hasOfficialOptions
+              ? '公式ショー・パレード候補／自由時間'
+              : isEvening
+                  ? '夜の自由時間'
+                  : '休憩・自由時間',
+          type: ScheduleItemType.breakTime,
+          startMinutes: blockStart,
+          endMinutes: gap.end,
+          reason: hasOfficialOptions
+              ? 'この空き時間には公式の日付別公演データがあります。'
+                  '候補：$optionText。'
+                  '希望している公演やエントリー受付・DPAの結果が確定した場合は、'
+                  'その公演を固定予定として優先し、前後を再最適化します。'
+              : isEvening
+                  ? '希望施設と固定予定を配置した後に残った夜時間です。'
+                      'この時間帯に登録済みの公式公演候補はないため、'
+                      '買い物、休憩、写真撮影、当日の追加施設などに使える自由枠として残します。'
+                  : '希望施設と固定予定を配置した後に60分以上残った時間です。'
+                      '追加施設を捏造せず、休憩・買い物・写真撮影などに使える自由枠として明示します。',
+          note: hasOfficialOptions
+              ? '表示している時刻はassets/master/performance_schedules.jsonの'
+                  '来園日・対象パークに一致する公式公演データです。'
+                  '候補を表示しているだけで、未選択の公演を自動予約・当選扱いにはしません。'
+              : '必要に応じて当日の状況を見て追加施設へ変更できます。',
+        ),
+      );
+    }
   }
 
   void _addFallbackMeals({
@@ -1758,10 +1864,18 @@ class ScheduleEngine {
     required int durationMinutes,
     required _WaitToleranceDecision waitDecision,
   }) {
+    final isPlannedEntryRequest =
+        preference.fixedTimeStatus == FixedTimeStatus.planned &&
+        preference.accessMethod == FacilityAccessMethod.entryRequest;
     final reasons = <String>[
-      '希望公演時刻'
-          '「${preference.preferredPerformanceTime}」へ'
-          '固定配置しました。',
+      if (isPlannedEntryRequest)
+        'エントリー受付の候補公演時刻'
+            '「${preference.preferredPerformanceTime}」へ仮配置しました。'
+            '当落確定後に再最適化します。'
+      else
+        '希望公演時刻'
+            '「${preference.preferredPerformanceTime}」へ'
+            '固定配置しました。',
     ];
 
     reasons.add(
@@ -1997,6 +2111,9 @@ class ScheduleEngine {
       LotteryFallbackAction.retryLater =>
         'エントリー受付に外れた場合は、'
             '後で再検討する設定です。',
+      LotteryFallbackAction.dpaIfAvailable =>
+        'エントリー受付に外れた場合は、DPA対象かつ販売中なら購入候補として再検討します。'
+            'アトラクションDPAの上限とは別扱いです。',
       LotteryFallbackAction.skip =>
         'エントリー受付に外れた場合は、'
             'この施設を諦める設定です。',

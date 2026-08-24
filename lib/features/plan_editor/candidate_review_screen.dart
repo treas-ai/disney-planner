@@ -1030,7 +1030,8 @@ String _reasonFor(Facility facility, PriorityLevel priority) {
     '「やりたいこと」の回答と現在の優先度から候補に入りました。',
     if (priority == PriorityLevel.highest || priority == PriorityLevel.high)
       '最優先の体験としてスケジュールを優先します。',
-    if (facility.supportsDpa) 'DPAの利用可否を詳細設定で調整できます。',
+    if (facility.supportsDpa)
+      'アトラクションDPAは旅行設定の上限からAIが自動配分します。取得済み時刻だけ詳細設定できます。',
     if (facility.supportsPriorityPass) 'プライオリティパスの利用候補です。',
   ];
   return parts.join('\n');

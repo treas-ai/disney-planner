@@ -8,8 +8,10 @@ import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/dpa_strategy.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
+import '../../domain/entities/official_performance_opportunity.dart';
 import '../../domain/entities/schedule_validation_issue.dart';
 import '../../domain/enums/fixed_time_status.dart';
+import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/dpa_strategy_type.dart';
 import '../../data/local/local_performance_schedule_repository.dart';
 import '../../domain/services/official_performance_preference_resolver.dart';
@@ -27,9 +29,11 @@ class ScheduleController extends ChangeNotifier {
   final DpaAutoAllocator _dpaAutoAllocator = const DpaAutoAllocator();
   final ScheduleValidator _scheduleValidator = const ScheduleValidator();
   List<PlanPreference>? _generatedPreferences;
-  final OfficialPerformancePreferenceResolver _performanceResolver =
+  final LocalPerformanceScheduleRepository _performanceScheduleRepository =
+      LocalPerformanceScheduleRepository();
+  late final OfficialPerformancePreferenceResolver _performanceResolver =
       OfficialPerformancePreferenceResolver(
-        repository: LocalPerformanceScheduleRepository(),
+        repository: _performanceScheduleRepository,
       );
 
   bool isLoading = false;
@@ -267,11 +271,11 @@ class ScheduleController extends ChangeNotifier {
       );
 
       var generatedPreferences = preferences;
-      if (settings.canUseDpa) {
+      if (settings.canUseDpa && settings.attractionDpaMaxUses > 0) {
         final allocation = _dpaAutoAllocator.allocate(
-          strategy: const DpaStrategy(
+          strategy: DpaStrategy(
             type: DpaStrategyType.highCongestionOnly,
-            maxUses: 1,
+            maxUses: settings.attractionDpaMaxUses.clamp(0, 3).toInt(),
           ),
           candidates: morningRanking,
           preferences: preferences,
@@ -281,6 +285,40 @@ class ScheduleController extends ChangeNotifier {
       _generatedPreferences = List<PlanPreference>.unmodifiable(
         generatedPreferences,
       );
+
+      final allParkFacilities = await ServiceLocator.facilityRepository
+          .getFacilitiesByParkId(selectedParkId);
+      final allParkFacilityById = {
+        for (final facility in allParkFacilities) facility.id: facility,
+      };
+      final officialOptions = await _performanceScheduleRepository
+          .findParkOptions(
+            parkId: selectedParkId,
+            date: targetDate,
+          );
+      final officialPerformanceOpportunities =
+          <OfficialPerformanceOpportunity>[];
+      for (final option in officialOptions) {
+        final facility = allParkFacilityById[option.facilityId];
+        if (facility == null ||
+            (facility.category != FacilityCategory.show &&
+                facility.category != FacilityCategory.parade)) {
+          continue;
+        }
+        final startMinutes = _parseTimeMinutes(option.startTime);
+        if (startMinutes == null) continue;
+        officialPerformanceOpportunities.add(
+          OfficialPerformanceOpportunity(
+            facilityId: facility.id,
+            name: facility.name,
+            startMinutes: startMinutes,
+            endMinutes: startMinutes + facility.durationMinutes,
+            requiresEntryRequest: facility.requiresEntryRequest,
+            supportsDpa: facility.supportsDpa,
+            isSelected: selectedFacilityIds.contains(facility.id),
+          ),
+        );
+      }
 
       final generatedSchedule = _scheduleEngine.generate(
         settings: _appState.tripSettings,
@@ -293,6 +331,8 @@ class ScheduleController extends ChangeNotifier {
             candidate.facility.id:
                 candidate.firstMoveScore ?? candidate.score,
         },
+        officialPerformanceOpportunities:
+            officialPerformanceOpportunities,
       );
 
       _appState.updateDaySchedule(generatedSchedule);
@@ -330,6 +370,15 @@ class ScheduleController extends ChangeNotifier {
 
   void _onAppStateChanged() {
     notifyListeners();
+  }
+
+  int? _parseTimeMinutes(String value) {
+    final parts = value.split(':');
+    if (parts.length != 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return hour * 60 + minute;
   }
 
   @override

@@ -103,8 +103,14 @@ class SettingsController extends ChangeNotifier {
     _appState.updateTripSettings(settings.copyWith(hasHappyEntry: value));
   }
 
-  void updateDpa(bool value) {
-    _appState.updateTripSettings(settings.copyWith(canUseDpa: value));
+  void updateAttractionDpaMaxUses(int value) {
+    final safeValue = value.clamp(0, 3).toInt();
+    _appState.updateTripSettings(
+      settings.copyWith(
+        canUseDpa: safeValue > 0,
+        attractionDpaMaxUses: safeValue,
+      ),
+    );
   }
 
   void updatePriorityPass(bool value) {

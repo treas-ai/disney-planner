@@ -105,7 +105,11 @@ class PlanTextExporter {
       ..writeln()
       ..writeln('【利用可能なサービス】')
       ..writeln('ハッピーエントリー：${_enabled(settings.hasHappyEntry)}')
-      ..writeln('DPA：${_enabled(settings.canUseDpa)}')
+      ..writeln(
+        'アトラクションDPA：'
+        '${settings.attractionDpaMaxUses <= 0 ? '使わない' : '最大${settings.attractionDpaMaxUses}個'}',
+      )
+      ..writeln('ショーDPA：エントリー受付落選後に別枠で検討')
       ..writeln('シングルライダー：${_enabled(settings.canUseSingleRider)}')
       ..writeln('バケーションパッケージ：${_enabled(settings.usesVacationPackage)}')
       ..writeln(

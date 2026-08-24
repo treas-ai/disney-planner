@@ -13,6 +13,7 @@ class TripSettings {
     required this.numberOfPeople,
     required this.hasHappyEntry,
     required this.canUseDpa,
+    this.attractionDpaMaxUses = 1,
     required this.canUsePriorityPass,
     required this.canUseSingleRider,
     required this.usesVacationPackage,
@@ -41,6 +42,7 @@ class TripSettings {
     numberOfPeople: 1,
     hasHappyEntry: false,
     canUseDpa: true,
+    attractionDpaMaxUses: 1,
     canUsePriorityPass: false,
     canUseSingleRider: false,
     usesVacationPackage: false,
@@ -69,6 +71,8 @@ class TripSettings {
     numberOfPeople: json['numberOfPeople'] as int? ?? 1,
     hasHappyEntry: json['hasHappyEntry'] as bool? ?? false,
     canUseDpa: json['canUseDpa'] as bool? ?? true,
+    attractionDpaMaxUses: json['attractionDpaMaxUses'] as int? ??
+        ((json['canUseDpa'] as bool? ?? true) ? 1 : 0),
     canUsePriorityPass: false,
     canUseSingleRider: json['canUseSingleRider'] as bool? ?? false,
     usesVacationPackage: json['usesVacationPackage'] as bool? ?? false,
@@ -97,6 +101,8 @@ class TripSettings {
   final int numberOfPeople;
   final bool hasHappyEntry;
   final bool canUseDpa;
+  /// 1日にAIが自動配分してよいアトラクションDPAの上限。0は利用しない。
+  final int attractionDpaMaxUses;
   final bool canUsePriorityPass;
   final bool canUseSingleRider;
   final bool usesVacationPackage;
@@ -149,6 +155,7 @@ class TripSettings {
     'numberOfPeople': numberOfPeople,
     'hasHappyEntry': hasHappyEntry,
     'canUseDpa': canUseDpa,
+    'attractionDpaMaxUses': attractionDpaMaxUses,
     'canUsePriorityPass': canUsePriorityPass,
     'canUseSingleRider': canUseSingleRider,
     'usesVacationPackage': usesVacationPackage,
@@ -177,6 +184,7 @@ class TripSettings {
     int? numberOfPeople,
     bool? hasHappyEntry,
     bool? canUseDpa,
+    int? attractionDpaMaxUses,
     bool? canUsePriorityPass,
     bool? canUseSingleRider,
     bool? usesVacationPackage,
@@ -189,35 +197,50 @@ class TripSettings {
     bool? wantsDinner,
     bool? isRainy,
     bool? hasChildren,
-  }) => TripSettings(
-    parkId: parkId ?? this.parkId,
-    visitDateIso: visitDateIso ?? this.visitDateIso,
-    entryTimeHour: entryTimeHour ?? this.entryTimeHour,
-    entryTimeMinute: entryTimeMinute ?? this.entryTimeMinute,
-    queueArrivalTimeHour:
-        queueArrivalTimeHour ?? this.queueArrivalTimeHour,
-    queueArrivalTimeMinute:
-        queueArrivalTimeMinute ?? this.queueArrivalTimeMinute,
-    happyEntryTimeHour: happyEntryTimeHour ?? this.happyEntryTimeHour,
-    happyEntryTimeMinute:
-        happyEntryTimeMinute ?? this.happyEntryTimeMinute,
-    exitTimeHour: exitTimeHour ?? this.exitTimeHour,
-    exitTimeMinute: exitTimeMinute ?? this.exitTimeMinute,
-    numberOfPeople: numberOfPeople ?? this.numberOfPeople,
-    hasHappyEntry: hasHappyEntry ?? this.hasHappyEntry,
-    canUseDpa: canUseDpa ?? this.canUseDpa,
-    canUsePriorityPass: canUsePriorityPass ?? this.canUsePriorityPass,
-    canUseSingleRider: canUseSingleRider ?? this.canUseSingleRider,
-    usesVacationPackage: usesVacationPackage ?? this.usesVacationPackage,
-    usesFreeDrinkBenefit: usesFreeDrinkBenefit ?? this.usesFreeDrinkBenefit,
-    hasAttractionVoucher: hasAttractionVoucher ?? this.hasAttractionVoucher,
-    hasShowVoucher: hasShowVoucher ?? this.hasShowVoucher,
-    hasRestaurantReservation:
-        hasRestaurantReservation ?? this.hasRestaurantReservation,
-    wantsBreakfast: wantsBreakfast ?? this.wantsBreakfast,
-    wantsLunch: wantsLunch ?? this.wantsLunch,
-    wantsDinner: wantsDinner ?? this.wantsDinner,
-    isRainy: isRainy ?? this.isRainy,
-    hasChildren: hasChildren ?? this.hasChildren,
-  );
+  }) {
+    final resolvedMaxUses = attractionDpaMaxUses ??
+        (canUseDpa == false
+            ? 0
+            : canUseDpa == true && this.attractionDpaMaxUses == 0
+                ? 1
+                : this.attractionDpaMaxUses);
+    final resolvedCanUseDpa = canUseDpa ??
+        (attractionDpaMaxUses != null
+            ? attractionDpaMaxUses > 0
+            : this.canUseDpa);
+
+    return TripSettings(
+      parkId: parkId ?? this.parkId,
+      visitDateIso: visitDateIso ?? this.visitDateIso,
+      entryTimeHour: entryTimeHour ?? this.entryTimeHour,
+      entryTimeMinute: entryTimeMinute ?? this.entryTimeMinute,
+      queueArrivalTimeHour: queueArrivalTimeHour ?? this.queueArrivalTimeHour,
+      queueArrivalTimeMinute:
+          queueArrivalTimeMinute ?? this.queueArrivalTimeMinute,
+      happyEntryTimeHour: happyEntryTimeHour ?? this.happyEntryTimeHour,
+      happyEntryTimeMinute:
+          happyEntryTimeMinute ?? this.happyEntryTimeMinute,
+      exitTimeHour: exitTimeHour ?? this.exitTimeHour,
+      exitTimeMinute: exitTimeMinute ?? this.exitTimeMinute,
+      numberOfPeople: numberOfPeople ?? this.numberOfPeople,
+      hasHappyEntry: hasHappyEntry ?? this.hasHappyEntry,
+      canUseDpa: resolvedCanUseDpa,
+      attractionDpaMaxUses: resolvedMaxUses,
+      canUsePriorityPass: canUsePriorityPass ?? this.canUsePriorityPass,
+      canUseSingleRider: canUseSingleRider ?? this.canUseSingleRider,
+      usesVacationPackage: usesVacationPackage ?? this.usesVacationPackage,
+      usesFreeDrinkBenefit:
+          usesFreeDrinkBenefit ?? this.usesFreeDrinkBenefit,
+      hasAttractionVoucher:
+          hasAttractionVoucher ?? this.hasAttractionVoucher,
+      hasShowVoucher: hasShowVoucher ?? this.hasShowVoucher,
+      hasRestaurantReservation:
+          hasRestaurantReservation ?? this.hasRestaurantReservation,
+      wantsBreakfast: wantsBreakfast ?? this.wantsBreakfast,
+      wantsLunch: wantsLunch ?? this.wantsLunch,
+      wantsDinner: wantsDinner ?? this.wantsDinner,
+      isRainy: isRainy ?? this.isRainy,
+      hasChildren: hasChildren ?? this.hasChildren,
+    );
+  }
 }

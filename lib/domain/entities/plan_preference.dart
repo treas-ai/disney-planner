@@ -26,7 +26,7 @@ class PlanPreference {
     this.scheduledAccessTime = '',
     this.fixedTimeStatus = FixedTimeStatus.none,
     this.selectedPerformanceIndex,
-    this.lotteryFallbackAction = LotteryFallbackAction.alternativeFacility,
+    this.lotteryFallbackAction = LotteryFallbackAction.dpaIfAvailable,
     this.isExcluded = false,
   });
 
@@ -48,7 +48,7 @@ class PlanPreference {
       scheduledAccessTime: '',
       fixedTimeStatus: FixedTimeStatus.none,
       selectedPerformanceIndex: null,
-      lotteryFallbackAction: LotteryFallbackAction.alternativeFacility,
+      lotteryFallbackAction: LotteryFallbackAction.dpaIfAvailable,
       isExcluded: false,
       memo: '',
       createdAt: DateTime.now(),
@@ -107,7 +107,7 @@ class PlanPreference {
       selectedPerformanceIndex: json['selectedPerformanceIndex'] as int?,
       lotteryFallbackAction: LotteryFallbackAction.values.firstWhere(
         (action) => action.name == json['lotteryFallbackAction'],
-        orElse: () => LotteryFallbackAction.alternativeFacility,
+        orElse: () => LotteryFallbackAction.dpaIfAvailable,
       ),
       isExcluded: json['isExcluded'] as bool? ?? false,
       memo: json['memo'] as String? ?? '',

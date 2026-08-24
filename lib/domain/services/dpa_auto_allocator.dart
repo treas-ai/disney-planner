@@ -23,7 +23,10 @@ class DpaAutoAllocator {
   }) {
     final selected = strategyEngine.select(
       strategy: strategy,
-      candidates: candidates.where((item) => item.facility.supportsDpa).map((item) {
+      candidates: candidates.where((item) {
+        return item.facility.supportsDpa &&
+            item.facility.category == FacilityCategory.attraction;
+      }).map((item) {
         final category = item.facility.category;
         return DpaCandidate(
           facilityId: item.facility.id,

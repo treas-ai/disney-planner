@@ -370,9 +370,14 @@ class AppState extends ChangeNotifier {
 
     _selectedFacilities.add(facility);
 
-    _preferencesByFacilityId[facility.id] = PlanPreference.initial(
-      facilityId: facility.id,
-    );
+    final initialPreference = PlanPreference.initial(facilityId: facility.id);
+    _preferencesByFacilityId[facility.id] = facility.requiresEntryRequest
+        ? initialPreference.copyWith(
+            accessMethod: FacilityAccessMethod.entryRequest,
+            fixedTimeStatus: FixedTimeStatus.planned,
+            lotteryFallbackAction: LotteryFallbackAction.dpaIfAvailable,
+          )
+        : initialPreference;
 
     daySchedule = null;
 
@@ -566,6 +571,9 @@ class AppState extends ChangeNotifier {
       reservationTime: '',
       scheduledAccessTime: '',
       clearSelectedPerformanceIndex: true,
+      lotteryFallbackAction: accessMethod == FacilityAccessMethod.entryRequest
+          ? LotteryFallbackAction.dpaIfAvailable
+          : current.lotteryFallbackAction,
     );
 
     _invalidateScheduleAndSave();
@@ -984,7 +992,18 @@ class AppState extends ChangeNotifier {
     for (final facility in _selectedFacilities) {
       _preferencesByFacilityId.putIfAbsent(
         facility.id,
-        () => PlanPreference.initial(facilityId: facility.id),
+        () {
+          final initialPreference = PlanPreference.initial(
+            facilityId: facility.id,
+          );
+          return facility.requiresEntryRequest
+              ? initialPreference.copyWith(
+                  accessMethod: FacilityAccessMethod.entryRequest,
+                  fixedTimeStatus: FixedTimeStatus.planned,
+                  lotteryFallbackAction: LotteryFallbackAction.dpaIfAvailable,
+                )
+              : initialPreference;
+        },
       );
     }
   }

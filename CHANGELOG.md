@@ -1439,3 +1439,30 @@ dart run tool/audit_wish_data.dart
 - Wait-aware ordering now compares the next two reliable time bands instead of the cheapest band anywhere later in the day.
 - This prevents a late-day wait drop from hiding a large morning-to-midday wait increase.
 - Near-term wait growth receives stronger ordering weight so multiple morning-sensitive attractions compete by the cost of postponement.
+
+## v7.5.2 candidate — Simple DPA / Entry Request Strategy
+- 施設ごとのDPA指定を基本操作から外し、旅行設定で「アトラクションDPA 最大0〜3個」を指定する。
+- AIの事前DPA自動配分はアトラクションだけを対象にし、設定上限以内で高効果候補へ配分する。
+- ショー／パレードDPAはアトラクションDPA上限へ含めない。エントリー受付を先に行い、落選時のみ「DPAを検討」を既定フォールバックにする。
+- 既存の施設別DPA・時刻指定は詳細設定／当日確定情報として互換維持する。
+- 旧保存データの `canUseDpa=true` はアトラクションDPA最大1個として移行する。
+
+
+
+## v7.5.2 candidate fix — whole-day DPA and evening reuse
+- Attraction DPA allocation now evaluates the resulting whole-day schedule instead of ranking a facility in isolation.
+- `maximum N` remains a ceiling: an extra DPA is used only when the simulated day plan improves.
+- High-priority wish candidates remain available as reserve candidates so meal/show anchors do not create avoidable multi-hour gaps.
+- Shows and parades without a resolved performance time are not inserted into arbitrary free slots; resolved/entry-request performance times remain fixed anchors.
+- Evening free time can therefore be reused by remaining wanted attractions around fixed show/parade plans rather than being treated as automatically bad or automatically filled.
+
+## v7.5.2 candidate fix2 — explicit whole-day open-time handling
+- 60分以上の未使用時間を無言の空白にせず、休憩・自由時間として明示する。
+- 17:00以降の長い空白は「ショー・パレード／自由時間」とし、公演時刻を捏造せず夜の使い道を表現する。
+- 公演時刻が解決済みのショー・パレードは従来どおり固定予定を優先する。
+- 希望施設が尽きた後に未選択アトラクションを勝手に追加しない。
+
+## v7.5.2 candidate — Official performance opportunity awareness
+- 長時間の自由枠を「ショー・パレード」と曖昧表示せず、来園日・対象パークに一致する `performance_schedules.json` の公式公演時刻を候補として表示する。
+- 未選択のショーを自動予約・当選扱いにはしない。選択済みで公演時刻が解決されたショー／パレードは従来どおり固定予定を優先する。
+- エントリー受付対象／DPA対象も候補表示に付記する。
