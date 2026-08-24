@@ -5,7 +5,7 @@ import 'package:disney_planner/domain/services/schedule_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('long evening gap shows exact official performance opportunities', () {
+  test('public evening performances become actual schedule items', () {
     final settings = TripSettings.initial().copyWith(
       parkId: 'tokyo_disneyland',
       visitDateIso: '2026-08-29T00:00:00.000',
@@ -24,38 +24,64 @@ void main() {
       preferences: const [],
       officialPerformanceOpportunities: const [
         OfficialPerformanceOpportunity(
-          facilityId: 'harmony',
-          name: 'ディズニー・ハーモニー・イン・カラー',
-          startMinutes: 17 * 60,
-          endMinutes: 17 * 60 + 20,
-          supportsDpa: true,
-        ),
-        OfficialPerformanceOpportunity(
           facilityId: 'electrical',
           name: '東京ディズニーランド・エレクトリカルパレード・ドリームライツ',
           startMinutes: 19 * 60 + 45,
           endMinutes: 20 * 60 + 30,
           supportsDpa: true,
         ),
+      ],
+    );
+
+    final performance = schedule.items.singleWhere(
+      (item) => item.facilityId == 'electrical',
+    );
+    expect(performance.type, ScheduleItemType.facility);
+    expect(performance.startHour, 19);
+    expect(performance.startMinute, 25);
+    expect(performance.endHour, 20);
+    expect(performance.endMinute, 30);
+    expect(performance.reason, contains('公演開始19:45'));
+  });
+
+  test('unselected Entry Request show is not treated as won', () {
+    final settings = TripSettings.initial().copyWith(
+      parkId: 'tokyo_disneyland',
+      visitDateIso: '2026-08-29T00:00:00.000',
+      entryTimeHour: 9,
+      entryTimeMinute: 0,
+      exitTimeHour: 21,
+      exitTimeMinute: 0,
+      wantsBreakfast: false,
+      wantsLunch: false,
+      wantsDinner: false,
+    );
+
+    final schedule = const ScheduleEngine().generate(
+      settings: settings,
+      facilities: const [],
+      preferences: const [],
+      officialPerformanceOpportunities: const [
         OfficialPerformanceOpportunity(
-          facilityId: 'reach',
-          name: 'Reach for the Stars: Everlasting Dreams',
-          startMinutes: 20 * 60 + 55,
-          endMinutes: 21 * 60 + 20,
+          facilityId: 'magical_music',
+          name: 'ミッキーのマジカルミュージックワールド',
+          startMinutes: 17 * 60 + 10,
+          endMinutes: 17 * 60 + 35,
+          requiresEntryRequest: true,
           supportsDpa: true,
         ),
       ],
     );
 
-    final blocks = schedule.items
+    expect(
+      schedule.items.where((item) => item.facilityId == 'magical_music'),
+      isEmpty,
+    );
+    final combined = schedule.items
         .where((item) => item.type == ScheduleItemType.breakTime)
-        .toList(growable: false);
-
-    expect(blocks, isNotEmpty);
-    final combined = blocks.map((item) => '${item.reason} ${item.note}').join(' ');
-    expect(combined, contains('17:00 ディズニー・ハーモニー・イン・カラー'));
-    expect(combined, contains('19:45 東京ディズニーランド・エレクトリカルパレード'));
-    expect(combined, contains('20:55 Reach for the Stars'));
-    expect(combined, contains('公式の日付別公演データ'));
+        .map((item) => '${item.title} ${item.reason} ${item.note}')
+        .join(' ');
+    expect(combined, contains('エントリー受付結果待ち'));
+    expect(combined, contains('17:10 ミッキーのマジカルミュージックワールド'));
   });
 }

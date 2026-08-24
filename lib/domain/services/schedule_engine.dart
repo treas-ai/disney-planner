@@ -747,7 +747,7 @@ class ScheduleEngine {
     required List<OfficialPerformanceOpportunity> officialPerformanceOpportunities,
   }) {
     const minimumGapMinutes = 60;
-    const eveningStartMinutes = 17 * 60;
+    const publicPerformanceArrivalBufferMinutes = 20;
 
     final occupied = items
         .where((item) => item.type != ScheduleItemType.entry && item.type != ScheduleItemType.exit)
@@ -769,57 +769,120 @@ class ScheduleEngine {
       gaps.add((start: cursor, end: exitMinutes));
     }
 
-    for (var index = 0; index < gaps.length; index++) {
-      final gap = gaps[index];
-      final isEvening = gap.end > eveningStartMinutes;
-      final blockStart = isEvening
-          ? _maximum(gap.start, eveningStartMinutes)
-          : gap.start;
-      if (gap.end - blockStart < minimumGapMinutes) continue;
-
-      final officialOptions = officialPerformanceOpportunities
-          .where((option) {
-            return option.startMinutes >= blockStart &&
-                option.startMinutes < gap.end;
-          })
+    var performanceIndex = 0;
+    var flexIndex = 0;
+    for (final gap in gaps) {
+      final candidates = officialPerformanceOpportunities
+          .where((option) =>
+              option.startMinutes >= gap.start && option.endMinutes <= gap.end)
           .toList(growable: false)
-        ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
+        ..sort((a, b) {
+          if (a.isSelected != b.isSelected) return a.isSelected ? -1 : 1;
+          return a.startMinutes.compareTo(b.startMinutes);
+        });
 
-      final hasOfficialOptions = officialOptions.isNotEmpty;
-      final optionText = officialOptions
-          .map((option) => option.displayLabel)
-          .join('、');
+      // A user-selected performance is a real planning request. A public
+      // performance that does not require an Entry Request may also be used
+      // automatically to make a long evening gap useful. Entry-Request shows
+      // are never treated as won before the result is known.
+      final schedulable = candidates.where((option) {
+        return option.isSelected || !option.requiresEntryRequest;
+      }).toList(growable: false);
 
-      items.add(
-        _createScheduleItem(
-          id: 'flex_open_time_$index',
-          title: hasOfficialOptions
-              ? '公式ショー・パレード候補／自由時間'
-              : isEvening
-                  ? '夜の自由時間'
-                  : '休憩・自由時間',
-          type: ScheduleItemType.breakTime,
-          startMinutes: blockStart,
+      var gapCursor = gap.start;
+      for (final option in schedulable) {
+        final arrivalBuffer = option.isSelected
+            ? 0
+            : publicPerformanceArrivalBufferMinutes;
+        final plannedStart = _maximum(gapCursor, option.startMinutes - arrivalBuffer);
+        if (plannedStart > option.startMinutes || option.endMinutes > gap.end) {
+          continue;
+        }
+
+        if (plannedStart - gapCursor >= minimumGapMinutes) {
+          _addOpenTimeBlock(
+            items: items,
+            index: flexIndex++,
+            startMinutes: gapCursor,
+            endMinutes: plannedStart,
+            officialPerformanceOpportunities: candidates,
+          );
+        }
+
+        items.add(
+          _createScheduleItem(
+            id: 'official_performance_${performanceIndex++}_${option.facilityId}',
+            title: option.name,
+            type: ScheduleItemType.facility,
+            startMinutes: plannedStart,
+            endMinutes: option.endMinutes,
+            facilityId: option.facilityId,
+            reason: option.isSelected
+                ? '希望している公式公演の実施時刻に合わせて固定予定として配置しました。'
+                : '長い空き時間と公式公演時刻を照合し、エントリー受付の当選を仮定せず通常鑑賞できる公演を予定へ組み込みました。'
+                    '公演開始${option.startLabel}に間に合うよう、鑑賞場所への移動・準備時間を含めています。',
+            note: option.requiresEntryRequest
+                ? 'エントリー受付対象です。未当選の公演を自動配置することはありません。'
+                : option.supportsDpa
+                    ? 'DPA対象公演ですが、この予定はDPA購入済みを仮定していません。必要に応じて当日の取得結果で再最適化してください。'
+                    : 'assets/master/performance_schedules.jsonの日付別公演時刻を使用しています。',
+          ),
+        );
+        gapCursor = option.endMinutes;
+      }
+
+      if (gap.end - gapCursor >= minimumGapMinutes) {
+        _addOpenTimeBlock(
+          items: items,
+          index: flexIndex++,
+          startMinutes: gapCursor,
           endMinutes: gap.end,
-          reason: hasOfficialOptions
-              ? 'この空き時間には公式の日付別公演データがあります。'
-                  '候補：$optionText。'
-                  '希望している公演やエントリー受付・DPAの結果が確定した場合は、'
-                  'その公演を固定予定として優先し、前後を再最適化します。'
-              : isEvening
-                  ? '希望施設と固定予定を配置した後に残った夜時間です。'
-                      'この時間帯に登録済みの公式公演候補はないため、'
-                      '買い物、休憩、写真撮影、当日の追加施設などに使える自由枠として残します。'
-                  : '希望施設と固定予定を配置した後に60分以上残った時間です。'
-                      '追加施設を捏造せず、休憩・買い物・写真撮影などに使える自由枠として明示します。',
-          note: hasOfficialOptions
-              ? '表示している時刻はassets/master/performance_schedules.jsonの'
-                  '来園日・対象パークに一致する公式公演データです。'
-                  '候補を表示しているだけで、未選択の公演を自動予約・当選扱いにはしません。'
-              : '必要に応じて当日の状況を見て追加施設へ変更できます。',
-        ),
-      );
+          officialPerformanceOpportunities: candidates,
+        );
+      }
     }
+  }
+
+  void _addOpenTimeBlock({
+    required List<ScheduleItem> items,
+    required int index,
+    required int startMinutes,
+    required int endMinutes,
+    required List<OfficialPerformanceOpportunity> officialPerformanceOpportunities,
+  }) {
+    const eveningStartMinutes = 17 * 60;
+    final isEvening = endMinutes > eveningStartMinutes;
+    final unresolvedOptions = officialPerformanceOpportunities
+        .where((option) =>
+            option.requiresEntryRequest &&
+            !option.isSelected &&
+            option.startMinutes >= startMinutes &&
+            option.startMinutes < endMinutes)
+        .toList(growable: false);
+    final optionText = unresolvedOptions.map((option) => option.displayLabel).join('、');
+
+    items.add(
+      _createScheduleItem(
+        id: 'flex_open_time_$index',
+        title: unresolvedOptions.isNotEmpty
+            ? 'エントリー受付結果待ち／自由時間'
+            : isEvening
+                ? '夜の自由時間'
+                : '休憩・自由時間',
+        type: ScheduleItemType.breakTime,
+        startMinutes: startMinutes,
+        endMinutes: endMinutes,
+        reason: unresolvedOptions.isNotEmpty
+            ? 'この時間帯にはエントリー受付対象の公式公演があります。候補：$optionText。'
+                '当選を仮定せず自由枠として保持し、結果確定後に公演を固定して再最適化します。'
+            : isEvening
+                ? '公式公演を配置した後にも残った夜時間です。買い物、休憩、写真撮影、当日の追加施設などに使えます。'
+                : '希望施設と固定予定を配置した後に60分以上残った時間です。追加施設を捏造せず自由枠として明示します。',
+        note: unresolvedOptions.isNotEmpty
+            ? '落選時はショーDPAなど、設定されたフォールバック方針を別枠で検討します。'
+            : '必要に応じて当日の状況を見て追加施設へ変更できます。',
+      ),
+    );
   }
 
   void _addFallbackMeals({
