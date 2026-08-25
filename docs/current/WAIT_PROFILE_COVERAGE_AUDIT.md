@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-08-25T00:20:39+09:00
+Generated: 2026-08-26T00:25:45+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -8,12 +8,11 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - Active master attractions: 33
 - Mapped active attractions: 33
-- Generated profiles: 28
-- Profile source observations: 2754
+- Generated profiles: 29
+- Profile source observations: 3268
 
 ### 1. Profile missing facilities
 
-- `tdl_adventureland_western_river_railroad` — ウエスタンリバー鉄道; raw observations=0
 - `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル; raw observations=0
 - `tdl_fantasyland_haunted_mansion` — ホーンテッドマンション; raw observations=0
 - `tdl_fantasyland_poohs_hunny_hunt` — プーさんのハニーハント; raw observations=0
@@ -32,19 +31,20 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_donalds_boat` — ドナルドのボート: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
 - `tdl_toontown_goofys_paint_and_play_house` — グーフィーのペイント＆プレイハウス: no usable samples in 閉園前
 - `tdl_toontown_minnies_house` — ミニーの家: no usable samples in 昼前, 昼過ぎ, 夕食後, 閉園前
-- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
+- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: no usable samples in 昼前, ショー前後, 夕食前, 閉園前
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
 - `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: no usable samples in 開園直後, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
 - `tdl_world_bazaar_omnibus` — オムニバス: no usable samples in 昼前, 夕食前, 夕食後, 閉園前
 
 ### 2b. Low-confidence time bands (<3 samples)
 
-- `tdl_fantasyland_mickeys_philharmagic` — ミッキーのフィルハーマジック: 昼前 = 1 samples
+- `tdl_adventureland_western_river_railroad` — ウエスタンリバー鉄道: 昼前 = 1 samples
+- `tdl_fantasyland_mickeys_philharmagic` — ミッキーのフィルハーマジック: 昼前 = 2 samples
 - `tdl_fantasyland_pinocchios_daring_journey` — ピノキオの冒険旅行: 閉園前 = 1 samples
-- `tdl_tomorrowland_baymax_happy_ride` — ベイマックスのハッピーライド: 閉園前 = 1 samples
+- `tdl_tomorrowland_baymax_happy_ride` — ベイマックスのハッピーライド: 閉園前 = 2 samples
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: ショー前後 = 1 samples
-- `tdl_toontown_minnies_house` — ミニーの家: ショー前後 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
+- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 昼過ぎ = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食後 = 1 samples
 - `tdl_westernland_shooting_gallery` — ウエスタンランド・シューティングギャラリー: 閉園前 = 1 samples
 
@@ -58,7 +58,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 25
-- Profile source observations: 3707
+- Profile source observations: 4374
 
 ### 1. Profile missing facilities
 
@@ -79,7 +79,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - `tds_ac_a_001` — キャラバンカルーセル: 閉園前 = 2 samples
 - `tds_ac_a_003` — シンドバッド・ストーリーブック・ヴォヤッジ: 昼前 = 2 samples
-- `tds_ac_a_004` — マジックランプシアター: 昼前 = 1 samples
 - `tds_ac_a_004` — マジックランプシアター: 夕食前 = 1 samples
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
 
