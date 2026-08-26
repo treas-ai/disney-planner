@@ -6,12 +6,17 @@ import '../enums/activity_history_type.dart';
 import '../enums/prediction_confidence.dart';
 import '../enums/prediction_source.dart';
 import '../repositories/history_repository.dart';
+import 'time_rounding_service.dart';
 import 'wait_time_prediction_engine.dart';
 
 class RuleBasedWaitTimePredictionEngine implements WaitTimePredictionEngine {
-  const RuleBasedWaitTimePredictionEngine(this._historyRepository);
+  const RuleBasedWaitTimePredictionEngine(
+    this._historyRepository, {
+    this.timeRoundingService = const TimeRoundingService(),
+  });
 
   final HistoryRepository _historyRepository;
+  final TimeRoundingService timeRoundingService;
 
   @override
   Future<WaitTimePrediction> predict({
@@ -93,7 +98,9 @@ class RuleBasedWaitTimePredictionEngine implements WaitTimePredictionEngine {
       );
     }
 
-    final predicted = math.max(0, (base + timeAdjustment).round()).toInt();
+    final predicted = timeRoundingService.ceilMinutes(
+      math.max(0, (base + timeAdjustment).round()).toInt(),
+    );
     final confidence = _confidence(
       sampleCount: historyPool.length,
       hasCurrent: currentWaitMinutes != null,
@@ -115,8 +122,10 @@ class RuleBasedWaitTimePredictionEngine implements WaitTimePredictionEngine {
       targetTime: targetTime,
       generatedAt: now,
       predictedMinutes: predicted,
-      lowerBoundMinutes: math.max(0, predicted - spread).toInt(),
-      upperBoundMinutes: predicted + spread,
+      lowerBoundMinutes: timeRoundingService.ceilMinutes(
+        math.max(0, predicted - spread).toInt(),
+      ),
+      upperBoundMinutes: timeRoundingService.ceilMinutes(predicted + spread),
       confidence: confidence,
       source: source,
       reasons: List<String>.unmodifiable(reasons),

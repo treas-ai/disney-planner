@@ -320,6 +320,9 @@ class ScheduleController extends ChangeNotifier {
         );
       }
 
+      final areaConnections = await ServiceLocator.movementRepository
+          .loadAreaConnections(parkId: selectedParkId);
+
       final generatedSchedule = _scheduleEngine.generate(
         settings: _appState.tripSettings,
         facilities: availableFacilities,
@@ -333,6 +336,7 @@ class ScheduleController extends ChangeNotifier {
         },
         officialPerformanceOpportunities:
             officialPerformanceOpportunities,
+        areaConnections: areaConnections,
       );
 
       _appState.updateDaySchedule(generatedSchedule);

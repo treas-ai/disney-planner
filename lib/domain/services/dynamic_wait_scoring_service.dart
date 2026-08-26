@@ -1,5 +1,6 @@
 import '../entities/time_band_wait_profile.dart';
 import '../enums/wait_time_band.dart';
+import 'time_rounding_service.dart';
 
 enum WaitPredictionConfidence { none, low, medium, high }
 
@@ -15,21 +16,39 @@ class DynamicWaitScore {
 }
 
 class DynamicWaitScoringService {
-  const DynamicWaitScoringService();
+  const DynamicWaitScoringService({
+    this.timeRoundingService = const TimeRoundingService(),
+  });
+
+  final TimeRoundingService timeRoundingService;
 
   DynamicWaitScore evaluate({required String facilityId, required List<TimeBandWaitProfile> profiles, int? facilityCurrentWaitMinutes, int fallbackMinutes = 30}) {
     TimeBandWaitProfile? profile;
     for (final item in profiles) { if (item.facilityId == facilityId) { profile = item; break; } }
     if (profile == null) {
-      final fallback = facilityCurrentWaitMinutes ?? fallbackMinutes;
+      final fallback = timeRoundingService.ceilMinutes(
+        facilityCurrentWaitMinutes ?? fallbackMinutes,
+      );
       return DynamicWaitScore(openingMinutes: fallback, normalMinutes: fallback, savingMinutes: 0, sampleCount: 0, source: facilityCurrentWaitMinutes != null ? '施設の現在待ち時間' : '安全側フォールバック', confidence: WaitPredictionConfidence.none, usedFallback: true);
     }
-    final opening = profile.rangeFor(WaitTimeBand.afterOpening)?.typicalMinutes ?? facilityCurrentWaitMinutes ?? fallbackMinutes;
+    final opening = timeRoundingService.ceilMinutes(
+      profile.rangeFor(WaitTimeBand.afterOpening)?.typicalMinutes ??
+          facilityCurrentWaitMinutes ??
+          fallbackMinutes,
+    );
     final normalValues = <int>[
       for (final band in WaitTimeBand.values)
         if (band != WaitTimeBand.afterOpening && profile.rangeFor(band) != null) profile.rangeFor(band)!.typicalMinutes,
     ]..sort();
-    final normal = normalValues.isEmpty ? opening : normalValues.length.isOdd ? normalValues[normalValues.length ~/ 2] : ((normalValues[normalValues.length ~/ 2 - 1] + normalValues[normalValues.length ~/ 2]) / 2).round();
+    final rawNormal = normalValues.isEmpty
+        ? opening
+        : normalValues.length.isOdd
+        ? normalValues[normalValues.length ~/ 2]
+        : ((normalValues[normalValues.length ~/ 2 - 1] +
+                      normalValues[normalValues.length ~/ 2]) /
+                  2)
+              .round();
+    final normal = timeRoundingService.ceilMinutes(rawNormal);
     final samples = profile.sampleCount;
     final confidence = samples >= 100 ? WaitPredictionConfidence.high : samples >= 30 ? WaitPredictionConfidence.medium : samples > 0 ? WaitPredictionConfidence.low : WaitPredictionConfidence.none;
     return DynamicWaitScore(openingMinutes: opening, normalMinutes: normal, savingMinutes: (normal - opening).clamp(0, 300), sampleCount: samples, source: profile.source, confidence: confidence, usedFallback: false);

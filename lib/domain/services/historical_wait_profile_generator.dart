@@ -4,6 +4,7 @@ import '../entities/time_band_wait_profile.dart';
 import '../entities/wait_time_range.dart';
 import '../enums/crowd_factor_confidence.dart';
 import '../enums/wait_time_band.dart';
+import 'time_rounding_service.dart';
 
 class HistoricalWaitGenerationResult {
   const HistoricalWaitGenerationResult({required this.factors, required this.waitProfiles});
@@ -12,8 +13,12 @@ class HistoricalWaitGenerationResult {
 }
 
 class HistoricalWaitProfileGenerator {
-  const HistoricalWaitProfileGenerator({this.methodVersion = '5.1.1'});
+  const HistoricalWaitProfileGenerator({
+    this.methodVersion = '5.1.1',
+    this.timeRoundingService = const TimeRoundingService(),
+  });
   final String methodVersion;
+  final TimeRoundingService timeRoundingService;
 
   HistoricalWaitGenerationResult generate({required String parkId, required List<HistoricalWaitRecord> records, DateTime? calculatedAt}) {
     final usable = records.where((record) => record.parkId == parkId && !record.isExcluded).toList(growable: false);
@@ -84,9 +89,9 @@ class HistoricalWaitProfileGenerator {
       );
     }
     return WaitTimeRange(
-      minMinutes: _percentile(values, 0.1),
-      typicalMinutes: _percentile(values, 0.5),
-      maxMinutes: _percentile(values, 0.9),
+      minMinutes: timeRoundingService.ceilMinutes(_percentile(values, 0.1)),
+      typicalMinutes: timeRoundingService.ceilMinutes(_percentile(values, 0.5)),
+      maxMinutes: timeRoundingService.ceilMinutes(_percentile(values, 0.9)),
       sampleCount: values.length,
     );
   }

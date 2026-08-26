@@ -5,7 +5,7 @@ class EntryPredictionService {
   const EntryPredictionService();
 
   static const int _gateToFirstFacilityMinutes = 5;
-  static const int _happyEntryBookingMinutes = 5;
+  static const int _postEntryBookingMinutes = 5;
 
   EntryPrediction predict(TripSettings settings) {
     final queueArrival = _toMinutes(
@@ -31,9 +31,19 @@ class EntryPredictionService {
         ? queueArrival + gateDelay
         : admissionStart + gateDelay;
 
-    final postEntryOperationMinutes = settings.hasHappyEntry &&
-            (settings.canUseDpa || settings.canUsePriorityPass)
-        ? _happyEntryBookingMinutes
+    // Priority Pass cannot be obtained before park entry, so a general-entry
+    // plan that explicitly enables it reserves a short app-operation window
+    // before walking to the first attraction. Happy Entry keeps the existing
+    // behavior of reserving the same window for either DPA or Priority Pass.
+    //
+    // `canUseDpa` by itself only means DPA is allowed; the actual attraction
+    // DPA choice is made later by AiDayPlanner, so general entry does not add
+    // a DPA delay here unless a concrete purchase is known in a future step.
+    final shouldReservePostEntryOperation = settings.hasHappyEntry
+        ? settings.canUseDpa || settings.canUsePriorityPass
+        : settings.canUsePriorityPass;
+    final postEntryOperationMinutes = shouldReservePostEntryOperation
+        ? _postEntryBookingMinutes
         : 0;
     final firstFacilityArrival = expectedEntry +
         postEntryOperationMinutes + _gateToFirstFacilityMinutes;

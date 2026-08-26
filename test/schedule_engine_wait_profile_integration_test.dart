@@ -49,7 +49,7 @@ TimeBandWaitProfile _profile({required WaitTimeRange openingRange}) {
 }
 
 void main() {
-  test('ScheduleEngine uses the time-band wait profile for planned wait time', () {
+  test('ScheduleEngine rounds planned wait time up to five-minute units', () {
     final facility = _attraction();
     final schedule = const ScheduleEngine().generate(
       settings: _settings(),
@@ -70,7 +70,7 @@ void main() {
       (item) => item.facilityId == facility.id,
     );
 
-    expect(item.estimatedWaitMinutes, 17);
+    expect(item.estimatedWaitMinutes, 20);
     expect(item.experienceMinutes, 10);
     expect(item.waitEstimateSource, contains('実績待ち時間プロファイル'));
     expect(item.waitEstimateSource, contains('開園直後'));
@@ -78,7 +78,7 @@ void main() {
 
     final start = item.startHour * 60 + item.startMinute;
     final end = item.endHour * 60 + item.endMinute;
-    expect(end - start, 27);
+    expect(end - start, 30);
   });
 
   test('empty 0/0/0 band is not mistaken for a real zero-minute wait', () {

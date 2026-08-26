@@ -36,7 +36,7 @@ class PlanPreference {
       facilityId: facilityId,
       priority: PriorityLevel.medium,
       preferredTime: PreferredTime.anytime,
-      waitTolerance: WaitTolerance.medium,
+      waitTolerance: WaitTolerance.any,
       mealPreference: MealPreference.flexible,
       useDpa: false,
       usePriorityPass: false,
@@ -86,7 +86,7 @@ class PlanPreference {
       ),
       waitTolerance: WaitTolerance.values.firstWhere(
         (tolerance) => tolerance.name == json['waitTolerance'],
-        orElse: () => WaitTolerance.medium,
+        orElse: () => WaitTolerance.any,
       ),
       mealPreference: MealPreference.values.firstWhere(
         (preference) => preference.name == json['mealPreference'],

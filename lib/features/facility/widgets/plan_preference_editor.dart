@@ -150,28 +150,42 @@ class PlanPreferenceEditor extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          DropdownButtonFormField<WaitTolerance>(
-            key: ValueKey(
-              '${facility.id}_wait_${preference.waitTolerance.name}',
+          if (facility.category == FacilityCategory.attraction) ...[
+            const InputDecorator(
+              decoration: InputDecoration(
+                labelText: '待ち時間判断',
+                helperText: '固定の分数上限ではなく、収集した実績データからAIが時間帯ごとの有利・不利を比較します。',
+                border: OutlineInputBorder(),
+              ),
+              child: Text('AIにおまかせ'),
             ),
-            initialValue: preference.waitTolerance,
-            decoration: const InputDecoration(
-              labelText: '待ち時間許容',
-              border: OutlineInputBorder(),
+            const SizedBox(height: AppSpacing.md),
+          ] else ...[
+            DropdownButtonFormField<WaitTolerance>(
+              key: ValueKey(
+                '${facility.id}_wait_${preference.waitTolerance.name}',
+              ),
+              initialValue: preference.waitTolerance,
+              decoration: const InputDecoration(
+                labelText: '待ち時間許容',
+                border: OutlineInputBorder(),
+              ),
+              items: WaitTolerance.values
+                  .map(
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text(value.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  onWaitToleranceChanged(value);
+                }
+              },
             ),
-            items: WaitTolerance.values
-                .map(
-                  (value) =>
-                      DropdownMenuItem(value: value, child: Text(value.label)),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                onWaitToleranceChanged(value);
-              }
-            },
-          ),
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
+          ],
           DropdownButtonFormField<FacilityAccessMethod>(
             key: ValueKey(
               '${facility.id}_access_${preference.accessMethod.name}',

@@ -6,6 +6,7 @@ import '../entities/schedule_item.dart';
 import '../entities/schedule_recalculation_request.dart';
 import '../entities/schedule_recalculation_result.dart';
 import '../entities/replanning_context.dart';
+import '../enums/facility_category.dart';
 import '../enums/fixed_time_status.dart';
 import '../enums/schedule_change_type.dart';
 import '../enums/schedule_item_type.dart';
@@ -75,7 +76,12 @@ class ScheduleRecalculationService {
           }
           final preference = preferenceById[facility.id];
           final liveWait = request.waitTimes[facility.id];
-          if (preference != null &&
+          // Attractions are not excluded by a fixed 15/30/60-minute user
+          // ceiling. Their live wait is an input to replanning, while the
+          // decision itself is made relative to the attraction's collected
+          // wait history and the rest of the day's constraints.
+          if (facility.category != FacilityCategory.attraction &&
+              preference != null &&
               liveWait != null &&
               !preference.waitTolerance.allows(liveWait.waitMinutes)) {
             warnings.add(

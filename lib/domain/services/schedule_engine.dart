@@ -1,4 +1,5 @@
 import '../entities/day_schedule.dart';
+import '../entities/area_connection.dart';
 import '../entities/event_impact.dart';
 import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
@@ -16,9 +17,11 @@ import '../enums/preferred_time.dart';
 import '../enums/schedule_item_type.dart';
 import '../enums/wait_time_band.dart';
 import 'event_impact_engine.dart';
+import 'desired_exit_time_evaluator.dart';
 import 'meal_planner.dart';
 import 'route_optimizer.dart';
 import 'time_allocator.dart';
+import 'time_rounding_service.dart';
 
 class ScheduleEngine {
   const ScheduleEngine({
@@ -26,12 +29,16 @@ class ScheduleEngine {
     this.mealPlanner = const MealPlanner(),
     this.routeOptimizer = const RouteOptimizer(),
     this.eventImpactEngine = const EventImpactEngine(),
+    this.desiredExitTimeEvaluator = const DesiredExitTimeEvaluator(),
+    this.timeRoundingService = const TimeRoundingService(),
   });
 
   final TimeAllocator timeAllocator;
   final MealPlanner mealPlanner;
   final RouteOptimizer routeOptimizer;
   final EventImpactEngine eventImpactEngine;
+  final DesiredExitTimeEvaluator desiredExitTimeEvaluator;
+  final TimeRoundingService timeRoundingService;
 
   static const int _movementDurationMinutes = 15;
   static const int _sameAreaMovementMinutes = 5;
@@ -46,6 +53,7 @@ class ScheduleEngine {
     List<TimeBandWaitProfile> waitProfiles = const [],
     Map<String, double> morningScores = const {},
     List<OfficialPerformanceOpportunity> officialPerformanceOpportunities = const [],
+    List<AreaConnection> areaConnections = const [],
   }) {
     final items = <ScheduleItem>[];
     final visitDate = settings.visitDate ?? DateTime.now();
@@ -216,6 +224,7 @@ class ScheduleEngine {
         eventImpacts: eventImpacts,
         settings: settings,
         morningScores: morningScores,
+        areaConnections: areaConnections,
       );
       final facility = nextDecision.facility;
       remainingFacilities.remove(facility);
@@ -251,6 +260,7 @@ class ScheduleEngine {
         currentAreaId: facility.areaId,
         atMinutes: currentMinutes,
         eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
       );
 
       var requestedStartMinutes = _maximum(
@@ -374,6 +384,7 @@ class ScheduleEngine {
             scheduledStartMinutes: finalStartMinutes,
             waitDecision: waitDecision,
             waitTimingReason: nextDecision.reason,
+            waitProfiles: waitProfiles,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
           estimatedWaitMinutes: facility.category == FacilityCategory.attraction
@@ -396,28 +407,33 @@ class ScheduleEngine {
     // holes in the generated day. These are flexible blocks, not invented
     // show times: actual shows/parades are still scheduled only when a
     // performance time has been resolved.
-    _addFlexibleOpenTimeBlocks(
+    final effectiveExitMinutes = _addFlexibleOpenTimeBlocks(
       items: items,
       entryMinutes: entryEndMinutes,
       exitMinutes: exitMinutes,
       officialPerformanceOpportunities: officialPerformanceOpportunities,
     );
 
-    final latestScheduledEnd = items.fold<int>(
-      exitMinutes,
-      (latest, item) => _maximum(latest, _itemEndMinutes(item)),
-    );
+    // Desired exit time is a soft constraint only for candidates that have
+    // explicitly passed the generic value-vs-overtime evaluation. All other
+    // generated items are still clipped at the resulting effective day end.
+    items.removeWhere((item) => _itemEndMinutes(item) > effectiveExitMinutes);
 
+    final exitWasExtended = effectiveExitMinutes > exitMinutes;
     items.add(
       _createScheduleItem(
         id: 'exit',
         title: '退園',
         type: ScheduleItemType.exit,
-        startMinutes: latestScheduledEnd,
-        endMinutes: latestScheduledEnd,
-        reason: latestScheduledEnd > exitMinutes
-            ? '公式公演の終了時刻を優先し、退園時刻を後ろへ調整しました。'
+        startMinutes: effectiveExitMinutes,
+        endMinutes: effectiveExitMinutes,
+        reason: exitWasExtended
+            ? '希望退園時刻を超える予定について、予定価値と超過コストを比較した結果、'
+                'この時刻まで滞在するプランを採用しました。'
             : '設定された退園時間です。',
+        note: exitWasExtended
+            ? '希望退園時刻は${_formatMinutes(exitMinutes)}です。'
+            : null,
       ),
     );
 
@@ -740,7 +756,7 @@ class ScheduleEngine {
     return addedFacilityIds;
   }
 
-  void _addFlexibleOpenTimeBlocks({
+  int _addFlexibleOpenTimeBlocks({
     required List<ScheduleItem> items,
     required int entryMinutes,
     required int exitMinutes,
@@ -765,28 +781,38 @@ class ScheduleEngine {
       }
       if (end > cursor) cursor = end;
     }
-    if (exitMinutes - cursor >= minimumGapMinutes) {
+    // The final window may be shorter than the normal flexible-block
+    // threshold. Keep it as a scheduling window so a fixed-time candidate
+    // close to the desired exit can still be evaluated instead of being
+    // discarded before the soft-constraint comparison runs.
+    if (exitMinutes > cursor) {
       gaps.add((start: cursor, end: exitMinutes));
     }
 
     var performanceIndex = 0;
     var flexIndex = 0;
+    var effectiveExitMinutes = exitMinutes;
     for (final gap in gaps) {
+      final isFinalExitGap = gap.end == exitMinutes;
       final candidates = officialPerformanceOpportunities
           .where((option) =>
-              option.startMinutes >= gap.start && option.endMinutes <= gap.end)
+              option.startMinutes >= gap.start &&
+              option.startMinutes < gap.end &&
+              (option.endMinutes <= gap.end || isFinalExitGap))
           .toList(growable: false)
         ..sort((a, b) {
           if (a.isSelected != b.isSelected) return a.isSelected ? -1 : 1;
           return a.startMinutes.compareTo(b.startMinutes);
         });
 
-      // A user-selected performance is a real planning request. A public
-      // performance that does not require an Entry Request may also be used
-      // automatically to make a long evening gap useful. Entry-Request shows
-      // are never treated as won before the result is known.
+      // A user-selected performance is a real planning request. Unselected
+      // public performances are considered automatically only in the evening,
+      // after attraction planning has finished. This prevents a morning show
+      // from consuming the valuable rope-drop window. Entry-Request shows are
+      // never treated as won before the result is known.
       final schedulable = candidates.where((option) {
-        return option.isSelected || !option.requiresEntryRequest;
+        return option.isSelected ||
+            (!option.requiresEntryRequest && option.startMinutes >= 17 * 60);
       }).toList(growable: false);
 
       var gapCursor = gap.start;
@@ -795,8 +821,30 @@ class ScheduleEngine {
             ? 0
             : publicPerformanceArrivalBufferMinutes;
         final plannedStart = _maximum(gapCursor, option.startMinutes - arrivalBuffer);
-        if (plannedStart > option.startMinutes || option.endMinutes > gap.end) {
+        if (plannedStart > option.startMinutes ||
+            (!isFinalExitGap && option.endMinutes > gap.end)) {
           continue;
+        }
+
+        DesiredExitTimeEvaluation? exitEvaluation;
+        if (option.endMinutes > exitMinutes) {
+          final performanceDuration =
+              _maximum(0, option.endMinutes - option.startMinutes).toDouble();
+          final preExitOpportunityMinutes = _maximum(
+            0,
+            exitMinutes - option.startMinutes,
+          ).clamp(0, performanceDuration.toInt()).toDouble();
+          exitEvaluation = desiredExitTimeEvaluator.evaluate(
+            desiredExitMinutes: exitMinutes,
+            candidateEndMinutes: option.endMinutes,
+            experienceValueMinutes: performanceDuration,
+            opportunityValueMinutes: preExitOpportunityMinutes,
+            userPreferenceValueMinutes:
+                option.isSelected ? performanceDuration : 0.0,
+          );
+          if (!exitEvaluation.shouldAccept) {
+            continue;
+          }
         }
 
         if (plannedStart - gapCursor >= minimumGapMinutes) {
@@ -809,6 +857,14 @@ class ScheduleEngine {
           );
         }
 
+        final exitReason = exitEvaluation == null
+            ? ''
+            : ' 希望退園${_formatMinutes(exitMinutes)}を'
+                '${exitEvaluation.overtimeMinutes}分超えますが、'
+                '予定価値${exitEvaluation.totalValueMinutes.toStringAsFixed(0)}分相当と'
+                '超過コスト${exitEvaluation.totalCostMinutes.toStringAsFixed(0)}分相当を比較し、'
+                '組み込む価値が上回ると判断しました。';
+
         items.add(
           _createScheduleItem(
             id: 'official_performance_${performanceIndex++}_${option.facilityId}',
@@ -818,9 +874,9 @@ class ScheduleEngine {
             endMinutes: option.endMinutes,
             facilityId: option.facilityId,
             reason: option.isSelected
-                ? '希望している公式公演の実施時刻に合わせて固定予定として配置しました。'
+                ? '希望している公式公演の実施時刻に合わせて固定予定として配置しました。$exitReason'
                 : '長い空き時間と公式公演時刻を照合し、エントリー受付の当選を仮定せず通常鑑賞できる公演を予定へ組み込みました。'
-                    '公演開始${option.startLabel}に間に合うよう、鑑賞場所への移動・準備時間を含めています。',
+                    '公演開始${option.startLabel}に間に合うよう、鑑賞場所への移動・準備時間を含めています。$exitReason',
             note: option.requiresEntryRequest
                 ? 'エントリー受付対象です。未当選の公演を自動配置することはありません。'
                 : option.supportsDpa
@@ -829,6 +885,9 @@ class ScheduleEngine {
           ),
         );
         gapCursor = option.endMinutes;
+        if (option.endMinutes > effectiveExitMinutes) {
+          effectiveExitMinutes = option.endMinutes;
+        }
       }
 
       if (gap.end - gapCursor >= minimumGapMinutes) {
@@ -841,6 +900,8 @@ class ScheduleEngine {
         );
       }
     }
+
+    return effectiveExitMinutes;
   }
 
   void _addOpenTimeBlock({
@@ -864,22 +925,18 @@ class ScheduleEngine {
     items.add(
       _createScheduleItem(
         id: 'flex_open_time_$index',
-        title: unresolvedOptions.isNotEmpty
-            ? 'エントリー受付結果待ち／自由時間'
-            : isEvening
-                ? '夜の自由時間'
-                : '休憩・自由時間',
+        title: isEvening ? '夜の自由時間' : '休憩・自由時間',
         type: ScheduleItemType.breakTime,
         startMinutes: startMinutes,
         endMinutes: endMinutes,
         reason: unresolvedOptions.isNotEmpty
             ? 'この時間帯にはエントリー受付対象の公式公演があります。候補：$optionText。'
-                '当選を仮定せず自由枠として保持し、結果確定後に公演を固定して再最適化します。'
+                '未当選のため時間は予約していません。当選した場合だけ公演を固定して再最適化します。'
             : isEvening
                 ? '公式公演を配置した後にも残った夜時間です。買い物、休憩、写真撮影、当日の追加施設などに使えます。'
                 : '希望施設と固定予定を配置した後に60分以上残った時間です。追加施設を捏造せず自由枠として明示します。',
         note: unresolvedOptions.isNotEmpty
-            ? '落選時はショーDPAなど、設定されたフォールバック方針を別枠で検討します。'
+            ? '通常の自由時間として利用できます。落選時はショーDPAなど、設定されたフォールバック方針を別枠で検討します。'
             : '必要に応じて当日の状況を見て追加施設へ変更できます。',
       ),
     );
@@ -1139,6 +1196,14 @@ class ScheduleEngine {
       return const _WaitToleranceDecision(shouldSkip: false);
     }
 
+    // Attraction standby waits are evaluated relatively from collected
+    // historical/current wait data by the wait-aware scheduler. A fixed
+    // user-entered minute ceiling (15/30/60) is not a meaningful admission
+    // rule for modern park waits, so it must never remove an attraction.
+    if (facility.category == FacilityCategory.attraction) {
+      return const _WaitToleranceDecision(shouldSkip: false);
+    }
+
     final waitTime = facility.waitTime;
 
     if (waitTime == null) {
@@ -1259,6 +1324,7 @@ class ScheduleEngine {
     required String currentAreaId,
     required int atMinutes,
     required List<EventImpact> eventImpacts,
+    List<AreaConnection> areaConnections = const [],
   }) {
     if (previousAreaId == null) {
       return 0;
@@ -1266,7 +1332,12 @@ class ScheduleEngine {
 
     final baseMinutes = previousAreaId == currentAreaId
         ? _sameAreaMovementMinutes
-        : _movementDurationMinutes;
+        : (_movementMinutesFromConnections(
+              fromAreaId: previousAreaId,
+              toAreaId: currentAreaId,
+              connections: areaConnections,
+            ) ??
+            _movementDurationMinutes);
 
     if (eventImpactEngine.isRouteBlocked(
       fromAreaId: previousAreaId,
@@ -1287,6 +1358,46 @@ class ScheduleEngine {
   }
 
 
+  int? _movementMinutesFromConnections({
+    required String fromAreaId,
+    required String toAreaId,
+    required List<AreaConnection> connections,
+  }) {
+    if (fromAreaId == toAreaId) return _sameAreaMovementMinutes;
+    if (connections.isEmpty) return null;
+
+    final distances = <String, int>{fromAreaId: 0};
+    final visited = <String>{};
+    while (true) {
+      String? current;
+      var best = 1 << 30;
+      for (final entry in distances.entries) {
+        if (!visited.contains(entry.key) && entry.value < best) {
+          current = entry.key;
+          best = entry.value;
+        }
+      }
+      if (current == null) return null;
+      if (current == toAreaId) return best;
+      visited.add(current);
+
+      for (final connection in connections) {
+        String? next;
+        if (connection.fromAreaId == current) {
+          next = connection.toAreaId;
+        } else if (connection.bidirectional && connection.toAreaId == current) {
+          next = connection.fromAreaId;
+        }
+        if (next == null || connection.minutes <= 0) continue;
+        final candidate = best + connection.minutes;
+        if (candidate < (distances[next] ?? (1 << 30))) {
+          distances[next] = candidate;
+        }
+      }
+    }
+  }
+
+
   _NextFacilityDecision _selectNextWaitAwareFacility({
     required List<Facility> remainingFacilities,
     required List<Facility> routeOrder,
@@ -1297,9 +1408,30 @@ class ScheduleEngine {
     required List<EventImpact> eventImpacts,
     required TripSettings settings,
     required Map<String, double> morningScores,
+    required List<AreaConnection> areaConnections,
   }) {
     if (remainingFacilities.length == 1) {
       return _NextFacilityDecision(facility: remainingFacilities.single);
+    }
+
+    if (_waitTimeBandForMinutes(currentMinutes) == WaitTimeBand.afterOpening) {
+      final openingDecision = _selectOpeningSequenceFirstFacility(
+        remainingFacilities: remainingFacilities,
+        preferences: preferences,
+        waitProfiles: waitProfiles,
+        currentMinutes: currentMinutes,
+        previousAreaId: previousAreaId,
+        eventImpacts: eventImpacts,
+        settings: settings,
+        morningScores: morningScores,
+        areaConnections: areaConnections,
+      );
+      if (openingDecision != null) {
+        return _NextFacilityDecision(
+          facility: openingDecision.facility,
+          reason: openingDecision.reason,
+        );
+      }
     }
 
     final scored = <_WaitAwareCandidate>[];
@@ -1323,6 +1455,7 @@ class ScheduleEngine {
         currentAreaId: facility.areaId,
         atMinutes: currentMinutes,
         eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
       );
       final candidateStart = _maximum(
         currentMinutes + movementMinutes,
@@ -1330,8 +1463,8 @@ class ScheduleEngine {
       );
 
       final routeIndex = routeOrder.indexOf(facility);
-      final priority =
-          preference?.priority.value ?? facility.priority.value;
+      final preferenceValue =
+          (preference?.priority.value ?? facility.priority.value).toDouble();
       final timing = _waitTimingOpportunity(
         facility: facility,
         preference: preference,
@@ -1339,18 +1472,30 @@ class ScheduleEngine {
         scheduledStartMinutes: candidateStart,
       );
 
-      // Existing route / preference ordering remains the baseline.
-      // Wait-time variation is strong enough to override it only when
-      // historical data shows a meaningful opportunity or loss.
-      var score = 100.0;
-      score -= (routeIndex < 0 ? routeOrder.length : routeIndex) * 4.0;
-      score += priority * 10.0;
-      score -= movementMinutes * 0.8;
+      // Data-driven total-time cost. Preference remains a tie-break/value
+      // signal, but the schedule is not primarily selected by low/mid/high.
+      // Movement + waiting + experience + opportunity loss are all expressed
+      // in minutes so a small wait saving cannot justify a large park crossing.
+      final currentEstimate = _resolveWaitEstimate(
+        facility: facility,
+        preference: preference,
+        waitProfiles: waitProfiles,
+        scheduledStartMinutes: candidateStart,
+      );
+      final experienceMinutes = _resolveFacilityDuration(facility);
+      final startDelay = _maximum(0, candidateStart - currentMinutes - movementMinutes);
+      final opportunityCost = timing == null
+          ? 0.0
+          : -timing.delayPenaltyMinutes.toDouble();
+      final totalTimeCost = movementMinutes.toDouble() +
+          currentEstimate.waitMinutes +
+          experienceMinutes +
+          startDelay +
+          opportunityCost;
 
-      final startDelay = candidateStart - currentMinutes;
-      if (startDelay > 0) {
-        score -= startDelay * 0.7;
-      }
+      var score = -totalTimeCost;
+      score += preferenceValue * 2.0;
+      score -= (routeIndex < 0 ? routeOrder.length : routeIndex) * 0.5;
 
       final openingScore = morningScores[facility.id];
       if (openingScore != null) {
@@ -1359,26 +1504,7 @@ class ScheduleEngine {
         score += openingScore.clamp(-20.0, 100.0).toDouble() * 0.25;
       }
 
-      final currentEstimate = _resolveWaitEstimate(
-        facility: facility,
-        preference: preference,
-        waitProfiles: waitProfiles,
-        scheduledStartMinutes: candidateStart,
-      );
-      if (facility.category == FacilityCategory.attraction &&
-          !_usesShortenedQueue(facility: facility, preference: preference)) {
-        // 同程度の後回し損失なら、今実際に短く乗れる施設を優先する。
-        score -= currentEstimate.waitMinutes * 0.25;
-      }
 
-      if (timing != null) {
-        // Positive: delaying becomes worse -> use now.
-        // Negative: a reliably shorter later band exists -> defer if possible.
-        // Missing a low-wait window can cost much more than a small route
-        // saving. Give measured near-term wait growth enough weight to reorder
-        // otherwise-similar attractions.
-        score += timing.delayPenaltyMinutes * 3.0;
-      }
 
       scored.add(
         _WaitAwareCandidate(
@@ -1418,6 +1544,240 @@ class ScheduleEngine {
       reason: reason,
     );
   }
+
+  _OpeningSequenceDecision? _selectOpeningSequenceFirstFacility({
+    required List<Facility> remainingFacilities,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required int currentMinutes,
+    required String? previousAreaId,
+    required List<EventImpact> eventImpacts,
+    required TripSettings settings,
+    required Map<String, double> morningScores,
+    required List<AreaConnection> areaConnections,
+  }) {
+    final attractionCandidates = remainingFacilities.where((facility) {
+      if (facility.category != FacilityCategory.attraction) return false;
+      final preference = _findPreference(
+        facilityId: facility.id,
+        preferences: preferences,
+      );
+      final preferredTime = preference?.preferredTime ?? PreferredTime.anytime;
+      return preferredTime == PreferredTime.anytime ||
+          preferredTime == PreferredTime.morning;
+    }).toList(growable: false);
+    if (attractionCandidates.isEmpty) return null;
+
+    _OpeningSequence? best;
+    for (final first in attractionCandidates) {
+      final sequence = _buildOpeningSequence(
+        first: first,
+        candidates: attractionCandidates,
+        preferences: preferences,
+        waitProfiles: waitProfiles,
+        startMinutes: currentMinutes,
+        previousAreaId: previousAreaId,
+        eventImpacts: eventImpacts,
+        settings: settings,
+        morningScores: morningScores,
+        areaConnections: areaConnections,
+      );
+      if (best == null || sequence.score > best.score) {
+        best = sequence;
+      }
+    }
+    if (best == null || best.facilities.isEmpty) return null;
+
+    final first = best.facilities.first;
+    final detail = best.firstStep;
+    final route = best.facilities.map((facility) => facility.name).join(' → ');
+    final alternative = detail.alternativeAccessPenalty > 0
+        ? ' DPA/PP/シングルライダー等で後から短縮できる可能性を'
+            '${detail.alternativeAccessPenalty.round()}分相当減点しました。'
+        : '';
+    final deferReason = detail.deferLossMinutes >= 15
+        ? ' この時間帯を逃すと、近い後続時間帯より待ち時間が約${detail.deferLossMinutes}分増える見込みです。'
+        : detail.deferLossMinutes <= -15
+            ? ' 開園直後は後続時間帯より約${-detail.deferLossMinutes}分混む実績のため、朝一集中を減点しています。'
+            : '';
+    return _OpeningSequenceDecision(
+      facility: first,
+      reason:
+          '朝一は1施設だけでなく最初の${best.facilities.length}手を比較しました。'
+          '候補ルート「$route」を総合評価し、'
+          'この施設は現在待ち${detail.waitMinutes}分、'
+          '後回し損失${detail.deferLossMinutes >= 0 ? '+' : ''}${detail.deferLossMinutes}分、'
+          '移動${detail.movementMinutes}分として評価しました。'
+          '$deferReason'
+          '$alternative'
+          '朝の短時間だけ得な施設を優先し、開園直後だけ混雑する施設は後回しできるよう判断しています。',
+    );
+  }
+
+  _OpeningSequence _buildOpeningSequence({
+    required Facility first,
+    required List<Facility> candidates,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required int startMinutes,
+    required String? previousAreaId,
+    required List<EventImpact> eventImpacts,
+    required TripSettings settings,
+    required Map<String, double> morningScores,
+    required List<AreaConnection> areaConnections,
+  }) {
+    const maxDepth = 3;
+    const discounts = <double>[1.0, 0.65, 0.4];
+    final selected = <Facility>[];
+    final remaining = [...candidates];
+    var current = startMinutes;
+    var areaId = previousAreaId;
+    var score = 0.0;
+    _OpeningStepEvaluation? firstStep;
+    Facility? forced = first;
+
+    for (var depth = 0; depth < maxDepth && remaining.isNotEmpty; depth++) {
+      Facility? chosen;
+      _OpeningStepEvaluation? chosenEvaluation;
+      var chosenScore = -double.infinity;
+      final pool = forced == null ? remaining : <Facility>[forced];
+
+      for (final facility in pool) {
+        final evaluation = _evaluateOpeningStep(
+          facility: facility,
+          preferences: preferences,
+          waitProfiles: waitProfiles,
+          currentMinutes: current,
+          previousAreaId: areaId,
+          eventImpacts: eventImpacts,
+          settings: settings,
+          morningScores: morningScores,
+          areaConnections: areaConnections,
+        );
+        if (evaluation.score > chosenScore) {
+          chosen = facility;
+          chosenEvaluation = evaluation;
+          chosenScore = evaluation.score;
+        }
+      }
+      if (chosen == null || chosenEvaluation == null) break;
+
+      selected.add(chosen);
+      remaining.remove(chosen);
+      firstStep ??= chosenEvaluation;
+      score += chosenEvaluation.score * discounts[depth];
+      current += chosenEvaluation.movementMinutes +
+          chosenEvaluation.waitMinutes +
+          _resolveFacilityDuration(chosen);
+      areaId = chosen.areaId;
+      forced = null;
+
+      // Opening optimization is only meaningful while the simulated route is
+      // still in the historical opening band. Do not force a three-step route
+      // deep into late morning if long queues consume the whole phase.
+      if (_waitTimeBandForMinutes(current) != WaitTimeBand.afterOpening) break;
+    }
+
+    return _OpeningSequence(
+      facilities: List.unmodifiable(selected),
+      score: score,
+      firstStep: firstStep ?? const _OpeningStepEvaluation.empty(),
+    );
+  }
+
+  _OpeningStepEvaluation _evaluateOpeningStep({
+    required Facility facility,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required int currentMinutes,
+    required String? previousAreaId,
+    required List<EventImpact> eventImpacts,
+    required TripSettings settings,
+    required Map<String, double> morningScores,
+    required List<AreaConnection> areaConnections,
+  }) {
+    final preference = _findPreference(
+      facilityId: facility.id,
+      preferences: preferences,
+    );
+    final movementMinutes = _calculateMovementMinutes(
+      previousAreaId: previousAreaId,
+      currentAreaId: facility.areaId,
+      atMinutes: currentMinutes,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+    );
+    final candidateStart = currentMinutes + movementMinutes;
+    final waitEstimate = _resolveWaitEstimate(
+      facility: facility,
+      preference: preference,
+      waitProfiles: waitProfiles,
+      scheduledStartMinutes: candidateStart,
+    );
+    final timing = _waitTimingOpportunity(
+      facility: facility,
+      preference: preference,
+      waitProfiles: waitProfiles,
+      scheduledStartMinutes: candidateStart,
+    );
+    final deferLoss = timing?.delayPenaltyMinutes ?? 0;
+    final priority = preference?.priority.value ?? facility.priority.value;
+    final morningSignal = morningScores[facility.id] ?? 0.0;
+    final alternativeAccessPenalty = _openingAlternativeAccessPenalty(
+      facility: facility,
+      preference: preference,
+      settings: settings,
+    );
+
+    // Opening is intentionally opportunity-cost dominant. A ride that is only
+    // 5 minutes shorter now should not beat a ride that will become 40-60
+    // minutes worse after the opening window. Negative deferLoss represents an
+    // opening rush and directly pushes that attraction later.
+    var score = 0.0;
+    score += deferLoss * 2.2;
+    score += priority * 8.0;
+    score += morningSignal.clamp(-60.0, 120.0).toDouble() * 0.35;
+    score -= waitEstimate.waitMinutes * 0.8;
+    score -= movementMinutes * 1.25;
+    score -= _resolveFacilityDuration(facility) * 0.15;
+    score -= alternativeAccessPenalty;
+
+    if (preference?.preferredTime == PreferredTime.morning) score += 18;
+    if (facility.isSeasonal) score += 8;
+
+    return _OpeningStepEvaluation(
+      score: score,
+      waitMinutes: waitEstimate.waitMinutes,
+      movementMinutes: movementMinutes,
+      deferLossMinutes: deferLoss,
+      alternativeAccessPenalty: alternativeAccessPenalty,
+    );
+  }
+
+  double _openingAlternativeAccessPenalty({
+    required Facility facility,
+    required PlanPreference? preference,
+    required TripSettings settings,
+  }) {
+    if (_usesShortenedQueue(facility: facility, preference: preference)) {
+      return 0;
+    }
+
+    var penalty = 0.0;
+    if (settings.canUseDpa && facility.supportsDpa) {
+      penalty = _maximumDouble(penalty, 16.0);
+    }
+    if (settings.canUsePriorityPass && facility.supportsPriorityPass) {
+      penalty = _maximumDouble(penalty, 20.0);
+    }
+    if (settings.canUseSingleRider && facility.supportsSingleRider) {
+      penalty = _maximumDouble(penalty, 14.0);
+    }
+    return penalty;
+  }
+
+  double _maximumDouble(double first, double second) =>
+      first >= second ? first : second;
 
   _WaitTimingOpportunity? _waitTimingOpportunity({
     required Facility facility,
@@ -1612,8 +1972,8 @@ class ScheduleEngine {
 
     if (facility.waitTime != null) {
       return _WaitEstimate(
-        waitMinutes: facility.waitTime!.minutes,
-        source: '施設の待ち時間データ',
+        waitMinutes: timeRoundingService.ceilMinutes(facility.waitTime!.minutes),
+        source: '施設の待ち時間データ（5分単位切り上げ）',
       );
     }
 
@@ -1631,9 +1991,9 @@ class ScheduleEngine {
 
       // HistoricalWaitProfileGenerator はサンプルが無い時間帯を
       // 0/0/0として保持する。これを「待ち時間0分」と誤認しない。
-      if (range != null && range.typicalMinutes > 0) {
+      if (_isReliableTimingRange(range)) {
         return _WaitEstimate(
-          waitMinutes: range.typicalMinutes,
+          waitMinutes: timeRoundingService.ceilMinutes(range!.typicalMinutes),
           source:
               '実績待ち時間プロファイル（${band.label}、${profile.source}、時間帯サンプル${range.sampleCount ?? profile.sampleCount}件）',
         );
@@ -1645,7 +2005,7 @@ class ScheduleEngine {
       final nearest = _nearestValidWaitRange(profile: profile, targetBand: band);
       if (nearest != null) {
         return _WaitEstimate(
-          waitMinutes: nearest.range.typicalMinutes,
+          waitMinutes: timeRoundingService.ceilMinutes(nearest.range.typicalMinutes),
           source:
               '実績待ち時間プロファイル（${band.label}を${nearest.band.label}から近接参照、${profile.source}、時間帯サンプル${nearest.range.sampleCount ?? profile.sampleCount}件）',
         );
@@ -1653,7 +2013,7 @@ class ScheduleEngine {
     }
 
     return _WaitEstimate(
-      waitMinutes: _fallbackWaitMinutes(facility),
+      waitMinutes: timeRoundingService.ceilMinutes(_fallbackWaitMinutes(facility)),
       source: '待ち時間データ未登録のため優先度別の安全側暫定値',
     );
   }
@@ -2014,6 +2374,19 @@ class ScheduleEngine {
     return reasons.where((reason) => reason.isNotEmpty).join(' ');
   }
 
+  bool _hasReliableWaitProfile({
+    required String facilityId,
+    required List<TimeBandWaitProfile> waitProfiles,
+  }) {
+    for (final profile in waitProfiles) {
+      if (profile.facilityId != facilityId) continue;
+      for (final band in WaitTimeBand.values) {
+        if (_isReliableTimingRange(profile.rangeFor(band))) return true;
+      }
+    }
+    return false;
+  }
+
   String _buildReason({
     required Facility facility,
     required PlanPreference? preference,
@@ -2023,6 +2396,7 @@ class ScheduleEngine {
     required int scheduledStartMinutes,
     required _WaitToleranceDecision waitDecision,
     String? waitTimingReason,
+    List<TimeBandWaitProfile> waitProfiles = const [],
   }) {
     final reasons = <String>[];
 
@@ -2100,15 +2474,29 @@ class ScheduleEngine {
     if (preference == null) {
       reasons.add('施設の基本優先度を使用しています。');
     } else {
-      reasons.add(
-        '優先度'
-        '「${preference.priority.label}」、'
-        '希望時間'
-        '「${preference.preferredTime.label}」、'
-        '待ち時間許容'
-        '「${preference.waitTolerance.label}」を'
-        '考慮しました。',
-      );
+      if (facility.category == FacilityCategory.attraction &&
+          _hasReliableWaitProfile(
+            facilityId: facility.id,
+            waitProfiles: waitProfiles,
+          )) {
+        reasons.add(
+          '希望時間「${preference.preferredTime.label}」と、'
+          '収集した待ち時間実績・移動・体験時間による総時間評価を考慮しました。',
+        );
+      } else if (facility.category == FacilityCategory.attraction) {
+        reasons.add(
+          '希望時間「${preference.preferredTime.label}」を考慮しました。'
+          '待ち時間実績が不足しているため、フォールバック値を実績値としては扱っていません。',
+        );
+      } else {
+        reasons.add(
+          '優先度'
+          '「${preference.priority.label}」、'
+          '希望時間'
+          '「${preference.preferredTime.label}」を'
+          '考慮しました。',
+        );
+      }
     }
 
     reasons.add('所要時間を$durationMinutes分として配置しました。');
@@ -2329,6 +2717,12 @@ class ScheduleEngine {
     return _toMinutes(item.endHour, item.endMinute);
   }
 
+  String _formatMinutes(int minutes) {
+    final hour = (minutes ~/ 60).toString().padLeft(2, '0');
+    final minute = (minutes % 60).toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
   int _toMinutes(int hour, int minute) {
     return hour * 60 + minute;
   }
@@ -2369,6 +2763,51 @@ class _WaitEstimate {
   final String source;
 }
 
+
+class _OpeningSequenceDecision {
+  const _OpeningSequenceDecision({
+    required this.facility,
+    required this.reason,
+  });
+
+  final Facility facility;
+  final String reason;
+}
+
+class _OpeningSequence {
+  const _OpeningSequence({
+    required this.facilities,
+    required this.score,
+    required this.firstStep,
+  });
+
+  final List<Facility> facilities;
+  final double score;
+  final _OpeningStepEvaluation firstStep;
+}
+
+class _OpeningStepEvaluation {
+  const _OpeningStepEvaluation({
+    required this.score,
+    required this.waitMinutes,
+    required this.movementMinutes,
+    required this.deferLossMinutes,
+    required this.alternativeAccessPenalty,
+  });
+
+  const _OpeningStepEvaluation.empty()
+      : score = 0,
+        waitMinutes = 0,
+        movementMinutes = 0,
+        deferLossMinutes = 0,
+        alternativeAccessPenalty = 0;
+
+  final double score;
+  final int waitMinutes;
+  final int movementMinutes;
+  final int deferLossMinutes;
+  final double alternativeAccessPenalty;
+}
 
 class _NextFacilityDecision {
   const _NextFacilityDecision({

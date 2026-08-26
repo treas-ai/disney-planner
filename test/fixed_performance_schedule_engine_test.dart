@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
-    'official performance remains fixed even when it ends after exit setting',
+    'official performance beyond exit setting is rejected by hard exit constraint',
     () {
       const facility = Facility(
         id: 'tdl_world_bazaar_reach_for_the_stars',
@@ -39,18 +39,17 @@ void main() {
         preferences: [preference],
       );
 
-      final show = schedule.items.singleWhere(
-        (item) => item.facilityId == facility.id,
+      expect(
+        schedule.items.where((item) => item.facilityId == facility.id),
+        isEmpty,
       );
+
       final exit = schedule.items.singleWhere(
         (item) => item.type == ScheduleItemType.exit,
       );
-      expect(show.startHour, 20);
-      expect(show.startMinute, 55);
-      expect(
-        exit.startHour * 60 + exit.startMinute,
-        greaterThanOrEqualTo(21 * 60 + 20),
-      );
+      expect(exit.startHour, 21);
+      expect(exit.startMinute, 0);
+      expect(exit.reason, '設定された退園時間です。');
     },
   );
 }

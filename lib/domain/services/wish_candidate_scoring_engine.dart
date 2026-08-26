@@ -3,6 +3,7 @@ import '../entities/plan_preference.dart';
 import '../entities/time_band_wait_profile.dart';
 import '../enums/wait_time_band.dart';
 import 'dynamic_wait_scoring_service.dart';
+import 'opening_crowd_behavior_evaluator.dart';
 
 class WishCandidateScore {
   const WishCandidateScore({
@@ -24,9 +25,13 @@ class WishCandidateScore {
 }
 
 class WishCandidateScoringEngine {
-  const WishCandidateScoringEngine({this.dynamicWaitScoringService = const DynamicWaitScoringService()});
+  const WishCandidateScoringEngine({
+    this.dynamicWaitScoringService = const DynamicWaitScoringService(),
+    this.openingCrowdBehaviorEvaluator = const OpeningCrowdBehaviorEvaluator(),
+  });
 
   final DynamicWaitScoringService dynamicWaitScoringService;
+  final OpeningCrowdBehaviorEvaluator openingCrowdBehaviorEvaluator;
 
   List<WishCandidateScore> score({
     required List<Facility> facilities,
@@ -71,7 +76,14 @@ class WishCandidateScoringEngine {
         2 => 5.0,
         _ => 0.0,
       };
+      final openingCrowd = openingCrowdBehaviorEvaluator.evaluate(
+        facilityId: facility.id,
+        parkId: facility.parkId,
+        profiles: waitProfiles,
+      );
+
       var firstMove = waitScore.savingMinutes.toDouble();
+      firstMove += openingCrowd.weightedValueMinutes;
       firstMove += baseExperienceValue;
       if (facility.isSeasonal) firstMove += 12;
       if (hasHappyEntry && waitScore.savingMinutes > 0) firstMove += 8;
@@ -84,6 +96,7 @@ class WishCandidateScoringEngine {
         '待ち時間データ: ${waitScore.source}',
         'サンプル数${waitScore.sampleCount}件',
         '信頼度${waitScore.confidence.name}',
+        openingCrowd.reason,
         '施設基礎価値${baseExperienceValue.round()}点',
         if (facility.isSeasonal) '期間限定施設 +12',
         if (hasHappyEntry && waitScore.savingMinutes > 0)
