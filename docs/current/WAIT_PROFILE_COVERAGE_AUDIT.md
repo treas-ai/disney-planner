@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-08-26T00:25:45+09:00
+Generated: 2026-08-27T01:04:01+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 29
-- Profile source observations: 3268
+- Profile source observations: 3811
 
 ### 1. Profile missing facilities
 
@@ -26,7 +26,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_fantasyland_cinderella_fairy_tale_hall` — シンデレラのフェアリーテイル・ホール: no usable samples in 閉園前
 - `tdl_fantasyland_its_a_small_world` — イッツ・ア・スモールワールド: no usable samples in 閉園前
 - `tdl_fantasyland_mickeys_philharmagic` — ミッキーのフィルハーマジック: no usable samples in 閉園前
-- `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: no usable samples in 昼前, 昼過ぎ, 夕食前, 夕食後, 閉園前
+- `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: no usable samples in 昼前, 閉園前
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
 - `tdl_toontown_donalds_boat` — ドナルドのボート: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
 - `tdl_toontown_goofys_paint_and_play_house` — グーフィーのペイント＆プレイハウス: no usable samples in 閉園前
@@ -38,11 +38,11 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ### 2b. Low-confidence time bands (<3 samples)
 
-- `tdl_adventureland_western_river_railroad` — ウエスタンリバー鉄道: 昼前 = 1 samples
-- `tdl_fantasyland_mickeys_philharmagic` — ミッキーのフィルハーマジック: 昼前 = 2 samples
+- `tdl_adventureland_western_river_railroad` — ウエスタンリバー鉄道: 昼前 = 2 samples
 - `tdl_fantasyland_pinocchios_daring_journey` — ピノキオの冒険旅行: 閉園前 = 1 samples
-- `tdl_tomorrowland_baymax_happy_ride` — ベイマックスのハッピーライド: 閉園前 = 2 samples
+- `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 昼過ぎ = 2 samples
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: ショー前後 = 1 samples
+- `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 夕食後 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 昼過ぎ = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食後 = 1 samples
@@ -58,7 +58,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 25
-- Profile source observations: 4374
+- Profile source observations: 5048
 
 ### 1. Profile missing facilities
 
@@ -78,7 +78,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 2b. Low-confidence time bands (<3 samples)
 
 - `tds_ac_a_001` — キャラバンカルーセル: 閉園前 = 2 samples
-- `tds_ac_a_003` — シンドバッド・ストーリーブック・ヴォヤッジ: 昼前 = 2 samples
 - `tds_ac_a_004` — マジックランプシアター: 夕食前 = 1 samples
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
 
