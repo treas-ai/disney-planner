@@ -1,4 +1,11 @@
 
+## 2026-08-27 - Disney Expert Recommendation Layer
+
+- Added editable expert recommendation profiles for attractions, dining, shows and parades.
+- Connected expert value to guided AI candidate creation, opening strategy, normal scheduling, meal selection and public performance opportunities.
+- Preserved user preferences, wait-time opportunity cost, DPA/PP/Single Rider alternatives and transport entry/exit routing as separate decision signals.
+
+
 ## v7.4.8 - Wait Profile Confidence（候補）
 - 時間帯ごとのサンプル数を `WaitTimeRange.sampleCount` として永続化。
 - 近接時間帯フォールバックは3サンプル以上の時間帯だけを採用。

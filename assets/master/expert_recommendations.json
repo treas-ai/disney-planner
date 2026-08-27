@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-27",
+  "sourcePolicy": "Official TDR information defines availability/dates/service rules. Editorial expert scores are recommendation signals, never hard constraints.",
+  "profiles": [
+    {
+      "facilityId": "tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast",
+      "experienceScore": 98,
+      "uniquenessScore": 96,
+      "scarcityScore": 45,
+      "note": "TDLを代表する大型体験。待ち時間とDPAを含めて攻略価値を判断。"
+    },
+    {
+      "facilityId": "tdl_critter_country_splash_mountain",
+      "experienceScore": 92,
+      "uniquenessScore": 82,
+      "scarcityScore": 32,
+      "note": "朝の待ち時間優位が大きい日は高価値。"
+    },
+    {
+      "facilityId": "tdl_westernland_big_thunder_mountain",
+      "experienceScore": 90,
+      "uniquenessScore": 78,
+      "scarcityScore": 28,
+      "note": "混雑推移とPP代替を比較。"
+    },
+    {
+      "facilityId": "tdl_fantasyland_poohs_hunny_hunt",
+      "experienceScore": 91,
+      "uniquenessScore": 90,
+      "scarcityScore": 34,
+      "note": "東京ならではの代表的ダークライド。PP代替も考慮。"
+    },
+    {
+      "facilityId": "tdl_tomorrowland_baymax_happy_ride",
+      "experienceScore": 89,
+      "uniquenessScore": 91,
+      "scarcityScore": 38,
+      "note": "人気と独自性が高い。DPA取得価値と通常待機を比較。"
+    },
+    {
+      "facilityId": "tdl_tomorrowland_monsters_inc_ride_and_go_seek",
+      "experienceScore": 87,
+      "uniquenessScore": 91,
+      "scarcityScore": 30,
+      "note": "東京独自性が高い。PP利用可能時は通常待機の機会費用を下げる。"
+    },
+    {
+      "facilityId": "tdl_adventureland_pirates_of_the_caribbean",
+      "experienceScore": 82,
+      "uniquenessScore": 72,
+      "scarcityScore": 10,
+      "note": "高体験価値だが低待ちなら後回ししやすい。"
+    },
+    {
+      "facilityId": "tdl_adventureland_jungle_cruise",
+      "experienceScore": 74,
+      "uniquenessScore": 60,
+      "scarcityScore": 8,
+      "note": "後でも処理しやすい日は朝一枠を使わない。"
+    },
+    {
+      "facilityId": "tdl_world_bazaar_reach_for_the_stars",
+      "experienceScore": 100,
+      "uniquenessScore": 100,
+      "scarcityScore": 100,
+      "note": "2026/9/14で終了する期間限定ファイナル。",
+      "validFrom": "2026-07-02",
+      "validUntil": "2026-09-14"
+    },
+    {
+      "facilityId": "tdl_world_bazaar_electrical_parade_dreamlights",
+      "experienceScore": 95,
+      "uniquenessScore": 91,
+      "scarcityScore": 50,
+      "note": "TDLを代表する夜の体験。"
+    },
+    {
+      "facilityId": "tdl_new_fantasyland_mickeys_magical_music_world",
+      "experienceScore": 92,
+      "uniquenessScore": 94,
+      "scarcityScore": 66,
+      "note": "専用シアターの代表ショー。抽選・DPA条件を先に扱う。"
+    },
+    {
+      "facilityId": "tdl_adventureland_blue_bayou_restaurant",
+      "experienceScore": 91,
+      "uniquenessScore": 96,
+      "scarcityScore": 68,
+      "note": "カリブの海賊内の雰囲気そのものが体験価値。"
+    },
+    {
+      "facilityId": "tdl_westernland_diamond_horseshoe",
+      "experienceScore": 94,
+      "uniquenessScore": 96,
+      "scarcityScore": 82,
+      "note": "食事＋ショーの複合体験。"
+    },
+    {
+      "facilityId": "tdl_adventureland_polynesian_terrace_restaurant",
+      "experienceScore": 94,
+      "uniquenessScore": 96,
+      "scarcityScore": 82,
+      "note": "ショーレストランとして食事枠以上の価値。"
+    },
+    {
+      "facilityId": "tdl_fantasyland_queen_of_hearts_banquet_hall",
+      "experienceScore": 86,
+      "uniquenessScore": 92,
+      "scarcityScore": 28,
+      "note": "テーマ性の高い店内体験。"
+    },
+    {
+      "facilityId": "tdl_westernland_hungry_bear_restaurant",
+      "experienceScore": 78,
+      "uniquenessScore": 70,
+      "scarcityScore": 14,
+      "note": "定番フードとして高効率。長距離移動してまで固定しない。"
+    },
+    {
+      "facilityId": "tds_fs_a_001",
+      "experienceScore": 100,
+      "uniquenessScore": 100,
+      "scarcityScore": 72,
+      "note": "ファンタジースプリングスを代表する最重要体験候補。"
+    },
+    {
+      "facilityId": "tds_mh_a_003",
+      "experienceScore": 97,
+      "uniquenessScore": 95,
+      "scarcityScore": 58,
+      "note": "TDSを代表する大型体験。朝一集中とDPA代替を比較。"
+    },
+    {
+      "facilityId": "tds_mi_a_002",
+      "experienceScore": 96,
+      "uniquenessScore": 98,
+      "scarcityScore": 42,
+      "note": "TDSのテーマ性を象徴する体験。"
+    },
+    {
+      "facilityId": "tds_fs_a_003",
+      "experienceScore": 94,
+      "uniquenessScore": 97,
+      "scarcityScore": 58,
+      "note": "ファンタジースプリングス固有の大型体験。"
+    },
+    {
+      "facilityId": "tds_fs_a_002",
+      "experienceScore": 91,
+      "uniquenessScore": 97,
+      "scarcityScore": 54,
+      "note": "高いテーマ性。DPA・待ち時間・移動で時間帯を決める。"
+    },
+    {
+      "facilityId": "tds_aw_a_002",
+      "experienceScore": 91,
+      "uniquenessScore": 82,
+      "scarcityScore": 34,
+      "note": "人気スリル系。DPA代替と待ち時間推移を比較。"
+    },
+    {
+      "facilityId": "tds_aw_a_003",
+      "experienceScore": 86,
+      "uniquenessScore": 70,
+      "scarcityScore": 36,
+      "note": "人気は高いがTDS固有体験より一段下げる。"
+    },
+    {
+      "facilityId": "tds_lrd_a_001",
+      "experienceScore": 88,
+      "uniquenessScore": 83,
+      "scarcityScore": 30,
+      "note": "TDSらしい高品質体験。PPと待ち時間を考慮。"
+    },
+    {
+      "facilityId": "tds_ac_a_003",
+      "experienceScore": 86,
+      "uniquenessScore": 96,
+      "scarcityScore": 14,
+      "note": "TDSならでは度が非常に高い。低待ちなら効率の良い高価値体験。"
+    },
+    {
+      "facilityId": "tds_pd_a_002",
+      "experienceScore": 66,
+      "uniquenessScore": 66,
+      "scarcityScore": 14,
+      "note": "良質だが朝一の最重要枠を使う希少性は通常高くない。"
+    },
+    {
+      "facilityId": "tds_pd_a_003",
+      "experienceScore": 52,
+      "uniquenessScore": 70,
+      "scarcityScore": 6,
+      "note": "移動価値は高いが朝一目的地としては低め。"
+    },
+    {
+      "facilityId": "tds_aw_a_004",
+      "experienceScore": 52,
+      "uniquenessScore": 70,
+      "scarcityScore": 6,
+      "note": "移動価値は高いが朝一目的地としては低め。"
+    },
+    {
+      "facilityId": "tds_ac_a_001",
+      "experienceScore": 48,
+      "uniquenessScore": 52,
+      "scarcityScore": 4,
+      "note": "後から短時間で処理しやすい場合は朝一に置かない。"
+    },
+    {
+      "facilityId": "tds_show_believe_sea_of_dreams",
+      "experienceScore": 98,
+      "uniquenessScore": 98,
+      "scarcityScore": 78,
+      "note": "TDSを代表するナイトエンターテイメント。"
+    },
+    {
+      "facilityId": "tds_show_sparkling_jubilee_celebration",
+      "experienceScore": 94,
+      "uniquenessScore": 98,
+      "scarcityScore": 88,
+      "note": "25周年期間限定。周年日に来園する価値を代表。",
+      "validFrom": "2026-04-15",
+      "validUntil": "2027-03-31"
+    },
+    {
+      "facilityId": "tds_show_dance_the_globe",
+      "experienceScore": 95,
+      "uniquenessScore": 96,
+      "scarcityScore": 85,
+      "note": "エントリー/DPA対象。未当選を固定配置しない。"
+    },
+    {
+      "facilityId": "tds_show_dreams_take_flight",
+      "experienceScore": 94,
+      "uniquenessScore": 96,
+      "scarcityScore": 82,
+      "note": "抽選・DPA対象の高価値ショー。"
+    },
+    {
+      "facilityId": "tds_mh_r_007",
+      "experienceScore": 97,
+      "uniquenessScore": 100,
+      "scarcityScore": 82,
+      "note": "マゼランズはTDS世界観を食事で体験する代表格。"
+    },
+    {
+      "facilityId": "tds_aw_r_006",
+      "experienceScore": 91,
+      "uniquenessScore": 96,
+      "scarcityScore": 62,
+      "note": "S.S.コロンビア船内というロケーション自体が価値。"
+    },
+    {
+      "facilityId": "tds_fs_r_005",
+      "experienceScore": 95,
+      "uniquenessScore": 100,
+      "scarcityScore": 54,
+      "note": "アレンデール世界観を食事でも体験できる。"
+    },
+    {
+      "facilityId": "tds_fs_r_006",
+      "experienceScore": 91,
+      "uniquenessScore": 98,
+      "scarcityScore": 48,
+      "note": "ラプンツェル世界観の高いテーマ性。"
+    },
+    {
+      "facilityId": "tds_fs_r_007",
+      "experienceScore": 86,
+      "uniquenessScore": 94,
+      "scarcityScore": 42,
+      "note": "FS滞在中の地理効率とテーマ性を両立。"
+    },
+    {
+      "facilityId": "tds_mh_r_006",
+      "experienceScore": 72,
+      "uniquenessScore": 64,
+      "scarcityScore": 12,
+      "note": "使いやすい食事候補。高希少体験を押しのけない。"
+    },
+    {
+      "facilityId": "tds_mh_r_004",
+      "experienceScore": 74,
+      "uniquenessScore": 68,
+      "scarcityScore": 12,
+      "note": "利便性と雰囲気のバランス型。"
+    }
+  ]
+}

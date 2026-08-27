@@ -1,7 +1,9 @@
 import '../entities/day_schedule.dart';
 import '../entities/area_connection.dart';
 import '../entities/event_impact.dart';
+import '../entities/expert_recommendation_profile.dart';
 import '../entities/facility.dart';
+import '../entities/facility_location.dart';
 import '../entities/plan_preference.dart';
 import '../entities/official_performance_opportunity.dart';
 import '../entities/schedule_item.dart';
@@ -18,6 +20,7 @@ import '../enums/schedule_item_type.dart';
 import '../enums/wait_time_band.dart';
 import 'event_impact_engine.dart';
 import 'desired_exit_time_evaluator.dart';
+import 'disney_expert_recommendation_service.dart';
 import 'meal_planner.dart';
 import 'route_optimizer.dart';
 import 'time_allocator.dart';
@@ -31,6 +34,7 @@ class ScheduleEngine {
     this.eventImpactEngine = const EventImpactEngine(),
     this.desiredExitTimeEvaluator = const DesiredExitTimeEvaluator(),
     this.timeRoundingService = const TimeRoundingService(),
+    this.expertRecommendationService = const DisneyExpertRecommendationService(),
   });
 
   final TimeAllocator timeAllocator;
@@ -39,6 +43,7 @@ class ScheduleEngine {
   final EventImpactEngine eventImpactEngine;
   final DesiredExitTimeEvaluator desiredExitTimeEvaluator;
   final TimeRoundingService timeRoundingService;
+  final DisneyExpertRecommendationService expertRecommendationService;
 
   static const int _movementDurationMinutes = 15;
   static const int _sameAreaMovementMinutes = 5;
@@ -54,9 +59,18 @@ class ScheduleEngine {
     Map<String, double> morningScores = const {},
     List<OfficialPerformanceOpportunity> officialPerformanceOpportunities = const [],
     List<AreaConnection> areaConnections = const [],
+    List<FacilityLocation> facilityLocations = const [],
+    List<ExpertRecommendationProfile> expertProfiles = const [],
   }) {
     final items = <ScheduleItem>[];
     final visitDate = settings.visitDate ?? DateTime.now();
+    final facilityLocationById = <String, FacilityLocation>{
+      for (final location in facilityLocations) location.facilityId: location,
+    };
+    final expertProfileById = <String, ExpertRecommendationProfile>{
+      for (final profile in expertProfiles)
+        if (profile.appliesOn(visitDate)) profile.facilityId: profile,
+    };
 
     final operationalFacilities = facilities.where((facility) {
       if (!facility.canAddToPlanAt(visitDate)) {
@@ -131,6 +145,8 @@ class ScheduleEngine {
       settings: settings,
       facilities: operationalFacilities,
       preferences: preferences,
+      expertProfiles: expertProfiles,
+      targetDate: visitDate,
     );
 
     for (final assignment in mealPlan.assignments) {
@@ -225,6 +241,9 @@ class ScheduleEngine {
         settings: settings,
         morningScores: morningScores,
         areaConnections: areaConnections,
+        facilityLocationById: facilityLocationById,
+        expertProfiles: expertProfiles,
+        targetDate: visitDate,
       );
       final facility = nextDecision.facility;
       remainingFacilities.remove(facility);
@@ -255,9 +274,11 @@ class ScheduleEngine {
         allocation.startMinute,
       );
 
+      final facilityEntryAreaId =
+          facilityLocationById[facility.id]?.areaId ?? facility.areaId;
       final movementMinutes = _calculateMovementMinutes(
         previousAreaId: previousAreaId,
-        currentAreaId: facility.areaId,
+        currentAreaId: facilityEntryAreaId,
         atMinutes: currentMinutes,
         eventImpacts: eventImpacts,
         areaConnections: areaConnections,
@@ -379,7 +400,7 @@ class ScheduleEngine {
             facility: facility,
             preference: preference,
             previousAreaId: previousAreaId,
-            currentAreaId: facility.areaId,
+            currentAreaId: facilityEntryAreaId,
             durationMinutes: finalDurationMinutes,
             scheduledStartMinutes: finalStartMinutes,
             waitDecision: waitDecision,
@@ -400,7 +421,9 @@ class ScheduleEngine {
       );
 
       currentMinutes = endMinutes;
-      previousAreaId = facility.areaId;
+      previousAreaId =
+          facilityLocationById[facility.id]?.effectiveExitAreaId ??
+          facility.areaId;
     }
 
     // Make long unused periods explicit instead of silently leaving multi-hour
@@ -412,6 +435,7 @@ class ScheduleEngine {
       entryMinutes: entryEndMinutes,
       exitMinutes: exitMinutes,
       officialPerformanceOpportunities: officialPerformanceOpportunities,
+      expertProfileById: expertProfileById,
     );
 
     // Desired exit time is a soft constraint only for candidates that have
@@ -761,6 +785,7 @@ class ScheduleEngine {
     required int entryMinutes,
     required int exitMinutes,
     required List<OfficialPerformanceOpportunity> officialPerformanceOpportunities,
+    required Map<String, ExpertRecommendationProfile> expertProfileById,
   }) {
     const minimumGapMinutes = 60;
     const publicPerformanceArrivalBufferMinutes = 20;
@@ -802,6 +827,10 @@ class ScheduleEngine {
           .toList(growable: false)
         ..sort((a, b) {
           if (a.isSelected != b.isSelected) return a.isSelected ? -1 : 1;
+          final aExpert = expertProfileById[a.facilityId]?.experienceScore ?? 50;
+          final bExpert = expertProfileById[b.facilityId]?.experienceScore ?? 50;
+          final expertCompare = bExpert.compareTo(aExpert);
+          if (expertCompare != 0) return expertCompare;
           return a.startMinutes.compareTo(b.startMinutes);
         });
 
@@ -811,8 +840,13 @@ class ScheduleEngine {
       // from consuming the valuable rope-drop window. Entry-Request shows are
       // never treated as won before the result is known.
       final schedulable = candidates.where((option) {
+        final expert = expertProfileById[option.facilityId];
+        final isHighExpertValue = expert != null &&
+            (expert.experienceScore >= 85 || expert.scarcityScore >= 70);
         return option.isSelected ||
-            (!option.requiresEntryRequest && option.startMinutes >= 17 * 60);
+            (!option.requiresEntryRequest &&
+                (option.startMinutes >= 17 * 60 ||
+                    (isHighExpertValue && option.startMinutes >= 11 * 60)));
       }).toList(growable: false);
 
       var gapCursor = gap.start;
@@ -834,6 +868,11 @@ class ScheduleEngine {
             0,
             exitMinutes - option.startMinutes,
           ).clamp(0, performanceDuration.toInt()).toDouble();
+          // Expert Recommendation can decide whether a performance is worth
+          // considering, but it must not manufacture extra value solely to
+          // justify exceeding the user's desired exit time. Overtime remains
+          // governed by the generic soft-constraint model: actual performance
+          // duration, value available before exit, and explicit user intent.
           exitEvaluation = desiredExitTimeEvaluator.evaluate(
             desiredExitMinutes: exitMinutes,
             candidateEndMinutes: option.endMinutes,
@@ -864,6 +903,12 @@ class ScheduleEngine {
                 '予定価値${exitEvaluation.totalValueMinutes.toStringAsFixed(0)}分相当と'
                 '超過コスト${exitEvaluation.totalCostMinutes.toStringAsFixed(0)}分相当を比較し、'
                 '組み込む価値が上回ると判断しました。';
+        final expertProfile = expertProfileById[option.facilityId];
+        final expertReason = expertProfile == null
+            ? ''
+            : ' Disney通おすすめでは体験価値${expertProfile.experienceScore}/100、'
+                '独自性${expertProfile.uniquenessScore}/100、'
+                '希少性${expertProfile.scarcityScore}/100として評価しています。';
 
         items.add(
           _createScheduleItem(
@@ -876,7 +921,7 @@ class ScheduleEngine {
             reason: option.isSelected
                 ? '希望している公式公演の実施時刻に合わせて固定予定として配置しました。$exitReason'
                 : '長い空き時間と公式公演時刻を照合し、エントリー受付の当選を仮定せず通常鑑賞できる公演を予定へ組み込みました。'
-                    '公演開始${option.startLabel}に間に合うよう、鑑賞場所への移動・準備時間を含めています。$exitReason',
+                    '公演開始${option.startLabel}に間に合うよう、鑑賞場所への移動・準備時間を含めています。$expertReason$exitReason',
             note: option.requiresEntryRequest
                 ? 'エントリー受付対象です。未当選の公演を自動配置することはありません。'
                 : option.supportsDpa
@@ -1409,6 +1454,9 @@ class ScheduleEngine {
     required TripSettings settings,
     required Map<String, double> morningScores,
     required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<ExpertRecommendationProfile> expertProfiles,
+    required DateTime targetDate,
   }) {
     if (remainingFacilities.length == 1) {
       return _NextFacilityDecision(facility: remainingFacilities.single);
@@ -1425,6 +1473,9 @@ class ScheduleEngine {
         settings: settings,
         morningScores: morningScores,
         areaConnections: areaConnections,
+        facilityLocationById: facilityLocationById,
+        expertProfiles: expertProfiles,
+        targetDate: targetDate,
       );
       if (openingDecision != null) {
         return _NextFacilityDecision(
@@ -1452,7 +1503,7 @@ class ScheduleEngine {
       );
       final movementMinutes = _calculateMovementMinutes(
         previousAreaId: previousAreaId,
-        currentAreaId: facility.areaId,
+        currentAreaId: facilityLocationById[facility.id]?.areaId ?? facility.areaId,
         atMinutes: currentMinutes,
         eventImpacts: eventImpacts,
         areaConnections: areaConnections,
@@ -1483,6 +1534,13 @@ class ScheduleEngine {
         scheduledStartMinutes: candidateStart,
       );
       final experienceMinutes = _resolveFacilityDuration(facility);
+      final expert = expertRecommendationService.evaluate(
+        facility: facility,
+        targetDate: targetDate,
+        profiles: expertProfiles,
+        preference: preference,
+        waitProfiles: waitProfiles,
+      );
       final startDelay = _maximum(0, candidateStart - currentMinutes - movementMinutes);
       final opportunityCost = timing == null
           ? 0.0
@@ -1495,6 +1553,7 @@ class ScheduleEngine {
 
       var score = -totalTimeCost;
       score += preferenceValue * 2.0;
+      score += expert.score * 0.16;
       score -= (routeIndex < 0 ? routeOrder.length : routeIndex) * 0.5;
 
       final openingScore = morningScores[facility.id];
@@ -1511,6 +1570,8 @@ class ScheduleEngine {
           facility: facility,
           score: score,
           timing: timing,
+          expertScore: expert.score,
+          expertReason: expert.reason,
         ),
       );
     }
@@ -1538,6 +1599,11 @@ class ScheduleEngine {
           '後の時間帯に約${-timing.delayPenaltyMinutes}分短い実績がありますが、'
           '優先度・移動・希望時間を合わせて現在の配置を選びました。';
     }
+    if (best.expertScore >= 75) {
+      final expertText =
+          'Disney通おすすめ評価${best.expertScore.toStringAsFixed(1)}点（${best.expertReason}）を加味しました。';
+      reason = reason == null ? expertText : '$reason $expertText';
+    }
 
     return _NextFacilityDecision(
       facility: best.facility,
@@ -1555,6 +1621,9 @@ class ScheduleEngine {
     required TripSettings settings,
     required Map<String, double> morningScores,
     required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<ExpertRecommendationProfile> expertProfiles,
+    required DateTime targetDate,
   }) {
     final attractionCandidates = remainingFacilities.where((facility) {
       if (facility.category != FacilityCategory.attraction) return false;
@@ -1581,6 +1650,9 @@ class ScheduleEngine {
         settings: settings,
         morningScores: morningScores,
         areaConnections: areaConnections,
+        facilityLocationById: facilityLocationById,
+        expertProfiles: expertProfiles,
+        targetDate: targetDate,
       );
       if (best == null || sequence.score > best.score) {
         best = sequence;
@@ -1594,6 +1666,17 @@ class ScheduleEngine {
     final alternative = detail.alternativeAccessPenalty > 0
         ? ' DPA/PP/シングルライダー等で後から短縮できる可能性を'
             '${detail.alternativeAccessPenalty.round()}分相当減点しました。'
+        : '';
+    final difficulty = detail.dayDifficultyMinutes > 0
+        ? ' 一日を通した通常待機難易度は最大約'
+            '${detail.dayDifficultyMinutes}分として評価しました。'
+        : '';
+    final transport = detail.transportPenalty > 0
+        ? ' 移動型施設のため朝一枠の占有を'
+            '${detail.transportPenalty.round()}分相当減点しました。'
+        : '';
+    final expertReason = detail.expertScore >= 60
+        ? ' Disney通おすすめ評価${detail.expertScore.toStringAsFixed(1)}点（${detail.expertReason}）を加味しました。'
         : '';
     final deferReason = detail.deferLossMinutes >= 15
         ? ' この時間帯を逃すと、近い後続時間帯より待ち時間が約${detail.deferLossMinutes}分増える見込みです。'
@@ -1609,8 +1692,11 @@ class ScheduleEngine {
           '後回し損失${detail.deferLossMinutes >= 0 ? '+' : ''}${detail.deferLossMinutes}分、'
           '移動${detail.movementMinutes}分として評価しました。'
           '$deferReason'
+          '$difficulty'
           '$alternative'
-          '朝の短時間だけ得な施設を優先し、開園直後だけ混雑する施設は後回しできるよう判断しています。',
+          '$transport'
+          '$expertReason'
+          '朝は単なる短待ち施設ではなく、一日を通して攻略困難で後回し損失が大きい施設を優先しています。',
     );
   }
 
@@ -1625,6 +1711,9 @@ class ScheduleEngine {
     required TripSettings settings,
     required Map<String, double> morningScores,
     required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<ExpertRecommendationProfile> expertProfiles,
+    required DateTime targetDate,
   }) {
     const maxDepth = 3;
     const discounts = <double>[1.0, 0.65, 0.4];
@@ -1653,6 +1742,9 @@ class ScheduleEngine {
           settings: settings,
           morningScores: morningScores,
           areaConnections: areaConnections,
+          facilityLocationById: facilityLocationById,
+          expertProfiles: expertProfiles,
+          targetDate: targetDate,
         );
         if (evaluation.score > chosenScore) {
           chosen = facility;
@@ -1669,7 +1761,9 @@ class ScheduleEngine {
       current += chosenEvaluation.movementMinutes +
           chosenEvaluation.waitMinutes +
           _resolveFacilityDuration(chosen);
-      areaId = chosen.areaId;
+      areaId =
+          facilityLocationById[chosen.id]?.effectiveExitAreaId ??
+          chosen.areaId;
       forced = null;
 
       // Opening optimization is only meaningful while the simulated route is
@@ -1695,6 +1789,9 @@ class ScheduleEngine {
     required TripSettings settings,
     required Map<String, double> morningScores,
     required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<ExpertRecommendationProfile> expertProfiles,
+    required DateTime targetDate,
   }) {
     final preference = _findPreference(
       facilityId: facility.id,
@@ -1702,7 +1799,7 @@ class ScheduleEngine {
     );
     final movementMinutes = _calculateMovementMinutes(
       previousAreaId: previousAreaId,
-      currentAreaId: facility.areaId,
+      currentAreaId: facilityLocationById[facility.id]?.areaId ?? facility.areaId,
       atMinutes: currentMinutes,
       eventImpacts: eventImpacts,
       areaConnections: areaConnections,
@@ -1728,6 +1825,22 @@ class ScheduleEngine {
       preference: preference,
       settings: settings,
     );
+    final dayDifficultyMinutes = _openingDayDifficultyMinutes(
+      facility: facility,
+      waitProfiles: waitProfiles,
+    );
+    final transportPenalty = _openingTransportPenalty(
+      facility: facility,
+      preference: preference,
+      location: facilityLocationById[facility.id],
+    );
+    final expert = expertRecommendationService.evaluate(
+      facility: facility,
+      targetDate: targetDate,
+      profiles: expertProfiles,
+      preference: preference,
+      waitProfiles: waitProfiles,
+    );
 
     // Opening is intentionally opportunity-cost dominant. A ride that is only
     // 5 minutes shorter now should not beat a ride that will become 40-60
@@ -1736,11 +1849,14 @@ class ScheduleEngine {
     var score = 0.0;
     score += deferLoss * 2.2;
     score += priority * 8.0;
+    score += expert.score * 0.45;
+    score += dayDifficultyMinutes * 0.35;
     score += morningSignal.clamp(-60.0, 120.0).toDouble() * 0.35;
     score -= waitEstimate.waitMinutes * 0.8;
     score -= movementMinutes * 1.25;
     score -= _resolveFacilityDuration(facility) * 0.15;
     score -= alternativeAccessPenalty;
+    score -= transportPenalty;
 
     if (preference?.preferredTime == PreferredTime.morning) score += 18;
     if (facility.isSeasonal) score += 8;
@@ -1751,7 +1867,48 @@ class ScheduleEngine {
       movementMinutes: movementMinutes,
       deferLossMinutes: deferLoss,
       alternativeAccessPenalty: alternativeAccessPenalty,
+      dayDifficultyMinutes: dayDifficultyMinutes,
+      transportPenalty: transportPenalty,
+      expertScore: expert.score,
+      expertReason: expert.reason,
     );
+  }
+
+  int _openingDayDifficultyMinutes({
+    required Facility facility,
+    required List<TimeBandWaitProfile> waitProfiles,
+  }) {
+    TimeBandWaitProfile? profile;
+    for (final item in waitProfiles) {
+      if (item.facilityId == facility.id && item.parkId == facility.parkId) {
+        profile = item;
+        break;
+      }
+    }
+    if (profile == null) return 0;
+
+    var maximum = 0;
+    for (final range in profile.ranges.values) {
+      if (!_isReliableTimingRange(range)) continue;
+      if (range.typicalMinutes > maximum) {
+        maximum = range.typicalMinutes;
+      }
+    }
+    return maximum;
+  }
+
+  double _openingTransportPenalty({
+    required Facility facility,
+    required PlanPreference? preference,
+    required FacilityLocation? location,
+  }) {
+    if (facility.rideType?.trim().toLowerCase() != 'transportation') {
+      return 0;
+    }
+    if (preference?.preferredTime == PreferredTime.morning) return 0;
+    if ((preference?.priority.value ?? facility.priority.value) >= 4) return 0;
+
+    return (location?.hasAmbiguousExit ?? false) ? 28.0 : 16.0;
   }
 
   double _openingAlternativeAccessPenalty({
@@ -2793,6 +2950,10 @@ class _OpeningStepEvaluation {
     required this.movementMinutes,
     required this.deferLossMinutes,
     required this.alternativeAccessPenalty,
+    required this.dayDifficultyMinutes,
+    required this.transportPenalty,
+    required this.expertScore,
+    required this.expertReason,
   });
 
   const _OpeningStepEvaluation.empty()
@@ -2800,13 +2961,21 @@ class _OpeningStepEvaluation {
         waitMinutes = 0,
         movementMinutes = 0,
         deferLossMinutes = 0,
-        alternativeAccessPenalty = 0;
+        alternativeAccessPenalty = 0,
+        dayDifficultyMinutes = 0,
+        transportPenalty = 0,
+        expertScore = 0,
+        expertReason = '';
 
   final double score;
   final int waitMinutes;
   final int movementMinutes;
   final int deferLossMinutes;
   final double alternativeAccessPenalty;
+  final int dayDifficultyMinutes;
+  final double transportPenalty;
+  final double expertScore;
+  final String expertReason;
 }
 
 class _NextFacilityDecision {
@@ -2824,11 +2993,15 @@ class _WaitAwareCandidate {
     required this.facility,
     required this.score,
     required this.timing,
+    required this.expertScore,
+    required this.expertReason,
   });
 
   final Facility facility;
   final double score;
   final _WaitTimingOpportunity? timing;
+  final double expertScore;
+  final String expertReason;
 }
 
 class _WaitTimingOpportunity {

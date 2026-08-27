@@ -1,7 +1,9 @@
+import '../entities/expert_recommendation_profile.dart';
 import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
 import '../entities/time_band_wait_profile.dart';
 import '../enums/wait_time_band.dart';
+import 'disney_expert_recommendation_service.dart';
 import 'dynamic_wait_scoring_service.dart';
 import 'opening_crowd_behavior_evaluator.dart';
 
@@ -28,10 +30,12 @@ class WishCandidateScoringEngine {
   const WishCandidateScoringEngine({
     this.dynamicWaitScoringService = const DynamicWaitScoringService(),
     this.openingCrowdBehaviorEvaluator = const OpeningCrowdBehaviorEvaluator(),
+    this.expertRecommendationService = const DisneyExpertRecommendationService(),
   });
 
   final DynamicWaitScoringService dynamicWaitScoringService;
   final OpeningCrowdBehaviorEvaluator openingCrowdBehaviorEvaluator;
+  final DisneyExpertRecommendationService expertRecommendationService;
 
   List<WishCandidateScore> score({
     required List<Facility> facilities,
@@ -41,6 +45,7 @@ class WishCandidateScoringEngine {
     WaitTimeBand targetBand = WaitTimeBand.afterLunch,
     DateTime? targetDate,
     bool hasHappyEntry = false,
+    List<ExpertRecommendationProfile> expertProfiles = const [],
   }) {
     final preferenceById = {for (final item in preferences) item.facilityId: item};
     final profileById = {for (final item in waitProfiles) item.facilityId: item};
@@ -61,7 +66,15 @@ class WishCandidateScoringEngine {
       final waitScore = dynamicWaitScoringService.evaluate(facilityId: facility.id, profiles: waitProfiles, facilityCurrentWaitMinutes: facility.waitTime?.minutes, fallbackMinutes: predictedWait);
       final priority = preference?.priority.value ?? facility.priority.value;
       final totalMinutes = facility.durationMinutes + predictedWait;
+      final expert = expertRecommendationService.evaluate(
+        facility: facility,
+        targetDate: date,
+        profiles: expertProfiles,
+        preference: preference,
+        waitProfiles: waitProfiles,
+      );
       var value = priority * 30.0;
+      value += expert.score * 0.40;
       value -= predictedWait * 0.65;
       value -= facility.durationMinutes * 0.15;
       if (facility.supportsDpa && predictedWait >= 60) value += 12;
@@ -83,6 +96,7 @@ class WishCandidateScoringEngine {
       );
 
       var firstMove = waitScore.savingMinutes.toDouble();
+      firstMove += expert.score * 0.30;
       firstMove += openingCrowd.weightedValueMinutes;
       firstMove += baseExperienceValue;
       if (facility.isSeasonal) firstMove += 12;
@@ -98,6 +112,8 @@ class WishCandidateScoringEngine {
         '信頼度${waitScore.confidence.name}',
         openingCrowd.reason,
         '施設基礎価値${baseExperienceValue.round()}点',
+        'Disney通おすすめ評価 ${expert.score.toStringAsFixed(1)}点',
+        expert.reason,
         if (facility.isSeasonal) '期間限定施設 +12',
         if (hasHappyEntry && waitScore.savingMinutes > 0)
           'ハッピーエントリー効果を考慮',
@@ -116,6 +132,8 @@ class WishCandidateScoringEngine {
           '優先度$priority/5',
           '予測待ち時間$predictedWait分',
           if (facility.supportsDpa) 'DPA対象',
+          'Disney通おすすめ評価 ${expert.score.toStringAsFixed(1)}点',
+          expert.reason,
         ],
         firstMoveScore: firstMove,
         firstMoveReasons: List.unmodifiable(firstReasons),

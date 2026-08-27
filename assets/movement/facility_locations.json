@@ -1,6 +1,61 @@
 {
-  "schemaVersion": 1,
-  "updatedAt": "",
-  "sourceNote": "公式マップ画像は使用しません。確認済みの独自相対位置データのみ登録してください。",
-  "locations": []
+  "schemaVersion": 3,
+  "updatedAt": "2026-08-27",
+  "sourceNote": "entry=areaId, deterministic exit=exitAreaId. possibleExitAreaIds は時間帯等で行先が変わる移動型施設用。複数候補でexitAreaId未設定の場合、Plannerは到着地を推測せず乗車エリアに留まる扱いとする。",
+  "locations": [
+    {
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_pd_a_003",
+      "areaId": "tds_port_discovery",
+      "exitAreaId": "tds_american_waterfront",
+      "x": 0.0,
+      "y": 0.0,
+      "source": "TDR official /tds/attraction/detail/231/"
+    },
+    {
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_aw_a_004",
+      "areaId": "tds_american_waterfront",
+      "exitAreaId": "tds_port_discovery",
+      "x": 0.0,
+      "y": 0.0,
+      "source": "TDR official /tds/attraction/detail/232/"
+    },
+    {
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_mh_a_004",
+      "areaId": "tds_mediterranean_harbor",
+      "possibleExitAreaIds": [
+        "tds_lost_river_delta",
+        "tds_mediterranean_harbor"
+      ],
+      "x": 0.0,
+      "y": 0.0,
+      "source": "TDR official blog: one-way to Lost River Delta or round trip; route varies"
+    },
+    {
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_aw_a_006",
+      "areaId": "tds_american_waterfront",
+      "possibleExitAreaIds": [
+        "tds_lost_river_delta",
+        "tds_american_waterfront"
+      ],
+      "x": 0.0,
+      "y": 0.0,
+      "source": "TDR official blog: one-way to Lost River Delta or round trip; route varies"
+    },
+    {
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_lrd_a_003",
+      "areaId": "tds_lost_river_delta",
+      "possibleExitAreaIds": [
+        "tds_mediterranean_harbor",
+        "tds_american_waterfront"
+      ],
+      "x": 0.0,
+      "y": 0.0,
+      "source": "TDR official blog: destination varies between Mediterranean Harbor and American Waterfront"
+    }
+  ]
 }

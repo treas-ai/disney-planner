@@ -258,6 +258,8 @@ class ScheduleController extends ChangeNotifier {
 
       final waitProfiles = await const CrowdFactorRepositoryImpl()
           .loadWaitProfiles(parkId: selectedParkId);
+      final expertProfiles = await ServiceLocator.expertRecommendationRepository
+          .loadProfiles(parkId: selectedParkId);
       final availableMinutes =
           (settings.exitTimeHour * 60 + settings.exitTimeMinute) -
           (settings.entryTimeHour * 60 + settings.entryTimeMinute);
@@ -268,6 +270,7 @@ class ScheduleController extends ChangeNotifier {
         availableMinutes: availableMinutes,
         targetDate: targetDate,
         hasHappyEntry: settings.hasHappyEntry,
+        expertProfiles: expertProfiles,
       );
 
       var generatedPreferences = preferences;
@@ -322,6 +325,8 @@ class ScheduleController extends ChangeNotifier {
 
       final areaConnections = await ServiceLocator.movementRepository
           .loadAreaConnections(parkId: selectedParkId);
+      final facilityLocations = await ServiceLocator.movementRepository
+          .loadFacilityLocations(parkId: selectedParkId);
 
       final generatedSchedule = _scheduleEngine.generate(
         settings: _appState.tripSettings,
@@ -337,6 +342,8 @@ class ScheduleController extends ChangeNotifier {
         officialPerformanceOpportunities:
             officialPerformanceOpportunities,
         areaConnections: areaConnections,
+        facilityLocations: facilityLocations,
+        expertProfiles: expertProfiles,
       );
 
       _appState.updateDaySchedule(generatedSchedule);

@@ -130,3 +130,9 @@ flutter test: All tests passed
 このデータ駆動型プラン生成方針を設計凍結します。
 
 実装中に別案が出ても、その場で基本方針を変更せずバックログへ記録し、次の設計改訂時に評価します。
+
+
+## Disney Expert Recommendation Layer
+
+AIプランは待ち時間だけでなく、体験価値・パーク固有性・希少性・後回し損失・代替サービス・移動を統合して評価します。
+編集可能な推薦シードは `assets/master/expert_recommendations.json`、設計方針は `docs/current/DISNEY_EXPERT_RECOMMENDATION_LAYER.md` を参照してください。

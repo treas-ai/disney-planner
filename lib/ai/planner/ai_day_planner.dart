@@ -2,6 +2,7 @@ import 'package:disney_planner/domain/entities/ai_plan_result.dart';
 import 'package:disney_planner/domain/entities/day_schedule.dart';
 import 'package:disney_planner/domain/entities/dpa_strategy.dart';
 import 'package:disney_planner/domain/entities/event_impact.dart';
+import 'package:disney_planner/domain/entities/expert_recommendation_profile.dart';
 import 'package:disney_planner/domain/entities/facility.dart';
 import 'package:disney_planner/domain/entities/plan_preference.dart';
 import 'package:disney_planner/domain/entities/time_band_wait_profile.dart';
@@ -31,6 +32,7 @@ class AiDayPlanner {
     required DpaStrategy dpaStrategy,
     List<EventImpact> eventImpacts = const [],
     WaitTimeBand targetBand = WaitTimeBand.afterLunch,
+    List<ExpertRecommendationProfile> expertProfiles = const [],
   }) {
     final availableMinutes = _availableMinutes(settings);
     final targetDate = settings.visitDate ?? DateTime.now();
@@ -47,6 +49,7 @@ class AiDayPlanner {
       targetBand: targetBand,
       targetDate: targetDate,
       hasHappyEntry: settings.hasHappyEntry,
+      expertProfiles: expertProfiles,
     );
     final realistic = scoringEngine.selectRealisticCount(
       scored: ranked,
@@ -90,6 +93,7 @@ class AiDayPlanner {
                 candidate.facility.id: candidate.firstMoveScore ?? candidate.score,
             },
             maxUses: attractionDpaMaxUses,
+            expertProfiles: expertProfiles,
           )
         : _applyDpaSelection(preferences, const <String>{});
 
@@ -108,6 +112,7 @@ class AiDayPlanner {
         for (final candidate in ranked)
           candidate.facility.id: candidate.firstMoveScore ?? candidate.score,
       },
+      expertProfiles: expertProfiles,
     );
 
     return AiPlanResult(
@@ -129,6 +134,7 @@ class AiDayPlanner {
     required List<EventImpact> eventImpacts,
     required Map<String, double> morningScores,
     required int maxUses,
+    required List<ExpertRecommendationProfile> expertProfiles,
   }) {
     final eligibleIds = candidates
         .where((item) => item.facility.supportsDpa && item.facility.category.name == 'attraction')
@@ -145,10 +151,13 @@ class AiDayPlanner {
         eventImpacts: eventImpacts,
         waitProfiles: waitProfiles,
         morningScores: morningScores,
+        expertProfiles: expertProfiles,
       ),
       facilities: facilities,
       preferences: bestPreferences,
       dpaUses: 0,
+      targetDate: settings.visitDate ?? DateTime.now(),
+      expertProfiles: expertProfiles,
     );
 
     for (var use = 0; use < maxUses; use++) {
@@ -167,12 +176,15 @@ class AiDayPlanner {
           eventImpacts: eventImpacts,
           waitProfiles: waitProfiles,
           morningScores: morningScores,
+          expertProfiles: expertProfiles,
         );
         final trialScore = _scoreWholeDay(
           schedule: trialSchedule,
           facilities: facilities,
           preferences: trialPreferences,
           dpaUses: trialIds.length,
+          targetDate: settings.visitDate ?? DateTime.now(),
+          expertProfiles: expertProfiles,
         );
         if (trialScore > bestNextScore) {
           bestNextScore = trialScore;
@@ -213,12 +225,15 @@ class AiDayPlanner {
     required List<Facility> facilities,
     required List<PlanPreference> preferences,
     required int dpaUses,
+    required DateTime targetDate,
+    required List<ExpertRecommendationProfile> expertProfiles,
   }) {
     final facilityById = {for (final facility in facilities) facility.id: facility};
     final preferenceById = {for (final preference in preferences) preference.facilityId: preference};
     final scheduledIds = <String>{};
     var waitMinutes = 0;
     var preferenceValue = 0.0;
+    var expertValue = 0.0;
 
     for (final item in schedule.items) {
       final id = item.facilityId;
@@ -228,6 +243,12 @@ class AiDayPlanner {
       final preference = preferenceById[id];
       if (facility != null && preference != null) {
         preferenceValue += preference.priority.value * 80.0;
+        expertValue += scoringEngine.expertRecommendationService.evaluate(
+          facility: facility,
+          targetDate: targetDate,
+          profiles: expertProfiles,
+          preference: preference,
+        ).score * 3.0;
       }
     }
 
@@ -235,7 +256,8 @@ class AiDayPlanner {
     // minutes from one queue. Queue reduction then breaks ties. A small DPA
     // cost prevents "maximum N" from becoming "always use N".
     return scheduledIds.length * 600.0 +
-        preferenceValue -
+        preferenceValue +
+        expertValue -
         waitMinutes * 2.0 -
         dpaUses * 25.0;
   }

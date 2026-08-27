@@ -1,5 +1,6 @@
 import 'package:disney_planner/domain/entities/day_schedule.dart';
 import 'package:disney_planner/domain/entities/facility.dart';
+import 'package:disney_planner/domain/entities/facility_location.dart';
 import 'package:disney_planner/domain/entities/plan_preference.dart';
 import 'package:disney_planner/domain/entities/time_band_wait_profile.dart';
 import 'package:disney_planner/domain/entities/trip_settings.dart';
@@ -13,13 +14,15 @@ import 'package:flutter_test/flutter_test.dart';
 Facility _facility(
   String id, {
   String areaId = 'area_a',
+  String parkId = 'tokyo_disneyland',
   bool supportsPriorityPass = false,
   bool supportsDpa = false,
   bool supportsSingleRider = false,
+  String? rideType,
 }) {
   return Facility(
     id: id,
-    parkId: 'tokyo_disneyland',
+    parkId: parkId,
     areaId: areaId,
     name: id,
     category: FacilityCategory.attraction,
@@ -28,6 +31,7 @@ Facility _facility(
     supportsPriorityPass: supportsPriorityPass,
     supportsDpa: supportsDpa,
     supportsSingleRider: supportsSingleRider,
+    rideType: rideType,
   );
 }
 
@@ -173,4 +177,88 @@ void main() {
     expect(_plannedIds(withoutPass).first, passAlternative.id);
     expect(_plannedIds(withPass).first, standbyOnly.id);
   });
+
+  test('opening strategy favors all-day difficult attraction over short-wait transport', () {
+    final transport = _facility(
+      'transport',
+      areaId: 'area_a',
+      rideType: 'transportation',
+    );
+    final strategic = _facility(
+      'strategic',
+      areaId: 'area_a',
+    );
+    final filler = _facility('filler', areaId: 'area_a');
+
+    final schedule = const ScheduleEngine().generate(
+      settings: _settings(),
+      facilities: [transport, strategic, filler],
+      preferences: [
+        PlanPreference.initial(facilityId: transport.id),
+        PlanPreference.initial(facilityId: strategic.id),
+        PlanPreference.initial(facilityId: filler.id),
+      ],
+      waitProfiles: [
+        _profile(transport, opening: 5, beforeLunch: 20, afterLunch: 25),
+        _profile(strategic, opening: 30, beforeLunch: 80, afterLunch: 100),
+        _profile(filler, opening: 10, beforeLunch: 15, afterLunch: 20),
+      ],
+    );
+
+    expect(_plannedIds(schedule).first, strategic.id);
+    final firstItem = schedule.items.firstWhere(
+      (item) => item.facilityId == strategic.id,
+    );
+    expect(firstItem.reason, contains('通常待機難易度'));
+  });
+
+  test('ambiguous transport destination is penalized more strongly at opening', () {
+    final ambiguousTransport = _facility(
+      'ambiguous_transport',
+      areaId: 'area_a',
+      rideType: 'transportation',
+    );
+    final fixedTransport = _facility(
+      'fixed_transport',
+      areaId: 'area_a',
+      rideType: 'transportation',
+    );
+    final stable = _facility('stable', areaId: 'area_a');
+
+    final schedule = const ScheduleEngine().generate(
+      settings: _settings(),
+      facilities: [ambiguousTransport, fixedTransport, stable],
+      preferences: [
+        PlanPreference.initial(facilityId: ambiguousTransport.id),
+        PlanPreference.initial(facilityId: fixedTransport.id),
+        PlanPreference.initial(facilityId: stable.id),
+      ],
+      waitProfiles: [
+        _profile(ambiguousTransport, opening: 5, beforeLunch: 35, afterLunch: 35),
+        _profile(fixedTransport, opening: 5, beforeLunch: 35, afterLunch: 35),
+        _profile(stable, opening: 15, beforeLunch: 25, afterLunch: 25),
+      ],
+      facilityLocations: const [
+        FacilityLocation(
+          parkId: 'tokyo_disneyland',
+          facilityId: 'ambiguous_transport',
+          areaId: 'area_a',
+          possibleExitAreaIds: ['area_b', 'area_c'],
+          x: 0,
+          y: 0,
+        ),
+        FacilityLocation(
+          parkId: 'tokyo_disneyland',
+          facilityId: 'fixed_transport',
+          areaId: 'area_a',
+          exitAreaId: 'area_b',
+          x: 0,
+          y: 0,
+        ),
+      ],
+    );
+
+    expect(_plannedIds(schedule).first, isNot(ambiguousTransport.id));
+  });
+
 }

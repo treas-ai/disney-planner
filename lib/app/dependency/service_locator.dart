@@ -9,6 +9,7 @@ import '../../data/datasources/sqlite/sqlite_park_data_source.dart';
 import '../../data/repositories/facility_repository_impl.dart';
 import '../../data/repositories/park_repository_impl.dart';
 import '../../data/local/local_event_impact_repository.dart';
+import '../../data/local/local_expert_recommendation_repository.dart';
 import '../../data/local/local_history_repository.dart';
 import '../../data/local/live_data_source_preferences.dart';
 import '../../data/local/manual_wait_time_store.dart';
@@ -19,6 +20,7 @@ import '../../data/providers/official_live_data_provider.dart';
 import '../../data/repositories/live_operation_repository_impl.dart';
 import '../../data/local/local_movement_repository.dart';
 import '../../domain/repositories/event_impact_repository.dart';
+import '../../domain/repositories/expert_recommendation_repository.dart';
 import '../../domain/repositories/facility_repository.dart';
 import '../../domain/repositories/park_repository.dart';
 import '../../domain/repositories/history_repository.dart';
@@ -51,6 +53,9 @@ class ServiceLocator {
   static const EventImpactRepository _eventImpactRepository =
       LocalEventImpactRepository();
 
+  static const ExpertRecommendationRepository _expertRecommendationRepository =
+      LocalExpertRecommendationRepository();
+
   static const HistoryRepository _historyRepository = LocalHistoryRepository();
 
   static const LearningEngine _learningEngine = BasicLearningEngine();
@@ -79,6 +84,10 @@ class ServiceLocator {
 
   static EventImpactRepository get eventImpactRepository {
     return _eventImpactRepository;
+  }
+
+  static ExpertRecommendationRepository get expertRecommendationRepository {
+    return _expertRecommendationRepository;
   }
 
   static HistoryRepository get historyRepository {

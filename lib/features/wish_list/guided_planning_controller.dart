@@ -4,7 +4,9 @@ import '../../app/state/app_state.dart';
 import '../../app/dependency/service_locator.dart';
 import '../../data/repositories/crowd_factor_repository_impl.dart';
 import '../../domain/entities/facility.dart';
+import '../../domain/entities/plan_preference.dart';
 import '../../domain/enums/facility_category.dart';
+import '../../domain/services/disney_expert_recommendation_service.dart';
 import '../../domain/services/dynamic_wait_scoring_service.dart';
 import '../../domain/entities/wish_item.dart';
 import '../../domain/enums/wish_item_category.dart';
@@ -593,7 +595,22 @@ class GuidedPlanningController extends ChangeNotifier {
     final facilities = await ServiceLocator.facilityRepository.getFacilitiesByParkId(parkId);
     final operationalById = <String, Facility>{for (final f in facilities) if (f.canAddToPlanAt(date)) f.id: f};
     final profiles = await const CrowdFactorRepositoryImpl().loadWaitProfiles(parkId: parkId);
+    final expertProfiles = await ServiceLocator.expertRecommendationRepository
+        .loadProfiles(parkId: parkId);
     const waitScorer = DynamicWaitScoringService();
+    const expertScorer = DisneyExpertRecommendationService();
+
+    double expertFacilityScore(Facility facility) {
+      final preference = appState.getPreference(facility.id) ??
+          PlanPreference.initial(facilityId: facility.id);
+      return expertScorer.evaluate(
+        facility: facility,
+        targetDate: date,
+        profiles: expertProfiles,
+        preference: preference,
+        waitProfiles: profiles,
+      ).score;
+    }
 
     double activeContentValue(WishItem item) {
       var score = 0.0;
@@ -651,6 +668,7 @@ class GuidedPlanningController extends ChangeNotifier {
           _ => 0.0,
         };
         var score = wait.savingMinutes.toDouble() + baseExperienceValue;
+        score += expertFacilityScore(facility) * 0.85;
         score += contentBoostByFacility[facility.id] ?? 0;
         if (facility.isSeasonal) score += 12;
         if (appState.tripSettings.hasHappyEntry &&
@@ -665,9 +683,19 @@ class GuidedPlanningController extends ChangeNotifier {
 
     double wishContentScore(WishItem item) {
       var score = activeContentValue(item);
+      var bestExpert = 0.0;
       for (final facilityId in item.venueFacilityIds) {
         score += (contentBoostByFacility[facilityId] ?? 0) * 0.25;
+        final facility = operationalById[facilityId];
+        if (facility != null) {
+          final expert = expertFacilityScore(facility);
+          if (expert > bestExpert) bestExpert = expert;
+        }
       }
+      // Entertainment and food are not picked only because they are seasonal
+      // content. The venue/experience itself must also be worth scarce park
+      // time from an experienced-guest perspective.
+      score += bestExpert * 0.70;
       return score;
     }
 

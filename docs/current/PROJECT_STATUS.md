@@ -36,3 +36,10 @@ Data-driven Schedule Optimization。
 
 まず `verify.ps1` とAI評価用プランでStep 1を検証する。
 成功後、下流予定への影響コストと、公式公演以外へ適用する範囲をStep 2として検討する。
+
+
+## 2026-08-27 Disney Expert Recommendation Layer
+- AI候補作成、朝一、通常施設、食事、公式公演の評価へ共通のDisney Expert Recommendationを導入。
+- 評価軸: 体験価値、パーク固有性、希少性、通常待機難易度、ユーザー希望。
+- 施設固有の推薦シードは assets/master/expert_recommendations.json でデータ管理し、ScheduleEngineへ施設名ハードコードしない。
+- 移動型施設は目的地価値を抑え、entry/exit locationによるルート価値を別評価する。

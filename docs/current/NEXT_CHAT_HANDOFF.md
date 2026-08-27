@@ -30,3 +30,9 @@ Data-driven Schedule Optimizer の Step 1「希望退園時刻ソフト制約化
 - verify 成功前に次Stepへ進まない
 - テスト都合で既存仕様を広げない
 - 変更範囲は小さく保つ
+
+
+## Disney Expert Recommendation Layer (2026-08-27)
+Plannerの上位思想を「短待ち順」から「ディズニー通として一日の体験価値最大化」へ変更。
+GuidedPlanningControllerのAI候補、WishCandidateScoringEngine、MealPlanner、ScheduleEngineへ共通評価を接続。
+次の検証では TDL/TDS のAI候補一覧と実プランで、低価値・低待ち施設が代表体験を押しのけていないか確認する。

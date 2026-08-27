@@ -1,9 +1,11 @@
+import '../entities/expert_recommendation_profile.dart';
 import '../entities/facility.dart';
 import '../entities/plan_preference.dart';
 import '../entities/trip_settings.dart';
 import '../enums/facility_category.dart';
 import '../enums/meal_preference.dart';
 import '../enums/preferred_time.dart';
+import 'disney_expert_recommendation_service.dart';
 
 enum MealSlot { breakfast, lunch, dinner }
 
@@ -42,23 +44,46 @@ class MealPlan {
 }
 
 class MealPlanner {
-  const MealPlanner();
+  const MealPlanner({
+    this.expertRecommendationService = const DisneyExpertRecommendationService(),
+  });
+
+  final DisneyExpertRecommendationService expertRecommendationService;
 
   MealPlan plan({
     required TripSettings settings,
     required List<Facility> facilities,
     required List<PlanPreference> preferences,
+    List<ExpertRecommendationProfile> expertProfiles = const [],
+    DateTime? targetDate,
   }) {
     final restaurants = facilities
         .where((facility) => facility.category == FacilityCategory.restaurant)
         .toList();
 
-    restaurants.sort(
-      (first, second) => _priorityValue(
-        second,
-        preferences,
-      ).compareTo(_priorityValue(first, preferences)),
-    );
+    final date = targetDate ?? settings.visitDate ?? DateTime.now();
+    restaurants.sort((first, second) {
+      final firstPriority = _priorityValue(first, preferences);
+      final secondPriority = _priorityValue(second, preferences);
+      final priorityCompare = secondPriority.compareTo(firstPriority);
+      if (priorityCompare != 0) return priorityCompare;
+
+      final firstPreference = _findPreference(first.id, preferences);
+      final secondPreference = _findPreference(second.id, preferences);
+      final firstExpert = expertRecommendationService.evaluate(
+        facility: first,
+        targetDate: date,
+        profiles: expertProfiles,
+        preference: firstPreference,
+      ).score;
+      final secondExpert = expertRecommendationService.evaluate(
+        facility: second,
+        targetDate: date,
+        profiles: expertProfiles,
+        preference: secondPreference,
+      ).score;
+      return secondExpert.compareTo(firstExpert);
+    });
 
     final assignments = <MealSlot, MealAssignment>{};
     final flexibleRestaurants = <Facility>[];
@@ -134,13 +159,20 @@ class MealPlanner {
         continue;
       }
 
+      final expert = expertRecommendationService.evaluate(
+        facility: restaurant,
+        targetDate: date,
+        profiles: expertProfiles,
+        preference: preference,
+      );
       assignments[slot] = MealAssignment(
         slot: slot,
         facility: restaurant,
         startMinutes: _defaultStartMinutes(slot, settings),
         reason:
             '食事利用「空いている食事時間」の設定から、'
-            '未使用の${_slotLabel(slot)}枠へ配置しました。',
+            '未使用の${_slotLabel(slot)}枠へ配置しました。 '
+            'Disney通おすすめ評価${expert.score.toStringAsFixed(1)}点（${expert.reason}）を比較しました。',
       );
     }
 
