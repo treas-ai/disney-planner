@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-08-30T02:52:32+09:00
+Generated: 2026-08-31T03:10:59+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 30
-- Profile source observations: 5392
+- Profile source observations: 6044
 
 ### 1. Profile missing facilities
 
@@ -22,13 +22,12 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前
 - `tdl_fantasyland_cinderella_fairy_tale_hall` — シンデレラのフェアリーテイル・ホール: no usable samples in 閉園前
-- `tdl_fantasyland_poohs_hunny_hunt` — プーさんのハニーハント: no usable samples in 閉園前
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: no usable samples in 昼前, 閉園前
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
 - `tdl_toontown_donalds_boat` — ドナルドのボート: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
 - `tdl_toontown_goofys_paint_and_play_house` — グーフィーのペイント＆プレイハウス: no usable samples in 閉園前
-- `tdl_toontown_minnies_house` — ミニーの家: no usable samples in 昼前, 昼過ぎ, 閉園前
-- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: no usable samples in ショー前後, 閉園前
+- `tdl_toontown_minnies_house` — ミニーの家: no usable samples in 昼前
+- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: no usable samples in 閉園前
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: no usable samples in 昼前, ショー前後, 夕食前, 閉園前
 - `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: no usable samples in 開園直後, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
 - `tdl_world_bazaar_omnibus` — オムニバス: no usable samples in 夕食前, 夕食後, 閉園前
@@ -38,18 +37,16 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 夕食後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
 - `tdl_fantasyland_mickeys_philharmagic` — ミッキーのフィルハーマジック: 閉園前 = 1 samples
-- `tdl_fantasyland_poohs_hunny_hunt` — プーさんのハニーハント: 夕食前 = 2 samples
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 昼過ぎ = 2 samples
-- `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 夕食後 = 2 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 1 samples
+- `tdl_toontown_minnies_house` — ミニーの家: 昼過ぎ = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
-- `tdl_toontown_minnies_house` — ミニーの家: 夕食後 = 2 samples
+- `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 昼前 = 1 samples
-- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 昼過ぎ = 2 samples
-- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 1 samples
+- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 1 samples
+- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 昼過ぎ = 1 samples
-- `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 夕食後 = 1 samples
 - `tdl_westernland_shooting_gallery` — ウエスタンランド・シューティングギャラリー: 閉園前 = 2 samples
 - `tdl_world_bazaar_omnibus` — オムニバス: 昼前 = 1 samples
 
@@ -63,7 +60,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 7019
+- Profile source observations: 7689
 
 ### 1. Profile missing facilities
 
@@ -78,7 +75,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ### 2b. Low-confidence time bands (<3 samples)
 
-- `tds_ac_a_004` — マジックランプシアター: 夕食前 = 1 samples
+- `tds_ac_a_004` — マジックランプシアター: 夕食前 = 2 samples
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
 - `tds_pd_a_002` — ニモ＆フレンズ・シーライダー: 閉園前 = 1 samples
 - `tds_pd_a_003` — ディズニーシー・エレクトリックレールウェイ（ポートディスカバリー）: 昼前 = 2 samples
