@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-08-31T03:10:59+09:00
+Generated: 2026-09-01T05:21:10+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 30
-- Profile source observations: 6044
+- Profile source observations: 6642
 
 ### 1. Profile missing facilities
 
@@ -26,7 +26,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
 - `tdl_toontown_donalds_boat` — ドナルドのボート: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
 - `tdl_toontown_goofys_paint_and_play_house` — グーフィーのペイント＆プレイハウス: no usable samples in 閉園前
-- `tdl_toontown_minnies_house` — ミニーの家: no usable samples in 昼前
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: no usable samples in 閉園前
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: no usable samples in 昼前, ショー前後, 夕食前, 閉園前
 - `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: no usable samples in 開園直後, 昼過ぎ, ショー前後, 夕食前, 夕食後, 閉園前
@@ -40,13 +39,13 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 昼過ぎ = 2 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 1 samples
+- `tdl_toontown_minnies_house` — ミニーの家: 昼前 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 昼過ぎ = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 昼前 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
-- `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 昼過ぎ = 1 samples
 - `tdl_westernland_shooting_gallery` — ウエスタンランド・シューティングギャラリー: 閉園前 = 2 samples
 - `tdl_world_bazaar_omnibus` — オムニバス: 昼前 = 1 samples
 
@@ -60,7 +59,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 7689
+- Profile source observations: 8357
 
 ### 1. Profile missing facilities
 
