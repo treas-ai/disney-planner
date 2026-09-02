@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-02T02:56:03+09:00
+Generated: 2026-09-03T03:01:38+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 30
-- Profile source observations: 7180
+- Profile source observations: 7698
 
 ### 1. Profile missing facilities
 
@@ -35,18 +35,17 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 夕食後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
-- `tdl_fantasyland_mickeys_philharmagic` — ミッキーのフィルハーマジック: 閉園前 = 2 samples
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 昼過ぎ = 2 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 昼前 = 1 samples
-- `tdl_toontown_minnies_house` — ミニーの家: 昼過ぎ = 1 samples
+- `tdl_toontown_minnies_house` — ミニーの家: 昼過ぎ = 2 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 昼前 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
-- `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 昼前 = 1 samples
+- `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 昼前 = 2 samples
 - `tdl_westernland_shooting_gallery` — ウエスタンランド・シューティングギャラリー: 閉園前 = 2 samples
 
 ### 3. Facility-ID mapping audit
@@ -59,7 +58,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 8999
+- Profile source observations: 9668
 
 ### 1. Profile missing facilities
 

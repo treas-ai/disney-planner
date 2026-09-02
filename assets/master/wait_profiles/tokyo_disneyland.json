@@ -2,9 +2,213 @@
   "parkId": "tokyo_disneyland",
   "status": "generated",
   "source": "ThemeParks.wiki accumulated history",
-  "sampleCount": 7180,
-  "generatedAt": "2026-09-01T17:56:03.592864Z",
+  "sampleCount": 7698,
+  "generatedAt": "2026-09-02T18:01:38.715181Z",
   "items": [
+    {
+      "facilityId": "tdl_fantasyland_peter_pans_flight",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 30,
+          "maxMinutes": 40,
+          "sampleCount": 107
+        },
+        "beforeLunch": {
+          "minMinutes": 25,
+          "typicalMinutes": 30,
+          "maxMinutes": 40,
+          "sampleCount": 33
+        },
+        "afterLunch": {
+          "minMinutes": 25,
+          "typicalMinutes": 30,
+          "maxMinutes": 40,
+          "sampleCount": 108
+        },
+        "aroundShows": {
+          "minMinutes": 25,
+          "typicalMinutes": 30,
+          "maxMinutes": 40,
+          "sampleCount": 85
+        },
+        "beforeDinner": {
+          "minMinutes": 30,
+          "typicalMinutes": 40,
+          "maxMinutes": 40,
+          "sampleCount": 44
+        },
+        "afterDinner": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 40,
+          "sampleCount": 70
+        },
+        "beforeClosing": {
+          "minMinutes": 10,
+          "typicalMinutes": 20,
+          "maxMinutes": 30,
+          "sampleCount": 22
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 469
+    },
+    {
+      "facilityId": "tdl_critter_country_splash_mountain",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 20,
+          "typicalMinutes": 70,
+          "maxMinutes": 100,
+          "sampleCount": 143
+        },
+        "beforeLunch": {
+          "minMinutes": 40,
+          "typicalMinutes": 70,
+          "maxMinutes": 90,
+          "sampleCount": 50
+        },
+        "afterLunch": {
+          "minMinutes": 50,
+          "typicalMinutes": 70,
+          "maxMinutes": 90,
+          "sampleCount": 128
+        },
+        "aroundShows": {
+          "minMinutes": 40,
+          "typicalMinutes": 70,
+          "maxMinutes": 100,
+          "sampleCount": 77
+        },
+        "beforeDinner": {
+          "minMinutes": 30,
+          "typicalMinutes": 80,
+          "maxMinutes": 100,
+          "sampleCount": 37
+        },
+        "afterDinner": {
+          "minMinutes": 25,
+          "typicalMinutes": 60,
+          "maxMinutes": 90,
+          "sampleCount": 80
+        },
+        "beforeClosing": {
+          "minMinutes": 25,
+          "typicalMinutes": 40,
+          "maxMinutes": 60,
+          "sampleCount": 28
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 543
+    },
+    {
+      "facilityId": "tdl_toontown_gadgets_go_coaster",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 20,
+          "maxMinutes": 35,
+          "sampleCount": 106
+        },
+        "beforeLunch": {
+          "minMinutes": 15,
+          "typicalMinutes": 30,
+          "maxMinutes": 35,
+          "sampleCount": 27
+        },
+        "afterLunch": {
+          "minMinutes": 15,
+          "typicalMinutes": 25,
+          "maxMinutes": 35,
+          "sampleCount": 84
+        },
+        "aroundShows": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 35,
+          "sampleCount": 56
+        },
+        "beforeDinner": {
+          "minMinutes": 10,
+          "typicalMinutes": 25,
+          "maxMinutes": 40,
+          "sampleCount": 46
+        },
+        "afterDinner": {
+          "minMinutes": 10,
+          "typicalMinutes": 25,
+          "maxMinutes": 30,
+          "sampleCount": 65
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 20,
+          "sampleCount": 46
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 430
+    },
+    {
+      "facilityId": "tdl_toontown_donalds_boat",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
+          "sampleCount": 15
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
+          "sampleCount": 1
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 16
+    },
     {
       "facilityId": "tdl_westernland_big_thunder_mountain",
       "parkId": "tokyo_disneyland",
@@ -13,99 +217,48 @@
           "minMinutes": 10,
           "typicalMinutes": 50,
           "maxMinutes": 80,
-          "sampleCount": 142
+          "sampleCount": 153
         },
         "beforeLunch": {
           "minMinutes": 30,
-          "typicalMinutes": 50,
+          "typicalMinutes": 40,
           "maxMinutes": 60,
-          "sampleCount": 22
+          "sampleCount": 26
         },
         "afterLunch": {
           "minMinutes": 30,
-          "typicalMinutes": 50,
+          "typicalMinutes": 40,
           "maxMinutes": 60,
-          "sampleCount": 69
+          "sampleCount": 77
         },
         "aroundShows": {
           "minMinutes": 25,
           "typicalMinutes": 50,
           "maxMinutes": 60,
-          "sampleCount": 66
+          "sampleCount": 70
         },
         "beforeDinner": {
           "minMinutes": 25,
           "typicalMinutes": 50,
           "maxMinutes": 70,
-          "sampleCount": 43
+          "sampleCount": 47
         },
         "afterDinner": {
           "minMinutes": 15,
           "typicalMinutes": 50,
           "maxMinutes": 70,
-          "sampleCount": 56
+          "sampleCount": 62
         },
         "beforeClosing": {
           "minMinutes": 25,
           "typicalMinutes": 30,
           "maxMinutes": 50,
-          "sampleCount": 39
+          "sampleCount": 41
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 437
-    },
-    {
-      "facilityId": "tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 50,
-          "typicalMinutes": 100,
-          "maxMinutes": 140,
-          "sampleCount": 110
-        },
-        "beforeLunch": {
-          "minMinutes": 60,
-          "typicalMinutes": 80,
-          "maxMinutes": 90,
-          "sampleCount": 43
-        },
-        "afterLunch": {
-          "minMinutes": 50,
-          "typicalMinutes": 70,
-          "maxMinutes": 90,
-          "sampleCount": 103
-        },
-        "aroundShows": {
-          "minMinutes": 40,
-          "typicalMinutes": 70,
-          "maxMinutes": 90,
-          "sampleCount": 82
-        },
-        "beforeDinner": {
-          "minMinutes": 50,
-          "typicalMinutes": 70,
-          "maxMinutes": 90,
-          "sampleCount": 46
-        },
-        "afterDinner": {
-          "minMinutes": 40,
-          "typicalMinutes": 60,
-          "maxMinutes": 90,
-          "sampleCount": 91
-        },
-        "beforeClosing": {
-          "minMinutes": 15,
-          "typicalMinutes": 30,
-          "maxMinutes": 50,
-          "sampleCount": 68
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 543
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 476
     },
     {
       "facilityId": "tdl_tomorrowland_monsters_inc_ride_and_go_seek",
@@ -115,48 +268,99 @@
           "minMinutes": 15,
           "typicalMinutes": 60,
           "maxMinutes": 90,
-          "sampleCount": 102
+          "sampleCount": 107
         },
         "beforeLunch": {
           "minMinutes": 40,
           "typicalMinutes": 60,
           "maxMinutes": 70,
-          "sampleCount": 34
+          "sampleCount": 38
         },
         "afterLunch": {
-          "minMinutes": 40,
+          "minMinutes": 30,
           "typicalMinutes": 60,
-          "maxMinutes": 90,
-          "sampleCount": 92
+          "maxMinutes": 80,
+          "sampleCount": 105
         },
         "aroundShows": {
           "minMinutes": 40,
           "typicalMinutes": 70,
-          "maxMinutes": 100,
-          "sampleCount": 66
+          "maxMinutes": 90,
+          "sampleCount": 70
         },
         "beforeDinner": {
           "minMinutes": 30,
-          "typicalMinutes": 80,
+          "typicalMinutes": 70,
           "maxMinutes": 100,
-          "sampleCount": 36
+          "sampleCount": 42
         },
         "afterDinner": {
-          "minMinutes": 30,
-          "typicalMinutes": 60,
+          "minMinutes": 25,
+          "typicalMinutes": 50,
           "maxMinutes": 80,
-          "sampleCount": 63
+          "sampleCount": 69
         },
         "beforeClosing": {
           "minMinutes": 20,
           "typicalMinutes": 30,
           "maxMinutes": 50,
-          "sampleCount": 37
+          "sampleCount": 38
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 430
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 469
+    },
+    {
+      "facilityId": "tdl_tomorrowland_star_tours",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 20,
+          "sampleCount": 60
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 20
+        },
+        "afterLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 20,
+          "sampleCount": 36
+        },
+        "aroundShows": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 20,
+          "sampleCount": 75
+        },
+        "beforeDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 30
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 20,
+          "sampleCount": 63
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 30
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 314
     },
     {
       "facilityId": "tdl_fantasyland_mickeys_philharmagic",
@@ -166,25 +370,25 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 19
+          "sampleCount": 20
         },
         "beforeLunch": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 9
+          "sampleCount": 11
         },
         "afterLunch": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 20,
-          "sampleCount": 38
+          "sampleCount": 41
         },
         "aroundShows": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 20,
-          "sampleCount": 33
+          "sampleCount": 36
         },
         "beforeDinner": {
           "minMinutes": 5,
@@ -202,12 +406,777 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
+          "sampleCount": 3
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 153
+    },
+    {
+      "facilityId": "tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 50,
+          "typicalMinutes": 100,
+          "maxMinutes": 140,
+          "sampleCount": 117
+        },
+        "beforeLunch": {
+          "minMinutes": 60,
+          "typicalMinutes": 80,
+          "maxMinutes": 90,
+          "sampleCount": 44
+        },
+        "afterLunch": {
+          "minMinutes": 50,
+          "typicalMinutes": 70,
+          "maxMinutes": 90,
+          "sampleCount": 115
+        },
+        "aroundShows": {
+          "minMinutes": 40,
+          "typicalMinutes": 70,
+          "maxMinutes": 90,
+          "sampleCount": 86
+        },
+        "beforeDinner": {
+          "minMinutes": 40,
+          "typicalMinutes": 60,
+          "maxMinutes": 90,
+          "sampleCount": 50
+        },
+        "afterDinner": {
+          "minMinutes": 40,
+          "typicalMinutes": 60,
+          "maxMinutes": 90,
+          "sampleCount": 99
+        },
+        "beforeClosing": {
+          "minMinutes": 15,
+          "typicalMinutes": 30,
+          "maxMinutes": 50,
+          "sampleCount": 71
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 582
+    },
+    {
+      "facilityId": "tdl_adventureland_pirates_of_the_caribbean",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 25,
+          "sampleCount": 85
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 21
+        },
+        "afterLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 50
+        },
+        "aroundShows": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 48
+        },
+        "beforeDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 31
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 42
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 26
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 303
+    },
+    {
+      "facilityId": "tdl_adventureland_jungle_cruise",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 20,
+          "maxMinutes": 30,
+          "sampleCount": 81
+        },
+        "beforeLunch": {
+          "minMinutes": 20,
+          "typicalMinutes": 25,
+          "maxMinutes": 30,
+          "sampleCount": 27
+        },
+        "afterLunch": {
+          "minMinutes": 15,
+          "typicalMinutes": 25,
+          "maxMinutes": 30,
+          "sampleCount": 70
+        },
+        "aroundShows": {
+          "minMinutes": 25,
+          "typicalMinutes": 30,
+          "maxMinutes": 40,
+          "sampleCount": 62
+        },
+        "beforeDinner": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 45,
+          "sampleCount": 32
+        },
+        "afterDinner": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 40,
+          "sampleCount": 67
+        },
+        "beforeClosing": {
+          "minMinutes": 10,
+          "typicalMinutes": 25,
+          "maxMinutes": 30,
+          "sampleCount": 39
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 378
+    },
+    {
+      "facilityId": "tdl_fantasyland_its_a_small_world",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 45
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 16
+        },
+        "afterLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 48
+        },
+        "aroundShows": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 43
+        },
+        "beforeDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 15
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 37
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 10,
+          "sampleCount": 6
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 210
+    },
+    {
+      "facilityId": "tdl_fantasyland_alices_tea_party",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 10,
+          "sampleCount": 27
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 10,
+          "sampleCount": 22
+        },
+        "afterLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 10,
+          "sampleCount": 41
+        },
+        "aroundShows": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 34
+        },
+        "beforeDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 10,
+          "sampleCount": 21
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 32
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
+          "sampleCount": 7
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 184
+    },
+    {
+      "facilityId": "tdl_fantasyland_poohs_hunny_hunt",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 14,
+          "typicalMinutes": 50,
+          "maxMinutes": 82,
+          "sampleCount": 50
+        },
+        "beforeLunch": {
+          "minMinutes": 40,
+          "typicalMinutes": 70,
+          "maxMinutes": 90,
+          "sampleCount": 14
+        },
+        "afterLunch": {
+          "minMinutes": 30,
+          "typicalMinutes": 60,
+          "maxMinutes": 82,
+          "sampleCount": 41
+        },
+        "aroundShows": {
+          "minMinutes": 40,
+          "typicalMinutes": 60,
+          "maxMinutes": 100,
+          "sampleCount": 26
+        },
+        "beforeDinner": {
+          "minMinutes": 30,
+          "typicalMinutes": 50,
+          "maxMinutes": 90,
+          "sampleCount": 22
+        },
+        "afterDinner": {
+          "minMinutes": 15,
+          "typicalMinutes": 40,
+          "maxMinutes": 100,
+          "sampleCount": 33
+        },
+        "beforeClosing": {
+          "minMinutes": 14,
+          "typicalMinutes": 25,
+          "maxMinutes": 50,
+          "sampleCount": 20
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 206
+    },
+    {
+      "facilityId": "tdl_toontown_roger_rabbits_car_toon_spin",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 25,
+          "sampleCount": 87
+        },
+        "beforeLunch": {
+          "minMinutes": 15,
+          "typicalMinutes": 25,
+          "maxMinutes": 30,
+          "sampleCount": 30
+        },
+        "afterLunch": {
+          "minMinutes": 20,
+          "typicalMinutes": 25,
+          "maxMinutes": 35,
+          "sampleCount": 103
+        },
+        "aroundShows": {
+          "minMinutes": 20,
+          "typicalMinutes": 30,
+          "maxMinutes": 35,
+          "sampleCount": 80
+        },
+        "beforeDinner": {
+          "minMinutes": 10,
+          "typicalMinutes": 25,
+          "maxMinutes": 35,
+          "sampleCount": 55
+        },
+        "afterDinner": {
+          "minMinutes": 10,
+          "typicalMinutes": 20,
+          "maxMinutes": 30,
+          "sampleCount": 78
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 34
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 467
+    },
+    {
+      "facilityId": "tdl_toontown_minnies_house",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
+          "sampleCount": 15
+        },
+        "beforeLunch": {
+          "minMinutes": 10,
+          "typicalMinutes": 10,
+          "maxMinutes": 10,
+          "sampleCount": 1
+        },
+        "afterLunch": {
+          "minMinutes": 10,
+          "typicalMinutes": 10,
+          "maxMinutes": 10,
+          "sampleCount": 2
+        },
+        "aroundShows": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 10,
+          "sampleCount": 8
+        },
+        "beforeDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
+          "sampleCount": 1
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 15,
+          "sampleCount": 5
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
+          "sampleCount": 1
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 33
+    },
+    {
+      "facilityId": "tdl_tomorrowland_baymax_happy_ride",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 55,
+          "typicalMinutes": 90,
+          "maxMinutes": 140,
+          "sampleCount": 125
+        },
+        "beforeLunch": {
+          "minMinutes": 50,
+          "typicalMinutes": 80,
+          "maxMinutes": 100,
+          "sampleCount": 43
+        },
+        "afterLunch": {
+          "minMinutes": 50,
+          "typicalMinutes": 80,
+          "maxMinutes": 100,
+          "sampleCount": 115
+        },
+        "aroundShows": {
+          "minMinutes": 50,
+          "typicalMinutes": 80,
+          "maxMinutes": 100,
+          "sampleCount": 91
+        },
+        "beforeDinner": {
+          "minMinutes": 40,
+          "typicalMinutes": 90,
+          "maxMinutes": 140,
+          "sampleCount": 53
+        },
+        "afterDinner": {
+          "minMinutes": 60,
+          "typicalMinutes": 80,
+          "maxMinutes": 120,
+          "sampleCount": 73
+        },
+        "beforeClosing": {
+          "minMinutes": 40,
+          "typicalMinutes": 50,
+          "maxMinutes": 70,
+          "sampleCount": 16
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 516
+    },
+    {
+      "facilityId": "tdl_westernland_shooting_gallery",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 20,
+          "sampleCount": 26
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 29
+        },
+        "afterLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 25,
+          "sampleCount": 101
+        },
+        "aroundShows": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 25,
+          "sampleCount": 63
+        },
+        "beforeDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 25,
+          "sampleCount": 29
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 20,
+          "sampleCount": 63
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
           "sampleCount": 2
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 143
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 313
+    },
+    {
+      "facilityId": "tdl_fantasyland_snow_whites_adventures",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 80
+        },
+        "beforeLunch": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 25,
+          "sampleCount": 23
+        },
+        "afterLunch": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 25,
+          "sampleCount": 87
+        },
+        "aroundShows": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 25,
+          "sampleCount": 62
+        },
+        "beforeDinner": {
+          "minMinutes": 10,
+          "typicalMinutes": 20,
+          "maxMinutes": 25,
+          "sampleCount": 37
+        },
+        "afterDinner": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 25,
+          "sampleCount": 65
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 25
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 379
+    },
+    {
+      "facilityId": "tdl_fantasyland_pinocchios_daring_journey",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 61
+        },
+        "beforeLunch": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 15,
+          "sampleCount": 21
+        },
+        "afterLunch": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 67
+        },
+        "aroundShows": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 47
+        },
+        "beforeDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 20,
+          "sampleCount": 35
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 20,
+          "sampleCount": 61
+        },
+        "beforeClosing": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 10,
+          "sampleCount": 8
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 300
+    },
+    {
+      "facilityId": "tdl_toontown_chip_and_dales_treehouse",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
+          "sampleCount": 15
+        },
+        "beforeLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "afterLunch": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "aroundShows": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "afterDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 5,
+          "sampleCount": 1
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 16
+    },
+    {
+      "facilityId": "tdl_adventureland_western_river_railroad",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 25,
+          "sampleCount": 54
+        },
+        "beforeLunch": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 20
+        },
+        "afterLunch": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 25,
+          "sampleCount": 61
+        },
+        "aroundShows": {
+          "minMinutes": 15,
+          "typicalMinutes": 25,
+          "maxMinutes": 30,
+          "sampleCount": 48
+        },
+        "beforeDinner": {
+          "minMinutes": 15,
+          "typicalMinutes": 25,
+          "maxMinutes": 25,
+          "sampleCount": 27
+        },
+        "afterDinner": {
+          "minMinutes": 15,
+          "typicalMinutes": 30,
+          "maxMinutes": 40,
+          "sampleCount": 62
+        },
+        "beforeClosing": {
+          "minMinutes": 15,
+          "typicalMinutes": 20,
+          "maxMinutes": 30,
+          "sampleCount": 27
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 299
+    },
+    {
+      "facilityId": "tdl_fantasyland_cinderella_fairy_tale_hall",
+      "parkId": "tokyo_disneyland",
+      "ranges": {
+        "afterOpening": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 10,
+          "sampleCount": 34
+        },
+        "beforeLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 5,
+          "maxMinutes": 15,
+          "sampleCount": 12
+        },
+        "afterLunch": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 74
+        },
+        "aroundShows": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 62
+        },
+        "beforeDinner": {
+          "minMinutes": 5,
+          "typicalMinutes": 10,
+          "maxMinutes": 15,
+          "sampleCount": 22
+        },
+        "afterDinner": {
+          "minMinutes": 10,
+          "typicalMinutes": 15,
+          "maxMinutes": 20,
+          "sampleCount": 8
+        },
+        "beforeClosing": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        }
+      },
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 212
     },
     {
       "facilityId": "tdl_adventureland_tiki_room",
@@ -217,7 +1186,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 10,
-          "sampleCount": 20
+          "sampleCount": 22
         },
         "beforeLunch": {
           "minMinutes": 0,
@@ -256,9 +1225,9 @@
           "sampleCount": 1
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 22
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 24
     },
     {
       "facilityId": "tdl_tomorrowland_stitch_encounter",
@@ -268,7 +1237,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 10,
-          "sampleCount": 20
+          "sampleCount": 21
         },
         "beforeLunch": {
           "minMinutes": 0,
@@ -307,9 +1276,9 @@
           "sampleCount": 0
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 37
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 38
     },
     {
       "facilityId": "tdl_westernland_mark_twain_riverboat",
@@ -319,139 +1288,37 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 16
-        },
-        "beforeLunch": {
-          "minMinutes": 10,
-          "typicalMinutes": 10,
-          "maxMinutes": 10,
-          "sampleCount": 1
-        },
-        "afterLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 10,
-          "sampleCount": 3
-        },
-        "aroundShows": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "beforeDinner": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 3
-        },
-        "beforeClosing": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 23
-    },
-    {
-      "facilityId": "tdl_fantasyland_peter_pans_flight",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 30,
-          "maxMinutes": 40,
-          "sampleCount": 101
-        },
-        "beforeLunch": {
-          "minMinutes": 25,
-          "typicalMinutes": 30,
-          "maxMinutes": 40,
-          "sampleCount": 31
-        },
-        "afterLunch": {
-          "minMinutes": 25,
-          "typicalMinutes": 30,
-          "maxMinutes": 40,
-          "sampleCount": 103
-        },
-        "aroundShows": {
-          "minMinutes": 25,
-          "typicalMinutes": 30,
-          "maxMinutes": 40,
-          "sampleCount": 80
-        },
-        "beforeDinner": {
-          "minMinutes": 30,
-          "typicalMinutes": 40,
-          "maxMinutes": 40,
-          "sampleCount": 41
-        },
-        "afterDinner": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 40,
-          "sampleCount": 69
-        },
-        "beforeClosing": {
-          "minMinutes": 10,
-          "typicalMinutes": 20,
-          "maxMinutes": 25,
           "sampleCount": 17
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 442
-    },
-    {
-      "facilityId": "tdl_fantasyland_cinderella_fairy_tale_hall",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 10,
-          "sampleCount": 33
         },
         "beforeLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 15,
-          "sampleCount": 12
+          "minMinutes": 10,
+          "typicalMinutes": 10,
+          "maxMinutes": 10,
+          "sampleCount": 2
         },
         "afterLunch": {
           "minMinutes": 5,
           "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 71
+          "maxMinutes": 10,
+          "sampleCount": 3
         },
         "aroundShows": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 59
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
         },
         "beforeDinner": {
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
+        },
+        "afterDinner": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 22
-        },
-        "afterDinner": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 8
+          "sampleCount": 3
         },
         "beforeClosing": {
           "minMinutes": 0,
@@ -460,9 +1327,9 @@
           "sampleCount": 0
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 205
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 25
     },
     {
       "facilityId": "tdl_toontown_goofys_paint_and_play_house",
@@ -472,7 +1339,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 23
+          "sampleCount": 24
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -484,7 +1351,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 86
+          "sampleCount": 87
         },
         "aroundShows": {
           "minMinutes": 5,
@@ -511,9 +1378,9 @@
           "sampleCount": 0
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 244
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 246
     },
     {
       "facilityId": "tdl_westernland_country_bear_theater",
@@ -523,813 +1390,48 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 15,
-          "sampleCount": 21
-        },
-        "beforeLunch": {
-          "minMinutes": 10,
-          "typicalMinutes": 10,
-          "maxMinutes": 10,
-          "sampleCount": 1
-        },
-        "afterLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 15,
-          "sampleCount": 3
-        },
-        "aroundShows": {
-          "minMinutes": 25,
-          "typicalMinutes": 25,
-          "maxMinutes": 25,
-          "sampleCount": 1
-        },
-        "beforeDinner": {
-          "minMinutes": 15,
-          "typicalMinutes": 15,
-          "maxMinutes": 15,
-          "sampleCount": 2
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 3
-        },
-        "beforeClosing": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 31
-    },
-    {
-      "facilityId": "tdl_adventureland_pirates_of_the_caribbean",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 25,
-          "sampleCount": 79
-        },
-        "beforeLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 21
-        },
-        "afterLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 48
-        },
-        "aroundShows": {
-          "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 44
-        },
-        "beforeDinner": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 29
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 38
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 24
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 283
-    },
-    {
-      "facilityId": "tdl_fantasyland_its_a_small_world",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 44
-        },
-        "beforeLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 14
-        },
-        "afterLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 45
-        },
-        "aroundShows": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 43
-        },
-        "beforeDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 13
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 37
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 10,
-          "sampleCount": 5
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 201
-    },
-    {
-      "facilityId": "tdl_adventureland_jungle_cruise",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 20,
-          "maxMinutes": 35,
-          "sampleCount": 74
-        },
-        "beforeLunch": {
-          "minMinutes": 20,
-          "typicalMinutes": 25,
-          "maxMinutes": 30,
-          "sampleCount": 27
-        },
-        "afterLunch": {
-          "minMinutes": 15,
-          "typicalMinutes": 25,
-          "maxMinutes": 30,
-          "sampleCount": 69
-        },
-        "aroundShows": {
-          "minMinutes": 25,
-          "typicalMinutes": 30,
-          "maxMinutes": 40,
-          "sampleCount": 60
-        },
-        "beforeDinner": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 45,
-          "sampleCount": 28
-        },
-        "afterDinner": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 50,
-          "sampleCount": 61
-        },
-        "beforeClosing": {
-          "minMinutes": 10,
-          "typicalMinutes": 25,
-          "maxMinutes": 30,
-          "sampleCount": 39
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 358
-    },
-    {
-      "facilityId": "tdl_fantasyland_alices_tea_party",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 10,
-          "sampleCount": 26
-        },
-        "beforeLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 10,
-          "sampleCount": 21
-        },
-        "afterLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 10,
-          "sampleCount": 38
-        },
-        "aroundShows": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 32
-        },
-        "beforeDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 10,
-          "sampleCount": 21
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 31
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 10,
-          "sampleCount": 6
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 175
-    },
-    {
-      "facilityId": "tdl_toontown_minnies_house",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 5,
-          "sampleCount": 14
-        },
-        "beforeLunch": {
-          "minMinutes": 10,
-          "typicalMinutes": 10,
-          "maxMinutes": 10,
-          "sampleCount": 1
-        },
-        "afterLunch": {
-          "minMinutes": 10,
-          "typicalMinutes": 10,
-          "maxMinutes": 10,
-          "sampleCount": 1
-        },
-        "aroundShows": {
-          "minMinutes": 10,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 6
-        },
-        "beforeDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 5,
-          "sampleCount": 1
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 15,
-          "sampleCount": 4
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 5,
-          "sampleCount": 1
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 28
-    },
-    {
-      "facilityId": "tdl_toontown_roger_rabbits_car_toon_spin",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 25,
-          "sampleCount": 82
-        },
-        "beforeLunch": {
-          "minMinutes": 15,
-          "typicalMinutes": 25,
-          "maxMinutes": 30,
-          "sampleCount": 24
-        },
-        "afterLunch": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 35,
-          "sampleCount": 97
-        },
-        "aroundShows": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 35,
-          "sampleCount": 78
-        },
-        "beforeDinner": {
-          "minMinutes": 10,
-          "typicalMinutes": 25,
-          "maxMinutes": 35,
-          "sampleCount": 51
-        },
-        "afterDinner": {
-          "minMinutes": 10,
-          "typicalMinutes": 25,
-          "maxMinutes": 30,
-          "sampleCount": 74
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 34
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 440
-    },
-    {
-      "facilityId": "tdl_critter_country_splash_mountain",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 20,
-          "typicalMinutes": 70,
-          "maxMinutes": 100,
-          "sampleCount": 133
-        },
-        "beforeLunch": {
-          "minMinutes": 50,
-          "typicalMinutes": 70,
-          "maxMinutes": 90,
-          "sampleCount": 46
-        },
-        "afterLunch": {
-          "minMinutes": 50,
-          "typicalMinutes": 70,
-          "maxMinutes": 90,
-          "sampleCount": 119
-        },
-        "aroundShows": {
-          "minMinutes": 40,
-          "typicalMinutes": 80,
-          "maxMinutes": 100,
-          "sampleCount": 70
-        },
-        "beforeDinner": {
-          "minMinutes": 30,
-          "typicalMinutes": 80,
-          "maxMinutes": 100,
-          "sampleCount": 34
-        },
-        "afterDinner": {
-          "minMinutes": 25,
-          "typicalMinutes": 70,
-          "maxMinutes": 90,
-          "sampleCount": 73
-        },
-        "beforeClosing": {
-          "minMinutes": 25,
-          "typicalMinutes": 40,
-          "maxMinutes": 60,
-          "sampleCount": 27
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 502
-    },
-    {
-      "facilityId": "tdl_tomorrowland_baymax_happy_ride",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 60,
-          "typicalMinutes": 90,
-          "maxMinutes": 140,
-          "sampleCount": 118
-        },
-        "beforeLunch": {
-          "minMinutes": 50,
-          "typicalMinutes": 80,
-          "maxMinutes": 100,
-          "sampleCount": 41
-        },
-        "afterLunch": {
-          "minMinutes": 50,
-          "typicalMinutes": 80,
-          "maxMinutes": 100,
-          "sampleCount": 109
-        },
-        "aroundShows": {
-          "minMinutes": 60,
-          "typicalMinutes": 80,
-          "maxMinutes": 100,
-          "sampleCount": 85
-        },
-        "beforeDinner": {
-          "minMinutes": 50,
-          "typicalMinutes": 100,
-          "maxMinutes": 140,
-          "sampleCount": 47
-        },
-        "afterDinner": {
-          "minMinutes": 60,
-          "typicalMinutes": 90,
-          "maxMinutes": 120,
-          "sampleCount": 69
-        },
-        "beforeClosing": {
-          "minMinutes": 40,
-          "typicalMinutes": 50,
-          "maxMinutes": 70,
-          "sampleCount": 16
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 485
-    },
-    {
-      "facilityId": "tdl_tomorrowland_star_tours",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 20,
-          "sampleCount": 57
-        },
-        "beforeLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 20
-        },
-        "afterLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 20,
-          "sampleCount": 35
-        },
-        "aroundShows": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 20,
-          "sampleCount": 70
-        },
-        "beforeDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 29
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 20,
-          "sampleCount": 60
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 28
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 299
-    },
-    {
-      "facilityId": "tdl_toontown_chip_and_dales_treehouse",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 5,
-          "sampleCount": 14
-        },
-        "beforeLunch": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "afterLunch": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "aroundShows": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "beforeDinner": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 5,
-          "sampleCount": 1
-        },
-        "beforeClosing": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 15
-    },
-    {
-      "facilityId": "tdl_toontown_donalds_boat",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 5,
-          "sampleCount": 14
-        },
-        "beforeLunch": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "afterLunch": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "aroundShows": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "beforeDinner": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 5,
-          "sampleCount": 1
-        },
-        "beforeClosing": {
-          "minMinutes": 0,
-          "typicalMinutes": 0,
-          "maxMinutes": 0,
-          "sampleCount": 0
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 15
-    },
-    {
-      "facilityId": "tdl_fantasyland_snow_whites_adventures",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 75
-        },
-        "beforeLunch": {
-          "minMinutes": 15,
-          "typicalMinutes": 20,
-          "maxMinutes": 25,
-          "sampleCount": 22
-        },
-        "afterLunch": {
-          "minMinutes": 15,
-          "typicalMinutes": 20,
-          "maxMinutes": 25,
-          "sampleCount": 82
-        },
-        "aroundShows": {
-          "minMinutes": 15,
-          "typicalMinutes": 20,
-          "maxMinutes": 25,
-          "sampleCount": 54
-        },
-        "beforeDinner": {
-          "minMinutes": 10,
-          "typicalMinutes": 20,
-          "maxMinutes": 25,
-          "sampleCount": 33
-        },
-        "afterDinner": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
-          "maxMinutes": 25,
-          "sampleCount": 63
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 21
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 350
-    },
-    {
-      "facilityId": "tdl_fantasyland_pinocchios_daring_journey",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 15,
-          "sampleCount": 57
-        },
-        "beforeLunch": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
-          "maxMinutes": 15,
-          "sampleCount": 21
-        },
-        "afterLunch": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 64
-        },
-        "aroundShows": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 42
-        },
-        "beforeDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 20,
-          "sampleCount": 35
-        },
-        "afterDinner": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 20,
-          "sampleCount": 59
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 10,
-          "sampleCount": 7
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 285
-    },
-    {
-      "facilityId": "tdl_toontown_gadgets_go_coaster",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 25,
-          "maxMinutes": 35,
-          "sampleCount": 100
-        },
-        "beforeLunch": {
-          "minMinutes": 20,
-          "typicalMinutes": 30,
-          "maxMinutes": 35,
           "sampleCount": 23
         },
-        "afterLunch": {
-          "minMinutes": 15,
-          "typicalMinutes": 30,
-          "maxMinutes": 35,
-          "sampleCount": 76
-        },
-        "aroundShows": {
-          "minMinutes": 15,
-          "typicalMinutes": 30,
-          "maxMinutes": 35,
-          "sampleCount": 50
-        },
-        "beforeDinner": {
-          "minMinutes": 15,
-          "typicalMinutes": 25,
-          "maxMinutes": 40,
-          "sampleCount": 41
-        },
-        "afterDinner": {
-          "minMinutes": 15,
-          "typicalMinutes": 25,
-          "maxMinutes": 30,
-          "sampleCount": 59
-        },
-        "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 10,
-          "maxMinutes": 20,
-          "sampleCount": 43
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 392
-    },
-    {
-      "facilityId": "tdl_westernland_shooting_gallery",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 20,
-          "sampleCount": 25
-        },
         "beforeLunch": {
-          "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 29
+          "minMinutes": 10,
+          "typicalMinutes": 10,
+          "maxMinutes": 10,
+          "sampleCount": 1
         },
         "afterLunch": {
           "minMinutes": 5,
-          "typicalMinutes": 15,
-          "maxMinutes": 25,
-          "sampleCount": 92
+          "typicalMinutes": 5,
+          "maxMinutes": 15,
+          "sampleCount": 3
         },
         "aroundShows": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
+          "minMinutes": 25,
+          "typicalMinutes": 25,
           "maxMinutes": 25,
-          "sampleCount": 60
+          "sampleCount": 1
         },
         "beforeDinner": {
-          "minMinutes": 5,
+          "minMinutes": 15,
           "typicalMinutes": 15,
-          "maxMinutes": 25,
-          "sampleCount": 29
+          "maxMinutes": 15,
+          "sampleCount": 2
         },
         "afterDinner": {
           "minMinutes": 5,
-          "typicalMinutes": 10,
+          "typicalMinutes": 15,
           "maxMinutes": 20,
-          "sampleCount": 61
+          "sampleCount": 3
         },
         "beforeClosing": {
-          "minMinutes": 5,
-          "typicalMinutes": 5,
-          "maxMinutes": 5,
-          "sampleCount": 2
+          "minMinutes": 0,
+          "typicalMinutes": 0,
+          "maxMinutes": 0,
+          "sampleCount": 0
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 298
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 33
     },
     {
       "facilityId": "tdl_world_bazaar_omnibus",
@@ -1339,7 +1441,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 15
+          "sampleCount": 16
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -1351,13 +1453,13 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 12
+          "sampleCount": 13
         },
         "aroundShows": {
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 16
+          "sampleCount": 17
         },
         "beforeDinner": {
           "minMinutes": 0,
@@ -1378,9 +1480,9 @@
           "sampleCount": 0
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 46
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 49
     },
     {
       "facilityId": "tdl_westernland_tom_sawyer_island_rafts",
@@ -1396,7 +1498,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 14
+          "sampleCount": 15
         },
         "afterLunch": {
           "minMinutes": 0,
@@ -1429,111 +1531,9 @@
           "sampleCount": 0
         }
       },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 14
-    },
-    {
-      "facilityId": "tdl_adventureland_western_river_railroad",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
-          "maxMinutes": 25,
-          "sampleCount": 48
-        },
-        "beforeLunch": {
-          "minMinutes": 10,
-          "typicalMinutes": 15,
-          "maxMinutes": 20,
-          "sampleCount": 18
-        },
-        "afterLunch": {
-          "minMinutes": 15,
-          "typicalMinutes": 20,
-          "maxMinutes": 25,
-          "sampleCount": 49
-        },
-        "aroundShows": {
-          "minMinutes": 15,
-          "typicalMinutes": 25,
-          "maxMinutes": 30,
-          "sampleCount": 43
-        },
-        "beforeDinner": {
-          "minMinutes": 15,
-          "typicalMinutes": 25,
-          "maxMinutes": 30,
-          "sampleCount": 25
-        },
-        "afterDinner": {
-          "minMinutes": 15,
-          "typicalMinutes": 30,
-          "maxMinutes": 40,
-          "sampleCount": 58
-        },
-        "beforeClosing": {
-          "minMinutes": 15,
-          "typicalMinutes": 20,
-          "maxMinutes": 30,
-          "sampleCount": 25
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 266
-    },
-    {
-      "facilityId": "tdl_fantasyland_poohs_hunny_hunt",
-      "parkId": "tokyo_disneyland",
-      "ranges": {
-        "afterOpening": {
-          "minMinutes": 14,
-          "typicalMinutes": 60,
-          "maxMinutes": 82,
-          "sampleCount": 38
-        },
-        "beforeLunch": {
-          "minMinutes": 40,
-          "typicalMinutes": 70,
-          "maxMinutes": 90,
-          "sampleCount": 14
-        },
-        "afterLunch": {
-          "minMinutes": 40,
-          "typicalMinutes": 60,
-          "maxMinutes": 82,
-          "sampleCount": 35
-        },
-        "aroundShows": {
-          "minMinutes": 40,
-          "typicalMinutes": 70,
-          "maxMinutes": 100,
-          "sampleCount": 21
-        },
-        "beforeDinner": {
-          "minMinutes": 40,
-          "typicalMinutes": 60,
-          "maxMinutes": 90,
-          "sampleCount": 18
-        },
-        "afterDinner": {
-          "minMinutes": 30,
-          "typicalMinutes": 50,
-          "maxMinutes": 200,
-          "sampleCount": 26
-        },
-        "beforeClosing": {
-          "minMinutes": 14,
-          "typicalMinutes": 25,
-          "maxMinutes": 50,
-          "sampleCount": 19
-        }
-      },
-      "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-01T17:56:03.487576Z",
-      "sampleCount": 171
+      "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
+      "calculatedAt": "2026-09-02T18:01:38.632458Z",
+      "sampleCount": 15
     }
   ]
 }
