@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-04T03:00:54+09:00
+Generated: 2026-09-05T02:46:24+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -8,12 +8,11 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - Active master attractions: 33
 - Mapped active attractions: 33
-- Generated profiles: 30
-- Profile source observations: 8549
+- Generated profiles: 31
+- Profile source observations: 9396
 
 ### 1. Profile missing facilities
 
-- `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル; raw observations=0
 - `tdl_fantasyland_haunted_mansion` — ホーンテッドマンション; raw observations=0
 - `tdl_toontown_toon_park` — トゥーンパーク; raw observations=0
 - `tdl_world_bazaar_penny_arcade` — ペニーアーケード; raw observations=0
@@ -35,6 +34,10 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 夕食後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
+- `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル: 昼前 = 2 samples
+- `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル: ショー前後 = 2 samples
+- `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル: 夕食後 = 2 samples
+- `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル: 閉園前 = 1 samples
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 昼過ぎ = 2 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 1 samples
@@ -58,7 +61,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 10768
+- Profile source observations: 11960
 
 ### 1. Profile missing facilities
 
