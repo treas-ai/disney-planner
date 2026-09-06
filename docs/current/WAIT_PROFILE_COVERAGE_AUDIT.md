@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-06T01:56:18+09:00
+Generated: 2026-09-07T02:20:08+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 31
-- Profile source observations: 10328
+- Profile source observations: 10963
 
 ### 1. Profile missing facilities
 
@@ -19,7 +19,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ### 2. Time-band coverage
 
-- `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: no usable samples in 昼過ぎ, ショー前後, 夕食前
+- `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: no usable samples in 夕食前
 - `tdl_fantasyland_cinderella_fairy_tale_hall` — シンデレラのフェアリーテイル・ホール: no usable samples in 閉園前
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: no usable samples in 昼前, 閉園前
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
@@ -33,6 +33,8 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 2b. Low-confidence time bands (<3 samples)
 
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 昼前 = 1 samples
+- `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 昼過ぎ = 1 samples
+- `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: ショー前後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 夕食後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
 - `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル: 夕食後 = 2 samples
@@ -44,7 +46,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_minnies_house` — ミニーの家: 昼過ぎ = 2 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 1 samples
-- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 昼前 = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
 - `tdl_westernland_shooting_gallery` — ウエスタンランド・シューティングギャラリー: 閉園前 = 2 samples
@@ -59,7 +60,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 13120
+- Profile source observations: 13996
 
 ### 1. Profile missing facilities
 
