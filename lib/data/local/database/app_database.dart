@@ -14,13 +14,14 @@ import 'migrations/migration_v7.dart';
 import 'migrations/migration_v8.dart';
 import 'migrations/migration_v9.dart';
 import 'migrations/migration_v10.dart';
+import 'migrations/migration_v11.dart';
 
 class AppDatabase {
   AppDatabase._();
 
   static const String databaseName = 'disney_planner.db';
 
-  static const int databaseVersion = 10;
+  static const int databaseVersion = 11;
 
   static Database? _database;
 
@@ -119,6 +120,10 @@ class AppDatabase {
 
     if (oldVersion < 10) {
       await MigrationV10.migrate(database);
+    }
+
+    if (oldVersion < 11) {
+      await MigrationV11.migrate(database);
     }
   }
 
@@ -274,6 +279,8 @@ class AppDatabase {
 
         closure_start_date TEXT,
         closure_end_date TEXT,
+        available_start_date TEXT,
+        available_end_date TEXT,
         operating_status_note TEXT,
         operating_status_checked_at TEXT,
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-27",
+  "updatedAt": "2026-09-09",
   "sourcePolicy": "Official TDR information defines availability/dates/service rules. Editorial expert scores are recommendation signals, never hard constraints.",
   "profiles": [
     {
@@ -286,6 +286,50 @@
       "uniquenessScore": 68,
       "scarcityScore": 12,
       "note": "利便性と雰囲気のバランス型。"
+    },
+    {
+      "facilityId": "tdl_show_villains_halloween_into_the_frenzy",
+      "experienceScore": 96,
+      "uniquenessScore": 98,
+      "scarcityScore": 100,
+      "note": "2026年ハロウィーン期間限定の主役級パレード。固定公演時刻を全日戦略のAnchorとして扱う。",
+      "validFrom": "2026-09-16",
+      "validUntil": "2026-10-31"
+    },
+    {
+      "facilityId": "tdl_show_night_high_halloween",
+      "experienceScore": 86,
+      "uniquenessScore": 86,
+      "scarcityScore": 96,
+      "note": "ハロウィーン期間限定の夜演出。短時間で季節感を得られる。",
+      "validFrom": "2026-09-16",
+      "validUntil": "2026-10-31"
+    },
+    {
+      "facilityId": "tds_show_disney_halloween_greeting",
+      "experienceScore": 90,
+      "uniquenessScore": 94,
+      "scarcityScore": 100,
+      "note": "TDSの2026年ハロウィーン期間限定ハーバーグリーティング。",
+      "validFrom": "2026-09-16",
+      "validUntil": "2026-10-31"
+    },
+    {
+      "facilityId": "tds_show_night_high_halloween",
+      "experienceScore": 86,
+      "uniquenessScore": 86,
+      "scarcityScore": 96,
+      "note": "ハロウィーン期間限定の夜演出。",
+      "validFrom": "2026-09-16",
+      "validUntil": "2026-10-31"
+    },
+    {
+      "facilityId": "tdl_tomorrowland_d_groovationz4_live",
+      "experienceScore": 91,
+      "uniquenessScore": 94,
+      "scarcityScore": 78,
+      "note": "2026/9/30開始のライブ感が強い新ステージショー。エントリー受付/DPAを加味して候補化。",
+      "validFrom": "2026-09-30"
     }
   ]
 }

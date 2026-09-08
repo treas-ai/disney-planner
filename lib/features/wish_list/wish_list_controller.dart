@@ -29,6 +29,7 @@ class WishListController extends ChangeNotifier {
   String? errorMessage;
   List<WishEventPack> packs = const [];
   List<WishItem> facilityWishItems = const [];
+  Map<String, Facility> _facilityById = const {};
   WishItemCategory? categoryFilter;
   bool freeDrinkOnly = false;
   String query = '';
@@ -39,8 +40,10 @@ class WishListController extends ChangeNotifier {
 
   List<WishItem> get allLoadedItems {
     final byId = <String, WishItem>{};
-    for (final item in packs.expand((pack) => pack.items)) {
-      byId[item.id] = item;
+    for (final pack in packs.where((pack) => pack.isAvailableOn(effectiveDate))) {
+      for (final item in pack.items) {
+        byId[item.id] = item;
+      }
     }
     for (final item in facilityWishItems) {
       byId.putIfAbsent(item.id, () => item);
@@ -50,7 +53,7 @@ class WishListController extends ChangeNotifier {
 
   List<WishItem> get allItems {
     return allLoadedItems
-        .where((item) => item.isAvailableOn(effectiveDate))
+        .where(_isSelectableOnEffectiveDate)
         .toList(growable: false);
   }
 
@@ -104,8 +107,11 @@ class WishListController extends ChangeNotifier {
       ]);
       packs = results[0] as List<WishEventPack>;
       final facilities = results[1] as List<Facility>;
+      _facilityById = <String, Facility>{
+        for (final facility in facilities) facility.id: facility,
+      };
       facilityWishItems = facilities
-          .where(_isWishFacility)
+          .where(_isWishFacilityCategory)
           .map(_wishItemFromFacility)
           .toList(growable: false);
     } catch (error) {
@@ -218,7 +224,9 @@ class WishListController extends ChangeNotifier {
     var added = 0;
     for (final facilityId in facilityIds) {
       final facility = await facilityRepository.getFacilityById(facilityId);
-      if (facility == null || facility.parkId != appState.tripSettings.parkId) {
+      if (facility == null ||
+          facility.parkId != appState.tripSettings.parkId ||
+          !facility.canAddToPlanAt(effectiveDate)) {
         continue;
       }
       if (!appState.isFacilitySelected(facilityId)) {
@@ -234,10 +242,32 @@ class WishListController extends ChangeNotifier {
     return added;
   }
 
-  bool _isWishFacility(Facility facility) {
-    if (!facility.canAddToPlanAt(effectiveDate)) {
+  bool _isSelectableOnEffectiveDate(WishItem item) {
+    if (!item.isAvailableOn(effectiveDate)) {
       return false;
     }
+
+    if (item.venueFacilityIds.isEmpty) {
+      return true;
+    }
+
+    final knownVenues = item.venueFacilityIds
+        .map((id) => _facilityById[id])
+        .whereType<Facility>()
+        .toList(growable: false);
+
+    if (knownVenues.isEmpty) {
+      return true;
+    }
+
+    return knownVenues.any(
+      (facility) =>
+          facility.parkId == item.parkId &&
+          facility.canAddToPlanAt(effectiveDate),
+    );
+  }
+
+  bool _isWishFacilityCategory(Facility facility) {
     return switch (facility.category) {
       FacilityCategory.attraction ||
       FacilityCategory.show ||

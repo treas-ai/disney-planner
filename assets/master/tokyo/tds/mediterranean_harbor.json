@@ -154,7 +154,7 @@
     "priority": "medium",
     "status": "closed",
     "operatingStatus": "scheduledClosure",
-    "operatingStatusCheckedAt": "2026-08-27",
+    "operatingStatusCheckedAt": "2026-09-09",
     "description": "ディズニーシー・トランジットスチーマーライン（メディテレーニアンハーバー）。移動・周遊型アトラクション。行先やコースは時間帯、水上ショー等により変わるため、当日の案内で行先が確定するまではPlannerが到着エリアを推測しません。",
     "displayOrder": 18,
     "durationMinutes": 7,
@@ -199,7 +199,7 @@
     "dataCheckedAt": "2026-08-27",
     "closureStartDate": "2026-08-04",
     "closureEndDate": "2026-11-30",
-    "operatingStatusNote": "2026/8/4 - 2026/11/30 休止（公式）"
+    "operatingStatusNote": "公式休止：2026/8/4 - 2026/11/30"
   },
   {
     "parkId": "tokyo_disneysea",
@@ -247,7 +247,7 @@
     "showName": null,
     "dataSource": "Tokyo Disney Resort official website",
     "dataCheckedAt": "2026-08-03",
-    "operatingStatusCheckedAt": "2026-08-03",
+    "operatingStatusCheckedAt": "2026-09-09",
     "id": "tds_show_sparkling_jubilee_celebration",
     "areaId": "tds_mediterranean_harbor",
     "name": "スパークリング・ジュビリー・セレブレーション",
@@ -255,7 +255,9 @@
     "description": "東京ディズニーシー25周年を祝う約15分のハーバーショーです。",
     "durationMinutes": 15,
     "operatingStatus": "operating",
-    "officialUrl": "https://www.tokyodisneyresort.jp/tds/show/detail/7404/"
+    "officialUrl": "https://www.tokyodisneyresort.jp/tds/show/detail/7404/",
+    "availableStartDate": "2026-04-15",
+    "availableEndDate": "2027-03-31"
   },
   {
     "parkId": "tokyo_disneysea",
@@ -265,7 +267,7 @@
     "status": "open",
     "displayOrder": 15,
     "isIndoor": false,
-    "isOperating": false,
+    "isOperating": true,
     "supportsDpa": false,
     "supportsPriorityPass": false,
     "supportsStandbyPass": false,
@@ -302,16 +304,18 @@
     "showName": null,
     "dataSource": "Tokyo Disney Resort official website",
     "dataCheckedAt": "2026-08-03",
-    "operatingStatusCheckedAt": "2026-08-03",
+    "operatingStatusCheckedAt": "2026-09-09",
     "id": "tds_show_disney_halloween_greeting",
     "areaId": "tds_mediterranean_harbor",
     "name": "ディズニー・ハロウィーン・グリーティング",
     "category": "parade",
     "description": "ミッキーマウスと仲間たちが船で登場する約15分のハーバーグリーティングです。",
     "durationMinutes": 15,
-    "operatingStatus": "seasonalClosed",
-    "operatingStatusNote": "2026年9月16日から10月31日までの期間限定公演。",
-    "officialUrl": "https://www.tokyodisneyresort.jp/tds/show/detail/950/"
+    "operatingStatus": "operating",
+    "operatingStatusNote": "2026/9/16 - 2026/10/31 期間限定公演",
+    "officialUrl": "https://www.tokyodisneyresort.jp/tds/show/detail/950/",
+    "availableStartDate": "2026-09-16",
+    "availableEndDate": "2026-10-31"
   },
   {
     "parkId": "tokyo_disneysea",
@@ -898,7 +902,7 @@
     "showName": null,
     "dataSource": "Tokyo Disney Resort official website",
     "dataCheckedAt": "2026-08-03",
-    "operatingStatusCheckedAt": "2026-08-03",
+    "operatingStatusCheckedAt": "2026-09-09",
     "id": "tds_show_sparkling_jubilee_night",
     "areaId": "tds_mediterranean_harbor",
     "name": "【環境演出】スパークリング・ジュビリー・ナイト",
@@ -909,6 +913,8 @@
     "closureStartDate": "2026-08-21",
     "closureEndDate": "2026-08-21",
     "operatingStatusNote": "2026年8月21日は公式休止予定。公演時刻は公式アプリで確認してください。",
-    "officialUrl": "https://www.tokyodisneyresort.jp/tds/show/detail/7405/"
+    "officialUrl": "https://www.tokyodisneyresort.jp/tds/show/detail/7405/",
+    "availableStartDate": "2026-04-15",
+    "availableEndDate": "2027-03-31"
   }
 ]

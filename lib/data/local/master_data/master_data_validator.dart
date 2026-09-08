@@ -368,6 +368,17 @@ class MasterDataValidator {
 
     final endDate = _parseOptionalDate(row['closureEndDate']);
 
+    final availableStartDate = _parseOptionalDate(row['availableStartDate']);
+    final availableEndDate = _parseOptionalDate(row['availableEndDate']);
+
+    if (availableStartDate != null &&
+        availableEndDate != null &&
+        availableEndDate.isBefore(availableStartDate)) {
+      errors.add(
+        '$location: availableEndDateはavailableStartDate以降にしてください。',
+      );
+    }
+
     if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
       errors.add(
         '$location: '

@@ -150,6 +150,8 @@ class JsonFacilityDataSource implements FacilityDataSource {
       'operating_status': row['operatingStatus'],
       'closure_start_date': row['closureStartDate'],
       'closure_end_date': row['closureEndDate'],
+      'available_start_date': row['availableStartDate'],
+      'available_end_date': row['availableEndDate'],
       'operating_status_note': row['operatingStatusNote'],
       'operating_status_checked_at': row['operatingStatusCheckedAt'],
       'min_height': row['minHeight'],

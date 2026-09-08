@@ -252,7 +252,12 @@
     "popcornFlavor": null,
     "menuNote": null,
     "isShowRestaurant": false,
-    "showName": null
+    "showName": null,
+    "operatingStatus": "scheduledClosure",
+    "closureStartDate": "2026-10-01",
+    "closureEndDate": null,
+    "operatingStatusNote": "公式休止：2026/10/1 - 未定",
+    "operatingStatusCheckedAt": "2026-09-09"
   },
   {
     "id": "tdl_fantasyland_dumbo_the_flying_elephant",
@@ -303,7 +308,12 @@
     "popcornFlavor": null,
     "menuNote": "2026年10月22日まで休止予定です。",
     "isShowRestaurant": false,
-    "showName": null
+    "showName": null,
+    "operatingStatus": "scheduledClosure",
+    "closureStartDate": "2026-01-05",
+    "closureEndDate": "2026-10-22",
+    "operatingStatusNote": "公式休止：2026/1/5 - 2026/10/22",
+    "operatingStatusCheckedAt": "2026-09-09"
   },
   {
     "id": "tdl_fantasyland_peter_pans_flight",

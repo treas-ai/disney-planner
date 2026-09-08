@@ -64,6 +64,8 @@ class FacilityModel {
       operatingStatus: operatingStatus,
       closureStartDate: _readNullableDateTime(map['closure_start_date']),
       closureEndDate: _readNullableDateTime(map['closure_end_date']),
+      availableStartDate: _readNullableDateTime(map['available_start_date']),
+      availableEndDate: _readNullableDateTime(map['available_end_date']),
       operatingStatusNote: _readNullableString(map['operating_status_note']),
       operatingStatusCheckedAt: _readNullableDateTime(
         map['operating_status_checked_at'],
@@ -135,6 +137,8 @@ class FacilityModel {
       'operating_status': facility.operatingStatus.name,
       'closure_start_date': facility.closureStartDate?.toIso8601String(),
       'closure_end_date': facility.closureEndDate?.toIso8601String(),
+      'available_start_date': facility.availableStartDate?.toIso8601String(),
+      'available_end_date': facility.availableEndDate?.toIso8601String(),
       'operating_status_note': facility.operatingStatusNote,
       'operating_status_checked_at': facility.operatingStatusCheckedAt
           ?.toIso8601String(),

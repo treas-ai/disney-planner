@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "id": "halloween_2026",
+  "title": "ディズニー・ハロウィーン 2026",
+  "description": "2026/9/16〜10/31の来園日に表示するハロウィーン限定候補。夏限定パックは9/14で終了するため来園日に応じて自動で入れ替わります。",
+  "startDate": "2026-09-16",
+  "endDate": "2026-10-31",
+  "updatedAt": "2026-09-09",
+  "sourceUrls": [
+    "https://www.tokyodisneyresort.jp/tdl/show/detail/944/",
+    "https://www.tokyodisneyresort.jp/tdl/show/detail/945/",
+    "https://www.tokyodisneyresort.jp/tds/show/detail/950/",
+    "https://www.tokyodisneyresort.jp/tdl/food/",
+    "https://www.tokyodisneyresort.jp/tds/food/"
+  ],
+  "items": [
+    {
+      "id": "halloween2026_tdl_villains_parade",
+      "name": "ザ・ヴィランズ・ハロウィーン“Into the Frenzy”",
+      "category": "entertainment",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_show_villains_halloween_into_the_frenzy"
+      ],
+      "venueNames": [
+        "パレードルート"
+      ],
+      "startDate": "2026-09-16",
+      "endDate": "2026-10-31",
+      "description": "2026年ディズニー・ハロウィーン限定パレード。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/show/detail/944/",
+      "sourceCheckedAt": "2026-09-09"
+    },
+    {
+      "id": "halloween2026_tdl_night_high",
+      "name": "ナイトハイ・ハロウィーン",
+      "category": "entertainment",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_show_night_high_halloween"
+      ],
+      "venueNames": [
+        "パークワイド"
+      ],
+      "startDate": "2026-09-16",
+      "endDate": "2026-10-31",
+      "description": "ハロウィーン期間限定の花火。10/2は休止。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/show/detail/945/",
+      "sourceCheckedAt": "2026-09-09"
+    },
+    {
+      "id": "halloween2026_tdl_churro_maple_pumpkin",
+      "name": "チュロス（メイプルパンプキン）",
+      "category": "snack",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_new_fantasyland_la_taverne_de_gaston"
+      ],
+      "venueNames": [
+        "ラ・タベルヌ・ド・ガストン ほか"
+      ],
+      "startDate": "2026-09-16",
+      "endDate": "2026-10-31",
+      "priceYen": 600,
+      "description": "2026年ハロウィーン限定のメイプルパンプキン味チュロス。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/",
+      "sourceCheckedAt": "2026-09-09"
+    },
+    {
+      "id": "halloween2026_tdl_purple_sweet_potato_drink",
+      "name": "スペシャルドリンク（紫イモ、ミルク、コーヒーゼリー）",
+      "category": "specialDrink",
+      "parkId": "tokyo_disneyland",
+      "venueFacilityIds": [
+        "tdl_world_bazaar_refreshment_corner"
+      ],
+      "venueNames": [
+        "リフレッシュメントコーナー ほか"
+      ],
+      "startDate": "2026-09-16",
+      "endDate": "2026-10-31",
+      "priceYen": 750,
+      "description": "ハロウィーンの妖しい色合いを楽しむ限定ドリンク。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tdl/food/",
+      "sourceCheckedAt": "2026-09-09"
+    },
+    {
+      "id": "halloween2026_tds_greeting",
+      "name": "ディズニー・ハロウィーン・グリーティング",
+      "category": "entertainment",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_show_disney_halloween_greeting"
+      ],
+      "venueNames": [
+        "メディテレーニアンハーバー"
+      ],
+      "startDate": "2026-09-16",
+      "endDate": "2026-10-31",
+      "description": "東京ディズニーシーのハロウィーン期間限定グリーティング。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/show/detail/950/",
+      "sourceCheckedAt": "2026-09-09"
+    },
+    {
+      "id": "halloween2026_tds_night_high",
+      "name": "ナイトハイ・ハロウィーン",
+      "category": "entertainment",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_show_night_high_halloween"
+      ],
+      "venueNames": [
+        "パークワイド"
+      ],
+      "startDate": "2026-09-16",
+      "endDate": "2026-10-31",
+      "description": "ハロウィーン期間限定の花火。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/show/",
+      "sourceCheckedAt": "2026-09-09"
+    },
+    {
+      "id": "halloween2026_tds_magellans_course",
+      "name": "マゼランズ ハロウィーン・スペシャルコース",
+      "category": "restaurant",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_007"
+      ],
+      "venueNames": [
+        "マゼランズ"
+      ],
+      "startDate": "2026-09-16",
+      "endDate": "2026-10-31",
+      "priceYen": 12000,
+      "description": "2026年ディズニー・ハロウィーン限定スペシャルコース。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/",
+      "sourceCheckedAt": "2026-09-09"
+    },
+    {
+      "id": "halloween2026_tds_pumpkin_muffin",
+      "name": "パンプキンマフィン（アーモンド入り）",
+      "category": "snack",
+      "parkId": "tokyo_disneysea",
+      "venueFacilityIds": [
+        "tds_mh_r_005"
+      ],
+      "venueNames": [
+        "ゴンドリエ・スナック"
+      ],
+      "startDate": "2026-09-16",
+      "endDate": "2026-10-31",
+      "priceYen": 400,
+      "description": "2026年ハロウィーン限定のパンプキンマフィン。",
+      "officialUrl": "https://www.tokyodisneyresort.jp/tds/food/",
+      "sourceCheckedAt": "2026-09-09"
+    }
+  ]
+}

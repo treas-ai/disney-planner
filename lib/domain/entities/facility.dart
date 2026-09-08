@@ -40,6 +40,8 @@ class Facility {
     this.operatingStatus = FacilityOperatingStatus.operating,
     this.closureStartDate,
     this.closureEndDate,
+    this.availableStartDate,
+    this.availableEndDate,
     this.operatingStatusNote,
     this.operatingStatusCheckedAt,
     this.minHeight,
@@ -111,6 +113,12 @@ class Facility {
 
   /// 休止終了日。再開日未定の場合はnull。
   final DateTime? closureEndDate;
+
+  /// 期間限定施設・公演の利用開始日。nullなら開始制約なし。
+  final DateTime? availableStartDate;
+
+  /// 期間限定施設・公演の利用終了日。nullなら終了制約なし。
+  final DateTime? availableEndDate;
 
   /// 再開時期未定など、営業状態に関する補足。
   final String? operatingStatusNote;
@@ -228,20 +236,32 @@ class Facility {
   }
 
   bool canAddToPlanAt(DateTime targetDateTime) {
-    if (!isOperating || status != ParkStatus.open) {
+    final target = _dateOnly(targetDateTime);
+
+    if (!_isInsideAvailabilityPeriod(target)) {
       return false;
     }
 
-    final target = _dateOnly(targetDateTime);
-
     switch (operatingStatus) {
       case FacilityOperatingStatus.operating:
+        if (availableStartDate != null ||
+            availableEndDate != null ||
+            closureStartDate != null ||
+            closureEndDate != null) {
+          return !_isInsideClosurePeriod(target);
+        }
+        // status / isOperating は「現在」の互換情報。
+        // 日付情報を持たない通常施設だけ従来判定へフォールバックする。
+        return status == ParkStatus.open && isOperating;
+
       case FacilityOperatingStatus.scheduledClosure:
+        // status が現在「休止中」でも、来園日が公式休止期間の外なら利用可能。
         return !_isInsideClosurePeriod(target);
 
       case FacilityOperatingStatus.temporarilyClosed:
       case FacilityOperatingStatus.seasonalClosed:
       case FacilityOperatingStatus.longTermClosed:
+        // 終了日が公式に分かっている休止は、終了後の将来日を選択可能にする。
         if (closureStartDate != null || closureEndDate != null) {
           return !_isInsideClosurePeriod(target);
         }
@@ -250,6 +270,21 @@ class Facility {
       case FacilityOperatingStatus.permanentlyClosed:
         return false;
     }
+  }
+
+  bool _isInsideAvailabilityPeriod(DateTime target) {
+    final start = availableStartDate == null
+        ? null
+        : _dateOnly(availableStartDate!);
+    final end = availableEndDate == null ? null : _dateOnly(availableEndDate!);
+
+    if (start != null && target.isBefore(start)) {
+      return false;
+    }
+    if (end != null && target.isAfter(end)) {
+      return false;
+    }
+    return true;
   }
 
   /// 指定日の公式確認済み運営時間を返す。

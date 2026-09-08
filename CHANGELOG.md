@@ -1,3 +1,12 @@
+## 2026-09-09 - October 2026 date-aware operations update
+
+- Added visit-date availability windows for seasonal facilities and entertainment.
+- Updated October 2026 TDL/TDS attraction closures from official schedules.
+- Added October 2026 official show/parade performance times.
+- Added 2026 Halloween Wish Pack and automatic post-summer seasonal replacement.
+- Wish selection now excludes facilities unavailable on the selected visit date.
+- Added SQLite schema v11 and date-aware regression tests.
+
 
 ## 2026-08-27 - Disney Expert Recommendation Layer
 
