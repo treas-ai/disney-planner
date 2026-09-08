@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-08T03:51:06+09:00
+Generated: 2026-09-09T03:04:03+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 31
-- Profile source observations: 11725
+- Profile source observations: 12487
 
 ### 1. Profile missing facilities
 
@@ -37,12 +37,11 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: ショー前後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 夕食後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
-- `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル: 夕食後 = 2 samples
 - `tdl_fantasyland_castle_carrousel` — キャッスルカルーセル: 閉園前 = 2 samples
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 昼過ぎ = 2 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 1 samples
-- `tdl_toontown_minnies_house` — ミニーの家: 昼前 = 1 samples
+- `tdl_toontown_minnies_house` — ミニーの家: 昼前 = 2 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 昼過ぎ = 2 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 1 samples
@@ -61,7 +60,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 27
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 15104
+- Profile source observations: 16245
 
 ### 1. Profile missing facilities
 
