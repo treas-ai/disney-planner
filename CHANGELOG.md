@@ -1,3 +1,10 @@
+## 2026-09-09 - v7.5.3 開発者連絡先
+
+- 旅行設定の「データ管理・その他」に「このアプリについて」を追加。
+- 開発者へのお問い合わせ先として `treas0623@gmail.com` を掲載。
+- メールアプリ起動とメールアドレスコピーの導線を追加。
+- アプリ表示バージョンを v7.5.3 に更新。
+
 ## 2026-09-09 - October 2026 date-aware operations update
 
 - Added visit-date availability windows for seasonal facilities and entertainment.

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/state/app_state_scope.dart';
 import '../../core/constants/app_version.dart';
@@ -277,6 +278,8 @@ class _MobileSettingsLayout extends StatelessWidget {
               const _DataFreshnessCard(),
               const SizedBox(height: AppSpacing.sm),
               _BackupRestoreCard(controller: controller),
+              const SizedBox(height: AppSpacing.sm),
+              const _AboutAppCard(),
             ],
           ),
         ],
@@ -392,6 +395,8 @@ class _DesktopSettingsLayout extends StatelessWidget {
                           const _DataFreshnessCard(),
                           const SizedBox(height: AppSpacing.sm),
                           _BackupRestoreCard(controller: controller),
+              const SizedBox(height: AppSpacing.sm),
+              const _AboutAppCard(),
                         ],
                       ),
                     ],
@@ -1666,6 +1671,134 @@ class _DataFreshnessCard extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _AboutAppCard extends StatelessWidget {
+  const _AboutAppCard();
+
+  static const String _developerEmail = 'treas0623@gmail.com';
+
+  Future<void> _openMailApp(BuildContext context) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: _developerEmail,
+      queryParameters: const {'subject': 'Disney Planner お問い合わせ'},
+    );
+
+    try {
+      final opened = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened && context.mounted) {
+        _showMailError(context);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        _showMailError(context);
+      }
+    }
+  }
+
+  Future<void> _copyEmail(BuildContext context) async {
+    await Clipboard.setData(const ClipboardData(text: _developerEmail));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('メールアドレスをコピーしました。')),
+      );
+    }
+  }
+
+  void _showMailError(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('メールアプリを開けませんでした。アドレスをコピーしてご利用ください。'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SettingsCardHeader(
+            title: 'このアプリについて',
+            subtitle: 'Disney Plannerの情報とお問い合わせ',
+            icon: Icons.info_outline,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Disney Planner ${AppVersion.displayName}',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '不具合報告・ご意見は、下記の開発者連絡先までお寄せください。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.mail_outline, color: colorScheme.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '開発者へのお問い合わせ',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const SelectableText(
+                        _developerEmail,
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () => _openMailApp(context),
+                icon: const Icon(Icons.outgoing_mail),
+                label: const Text('メールを送る'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _copyEmail(context),
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('アドレスをコピー'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
