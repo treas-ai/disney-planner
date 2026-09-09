@@ -94,6 +94,8 @@ class PlanOptimizationController extends ChangeNotifier {
 
       final eventImpacts = await ServiceLocator.eventImpactRepository
           .loadEventImpacts(parkId: schedule.parkId);
+      final areaConnections = await ServiceLocator.movementRepository
+          .loadAreaConnections(parkId: schedule.parkId);
 
       result = _optimizationEngine.optimize(
         schedule: schedule,
@@ -102,11 +104,12 @@ class PlanOptimizationController extends ChangeNotifier {
         predictions: predictions,
         settings: _appState.tripSettings,
         eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
       );
     } catch (error, stackTrace) {
-      debugPrint('AIプラン最適化に失敗しました: $error');
+      debugPrint('プラン再最適化に失敗しました: $error');
       debugPrintStack(stackTrace: stackTrace);
-      errorMessage = 'AIプラン評価に失敗しました。もう一度お試しください。';
+      errorMessage = 'プラン再最適化に失敗しました。もう一度お試しください。';
     } finally {
       isLoading = false;
       notifyListeners();

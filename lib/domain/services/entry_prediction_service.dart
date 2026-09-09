@@ -4,7 +4,7 @@ import '../entities/trip_settings.dart';
 class EntryPredictionService {
   const EntryPredictionService();
 
-  static const int _gateToFirstFacilityMinutes = 5;
+  static const int gateToFirstFacilityMinutes = 5;
   static const int _postEntryBookingMinutes = 5;
 
   EntryPrediction predict(TripSettings settings) {
@@ -46,7 +46,7 @@ class EntryPredictionService {
         ? _postEntryBookingMinutes
         : 0;
     final firstFacilityArrival = expectedEntry +
-        postEntryOperationMinutes + _gateToFirstFacilityMinutes;
+        postEntryOperationMinutes + gateToFirstFacilityMinutes;
 
     // ハッピーエントリー中は全施設が利用開始済みとは限らないため、
     // 汎用プランでは一般開園時刻を最初の施設利用可能時刻の下限とする。

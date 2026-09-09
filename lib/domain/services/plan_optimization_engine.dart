@@ -1,3 +1,4 @@
+import '../entities/area_connection.dart';
 import '../entities/day_schedule.dart';
 import '../entities/event_impact.dart';
 import '../entities/facility.dart';
@@ -14,5 +15,6 @@ abstract interface class PlanOptimizationEngine {
     required Map<String, WaitTimePrediction> predictions,
     required TripSettings settings,
     List<EventImpact> eventImpacts = const [],
+    List<AreaConnection> areaConnections = const [],
   });
 }

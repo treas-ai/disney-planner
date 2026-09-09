@@ -20,9 +20,7 @@ import '../../domain/enums/fixed_time_status.dart';
 import '../../domain/enums/schedule_validation_severity.dart';
 import '../facility/widgets/facility_visual_style.dart';
 import '../facility/widgets/fixed_schedule_editor_sheet.dart';
-import 'plan_optimization_controller.dart';
 import 'schedule_controller.dart';
-import 'widgets/plan_optimization_sheet.dart';
 
 class PlanReviewScreen extends StatefulWidget {
   const PlanReviewScreen({super.key});
@@ -35,7 +33,6 @@ class PlanReviewScreen extends StatefulWidget {
 
 class _PlanReviewScreenState extends State<PlanReviewScreen> {
   ScheduleController? _controller;
-  PlanOptimizationController? _optimizationController;
 
   late final ScrollController _mobileScrollController;
   late final ScrollController _timelineScrollController;
@@ -60,17 +57,12 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
 
     _controller = ScheduleController(appState);
     _controller!.addListener(_refresh);
-    _optimizationController = PlanOptimizationController(appState);
-    _optimizationController!.addListener(_refresh);
   }
 
   @override
   void dispose() {
     _controller?.removeListener(_refresh);
     _controller?.dispose();
-    _optimizationController?.removeListener(_refresh);
-    _optimizationController?.dispose();
-
     _mobileScrollController.dispose();
     _timelineScrollController.dispose();
 
@@ -115,41 +107,54 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     );
   }
 
-  Future<void> _showPlanOptimization() async {
-    final optimizationController = _optimizationController;
-    if (optimizationController == null) {
+  Future<void> _showAddScheduleItem() async {
+    final controller = _controller;
+    if (controller == null || controller.schedule == null) {
       return;
     }
 
-    await optimizationController.analyze();
-    if (!mounted) {
-      return;
-    }
-    final errorMessage = optimizationController.errorMessage;
-    if (errorMessage != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(errorMessage)));
-      return;
-    }
-    final result = optimizationController.result;
-    if (result == null) {
+    final choices = await controller.loadPerformancePlanChoices();
+    if (!mounted) return;
+
+    if (choices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('この日の追加可能なショー・パレードがありません。')),
+      );
       return;
     }
 
-    await showModalBottomSheet<void>(
+    final selected = await showModalBottomSheet<PerformancePlanChoice>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (sheetContext) {
         return FractionallySizedBox(
-          heightFactor: 0.9,
-          child: PlanOptimizationSheet(
-            result: result,
-            onApply: optimizationController.apply,
+          heightFactor: 0.88,
+          child: _AddPerformanceSheet(
+            choices: choices,
+            schedule: controller.schedule!,
           ),
         );
       },
+    );
+
+    if (selected == null || !mounted) return;
+    await controller.addPerformanceToPlan(selected);
+
+    if (!mounted) return;
+    if (controller.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(controller.errorMessage!)),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${selected.option.startTime} ${selected.facility.name}を固定予定として追加し、プランを再生成しました。',
+        ),
+      ),
     );
   }
 
@@ -254,9 +259,8 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
               timelineScrollController: _timelineScrollController,
               onGeneratePressed: _generateSchedule,
               onClearPressed: _confirmClearSchedule,
-              onOptimizePressed: _showPlanOptimization,
               onExportPressed: _showPlanTextExport,
-              isOptimizing: _optimizationController?.isLoading ?? false,
+              onAddScheduleItemPressed: _showAddScheduleItem,
             );
           }
 
@@ -265,9 +269,8 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
             scrollController: _mobileScrollController,
             onGeneratePressed: _generateSchedule,
             onClearPressed: _confirmClearSchedule,
-            onOptimizePressed: _showPlanOptimization,
             onExportPressed: _showPlanTextExport,
-            isOptimizing: _optimizationController?.isLoading ?? false,
+            onAddScheduleItemPressed: _showAddScheduleItem,
           );
         },
       ),
@@ -281,18 +284,16 @@ class _MobilePlanReviewLayout extends StatelessWidget {
     required this.scrollController,
     required this.onGeneratePressed,
     required this.onClearPressed,
-    required this.onOptimizePressed,
     required this.onExportPressed,
-    required this.isOptimizing,
+    required this.onAddScheduleItemPressed,
   });
 
   final ScheduleController controller;
   final ScrollController scrollController;
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
-  final VoidCallback onOptimizePressed;
   final VoidCallback onExportPressed;
-  final bool isOptimizing;
+  final VoidCallback onAddScheduleItemPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -310,9 +311,8 @@ class _MobilePlanReviewLayout extends StatelessWidget {
             controller: controller,
             onGeneratePressed: onGeneratePressed,
             onClearPressed: onClearPressed,
-            onOptimizePressed: onOptimizePressed,
             onExportPressed: onExportPressed,
-            isOptimizing: isOptimizing,
+            onAddScheduleItemPressed: onAddScheduleItemPressed,
           ),
           if (controller.errorMessage != null) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -345,18 +345,16 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
     required this.timelineScrollController,
     required this.onGeneratePressed,
     required this.onClearPressed,
-    required this.onOptimizePressed,
     required this.onExportPressed,
-    required this.isOptimizing,
+    required this.onAddScheduleItemPressed,
   });
 
   final ScheduleController controller;
   final ScrollController timelineScrollController;
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
-  final VoidCallback onOptimizePressed;
   final VoidCallback onExportPressed;
-  final bool isOptimizing;
+  final VoidCallback onAddScheduleItemPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -373,10 +371,9 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                   controller: controller,
                   onGeneratePressed: onGeneratePressed,
                   onClearPressed: onClearPressed,
-                  onOptimizePressed: onOptimizePressed,
-                  onExportPressed: onExportPressed,
-                  isOptimizing: isOptimizing,
-                ),
+                        onExportPressed: onExportPressed,
+                  onAddScheduleItemPressed: onAddScheduleItemPressed,
+                      ),
                 if (controller.errorMessage != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _GenerationErrorCard(
@@ -423,17 +420,15 @@ class _PlanOverviewCard extends StatelessWidget {
     required this.controller,
     required this.onGeneratePressed,
     required this.onClearPressed,
-    required this.onOptimizePressed,
     required this.onExportPressed,
-    required this.isOptimizing,
+    required this.onAddScheduleItemPressed,
   });
 
   final ScheduleController controller;
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
-  final VoidCallback onOptimizePressed;
   final VoidCallback onExportPressed;
-  final bool isOptimizing;
+  final VoidCallback onAddScheduleItemPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -536,16 +531,10 @@ class _PlanOverviewCard extends StatelessWidget {
             const SizedBox(height: 7),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.tonalIcon(
-                onPressed: isOptimizing ? null : onOptimizePressed,
-                icon: isOptimizing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.psychology_alt_outlined, size: 19),
-                label: Text(isOptimizing ? 'AI改善中...' : 'AIでもっと良くする'),
+              child: OutlinedButton.icon(
+                onPressed: onAddScheduleItemPressed,
+                icon: const Icon(Icons.add_circle_outline, size: 19),
+                label: const Text('ショー・パレードを追加'),
               ),
             ),
             const SizedBox(height: 7),
@@ -1610,6 +1599,124 @@ class _ScheduleDetailRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AddPerformanceSheet extends StatelessWidget {
+  const _AddPerformanceSheet({
+    required this.choices,
+    required this.schedule,
+  });
+
+  final List<PerformancePlanChoice> choices;
+  final DaySchedule schedule;
+
+  bool _hasExactPerformance(PerformancePlanChoice choice) {
+    return schedule.items.any((item) {
+      return item.facilityId == choice.facility.id &&
+          item.startTimeLabel == choice.option.startTime;
+    });
+  }
+
+  bool _hasOverlap(PerformancePlanChoice choice) {
+    final startParts = choice.option.startTime.split(':');
+    if (startParts.length != 2) return false;
+    final start =
+        (int.tryParse(startParts[0]) ?? 0) * 60 +
+        (int.tryParse(startParts[1]) ?? 0);
+    final end = start + choice.facility.durationMinutes;
+
+    return schedule.items.any((item) {
+      if (item.type.name == 'entry' || item.type.name == 'exit') {
+        return false;
+      }
+      final itemStart = item.startHour * 60 + item.startMinute;
+      final itemEnd = item.endHour * 60 + item.endMinute;
+      return start < itemEnd && end > itemStart;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ショー・パレードを追加'),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close),
+            tooltip: '閉じる',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                '当選・購入したショーやパレードを選ぶと、その公演時刻を固定してプラン全体を再生成します。',
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.lg,
+              ),
+              itemCount: choices.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final choice = choices[index];
+                final alreadyAdded = _hasExactPerformance(choice);
+                final overlaps = _hasOverlap(choice);
+
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 4,
+                  ),
+                  leading: CircleAvatar(
+                    child: Icon(
+                      choice.facility.category == FacilityCategory.parade
+                          ? Icons.celebration_outlined
+                          : Icons.theater_comedy_outlined,
+                    ),
+                  ),
+                  title: Text(choice.facility.name),
+                  subtitle: Text(
+                    '${choice.option.startTime} 開演・約${choice.facility.durationMinutes}分'
+                    '${overlaps && !alreadyAdded ? '　現在の予定と重なります（追加後に再調整）' : ''}',
+                  ),
+                  trailing: alreadyAdded
+                      ? const Chip(label: Text('追加済み'))
+                      : const Icon(Icons.add),
+                  enabled: !alreadyAdded,
+                  onTap: alreadyAdded
+                      ? null
+                      : () => Navigator.of(context).pop(choice),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

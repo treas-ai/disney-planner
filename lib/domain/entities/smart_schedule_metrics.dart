@@ -6,6 +6,9 @@ class SmartScheduleMetrics {
     required this.outdoorItemsInRain,
     required this.eventAffectedItems,
     required this.longWalkingStreaks,
+    required this.walkingMinutes,
+    required this.longDistanceMoves,
+    required this.longDistanceBacktracks,
   });
 
   final int areaTransitions;
@@ -14,4 +17,7 @@ class SmartScheduleMetrics {
   final int outdoorItemsInRain;
   final int eventAffectedItems;
   final int longWalkingStreaks;
+  final int walkingMinutes;
+  final int longDistanceMoves;
+  final int longDistanceBacktracks;
 }

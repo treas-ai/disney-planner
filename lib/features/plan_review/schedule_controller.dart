@@ -9,6 +9,7 @@ import '../../domain/entities/dpa_strategy.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/official_performance_opportunity.dart';
+import '../../domain/entities/performance_time_option.dart';
 import '../../domain/entities/schedule_validation_issue.dart';
 import '../../domain/enums/fixed_time_status.dart';
 import '../../domain/enums/facility_category.dart';
@@ -362,6 +363,52 @@ class ScheduleController extends ChangeNotifier {
     }
   }
 
+  Future<List<PerformancePlanChoice>> loadPerformancePlanChoices() async {
+    final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
+    final facilities = await ServiceLocator.facilityRepository
+        .getFacilitiesByParkId(selectedParkId);
+    final facilityById = {
+      for (final facility in facilities)
+        if (facility.category == FacilityCategory.show ||
+            facility.category == FacilityCategory.parade)
+          facility.id: facility,
+    };
+    final options = await _performanceScheduleRepository.findParkOptions(
+      parkId: selectedParkId,
+      date: targetDate,
+    );
+
+    final choices = <PerformancePlanChoice>[];
+    for (final option in options) {
+      final facility = facilityById[option.facilityId];
+      if (facility == null || !facility.canAddToPlanAt(targetDate)) {
+        continue;
+      }
+      choices.add(PerformancePlanChoice(facility: facility, option: option));
+    }
+
+    choices.sort((left, right) {
+      final byTime = left.option.startTime.compareTo(right.option.startTime);
+      if (byTime != 0) return byTime;
+      return left.facility.name.compareTo(right.facility.name);
+    });
+    return List<PerformancePlanChoice>.unmodifiable(choices);
+  }
+
+  Future<void> addPerformanceToPlan(PerformancePlanChoice choice) async {
+    if (!_appState.isFacilitySelected(choice.facility.id)) {
+      _appState.addFacility(choice.facility);
+    }
+
+    _appState.updatePreferenceSelectedPerformance(
+      facilityId: choice.facility.id,
+      performanceIndex: choice.option.performanceIndex,
+      startTime: choice.option.startTime,
+    );
+
+    await generateSchedule();
+  }
+
   void clearSchedule() {
     errorMessage = null;
     _generatedPreferences = null;
@@ -398,4 +445,15 @@ class ScheduleController extends ChangeNotifier {
 
     super.dispose();
   }
+}
+
+
+class PerformancePlanChoice {
+  const PerformancePlanChoice({
+    required this.facility,
+    required this.option,
+  });
+
+  final Facility facility;
+  final PerformanceTimeOption option;
 }

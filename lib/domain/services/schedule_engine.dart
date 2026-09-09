@@ -387,6 +387,11 @@ class ScheduleEngine {
       }
 
       final endMinutes = finalStartMinutes + finalDurationMinutes;
+      final effectiveDecisionReason = _effectiveDecisionReason(
+        decision: nextDecision,
+        requestedStartMinutes: requestedStartMinutes,
+        finalStartMinutes: finalStartMinutes,
+      );
 
       items.add(
         _createScheduleItem(
@@ -404,7 +409,7 @@ class ScheduleEngine {
             durationMinutes: finalDurationMinutes,
             scheduledStartMinutes: finalStartMinutes,
             waitDecision: waitDecision,
-            waitTimingReason: nextDecision.reason,
+            waitTimingReason: effectiveDecisionReason,
             waitProfiles: waitProfiles,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
@@ -976,7 +981,7 @@ class ScheduleEngine {
         endMinutes: endMinutes,
         reason: unresolvedOptions.isNotEmpty
             ? 'この時間帯にはエントリー受付対象の公式公演があります。候補：$optionText。'
-                '未当選のため時間は予約していません。当選した場合だけ公演を固定して再最適化します。'
+                '未当選のため時間は予約していません。当選した場合は公演を固定し、当日の状況に合わせてプランを再生成します。'
             : isEvening
                 ? '公式公演を配置した後にも残った夜時間です。買い物、休憩、写真撮影、当日の追加施設などに使えます。'
                 : '希望施設と固定予定を配置した後に60分以上残った時間です。追加施設を捏造せず自由枠として明示します。',
@@ -1481,6 +1486,7 @@ class ScheduleEngine {
         return _NextFacilityDecision(
           facility: openingDecision.facility,
           reason: openingDecision.reason,
+          isOpeningStrategy: true,
         );
       }
     }
@@ -1688,7 +1694,7 @@ class ScheduleEngine {
       reason:
           '朝一は1施設だけでなく最初の${best.facilities.length}手を比較しました。'
           '候補ルート「$route」を総合評価し、'
-          'この施設は現在待ち${detail.waitMinutes}分、'
+          '候補評価時点では待ち${detail.waitMinutes}分、'
           '後回し損失${detail.deferLossMinutes >= 0 ? '+' : ''}${detail.deferLossMinutes}分、'
           '移動${detail.movementMinutes}分として評価しました。'
           '$deferReason'
@@ -1861,10 +1867,14 @@ class ScheduleEngine {
     if (preference?.preferredTime == PreferredTime.morning) score += 18;
     if (facility.isSeasonal) score += 8;
 
+    final explainedMovementMinutes = previousAreaId == null
+        ? EntryPredictionService.gateToFirstFacilityMinutes
+        : movementMinutes;
+
     return _OpeningStepEvaluation(
       score: score,
       waitMinutes: waitEstimate.waitMinutes,
-      movementMinutes: movementMinutes,
+      movementMinutes: explainedMovementMinutes,
       deferLossMinutes: deferLoss,
       alternativeAccessPenalty: alternativeAccessPenalty,
       dayDifficultyMinutes: dayDifficultyMinutes,
@@ -2544,6 +2554,32 @@ class ScheduleEngine {
     return false;
   }
 
+  String? _effectiveDecisionReason({
+    required _NextFacilityDecision decision,
+    required int requestedStartMinutes,
+    required int finalStartMinutes,
+  }) {
+    final reason = decision.reason;
+    if (reason == null || reason.trim().isEmpty) {
+      return null;
+    }
+
+    // Candidate-selection explanations describe the time at which the
+    // candidate was evaluated. Fixed shows, meals, operating hours, or another
+    // already-placed item can later push the actual schedule forward. Do not
+    // present that stale explanation as though it described the final slot.
+    if (finalStartMinutes != requestedStartMinutes) {
+      return null;
+    }
+
+    if (decision.isOpeningStrategy &&
+        _waitTimeBandForMinutes(finalStartMinutes) != WaitTimeBand.afterOpening) {
+      return null;
+    }
+
+    return reason;
+  }
+
   String _buildReason({
     required Facility facility,
     required PlanPreference? preference,
@@ -2558,7 +2594,12 @@ class ScheduleEngine {
     final reasons = <String>[];
 
     if (previousAreaId == null) {
-      reasons.add('最初の施設として配置しました。');
+      reasons.add(
+        '最初の施設として配置しました。'
+        '入園後の施設までの移動'
+        '${EntryPredictionService.gateToFirstFacilityMinutes}分は'
+        '入園予測に含めています。',
+      );
     } else if (previousAreaId == currentAreaId) {
       reasons.add(
         '直前の施設と同じエリアのため、'
@@ -2982,10 +3023,12 @@ class _NextFacilityDecision {
   const _NextFacilityDecision({
     required this.facility,
     this.reason,
+    this.isOpeningStrategy = false,
   });
 
   final Facility facility;
   final String? reason;
+  final bool isOpeningStrategy;
 }
 
 class _WaitAwareCandidate {

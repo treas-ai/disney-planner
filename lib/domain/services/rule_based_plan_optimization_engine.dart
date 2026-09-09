@@ -1,3 +1,4 @@
+import '../entities/area_connection.dart';
 import '../entities/day_schedule.dart';
 import '../entities/event_impact.dart';
 import '../entities/facility.dart';
@@ -13,6 +14,7 @@ import '../enums/fixed_time_status.dart';
 import '../enums/priority_level.dart';
 import '../enums/schedule_item_type.dart';
 import 'event_impact_engine.dart';
+import 'movement_time_engine.dart';
 import 'plan_optimization_engine.dart';
 
 class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
@@ -30,6 +32,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     required Map<String, WaitTimePrediction> predictions,
     required TripSettings settings,
     List<EventImpact> eventImpacts = const [],
+    List<AreaConnection> areaConnections = const [],
   }) {
     final facilityById = {
       for (final facility in facilities) facility.id: facility,
@@ -66,6 +69,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
         predictions: predictions,
         settings: settings,
         eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
       );
 
       remaining.remove(selected);
@@ -119,6 +123,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
       predictions: predictions,
       settings: settings,
       eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
     );
     final afterMetrics = _metrics(
       schedule: afterSchedule,
@@ -127,6 +132,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
       predictions: predictions,
       settings: settings,
       eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
     );
 
     final beforeScore = _score(beforeMetrics);
@@ -135,9 +141,11 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     final dimensions = <PlanOptimizationDimension>[
       PlanOptimizationDimension(
         label: '移動効率',
-        score: (100 - afterMetrics.areaTransitions * 12).clamp(0, 100),
+        score: _movementScore(afterMetrics),
         message:
-            'エリア移動 ${beforeMetrics.areaTransitions}回 → ${afterMetrics.areaTransitions}回',
+            '推定徒歩 ${beforeMetrics.walkingMinutes}分 → ${afterMetrics.walkingMinutes}分'
+            '・長距離移動 ${beforeMetrics.longDistanceMoves}回 → ${afterMetrics.longDistanceMoves}回'
+            '・大きな逆戻り ${beforeMetrics.longDistanceBacktracks}回 → ${afterMetrics.longDistanceBacktracks}回',
       ),
       PlanOptimizationDimension(
         label: '待ち時間効率',
@@ -165,10 +173,13 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
       ),
       PlanOptimizationDimension(
         label: '歩行負担',
-        score: (100 - afterMetrics.longWalkingStreaks * 15).clamp(0, 100),
+        score: (100 -
+                afterMetrics.walkingMinutes ~/ 2 -
+                afterMetrics.longDistanceMoves * 6 -
+                afterMetrics.longDistanceBacktracks * 12)
+            .clamp(0, 100),
         message:
-            '連続エリア移動 ${beforeMetrics.longWalkingStreaks}回 → '
-            '${afterMetrics.longWalkingStreaks}回',
+            '移動回数ではなく、実際の移動時間と遠距離の往復を重く評価します。',
       ),
       const PlanOptimizationDimension(
         label: '固定予定・食事保護',
@@ -178,9 +189,12 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     ];
 
     final recommendations = <String>[
-      if (afterMetrics.areaTransitions < beforeMetrics.areaTransitions)
-        'エリア移動を'
-            '${beforeMetrics.areaTransitions - afterMetrics.areaTransitions}回削減しました。',
+      if (afterMetrics.walkingMinutes < beforeMetrics.walkingMinutes)
+        '推定徒歩移動を'
+            '${beforeMetrics.walkingMinutes - afterMetrics.walkingMinutes}分削減しました。',
+      if (afterMetrics.longDistanceBacktracks <
+          beforeMetrics.longDistanceBacktracks)
+        '遠距離の逆戻りを減らしました。',
       if (afterMetrics.predictedWaitMinutes <
           beforeMetrics.predictedWaitMinutes)
         '予測待ち時間が増える施設を早い時間帯へ移動しました。',
@@ -189,8 +203,8 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
         '雨天を考慮し、屋内施設を優先しました。',
       if (afterMetrics.eventAffectedItems < beforeMetrics.eventAffectedItems)
         'ショー・パレード等のイベント影響を避ける順番へ変更しました。',
-      if (afterMetrics.longWalkingStreaks < beforeMetrics.longWalkingStreaks)
-        '連続する長距離移動を減らし、歩行負担を軽減しました。',
+      if (afterMetrics.longDistanceMoves < beforeMetrics.longDistanceMoves)
+        '長距離移動を減らし、歩行負担を軽減しました。',
       '確定済みのショー、予約、DPA等と食事予定は維持します。',
       if (afterScore <= beforeScore) '現在のプランは既に良好です。大きな改善効果は見込めません。',
     ];
@@ -239,6 +253,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     required Map<String, WaitTimePrediction> predictions,
     required TripSettings settings,
     required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
   }) {
     return candidates.reduce((best, candidate) {
       final bestScore = _candidateScore(
@@ -250,6 +265,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
         predictions: predictions,
         settings: settings,
         eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
       );
       final candidateScore = _candidateScore(
         item: candidate,
@@ -260,6 +276,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
         predictions: predictions,
         settings: settings,
         eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
       );
 
       if (candidateScore != bestScore) {
@@ -279,6 +296,7 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     required Map<String, WaitTimePrediction> predictions,
     required TripSettings settings,
     required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
   }) {
     final facilityId = item.facilityId;
     if (facilityId == null) {
@@ -294,10 +312,22 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     final prediction = predictions[facilityId];
     var score = (preference?.priority.value ?? facility.priority.value) * 20;
 
-    if (previousAreaId != null && previousAreaId == facility.areaId) {
-      score += 35;
-    } else if (previousAreaId != null) {
-      score -= 12;
+    if (previousAreaId != null) {
+      final movementMinutes = _movementMinutes(
+        fromAreaId: previousAreaId,
+        toAreaId: facility.areaId,
+        atMinutes: slotMinutes,
+        settings: settings,
+        eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
+      );
+      score -= movementMinutes * 2;
+      if (movementMinutes <= 5) {
+        score += 18;
+      }
+      if (movementMinutes >= 12) {
+        score -= (movementMinutes - 10) * 2;
+      }
     }
 
     if (prediction != null) {
@@ -382,11 +412,17 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
     required Map<String, WaitTimePrediction> predictions,
     required TripSettings settings,
     required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
   }) {
     String? previousArea;
+    String? areaBeforePrevious;
+    var previousMovementMinutes = 0;
     var transitions = 0;
     var consecutiveTransitions = 0;
     var longWalkingStreaks = 0;
+    var walkingMinutes = 0;
+    var longDistanceMoves = 0;
+    var longDistanceBacktracks = 0;
     var predictedWait = 0;
     var highPriorityEarly = 0;
     var outdoorInRain = 0;
@@ -419,14 +455,37 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
         highPriorityEarly++;
       }
 
-      if (previousArea != null && previousArea != facility.areaId) {
-        transitions++;
-        consecutiveTransitions++;
-        if (consecutiveTransitions >= 3) {
-          longWalkingStreaks++;
+      if (previousArea != null) {
+        final movementMinutes = _movementMinutes(
+          fromAreaId: previousArea,
+          toAreaId: facility.areaId,
+          atMinutes: _start(item),
+          settings: settings,
+          eventImpacts: eventImpacts,
+          areaConnections: areaConnections,
+        );
+        walkingMinutes += movementMinutes;
+
+        if (previousArea != facility.areaId) {
+          transitions++;
+          consecutiveTransitions++;
+          if (consecutiveTransitions >= 3) {
+            longWalkingStreaks++;
+          }
+          if (movementMinutes >= 12) {
+            longDistanceMoves++;
+          }
+          if (areaBeforePrevious == facility.areaId &&
+              previousMovementMinutes >= 10 &&
+              movementMinutes >= 10) {
+            longDistanceBacktracks++;
+          }
+        } else {
+          consecutiveTransitions = 0;
         }
-      } else {
-        consecutiveTransitions = 0;
+
+        areaBeforePrevious = previousArea;
+        previousMovementMinutes = movementMinutes;
       }
       previousArea = facility.areaId;
 
@@ -444,17 +503,53 @@ class RuleBasedPlanOptimizationEngine implements PlanOptimizationEngine {
       outdoorItemsInRain: outdoorInRain,
       eventAffectedItems: eventAffected,
       longWalkingStreaks: longWalkingStreaks,
+      walkingMinutes: walkingMinutes,
+      longDistanceMoves: longDistanceMoves,
+      longDistanceBacktracks: longDistanceBacktracks,
     );
+  }
+
+  int _movementScore(SmartScheduleMetrics metrics) {
+    return (100 -
+            metrics.walkingMinutes ~/ 2 -
+            metrics.longDistanceMoves * 7 -
+            metrics.longDistanceBacktracks * 15)
+        .clamp(0, 100);
+  }
+
+  int _movementMinutes({
+    required String fromAreaId,
+    required String toAreaId,
+    required int atMinutes,
+    required TripSettings settings,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+  }) {
+    final targetDate = settings.visitDate ?? DateTime.now();
+    final departureAt = DateTime(
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
+    ).add(Duration(minutes: atMinutes));
+
+    return MovementTimeEngine().estimate(
+      fromAreaId: fromAreaId,
+      toAreaId: toAreaId,
+      departureAt: departureAt,
+      connections: areaConnections,
+      eventImpacts: eventImpacts,
+    ).minutes;
   }
 
   int _score(SmartScheduleMetrics metrics) {
     final score =
         100 -
-        metrics.areaTransitions * 5 -
+        metrics.walkingMinutes ~/ 4 -
+        metrics.longDistanceMoves * 3 -
+        metrics.longDistanceBacktracks * 8 -
         metrics.predictedWaitMinutes ~/ 20 -
         metrics.outdoorItemsInRain * 8 -
-        metrics.eventAffectedItems * 8 -
-        metrics.longWalkingStreaks * 6 +
+        metrics.eventAffectedItems * 8 +
         metrics.highPriorityEarlyCount * 3;
 
     return score.clamp(0, 100);

@@ -1,3 +1,4 @@
+import 'package:disney_planner/domain/entities/area_connection.dart';
 import 'package:disney_planner/domain/entities/day_schedule.dart';
 import 'package:disney_planner/domain/entities/facility.dart';
 import 'package:disney_planner/domain/entities/plan_preference.dart';
@@ -131,4 +132,59 @@ void main() {
 
     expect(result.afterSchedule.items.first.facilityId, 'indoor');
   });
+
+  test('movement evaluation uses travel minutes and penalizes long backtracking', () {
+    final facilities = [
+      facility(id: 'a1', areaId: 'area_a', name: 'A1'),
+      facility(id: 'b1', areaId: 'area_b', name: 'B1'),
+      facility(id: 'c1', areaId: 'area_c', name: 'C1'),
+    ];
+    final schedule = DaySchedule(
+      id: 'movement_distance',
+      parkId: 'tokyo_disneysea',
+      items: [
+        item(id: 'a1', facilityId: 'a1', hour: 9),
+        item(id: 'c1', facilityId: 'c1', hour: 10),
+        item(id: 'a1_again', facilityId: 'a1', hour: 11),
+      ],
+      createdAt: DateTime(2026),
+    );
+    final connections = [
+      const AreaConnection(
+        parkId: 'tokyo_disneysea',
+        fromAreaId: 'area_a',
+        toAreaId: 'area_b',
+        minutes: 4,
+        bidirectional: true,
+      ),
+      const AreaConnection(
+        parkId: 'tokyo_disneysea',
+        fromAreaId: 'area_b',
+        toAreaId: 'area_c',
+        minutes: 9,
+        bidirectional: true,
+      ),
+    ];
+
+    final result = engine.optimize(
+      schedule: schedule,
+      facilities: facilities,
+      preferences: facilities
+          .map((value) => PlanPreference.initial(facilityId: value.id))
+          .toList(),
+      predictions: const {},
+      settings: TripSettings.initial(),
+      areaConnections: connections,
+    );
+
+    expect(result.beforeMetrics.walkingMinutes, 26);
+    expect(result.beforeMetrics.longDistanceMoves, 2);
+    expect(result.beforeMetrics.longDistanceBacktracks, 1);
+    expect(
+      result.dimensions.firstWhere((value) => value.label == '移動効率').message,
+      contains('推定徒歩'),
+    );
+  });
+
+
 }

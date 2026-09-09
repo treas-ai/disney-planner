@@ -9,6 +9,7 @@ import 'package:disney_planner/domain/enums/facility_category.dart';
 import 'package:disney_planner/domain/enums/wait_time_band.dart';
 import 'package:disney_planner/domain/services/schedule_engine.dart';
 import 'package:disney_planner/domain/value_objects/coordinate.dart';
+import 'package:disney_planner/domain/value_objects/operating_hours.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Facility _facility(
@@ -19,6 +20,7 @@ Facility _facility(
   bool supportsDpa = false,
   bool supportsSingleRider = false,
   String? rideType,
+  OperatingHours? operatingHours,
 }) {
   return Facility(
     id: id,
@@ -28,6 +30,7 @@ Facility _facility(
     category: FacilityCategory.attraction,
     coordinate: const Coordinate(latitude: 0, longitude: 0),
     durationMinutes: 10,
+    operatingHours: operatingHours,
     supportsPriorityPass: supportsPriorityPass,
     supportsDpa: supportsDpa,
     supportsSingleRider: supportsSingleRider,
@@ -123,6 +126,45 @@ void main() {
     );
     expect(firstItem.reason, contains('最初の3手'));
     expect(firstItem.reason, contains('後回し損失'));
+    expect(firstItem.reason, contains('移動5分'));
+    expect(firstItem.reason, contains('候補評価時点では待ち'));
+  });
+
+  test('opening explanation is removed when operating hours push item out of morning', () {
+    final delayedStrategic = _facility(
+      'delayed_strategic',
+      operatingHours: OperatingHours(
+        open: DateTime(2026, 8, 29, 12, 30),
+        close: DateTime(2026, 8, 29, 21),
+      ),
+    );
+    final filler = _facility('filler');
+
+    final schedule = const ScheduleEngine().generate(
+      settings: _settings(),
+      facilities: [delayedStrategic, filler],
+      preferences: [
+        PlanPreference.initial(facilityId: delayedStrategic.id),
+        PlanPreference.initial(facilityId: filler.id),
+      ],
+      waitProfiles: [
+        _profile(
+          delayedStrategic,
+          opening: 10,
+          beforeLunch: 90,
+          afterLunch: 100,
+        ),
+        _profile(filler, opening: 20, beforeLunch: 20, afterLunch: 20),
+      ],
+    );
+
+    final item = schedule.items.firstWhere(
+      (item) => item.facilityId == delayedStrategic.id,
+    );
+    expect(item.startHour, 12);
+    expect(item.startMinute, 30);
+    expect(item.reason, isNot(contains('朝一は')));
+    expect(item.reason, isNot(contains('候補評価時点では待ち')));
   });
 
   test('opening rush is pushed later when its wait improves after opening', () {

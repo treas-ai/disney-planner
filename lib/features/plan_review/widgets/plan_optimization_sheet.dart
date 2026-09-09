@@ -31,7 +31,7 @@ class PlanOptimizationSheet extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'AIスマート改善',
+                    'プラン再最適化',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -54,10 +54,23 @@ class PlanOptimizationSheet extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _Score(label: '現在', score: result.beforeScore),
+                  _Score(label: '現在の評価', score: result.beforeScore),
                   Icon(Icons.arrow_forward, color: colorScheme.primary),
-                  _Score(label: '改善案', score: result.afterScore),
+                  _Score(label: '再配置後', score: result.afterScore),
                 ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                result.hasImprovement
+                    ? 'より効率のよい並び順が見つかりました。'
+                    : '現在の条件では、並び替えによる明確な改善は見つかりませんでした。',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -84,7 +97,7 @@ class PlanOptimizationSheet extends StatelessWidget {
                       ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      'AIの提案',
+                      '再最適化の提案',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -104,7 +117,7 @@ class PlanOptimizationSheet extends StatelessWidget {
                       ),
                     const SizedBox(height: 8),
                     Text(
-                      'AIによる参考提案です。固定予定と食事予定は変更しません。',
+                      '評価指数はプランの良し悪しを100点満点で採点するものではなく、現在案と再配置案を同じ条件で比較するための指標です。待ち時間・移動・雨天・イベント影響・歩行負担をルールベースで再評価します。固定予定と食事予定は変更しません。',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -132,7 +145,7 @@ class PlanOptimizationSheet extends StatelessWidget {
                           }
                         : null,
                     icon: const Icon(Icons.auto_fix_high),
-                    label: const Text('改善案を反映'),
+                    label: const Text('再最適化案を反映'),
                   ),
                 ),
               ],
@@ -157,7 +170,7 @@ class _Score extends StatelessWidget {
         Text(label, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 4),
         Text(
-          '$score点',
+          '評価指数 $score',
           style: Theme.of(
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
