@@ -2,8 +2,8 @@
   "parkId": "tokyo_disneyland",
   "status": "generated",
   "source": "ThemeParks.wiki accumulated history",
-  "sampleCount": 12487,
-  "generatedAt": "2026-09-08T18:04:02.443875Z",
+  "sampleCount": 13278,
+  "generatedAt": "2026-09-09T17:57:36.228328Z",
   "items": [
     {
       "facilityId": "tdl_fantasyland_peter_pans_flight",
@@ -13,48 +13,48 @@
           "minMinutes": 5,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 152
+          "sampleCount": 155
         },
         "beforeLunch": {
           "minMinutes": 20,
-          "typicalMinutes": 30,
+          "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 47
+          "sampleCount": 49
         },
         "afterLunch": {
           "minMinutes": 20,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 163
+          "sampleCount": 172
         },
         "aroundShows": {
           "minMinutes": 25,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 120
+          "sampleCount": 125
         },
         "beforeDinner": {
           "minMinutes": 20,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 64
+          "sampleCount": 68
         },
         "afterDinner": {
-          "minMinutes": 15,
+          "minMinutes": 10,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 99
+          "sampleCount": 108
         },
         "beforeClosing": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 42
+          "sampleCount": 44
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 687
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 721
     },
     {
       "facilityId": "tdl_critter_country_splash_mountain",
@@ -62,50 +62,50 @@
       "ranges": {
         "afterOpening": {
           "minMinutes": 15,
-          "typicalMinutes": 60,
+          "typicalMinutes": 50,
           "maxMinutes": 90,
-          "sampleCount": 223
+          "sampleCount": 240
         },
         "beforeLunch": {
           "minMinutes": 10,
           "typicalMinutes": 50,
           "maxMinutes": 80,
-          "sampleCount": 109
+          "sampleCount": 117
         },
         "afterLunch": {
           "minMinutes": 10,
           "typicalMinutes": 50,
           "maxMinutes": 90,
-          "sampleCount": 274
+          "sampleCount": 299
         },
         "aroundShows": {
           "minMinutes": 15,
           "typicalMinutes": 50,
           "maxMinutes": 90,
-          "sampleCount": 184
+          "sampleCount": 199
         },
         "beforeDinner": {
-          "minMinutes": 15,
+          "minMinutes": 20,
           "typicalMinutes": 50,
           "maxMinutes": 90,
-          "sampleCount": 91
+          "sampleCount": 97
         },
         "afterDinner": {
           "minMinutes": 15,
           "typicalMinutes": 40,
           "maxMinutes": 80,
-          "sampleCount": 185
+          "sampleCount": 205
         },
         "beforeClosing": {
           "minMinutes": 10,
-          "typicalMinutes": 35,
+          "typicalMinutes": 30,
           "maxMinutes": 50,
-          "sampleCount": 59
+          "sampleCount": 67
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 1125
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 1224
     },
     {
       "facilityId": "tdl_toontown_gadgets_go_coaster",
@@ -115,25 +115,25 @@
           "minMinutes": 5,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 131
+          "sampleCount": 133
         },
         "beforeLunch": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 35,
-          "sampleCount": 34
+          "sampleCount": 35
         },
         "afterLunch": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 35,
-          "sampleCount": 109
+          "sampleCount": 114
         },
         "aroundShows": {
           "minMinutes": 10,
           "typicalMinutes": 25,
           "maxMinutes": 35,
-          "sampleCount": 79
+          "sampleCount": 81
         },
         "beforeDinner": {
           "minMinutes": 10,
@@ -155,8 +155,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 540
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 550
     },
     {
       "facilityId": "tdl_toontown_donalds_boat",
@@ -166,7 +166,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 21
+          "sampleCount": 22
         },
         "beforeLunch": {
           "minMinutes": 0,
@@ -206,8 +206,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 22
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 23
     },
     {
       "facilityId": "tdl_westernland_big_thunder_mountain",
@@ -216,49 +216,49 @@
         "afterOpening": {
           "minMinutes": 10,
           "typicalMinutes": 40,
-          "maxMinutes": 80,
-          "sampleCount": 251
+          "maxMinutes": 70,
+          "sampleCount": 269
         },
         "beforeLunch": {
           "minMinutes": 10,
           "typicalMinutes": 40,
           "maxMinutes": 50,
-          "sampleCount": 76
+          "sampleCount": 84
         },
         "afterLunch": {
           "minMinutes": 10,
-          "typicalMinutes": 40,
+          "typicalMinutes": 30,
           "maxMinutes": 50,
-          "sampleCount": 211
+          "sampleCount": 236
         },
         "aroundShows": {
           "minMinutes": 10,
           "typicalMinutes": 30,
-          "maxMinutes": 60,
-          "sampleCount": 170
+          "maxMinutes": 50,
+          "sampleCount": 190
         },
         "beforeDinner": {
           "minMinutes": 15,
-          "typicalMinutes": 40,
+          "typicalMinutes": 30,
           "maxMinutes": 60,
-          "sampleCount": 104
+          "sampleCount": 111
         },
         "afterDinner": {
           "minMinutes": 10,
           "typicalMinutes": 25,
           "maxMinutes": 60,
-          "sampleCount": 166
+          "sampleCount": 187
         },
         "beforeClosing": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 78
+          "sampleCount": 86
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 1056
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 1163
     },
     {
       "facilityId": "tdl_tomorrowland_monsters_inc_ride_and_go_seek",
@@ -268,48 +268,48 @@
           "minMinutes": 15,
           "typicalMinutes": 40,
           "maxMinutes": 80,
-          "sampleCount": 196
+          "sampleCount": 216
         },
         "beforeLunch": {
           "minMinutes": 25,
           "typicalMinutes": 40,
           "maxMinutes": 70,
-          "sampleCount": 83
+          "sampleCount": 91
         },
         "afterLunch": {
           "minMinutes": 30,
           "typicalMinutes": 40,
           "maxMinutes": 70,
-          "sampleCount": 237
+          "sampleCount": 264
         },
         "aroundShows": {
           "minMinutes": 30,
-          "typicalMinutes": 50,
+          "typicalMinutes": 40,
           "maxMinutes": 80,
-          "sampleCount": 170
+          "sampleCount": 188
         },
         "beforeDinner": {
           "minMinutes": 25,
           "typicalMinutes": 40,
           "maxMinutes": 90,
-          "sampleCount": 86
+          "sampleCount": 94
         },
         "afterDinner": {
           "minMinutes": 15,
           "typicalMinutes": 30,
           "maxMinutes": 60,
-          "sampleCount": 167
+          "sampleCount": 187
         },
         "beforeClosing": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 50,
-          "sampleCount": 77
+          "sampleCount": 87
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 1016
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 1127
     },
     {
       "facilityId": "tdl_tomorrowland_star_tours",
@@ -319,7 +319,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 20,
-          "sampleCount": 73
+          "sampleCount": 74
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -349,7 +349,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 20,
-          "sampleCount": 76
+          "sampleCount": 78
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -359,8 +359,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 387
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 390
     },
     {
       "facilityId": "tdl_fantasyland_mickeys_philharmagic",
@@ -370,7 +370,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 26
+          "sampleCount": 27
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -410,8 +410,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 170
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 171
     },
     {
       "facilityId": "tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast",
@@ -420,49 +420,49 @@
         "afterOpening": {
           "minMinutes": 50,
           "typicalMinutes": 90,
-          "maxMinutes": 140,
-          "sampleCount": 212
+          "maxMinutes": 120,
+          "sampleCount": 231
         },
         "beforeLunch": {
-          "minMinutes": 50,
-          "typicalMinutes": 80,
+          "minMinutes": 40,
+          "typicalMinutes": 70,
           "maxMinutes": 100,
-          "sampleCount": 94
+          "sampleCount": 104
         },
         "afterLunch": {
           "minMinutes": 40,
           "typicalMinutes": 60,
           "maxMinutes": 90,
-          "sampleCount": 256
+          "sampleCount": 286
         },
         "aroundShows": {
           "minMinutes": 30,
-          "typicalMinutes": 60,
+          "typicalMinutes": 50,
           "maxMinutes": 90,
-          "sampleCount": 191
+          "sampleCount": 204
         },
         "beforeDinner": {
           "minMinutes": 30,
-          "typicalMinutes": 60,
-          "maxMinutes": 90,
-          "sampleCount": 106
+          "typicalMinutes": 50,
+          "maxMinutes": 80,
+          "sampleCount": 114
         },
         "afterDinner": {
           "minMinutes": 20,
-          "typicalMinutes": 50,
+          "typicalMinutes": 40,
           "maxMinutes": 80,
-          "sampleCount": 193
+          "sampleCount": 213
         },
         "beforeClosing": {
           "minMinutes": 15,
-          "typicalMinutes": 30,
+          "typicalMinutes": 25,
           "maxMinutes": 50,
-          "sampleCount": 112
+          "sampleCount": 122
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 1164
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 1274
     },
     {
       "facilityId": "tdl_adventureland_pirates_of_the_caribbean",
@@ -472,7 +472,7 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 20,
-          "sampleCount": 107
+          "sampleCount": 108
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -512,8 +512,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 376
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 377
     },
     {
       "facilityId": "tdl_adventureland_jungle_cruise",
@@ -523,7 +523,7 @@
           "minMinutes": 5,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 107
+          "sampleCount": 112
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -535,36 +535,36 @@
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 89
+          "sampleCount": 94
         },
         "aroundShows": {
           "minMinutes": 15,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 84
+          "sampleCount": 90
         },
         "beforeDinner": {
           "minMinutes": 10,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 52
+          "sampleCount": 55
         },
         "afterDinner": {
-          "minMinutes": 15,
+          "minMinutes": 10,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 100
+          "sampleCount": 110
         },
         "beforeClosing": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 50
+          "sampleCount": 52
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 517
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 548
     },
     {
       "facilityId": "tdl_fantasyland_its_a_small_world",
@@ -574,25 +574,25 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 57
+          "sampleCount": 58
         },
         "beforeLunch": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 10,
-          "sampleCount": 21
+          "sampleCount": 22
         },
         "afterLunch": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 73
+          "sampleCount": 75
         },
         "aroundShows": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 56
+          "sampleCount": 59
         },
         "beforeDinner": {
           "minMinutes": 5,
@@ -604,7 +604,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 41
+          "sampleCount": 43
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -614,8 +614,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 274
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 283
     },
     {
       "facilityId": "tdl_fantasyland_alices_tea_party",
@@ -625,7 +625,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 35
+          "sampleCount": 36
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -665,8 +665,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 218
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 219
     },
     {
       "facilityId": "tdl_fantasyland_poohs_hunny_hunt",
@@ -675,49 +675,49 @@
         "afterOpening": {
           "minMinutes": 15,
           "typicalMinutes": 40,
-          "maxMinutes": 82,
-          "sampleCount": 141
+          "maxMinutes": 80,
+          "sampleCount": 160
         },
         "beforeLunch": {
           "minMinutes": 25,
-          "typicalMinutes": 50,
+          "typicalMinutes": 40,
           "maxMinutes": 70,
-          "sampleCount": 61
+          "sampleCount": 69
         },
         "afterLunch": {
           "minMinutes": 25,
           "typicalMinutes": 40,
           "maxMinutes": 60,
-          "sampleCount": 178
+          "sampleCount": 207
         },
         "aroundShows": {
           "minMinutes": 20,
           "typicalMinutes": 40,
           "maxMinutes": 60,
-          "sampleCount": 117
+          "sampleCount": 132
         },
         "beforeDinner": {
           "minMinutes": 15,
-          "typicalMinutes": 40,
+          "typicalMinutes": 30,
           "maxMinutes": 60,
-          "sampleCount": 77
+          "sampleCount": 86
         },
         "afterDinner": {
-          "minMinutes": 8,
-          "typicalMinutes": 25,
+          "minMinutes": 10,
+          "typicalMinutes": 20,
           "maxMinutes": 50,
-          "sampleCount": 137
+          "sampleCount": 154
         },
         "beforeClosing": {
-          "minMinutes": 8,
+          "minMinutes": 10,
           "typicalMinutes": 15,
           "maxMinutes": 40,
-          "sampleCount": 66
+          "sampleCount": 75
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 777
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 883
     },
     {
       "facilityId": "tdl_toontown_roger_rabbits_car_toon_spin",
@@ -727,37 +727,37 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 113
+          "sampleCount": 118
         },
         "beforeLunch": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 30,
-          "sampleCount": 38
+          "sampleCount": 41
         },
         "afterLunch": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 35,
-          "sampleCount": 130
+          "sampleCount": 137
         },
         "aroundShows": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 35,
-          "sampleCount": 107
+          "sampleCount": 114
         },
         "beforeDinner": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 35,
-          "sampleCount": 74
+          "sampleCount": 77
         },
         "afterDinner": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 100
+          "sampleCount": 104
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -767,8 +767,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 601
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 630
     },
     {
       "facilityId": "tdl_toontown_minnies_house",
@@ -778,7 +778,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 21
+          "sampleCount": 22
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -818,8 +818,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 40
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 41
     },
     {
       "facilityId": "tdl_tomorrowland_baymax_happy_ride",
@@ -829,48 +829,48 @@
           "minMinutes": 50,
           "typicalMinutes": 80,
           "maxMinutes": 120,
-          "sampleCount": 215
+          "sampleCount": 231
         },
         "beforeLunch": {
           "minMinutes": 40,
-          "typicalMinutes": 80,
+          "typicalMinutes": 70,
           "maxMinutes": 100,
-          "sampleCount": 92
+          "sampleCount": 101
         },
         "afterLunch": {
           "minMinutes": 40,
-          "typicalMinutes": 70,
+          "typicalMinutes": 60,
           "maxMinutes": 100,
-          "sampleCount": 248
+          "sampleCount": 275
         },
         "aroundShows": {
           "minMinutes": 40,
           "typicalMinutes": 60,
           "maxMinutes": 100,
-          "sampleCount": 195
+          "sampleCount": 208
         },
         "beforeDinner": {
           "minMinutes": 30,
-          "typicalMinutes": 70,
+          "typicalMinutes": 60,
           "maxMinutes": 120,
-          "sampleCount": 111
+          "sampleCount": 118
         },
         "afterDinner": {
           "minMinutes": 40,
           "typicalMinutes": 70,
-          "maxMinutes": 110,
-          "sampleCount": 167
+          "maxMinutes": 100,
+          "sampleCount": 186
         },
         "beforeClosing": {
           "minMinutes": 35,
           "typicalMinutes": 50,
           "maxMinutes": 60,
-          "sampleCount": 34
+          "sampleCount": 43
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 1062
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 1162
     },
     {
       "facilityId": "tdl_westernland_shooting_gallery",
@@ -880,7 +880,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 20,
-          "sampleCount": 42
+          "sampleCount": 43
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -898,7 +898,7 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 71
+          "sampleCount": 73
         },
         "beforeDinner": {
           "minMinutes": 5,
@@ -920,8 +920,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 373
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 376
     },
     {
       "facilityId": "tdl_fantasyland_snow_whites_adventures",
@@ -971,7 +971,7 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
       "sampleCount": 405
     },
     {
@@ -982,7 +982,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 75
+          "sampleCount": 76
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -993,14 +993,14 @@
         "afterLunch": {
           "minMinutes": 5,
           "typicalMinutes": 10,
-          "maxMinutes": 20,
-          "sampleCount": 84
+          "maxMinutes": 15,
+          "sampleCount": 88
         },
         "aroundShows": {
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 20,
-          "sampleCount": 62
+          "sampleCount": 64
         },
         "beforeDinner": {
           "minMinutes": 5,
@@ -1022,8 +1022,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 367
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 374
     },
     {
       "facilityId": "tdl_toontown_chip_and_dales_treehouse",
@@ -1033,7 +1033,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 21
+          "sampleCount": 22
         },
         "beforeLunch": {
           "minMinutes": 0,
@@ -1073,8 +1073,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 22
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 23
     },
     {
       "facilityId": "tdl_adventureland_western_river_railroad",
@@ -1084,7 +1084,7 @@
           "minMinutes": 10,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 71
+          "sampleCount": 73
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -1096,7 +1096,7 @@
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 89
+          "sampleCount": 90
         },
         "aroundShows": {
           "minMinutes": 15,
@@ -1114,7 +1114,7 @@
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 88
+          "sampleCount": 90
         },
         "beforeClosing": {
           "minMinutes": 15,
@@ -1124,8 +1124,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 414
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 419
     },
     {
       "facilityId": "tdl_fantasyland_cinderella_fairy_tale_hall",
@@ -1135,7 +1135,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 42
+          "sampleCount": 43
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -1147,13 +1147,13 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 105
+          "sampleCount": 107
         },
         "aroundShows": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 20,
-          "sampleCount": 91
+          "sampleCount": 93
         },
         "beforeDinner": {
           "minMinutes": 5,
@@ -1175,8 +1175,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 280
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 285
     },
     {
       "facilityId": "tdl_adventureland_tiki_room",
@@ -1186,7 +1186,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 10,
-          "sampleCount": 30
+          "sampleCount": 32
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -1226,8 +1226,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 36
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 38
     },
     {
       "facilityId": "tdl_tomorrowland_stitch_encounter",
@@ -1237,7 +1237,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 10,
-          "sampleCount": 27
+          "sampleCount": 28
         },
         "beforeLunch": {
           "minMinutes": 0,
@@ -1277,8 +1277,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 44
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 45
     },
     {
       "facilityId": "tdl_westernland_mark_twain_riverboat",
@@ -1288,7 +1288,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 25
+          "sampleCount": 27
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -1328,8 +1328,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 36
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 38
     },
     {
       "facilityId": "tdl_toontown_goofys_paint_and_play_house",
@@ -1339,7 +1339,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 41
+          "sampleCount": 44
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -1379,8 +1379,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 290
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 293
     },
     {
       "facilityId": "tdl_westernland_country_bear_theater",
@@ -1390,7 +1390,7 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 15,
-          "sampleCount": 32
+          "sampleCount": 34
         },
         "beforeLunch": {
           "minMinutes": 0,
@@ -1430,8 +1430,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 45
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 47
     },
     {
       "facilityId": "tdl_world_bazaar_omnibus",
@@ -1441,7 +1441,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 22
+          "sampleCount": 23
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -1453,13 +1453,13 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 20
+          "sampleCount": 22
         },
         "aroundShows": {
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 22
+          "sampleCount": 23
         },
         "beforeDinner": {
           "minMinutes": 0,
@@ -1481,8 +1481,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 67
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 71
     },
     {
       "facilityId": "tdl_westernland_tom_sawyer_island_rafts",
@@ -1498,7 +1498,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 21
+          "sampleCount": 22
         },
         "afterLunch": {
           "minMinutes": 0,
@@ -1532,8 +1532,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 21
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 22
     },
     {
       "facilityId": "tdl_fantasyland_castle_carrousel",
@@ -1543,7 +1543,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 15,
-          "sampleCount": 10
+          "sampleCount": 11
         },
         "beforeLunch": {
           "minMinutes": 5,
@@ -1583,8 +1583,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-09-08T18:04:02.289277Z",
-      "sampleCount": 55
+      "calculatedAt": "2026-09-09T17:57:36.059934Z",
+      "sampleCount": 56
     }
   ]
 }

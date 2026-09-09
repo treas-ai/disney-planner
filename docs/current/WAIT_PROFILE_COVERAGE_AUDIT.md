@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-09T03:04:03+09:00
+Generated: 2026-09-10T02:57:36+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 31
-- Profile source observations: 12487
+- Profile source observations: 13278
 
 ### 1. Profile missing facilities
 
@@ -57,10 +57,10 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ## tokyo_disneysea
 
-- Active master attractions: 27
+- Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 16245
+- Profile source observations: 17386
 
 ### 1. Profile missing facilities
 
@@ -82,6 +82,9 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 3. Facility-ID mapping audit
 
 - All mapping targets exist in master facility data.
+- Active master attractions without a ThemeParks.wiki mapping (may be intentional if the source has no standby wait):
+  - `tds_aw_a_006` — ディズニーシー・トランジットスチーマーライン（アメリカンウォーターフロント）
+  - `tds_lrd_a_003` — ディズニーシー・トランジットスチーマーライン（ロストリバーデルタ）
 - No currently actionable unmatched entries in the available unmatched file.
 
 ## Interpretation
