@@ -2,7 +2,7 @@
 """Audit Tokyo Disney wait-profile coverage without inventing facility mappings.
 
 Checks:
-1. active mapped attractions that do not have a generated wait profile;
+1. active mapped attractions/greetings that do not have a generated wait profile;
 2. time-band sample coverage (using raw history when available, otherwise profile values);
 3. mapping targets that do not exist in the master data and unresolved unmatched entries.
 
@@ -174,16 +174,16 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
         source_aliases = {str(v) for v in (park_mapping.get("sourceEntityAliases") or {}).values()}
         mapped = aliases | source_aliases
         park_facilities = {fid: f for fid, f in facilities.items() if f.get("parkId") == park_id}
-        active_attractions = {
+        active_wait_facilities = {
             fid: f for fid, f in park_facilities.items()
-            if f.get("category") == "attraction" and f.get("status") == "open" and f.get("isOperating", True) is not False
+            if f.get("category") in ("attraction", "greeting") and f.get("status") == "open" and f.get("isOperating", True) is not False
         }
         profile = read_profile(park_id)
         profile_items = {str(item.get("facilityId")): item for item in profile.get("items", []) if item.get("facilityId")}
         invalid_targets = sorted(mapped - set(park_facilities))
         profile_unknown = sorted(set(profile_items) - set(park_facilities))
-        missing_profiles = sorted((mapped & set(active_attractions)) - set(profile_items))
-        unmapped_active = sorted(set(active_attractions) - mapped)
+        missing_profiles = sorted((mapped & set(active_wait_facilities)) - set(profile_items))
+        unmapped_active = sorted(set(active_wait_facilities) - mapped)
 
         totals: Counter = Counter()
         by_band: dict[str, Counter] = defaultdict(Counter)
@@ -192,8 +192,8 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
 
         lines += [f"## {park_id}", ""]
         lines += [
-            f"- Active master attractions: {len(active_attractions)}",
-            f"- Mapped active attractions: {len(mapped & set(active_attractions))}",
+            f"- Active master attractions/greetings: {len(active_wait_facilities)}",
+            f"- Mapped active attractions: {len(mapped & set(active_wait_facilities))}",
             f"- Generated profiles: {len(profile_items)}",
             f"- Profile source observations: {profile.get('sampleCount', 0)}",
             "",
@@ -203,7 +203,7 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
         if missing_profiles:
             actionable += len(missing_profiles)
             for fid in missing_profiles:
-                f = active_attractions[fid]
+                f = active_wait_facilities[fid]
                 obs = totals.get(fid, 0) if totals else None
                 suffix = f"; raw observations={obs}" if obs is not None else ""
                 lines.append(f"- `{fid}` — {f.get('name', '')}{suffix}")
@@ -214,7 +214,7 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
         lines += ["### 2. Time-band coverage", ""]
         weak = []
         for fid, item in sorted(profile_items.items()):
-            if fid not in active_attractions:
+            if fid not in active_wait_facilities:
                 continue
             missing = []
             for key, label, _, _ in BANDS:
@@ -229,7 +229,7 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
                 weak.append((fid, missing))
         if weak:
             for fid, missing in weak:
-                name = active_attractions.get(fid, {}).get("name", "")
+                name = active_wait_facilities.get(fid, {}).get("name", "")
                 lines.append(f"- `{fid}` — {name}: no usable samples in {', '.join(missing)}")
         else:
             lines.append("- All generated active-attraction profiles cover all seven bands.")
@@ -239,7 +239,7 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
         low_confidence = []
         if by_band:
             for fid in sorted(profile_items):
-                if fid not in active_attractions:
+                if fid not in active_wait_facilities:
                     continue
                 for key, label, _, _ in BANDS:
                     count = by_band[fid].get(key, 0)
@@ -247,7 +247,7 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
                         low_confidence.append((fid, label, count))
         if low_confidence:
             for fid, label, count in low_confidence:
-                name = active_attractions.get(fid, {}).get("name", "")
+                name = active_wait_facilities.get(fid, {}).get("name", "")
                 lines.append(f"- `{fid}` — {name}: {label} = {count} samples")
         else:
             lines.append("- None in available raw history.")
@@ -265,9 +265,9 @@ def render_report(data_root: Path | None, live_ref: str | None) -> tuple[str, in
             lines.append("- Profile IDs missing from master data:")
             lines.extend(f"  - `{fid}`" for fid in profile_unknown)
         if unmapped_active:
-            lines.append("- Active master attractions without a ThemeParks.wiki mapping (may be intentional if the source has no standby wait):")
+            lines.append("- Active master attractions/greetings without a ThemeParks.wiki mapping (may be intentional if the source has no standby wait):")
             for fid in unmapped_active:
-                lines.append(f"  - `{fid}` — {active_attractions[fid].get('name', '')}")
+                lines.append(f"  - `{fid}` — {active_wait_facilities[fid].get('name', '')}")
 
         raw_unmatched = unmatched_lines(data_root, park_id, live_ref)
         unresolved, resolved, ignored_rows = classify_unmatched(raw_unmatched, park_mapping)

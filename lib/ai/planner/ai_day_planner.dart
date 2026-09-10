@@ -33,6 +33,7 @@ class AiDayPlanner {
     List<EventImpact> eventImpacts = const [],
     WaitTimeBand targetBand = WaitTimeBand.afterLunch,
     List<ExpertRecommendationProfile> expertProfiles = const [],
+    Map<String, int> unlimitedRideBufferMinutes = const <String, int>{},
   }) {
     final availableMinutes = _availableMinutes(settings);
     final targetDate = settings.visitDate ?? DateTime.now();
@@ -50,6 +51,7 @@ class AiDayPlanner {
       targetDate: targetDate,
       hasHappyEntry: settings.hasHappyEntry,
       expertProfiles: expertProfiles,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
     );
     final realistic = scoringEngine.selectRealisticCount(
       scored: ranked,
@@ -94,6 +96,7 @@ class AiDayPlanner {
             },
             maxUses: attractionDpaMaxUses,
             expertProfiles: expertProfiles,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
           )
         : _applyDpaSelection(preferences, const <String>{});
 
@@ -113,6 +116,7 @@ class AiDayPlanner {
           candidate.facility.id: candidate.firstMoveScore ?? candidate.score,
       },
       expertProfiles: expertProfiles,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
     );
 
     return AiPlanResult(
@@ -135,9 +139,15 @@ class AiDayPlanner {
     required Map<String, double> morningScores,
     required int maxUses,
     required List<ExpertRecommendationProfile> expertProfiles,
+    required Map<String, int> unlimitedRideBufferMinutes,
   }) {
     final eligibleIds = candidates
-        .where((item) => item.facility.supportsDpa && item.facility.category.name == 'attraction')
+        .where(
+          (item) =>
+              item.facility.supportsDpa &&
+              item.facility.category.name == 'attraction' &&
+              !unlimitedRideBufferMinutes.containsKey(item.facility.id),
+        )
         .map((item) => item.facility.id)
         .toList(growable: false);
 
@@ -152,6 +162,7 @@ class AiDayPlanner {
         waitProfiles: waitProfiles,
         morningScores: morningScores,
         expertProfiles: expertProfiles,
+        unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
       ),
       facilities: facilities,
       preferences: bestPreferences,
@@ -177,6 +188,7 @@ class AiDayPlanner {
           waitProfiles: waitProfiles,
           morningScores: morningScores,
           expertProfiles: expertProfiles,
+          unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
         );
         final trialScore = _scoreWholeDay(
           schedule: trialSchedule,

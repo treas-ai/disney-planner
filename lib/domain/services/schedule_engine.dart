@@ -339,10 +339,26 @@ class ScheduleEngine {
         continue;
       }
 
-      final finalStartMinutes = _findAvailableStart(
+      var finalStartMinutes = _findAvailableStart(
         requestedStartMinutes: adjustedStartMinutes,
         durationMinutes: durationMinutes,
         items: items,
+        exitMinutes: exitMinutes,
+      );
+
+      if (finalStartMinutes == null) {
+        continue;
+      }
+
+      finalStartMinutes = _ensureTravelAfterInterveningFacility(
+        candidateStartMinutes: finalStartMinutes,
+        durationMinutes: durationMinutes,
+        targetAreaId: facilityEntryAreaId,
+        items: items,
+        facilityLocationById: facilityLocationById,
+        facilities: operationalFacilities,
+        eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
         exitMinutes: exitMinutes,
       );
 
@@ -1717,6 +1733,21 @@ class ScheduleEngine {
         ? '優先入口利用バッファ${detail.waitMinutes}分'
         : '待ち${detail.waitMinutes}分';
 
+    final usesUnlimitedRide = _usesUnlimitedRideBenefit(
+      facility: first,
+      settings: settings,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+    );
+    final strategySummary = usesUnlimitedRide
+        ? '乗り放題対象は後からも優先入口を利用できるため朝一緊急性を抑え、'
+            '対象外施設の通常待ち悪化との機会費用も比較しています。'
+            '施設価値・移動効率・優先入口利用バッファ・後続ルートは維持して評価しています。'
+        : unlimitedRideBufferMinutes.isNotEmpty
+            ? '乗り放題対象外のため、後から短縮しにくい通常待ち時間と'
+                '後回し損失を乗り放題対象施設より重視しています。'
+            : '朝は単なる短待ち施設ではなく、一日を通して攻略困難で'
+                '後回し損失が大きい施設を優先しています。';
+
     return _OpeningSequenceDecision(
       facility: first,
       reason:
@@ -1730,7 +1761,7 @@ class ScheduleEngine {
           '$alternative'
           '$transport'
           '$expertReason'
-          '朝は単なる短待ち施設ではなく、一日を通して攻略困難で後回し損失が大きい施設を優先しています。',
+          '$strategySummary',
     );
   }
 
@@ -1866,10 +1897,14 @@ class ScheduleEngine {
       preference: preference,
       settings: settings,
     );
-    final dayDifficultyMinutes = _openingDayDifficultyMinutes(
-      facility: facility,
-      waitProfiles: waitProfiles,
-    );
+    final isUnlimitedRide =
+        unlimitedRideBufferMinutes.containsKey(facility.id);
+    final dayDifficultyMinutes = isUnlimitedRide
+        ? 0
+        : _openingDayDifficultyMinutes(
+            facility: facility,
+            waitProfiles: waitProfiles,
+          );
     final transportPenalty = _openingTransportPenalty(
       facility: facility,
       preference: preference,
@@ -1893,6 +1928,34 @@ class ScheduleEngine {
     score += expert.score * 0.45;
     score += dayDifficultyMinutes * 0.35;
     score += morningSignal.clamp(-60.0, 120.0).toDouble() * 0.35;
+
+    // In an unlimited-ride plan, covered attractions remain cheap to access
+    // later in the day. Preserve their experience value, but add an explicit
+    // opportunity-cost preference for uncovered attractions whose standby
+    // conditions are expected to worsen. This is data-driven: the bonus comes
+    // from the measured defer loss/day difficulty, not from facility names.
+    if (unlimitedRideBufferMinutes.isNotEmpty) {
+      if (!isUnlimitedRide) {
+        // When some selected attractions can be ridden later with priority
+        // access, scarce opening time is more valuable for uncovered
+        // attractions whose standby cost grows. Use measured wait-profile
+        // opportunity cost rather than a facility-name or fixed-ID bonus.
+        final uncoveredOpportunityBonus =
+            (deferLoss.clamp(0, 60) * 1.25) +
+            (dayDifficultyMinutes.clamp(0, 120) * 0.22);
+        score += uncoveredOpportunityBonus;
+      } else {
+        // Covered attractions keep their experience/route value, but their
+        // opening slot has a real opportunity cost because the same priority
+        // access remains available later. This prevents several covered rides
+        // from consuming all of the first moves solely on experience score.
+        final deferrableAccessPenalty =
+            (expert.score.clamp(0, 100) * 0.18) +
+            (waitEstimate.waitMinutes.clamp(0, 30) * 0.20);
+        score -= deferrableAccessPenalty;
+      }
+    }
+
     score -= waitEstimate.waitMinutes * 0.8;
     score -= movementMinutes * 1.25;
     score -= _resolveFacilityDuration(facility) * 0.15;
@@ -2402,6 +2465,86 @@ class ScheduleEngine {
     );
 
     return entryMinutes < _toMinutes(10, 0);
+  }
+
+  int? _ensureTravelAfterInterveningFacility({
+    required int candidateStartMinutes,
+    required int durationMinutes,
+    required String targetAreaId,
+    required List<ScheduleItem> items,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<Facility> facilities,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required int exitMinutes,
+  }) {
+    var candidate = candidateStartMinutes;
+
+    for (var attempt = 0; attempt < items.length + 2; attempt++) {
+      ScheduleItem? latestFacilityItem;
+
+      for (final item in items) {
+        final facilityId = item.facilityId;
+        if (facilityId == null || facilityId.isEmpty) continue;
+        final itemEnd = _itemEndMinutes(item);
+        if (itemEnd > candidate) continue;
+
+        if (latestFacilityItem == null ||
+            itemEnd > _itemEndMinutes(latestFacilityItem)) {
+          latestFacilityItem = item;
+        }
+      }
+
+      if (latestFacilityItem == null) {
+        return candidate;
+      }
+
+      final previousFacilityId = latestFacilityItem.facilityId!;
+      Facility? previousFacility;
+      for (final facility in facilities) {
+        if (facility.id == previousFacilityId) {
+          previousFacility = facility;
+          break;
+        }
+      }
+
+      final previousAreaId =
+          facilityLocationById[previousFacilityId]?.effectiveExitAreaId ??
+          previousFacility?.areaId;
+      if (previousAreaId == null || previousAreaId.isEmpty) {
+        return candidate;
+      }
+
+      final previousEnd = _itemEndMinutes(latestFacilityItem);
+      final movementMinutes = _calculateMovementMinutes(
+        previousAreaId: previousAreaId,
+        currentAreaId: targetAreaId,
+        atMinutes: previousEnd,
+        eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
+      );
+      final travelReady = previousEnd + movementMinutes;
+
+      if (candidate >= travelReady) {
+        return candidate;
+      }
+
+      final next = _findAvailableStart(
+        requestedStartMinutes: travelReady,
+        durationMinutes: durationMinutes,
+        items: items,
+        exitMinutes: exitMinutes,
+      );
+      if (next == null) {
+        return null;
+      }
+      if (next == candidate) {
+        return candidate;
+      }
+      candidate = next;
+    }
+
+    return candidate;
   }
 
   int? _findAvailableStart({

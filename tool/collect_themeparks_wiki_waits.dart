@@ -59,6 +59,17 @@ Future<void> _collectPark({
     for (final entry in rawAliases.entries)
       _normalize(entry.key): entry.value.toString(),
   };
+  final rawSourceAliases =
+      park['sourceEntityAliases'] as Map<String, dynamic>? ?? const {};
+  final sourceAliases = <String, String>{
+    for (final entry in rawSourceAliases.entries)
+      entry.key: entry.value.toString(),
+  };
+  final ignoredSourceIds = <String>{
+    for (final value
+        in (park['ignoredSourceEntityIds'] as List<dynamic>? ?? const []))
+      value.toString(),
+  };
 
   final uri = Uri.parse('https://api.themeparks.wiki/v1/entity/$entityId/live');
   http.Response response;
@@ -114,10 +125,11 @@ Future<void> _collectPark({
   final unmatched = <String>[];
   final rows = <String>[];
   for (final entry in entries) {
-    if (entry.entityType.toUpperCase() != 'ATTRACTION') continue;
+    if (ignoredSourceIds.contains(entry.sourceEntityId)) continue;
     final wait = entry.standbyMinutes;
     if (wait == null || wait < 0) continue;
-    final localId = aliases[_normalize(entry.name)];
+    final localId =
+        sourceAliases[entry.sourceEntityId] ?? aliases[_normalize(entry.name)];
     if (localId == null) {
       unmatched.add('${entry.name} (${entry.sourceEntityId})');
       continue;

@@ -278,6 +278,7 @@ class ScheduleController extends ChangeNotifier {
         targetDate: targetDate,
         hasHappyEntry: settings.hasHappyEntry,
         expertProfiles: expertProfiles,
+        unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
       );
 
       var generatedPreferences = preferences;

@@ -46,6 +46,7 @@ class WishCandidateScoringEngine {
     DateTime? targetDate,
     bool hasHappyEntry = false,
     List<ExpertRecommendationProfile> expertProfiles = const [],
+    Map<String, int> unlimitedRideBufferMinutes = const <String, int>{},
   }) {
     final preferenceById = {for (final item in preferences) item.facilityId: item};
     final profileById = {for (final item in waitProfiles) item.facilityId: item};
@@ -61,9 +62,19 @@ class WishCandidateScoringEngine {
               (range.sampleCount == null || range.sampleCount! >= 3)
           ? range
           : null;
-      final predictedWait =
+      final isUnlimitedRide =
+          unlimitedRideBufferMinutes.containsKey(facility.id);
+      final normalPredictedWait =
           reliableRange?.typicalMinutes ?? facility.waitTime?.minutes ?? 30;
-      final waitScore = dynamicWaitScoringService.evaluate(facilityId: facility.id, profiles: waitProfiles, facilityCurrentWaitMinutes: facility.waitTime?.minutes, fallbackMinutes: predictedWait);
+      final predictedWait = isUnlimitedRide
+          ? (unlimitedRideBufferMinutes[facility.id] ?? 15)
+          : normalPredictedWait;
+      final waitScore = dynamicWaitScoringService.evaluate(
+        facilityId: facility.id,
+        profiles: waitProfiles,
+        facilityCurrentWaitMinutes: facility.waitTime?.minutes,
+        fallbackMinutes: normalPredictedWait,
+      );
       final priority = preference?.priority.value ?? facility.priority.value;
       final totalMinutes = facility.durationMinutes + predictedWait;
       final expert = expertRecommendationService.evaluate(
@@ -95,31 +106,56 @@ class WishCandidateScoringEngine {
         profiles: waitProfiles,
       );
 
-      var firstMove = waitScore.savingMinutes.toDouble();
+      // Unlimited-ride access removes the normal standby-time urgency from
+      // the opening decision. Facility value still matters, but a 90-minute
+      // standby peak must not by itself force the attraction into the first
+      // move when priority access is available throughout the day.
+      var firstMove = isUnlimitedRide ? 0.0 : waitScore.savingMinutes.toDouble();
       firstMove += expert.score * 0.30;
-      firstMove += openingCrowd.weightedValueMinutes;
+      if (!isUnlimitedRide) {
+        firstMove += openingCrowd.weightedValueMinutes;
+      }
       firstMove += baseExperienceValue;
       if (facility.isSeasonal) firstMove += 12;
-      if (hasHappyEntry && waitScore.savingMinutes > 0) firstMove += 8;
-      if (facility.supportsDpa && !waitScore.usedFallback) firstMove -= 12;
+      if (!isUnlimitedRide &&
+          hasHappyEntry &&
+          waitScore.savingMinutes > 0) {
+        firstMove += 8;
+      }
+      if (!isUnlimitedRide &&
+          facility.supportsDpa &&
+          !waitScore.usedFallback) {
+        firstMove -= 12;
+      }
       if (preference?.preferredTime.name == 'morning') firstMove += 15;
       final firstReasons = <String>[
-        '朝一予測${waitScore.openingMinutes}分',
-        '通常時間帯代表${waitScore.normalMinutes}分',
-        '朝一で約${waitScore.savingMinutes}分節約見込み',
-        '待ち時間データ: ${waitScore.source}',
-        'サンプル数${waitScore.sampleCount}件',
-        '信頼度${waitScore.confidence.name}',
-        openingCrowd.reason,
+        if (isUnlimitedRide) ...[
+          '乗り放題対象: 優先入口利用バッファ$predictedWait分',
+          '通常待ち時間による朝一緊急性は評価対象外',
+        ] else ...[
+          '朝一予測${waitScore.openingMinutes}分',
+          '通常時間帯代表${waitScore.normalMinutes}分',
+          '朝一で約${waitScore.savingMinutes}分節約見込み',
+          '待ち時間データ: ${waitScore.source}',
+          'サンプル数${waitScore.sampleCount}件',
+          '信頼度${waitScore.confidence.name}',
+          openingCrowd.reason,
+        ],
         '施設基礎価値${baseExperienceValue.round()}点',
         'Disney通おすすめ評価 ${expert.score.toStringAsFixed(1)}点',
         expert.reason,
         if (facility.isSeasonal) '期間限定施設 +12',
-        if (hasHappyEntry && waitScore.savingMinutes > 0)
+        if (!isUnlimitedRide &&
+            hasHappyEntry &&
+            waitScore.savingMinutes > 0)
           'ハッピーエントリー効果を考慮',
-        if (facility.supportsDpa && !waitScore.usedFallback)
+        if (!isUnlimitedRide &&
+            facility.supportsDpa &&
+            !waitScore.usedFallback)
           'DPA代替可能性を減点',
-        if (facility.supportsDpa && waitScore.usedFallback)
+        if (!isUnlimitedRide &&
+            facility.supportsDpa &&
+            waitScore.usedFallback)
           '待ち時間DB不足のためDPA減点は保留',
         'Priority Passは評価対象外',
         '入口からの距離は朝一スコアに不使用',
@@ -130,8 +166,11 @@ class WishCandidateScoringEngine {
         predictedWaitMinutes: predictedWait,
         reasons: [
           '優先度$priority/5',
-          '予測待ち時間$predictedWait分',
-          if (facility.supportsDpa) 'DPA対象',
+          if (isUnlimitedRide)
+            '優先入口利用バッファ$predictedWait分'
+          else
+            '予測待ち時間$predictedWait分',
+          if (facility.supportsDpa && !isUnlimitedRide) 'DPA対象',
           'Disney通おすすめ評価 ${expert.score.toStringAsFixed(1)}点',
           expert.reason,
         ],
