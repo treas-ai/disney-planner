@@ -1,20 +1,24 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-10T02:57:36+09:00
+Generated: 2026-09-11T02:50:30+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
 ## tokyo_disneyland
 
-- Active master attractions: 33
-- Mapped active attractions: 33
+- Active master attractions/greetings: 37
+- Mapped active attractions: 37
 - Generated profiles: 31
-- Profile source observations: 13278
+- Profile source observations: 14045
 
 ### 1. Profile missing facilities
 
 - `tdl_fantasyland_haunted_mansion` — ホーンテッドマンション; raw observations=0
+- `tdl_toontown_mickey_house_meet_mickey` — ミッキーの家とミート・ミッキー; raw observations=0
+- `tdl_toontown_minnies_style_studio` — ミニーのスタイルスタジオ; raw observations=0
 - `tdl_toontown_toon_park` — トゥーンパーク; raw observations=0
+- `tdl_westernland_woodchuck_greeting_daisy` — ウッドチャック・グリーティングトレイル（デイジー）; raw observations=0
+- `tdl_westernland_woodchuck_greeting_donald` — ウッドチャック・グリーティングトレイル（ドナルド）; raw observations=0
 - `tdl_world_bazaar_penny_arcade` — ペニーアーケード; raw observations=0
 
 ### 2. Time-band coverage
@@ -42,7 +46,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 昼前 = 2 samples
-- `tdl_toontown_minnies_house` — ミニーの家: 昼過ぎ = 2 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 1 samples
@@ -57,15 +60,21 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ## tokyo_disneysea
 
-- Active master attractions: 29
-- Mapped active attractions: 27
+- Active master attractions/greetings: 35
+- Mapped active attractions: 33
 - Generated profiles: 26
-- Profile source observations: 17386
+- Profile source observations: 18528
 
 ### 1. Profile missing facilities
 
+- `tds_aw_g_001` — ヴィレッジ・グリーティングプレイス; raw observations=0
+- `tds_lrd_g_001` — ミッキー＆フレンズ・グリーティングトレイル（ミッキー）; raw observations=0
+- `tds_lrd_g_002` — ミッキー＆フレンズ・グリーティングトレイル（ミニー）; raw observations=0
+- `tds_lrd_g_003` — ミッキー＆フレンズ・グリーティングトレイル（ドナルド）; raw observations=0
+- `tds_lrd_g_004` — “サルードス・アミーゴス！”グリーティングドック; raw observations=0
 - `tds_mh_a_002` — フォートレス・エクスプロレーション; raw observations=0
 - `tds_ml_a_001` — アリエルのプレイグラウンド; raw observations=0
+- `tds_pe_g_001` — ディズニーシー・プラザ（キャラクターグリーティング）; raw observations=0
 
 ### 2. Time-band coverage
 
@@ -82,7 +91,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 3. Facility-ID mapping audit
 
 - All mapping targets exist in master facility data.
-- Active master attractions without a ThemeParks.wiki mapping (may be intentional if the source has no standby wait):
+- Active master attractions/greetings without a ThemeParks.wiki mapping (may be intentional if the source has no standby wait):
   - `tds_aw_a_006` — ディズニーシー・トランジットスチーマーライン（アメリカンウォーターフロント）
   - `tds_lrd_a_003` — ディズニーシー・トランジットスチーマーライン（ロストリバーデルタ）
 - No currently actionable unmatched entries in the available unmatched file.
