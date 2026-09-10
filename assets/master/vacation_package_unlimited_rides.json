@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 2,
+  "source": {
+    "name": "東京ディズニーリゾート公式 アトラクション利用券",
+    "url": "https://www.tokyodisneyresort.jp/vp/guide/attraction.html",
+    "checkedDate": "2026-09-10",
+    "note": "対象施設は予告なく変更される場合があるため、施設IDはScheduleEngineへハードコードせずこのマスタで管理する。"
+  },
+  "planning": {
+    "defaultPriorityAccessBufferMinutes": 15,
+    "note": "公式は具体的な待ち時間を保証していない。priorityAccessBufferMinutesはプライオリティ・アクセス・エントランス入場後の合流、館内導線、プレショー、搭乗前工程などを見込んだDisney Planner上の計画用バッファ。"
+  },
+  "parks": {
+    "tokyo_disneyland": [
+      {"facilityId":"tdl_westernland_big_thunder_mountain","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tdl_critter_country_splash_mountain","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tdl_new_fantasyland_enchanted_tale_of_beauty_and_the_beast","priorityAccessBufferMinutes":20,"bufferReason":"preshow_and_indoor_route"},
+      {"facilityId":"tdl_fantasyland_poohs_hunny_hunt","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tdl_fantasyland_haunted_mansion","priorityAccessBufferMinutes":20,"bufferReason":"preshow_and_indoor_route"},
+      {"facilityId":"tdl_tomorrowland_star_tours","priorityAccessBufferMinutes":20,"bufferReason":"boarding_process"},
+      {"facilityId":"tdl_tomorrowland_baymax_happy_ride","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tdl_tomorrowland_monsters_inc_ride_and_go_seek","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"}
+    ],
+    "tokyo_disneysea": [
+      {"facilityId":"tds_mh_a_003","priorityAccessBufferMinutes":25,"bufferReason":"preshow_and_boarding_process"},
+      {"facilityId":"tds_aw_a_001","priorityAccessBufferMinutes":20,"bufferReason":"theater_and_start_wait"},
+      {"facilityId":"tds_aw_a_002","priorityAccessBufferMinutes":25,"bufferReason":"preshow_and_indoor_route"},
+      {"facilityId":"tds_aw_a_003","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tds_pd_a_002","priorityAccessBufferMinutes":20,"bufferReason":"theater_and_boarding_process"},
+      {"facilityId":"tds_lrd_a_001","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tds_lrd_a_002","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tds_fs_a_001","priorityAccessBufferMinutes":20,"bufferReason":"indoor_route_and_boarding_process"},
+      {"facilityId":"tds_fs_a_003","priorityAccessBufferMinutes":20,"bufferReason":"boarding_process"},
+      {"facilityId":"tds_fs_a_002","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tds_ac_a_004","priorityAccessBufferMinutes":20,"bufferReason":"preshow_and_theater"},
+      {"facilityId":"tds_mi_a_001","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"},
+      {"facilityId":"tds_mi_a_002","priorityAccessBufferMinutes":15,"bufferReason":"standard_ride"}
+    ]
+  }
+}

@@ -113,6 +113,10 @@ class PlanTextExporter {
       ..writeln('シングルライダー：${_enabled(settings.canUseSingleRider)}')
       ..writeln('バケーションパッケージ：${_enabled(settings.usesVacationPackage)}')
       ..writeln(
+        '対象アトラクション乗り放題：'
+        '${_enabled(settings.usesVacationPackage && settings.hasUnlimitedAttractionRides)}',
+      )
+      ..writeln(
         'フリードリンク特典：'
         '${_enabled(settings.usesVacationPackage && settings.usesFreeDrinkBenefit)}',
       )
@@ -126,19 +130,33 @@ class PlanTextExporter {
 
       final preference = _preferenceFor(preferences, item.facilityId);
       if (preference != null) {
-        buffer.writeln('  利用方法：${preference.accessMethod.label}');
+        final usesUnlimitedRide =
+            (item.waitEstimateSource ?? '').startsWith('バケーションパッケージ乗り放題');
+        buffer.writeln(
+          '  利用方法：${usesUnlimitedRide ? 'バケパ乗り放題' : preference.accessMethod.label}',
+        );
         if (preference.memo.trim().isNotEmpty) {
           buffer.writeln('  希望メモ：${preference.memo.trim()}');
         }
       }
       if (item.estimatedWaitMinutes != null && item.experienceMinutes != null) {
         final totalMinutes = item.estimatedWaitMinutes! + item.experienceMinutes!;
+        final usesUnlimitedRide =
+            (item.waitEstimateSource ?? '').startsWith('バケーションパッケージ乗り放題');
         buffer
-          ..writeln('  推定待ち時間：${item.estimatedWaitMinutes}分')
+          ..writeln(
+            usesUnlimitedRide
+                ? '  優先入口利用バッファ：${item.estimatedWaitMinutes}分'
+                : '  推定待ち時間：${item.estimatedWaitMinutes}分',
+          )
           ..writeln('  体験時間：${item.experienceMinutes}分')
           ..writeln('  合計拘束時間：$totalMinutes分');
         if ((item.waitEstimateSource ?? '').trim().isNotEmpty) {
-          buffer.writeln('  待ち時間推定根拠：${item.waitEstimateSource}');
+          buffer.writeln(
+            usesUnlimitedRide
+                ? '  バッファ設定根拠：${item.waitEstimateSource}'
+                : '  待ち時間推定根拠：${item.waitEstimateSource}',
+          );
         }
       }
       if ((item.reason ?? '').trim().isNotEmpty) {

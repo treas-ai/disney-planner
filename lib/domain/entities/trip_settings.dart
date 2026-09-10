@@ -17,6 +17,7 @@ class TripSettings {
     required this.canUsePriorityPass,
     required this.canUseSingleRider,
     required this.usesVacationPackage,
+    this.hasUnlimitedAttractionRides = false,
     required this.usesFreeDrinkBenefit,
     required this.hasAttractionVoucher,
     required this.hasShowVoucher,
@@ -76,6 +77,8 @@ class TripSettings {
     canUsePriorityPass: false,
     canUseSingleRider: json['canUseSingleRider'] as bool? ?? false,
     usesVacationPackage: json['usesVacationPackage'] as bool? ?? false,
+    hasUnlimitedAttractionRides:
+        json['hasUnlimitedAttractionRides'] as bool? ?? false,
     usesFreeDrinkBenefit: json['usesFreeDrinkBenefit'] as bool? ?? false,
     hasAttractionVoucher: json['hasAttractionVoucher'] as bool? ?? false,
     hasShowVoucher: json['hasShowVoucher'] as bool? ?? false,
@@ -106,6 +109,8 @@ class TripSettings {
   final bool canUsePriorityPass;
   final bool canUseSingleRider;
   final bool usesVacationPackage;
+  /// バケーションパッケージの「アトラクション利用券スペシャル（乗り放題）」を利用する。
+  final bool hasUnlimitedAttractionRides;
   final bool usesFreeDrinkBenefit;
   final bool hasAttractionVoucher;
   final bool hasShowVoucher;
@@ -159,6 +164,7 @@ class TripSettings {
     'canUsePriorityPass': canUsePriorityPass,
     'canUseSingleRider': canUseSingleRider,
     'usesVacationPackage': usesVacationPackage,
+    'hasUnlimitedAttractionRides': hasUnlimitedAttractionRides,
     'usesFreeDrinkBenefit': usesFreeDrinkBenefit,
     'hasAttractionVoucher': hasAttractionVoucher,
     'hasShowVoucher': hasShowVoucher,
@@ -188,6 +194,7 @@ class TripSettings {
     bool? canUsePriorityPass,
     bool? canUseSingleRider,
     bool? usesVacationPackage,
+    bool? hasUnlimitedAttractionRides,
     bool? usesFreeDrinkBenefit,
     bool? hasAttractionVoucher,
     bool? hasShowVoucher,
@@ -229,6 +236,8 @@ class TripSettings {
       canUsePriorityPass: canUsePriorityPass ?? this.canUsePriorityPass,
       canUseSingleRider: canUseSingleRider ?? this.canUseSingleRider,
       usesVacationPackage: usesVacationPackage ?? this.usesVacationPackage,
+      hasUnlimitedAttractionRides:
+          hasUnlimitedAttractionRides ?? this.hasUnlimitedAttractionRides,
       usesFreeDrinkBenefit:
           usesFreeDrinkBenefit ?? this.usesFreeDrinkBenefit,
       hasAttractionVoucher:

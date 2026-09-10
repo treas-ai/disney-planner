@@ -1,4 +1,5 @@
 import '../../data/repositories/crowd_factor_repository_impl.dart';
+import '../../data/repositories/local_vacation_package_unlimited_ride_repository.dart';
 import '../../domain/services/wish_candidate_scoring_engine.dart';
 import 'package:flutter/material.dart';
 
@@ -231,6 +232,11 @@ class ScheduleController extends ChangeNotifier {
           .toList(growable: false);
 
       final settings = _appState.tripSettings;
+      final unlimitedRideBufferMinutes = settings.usesVacationPackage &&
+              settings.hasUnlimitedAttractionRides
+          ? await const LocalVacationPackageUnlimitedRideRepository()
+              .loadPriorityAccessBufferMinutes(parkId: selectedParkId)
+          : <String, int>{};
       final preferences = await _performanceResolver.resolve(
         parkId: selectedParkId,
         date: targetDate,
@@ -281,7 +287,12 @@ class ScheduleController extends ChangeNotifier {
             type: DpaStrategyType.highCongestionOnly,
             maxUses: settings.attractionDpaMaxUses.clamp(0, 3).toInt(),
           ),
-          candidates: morningRanking,
+          candidates: morningRanking
+              .where(
+                (candidate) =>
+                    !unlimitedRideBufferMinutes.containsKey(candidate.facility.id),
+              )
+              .toList(growable: false),
           preferences: preferences,
         );
         generatedPreferences = allocation.preferences;
@@ -345,6 +356,7 @@ class ScheduleController extends ChangeNotifier {
         areaConnections: areaConnections,
         facilityLocations: facilityLocations,
         expertProfiles: expertProfiles,
+        unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
       );
 
       _appState.updateDaySchedule(generatedSchedule);

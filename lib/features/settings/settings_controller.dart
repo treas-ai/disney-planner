@@ -125,12 +125,23 @@ class SettingsController extends ChangeNotifier {
     _appState.updateTripSettings(
       settings.copyWith(
         usesVacationPackage: value,
+        hasUnlimitedAttractionRides:
+            value ? settings.hasUnlimitedAttractionRides : false,
         usesFreeDrinkBenefit: value ? settings.usesFreeDrinkBenefit : false,
         hasAttractionVoucher: value ? settings.hasAttractionVoucher : false,
         hasShowVoucher: value ? settings.hasShowVoucher : false,
         hasRestaurantReservation: value
             ? settings.hasRestaurantReservation
             : false,
+      ),
+    );
+  }
+
+  void updateUnlimitedAttractionRides(bool value) {
+    _appState.updateTripSettings(
+      settings.copyWith(
+        usesVacationPackage: value ? true : settings.usesVacationPackage,
+        hasUnlimitedAttractionRides: value,
       ),
     );
   }

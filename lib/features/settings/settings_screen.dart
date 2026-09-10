@@ -237,6 +237,8 @@ class _MobileSettingsLayout extends StatelessWidget {
             onAttractionDpaMaxUsesChanged: controller.updateAttractionDpaMaxUses,
             onSingleRiderChanged: controller.updateSingleRider,
             onVacationPackageChanged: controller.updateVacationPackage,
+            onUnlimitedAttractionRidesChanged:
+                controller.updateUnlimitedAttractionRides,
             onFreeDrinkChanged: controller.updateFreeDrinkBenefit,
             onAttractionVoucherChanged: controller.updateAttractionVoucher,
             onShowVoucherChanged: controller.updateShowVoucher,
@@ -359,6 +361,8 @@ class _DesktopSettingsLayout extends StatelessWidget {
                         onSingleRiderChanged: controller.updateSingleRider,
                         onVacationPackageChanged:
                             controller.updateVacationPackage,
+                        onUnlimitedAttractionRidesChanged:
+                            controller.updateUnlimitedAttractionRides,
                         onFreeDrinkChanged:
                             controller.updateFreeDrinkBenefit,
                         onAttractionVoucherChanged:
@@ -1307,6 +1311,7 @@ class _ServiceSettingsCard extends StatelessWidget {
     required this.onAttractionDpaMaxUsesChanged,
     required this.onSingleRiderChanged,
     required this.onVacationPackageChanged,
+    required this.onUnlimitedAttractionRidesChanged,
     required this.onFreeDrinkChanged,
     required this.onAttractionVoucherChanged,
     required this.onShowVoucherChanged,
@@ -1318,6 +1323,7 @@ class _ServiceSettingsCard extends StatelessWidget {
   final ValueChanged<int> onAttractionDpaMaxUsesChanged;
   final ValueChanged<bool> onSingleRiderChanged;
   final ValueChanged<bool> onVacationPackageChanged;
+  final ValueChanged<bool> onUnlimitedAttractionRidesChanged;
   final ValueChanged<bool> onFreeDrinkChanged;
   final ValueChanged<bool> onAttractionVoucherChanged;
   final ValueChanged<bool> onShowVoucherChanged;
@@ -1380,6 +1386,14 @@ class _ServiceSettingsCard extends StatelessWidget {
           ),
           if (settings.usesVacationPackage) ...[
             _CompactSwitchTile(
+              title: '対象アトラクション乗り放題',
+              subtitle:
+                  'アトラクション利用券スペシャル対象施設を少ない待ち時間で計画します',
+              icon: Icons.all_inclusive,
+              value: settings.hasUnlimitedAttractionRides,
+              onChanged: onUnlimitedAttractionRidesChanged,
+            ),
+            _CompactSwitchTile(
               title: 'フリードリンク券',
               subtitle: '限定・店舗限定メニューの質問を表示',
               icon: Icons.local_drink_outlined,
@@ -1387,7 +1401,8 @@ class _ServiceSettingsCard extends StatelessWidget {
               onChanged: onFreeDrinkChanged,
             ),
             _CompactSwitchTile(
-              title: 'アトラクション利用券',
+              title: '通常のアトラクション利用券',
+              subtitle: '1回利用タイプなど、乗り放題以外の利用券',
               icon: Icons.attractions_outlined,
               value: settings.hasAttractionVoucher,
               onChanged: onAttractionVoucherChanged,

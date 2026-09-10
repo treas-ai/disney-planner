@@ -84,4 +84,41 @@ void main() {
     expect(text, contains('AI理由：朝は待ち時間が短いため'));
     expect(text, contains('【改善を評価したい観点】'));
   });
+  test('unlimited ride export labels planning buffer separately from standby wait', () {
+    final unlimitedSchedule = DaySchedule(
+      id: 'unlimited',
+      parkId: 'tokyo_disneyland',
+      createdAt: DateTime(2026, 10, 5),
+      items: const [
+        ScheduleItem(
+          id: 'unlimited_facility',
+          title: '乗り放題対象',
+          type: ScheduleItemType.facility,
+          startHour: 9,
+          startMinute: 15,
+          endHour: 9,
+          endMinute: 43,
+          estimatedWaitMinutes: 20,
+          experienceMinutes: 8,
+          waitEstimateSource:
+              'バケーションパッケージ乗り放題（優先入口利用バッファ20分・Disney Planner計画値）',
+        ),
+      ],
+    );
+
+    final text = exporter.export(
+      schedule: unlimitedSchedule,
+      settings: settings,
+      parkName: '東京ディズニーランド',
+      preferences: const [],
+      validationIssues: const [],
+      format: PlanTextExportFormat.evaluation,
+    );
+
+    expect(text, contains('優先入口利用バッファ：20分'));
+    expect(text, contains('体験時間：8分'));
+    expect(text, contains('合計拘束時間：28分'));
+    expect(text, isNot(contains('推定待ち時間：20分')));
+  });
+
 }

@@ -8,11 +8,13 @@ import 'package:disney_planner/domain/enums/facility_category.dart';
 import 'package:disney_planner/domain/enums/priority_level.dart';
 import 'package:disney_planner/domain/enums/schedule_item_type.dart';
 import 'package:disney_planner/domain/services/rule_based_plan_optimization_engine.dart';
+import 'package:disney_planner/domain/services/schedule_engine.dart';
 import 'package:disney_planner/domain/value_objects/coordinate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const engine = RuleBasedPlanOptimizationEngine();
+  const scheduleEngine = ScheduleEngine();
 
   Facility facility({
     required String id,
@@ -184,6 +186,32 @@ void main() {
       result.dimensions.firstWhere((value) => value.label == '移動効率').message,
       contains('推定徒歩'),
     );
+  });
+
+
+  test('vacation package unlimited rides uses its facility-specific planning buffer', () {
+    final target = facility(
+      id: 'unlimited_target',
+      areaId: 'area_a',
+      name: 'Unlimited Target',
+    );
+    final result = scheduleEngine.generate(
+      settings: TripSettings.initial().copyWith(
+        parkId: 'tokyo_disneysea',
+        usesVacationPackage: true,
+        hasUnlimitedAttractionRides: true,
+        wantsLunch: false,
+        wantsDinner: false,
+      ),
+      facilities: [target],
+      preferences: [PlanPreference.initial(facilityId: target.id)],
+      unlimitedRideBufferMinutes: {target.id: 20},
+    );
+    final scheduled = result.items.firstWhere(
+      (value) => value.facilityId == target.id,
+    );
+    expect(scheduled.estimatedWaitMinutes, 20);
+    expect(scheduled.waitEstimateSource, contains('バケーションパッケージ乗り放題'));
   });
 
 
