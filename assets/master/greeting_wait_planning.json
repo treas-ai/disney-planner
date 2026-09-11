@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "planning": {
+    "fallbackWaitMinutesByPriority": {
+      "highest": 40,
+      "high": 30,
+      "medium": 25,
+      "low": 20,
+      "lowest": 20
+    },
+    "maximumParkCrowdMultiplier": 1.75,
+    "birthdayPlanningWaitMinutes": 240,
+    "birthdayExtremeRiskMinutes": 480,
+    "birthdayOpeningUrgencyBonus": 180,
+    "roundingMinutes": 5,
+    "note": "Greeting waits are not available from the current live-data source. These values are Disney Planner planning fallbacks, not measured waits. Character birthdays are treated as exceptional-demand days."
+  }
+}

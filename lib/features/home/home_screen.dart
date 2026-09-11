@@ -278,9 +278,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return _HomeAction(
-      title: '当日の予定を確認',
-      description: 'プランが生成されています。当日画面で時系列の予定を確認できます。',
-      buttonLabel: '当日の予定へ',
+      title: '当日ガイドを開く',
+      description: '事前プランが生成されています。来園日は当日ガイドで次の行動を確認できます。',
+      buttonLabel: '当日ガイドへ',
       icon: Icons.event_available_outlined,
       foregroundColor: const Color(0xFF287A4B),
       backgroundColor: const Color(0xFFE8F5ED),

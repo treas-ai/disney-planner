@@ -3,25 +3,34 @@
     "id": "mickey_mouse",
     "name": "ミッキーマウス",
     "greetingFacilityIds": [
-      "tds_lrd_g_001"
+      "tds_lrd_g_001",
+      "tdl_toontown_mickey_house_meet_mickey"
     ],
-    "dataCheckedAt": "2026-08-03"
+    "dataCheckedAt": "2026-08-03",
+    "birthdayMonth": 11,
+    "birthdayDay": 18
   },
   {
     "id": "minnie_mouse",
     "name": "ミニーマウス",
     "greetingFacilityIds": [
-      "tds_lrd_g_002"
+      "tds_lrd_g_002",
+      "tdl_toontown_minnies_style_studio"
     ],
-    "dataCheckedAt": "2026-08-03"
+    "dataCheckedAt": "2026-08-03",
+    "birthdayMonth": 11,
+    "birthdayDay": 18
   },
   {
     "id": "donald_duck",
     "name": "ドナルドダック",
     "greetingFacilityIds": [
-      "tds_lrd_g_003"
+      "tds_lrd_g_003",
+      "tdl_westernland_woodchuck_greeting_donald"
     ],
-    "dataCheckedAt": "2026-08-03"
+    "dataCheckedAt": "2026-08-03",
+    "birthdayMonth": 6,
+    "birthdayDay": 9
   },
   {
     "id": "duffy",
@@ -41,6 +50,11 @@
   },
   {
     "id": "daisy_duck",
-    "name": "デイジーダック"
+    "name": "デイジーダック",
+    "greetingFacilityIds": [
+      "tdl_westernland_woodchuck_greeting_daisy"
+    ],
+    "birthdayMonth": 1,
+    "birthdayDay": 9
   }
 ]

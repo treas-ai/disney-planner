@@ -82,7 +82,7 @@ class _ScheduleSummaryCard extends StatelessWidget {
                 ? FilledButton.icon(
                     onPressed: onTodayPlanPressed,
                     icon: const Icon(Icons.event_available_outlined, size: 19),
-                    label: const Text('当日の予定を確認'),
+                    label: const Text('当日ガイドを開く'),
                   )
                 : OutlinedButton.icon(
                     onPressed: onReviewPlanPressed,

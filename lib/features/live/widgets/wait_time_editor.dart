@@ -12,6 +12,7 @@ class WaitTimeEditor extends StatefulWidget {
     required this.isSaving,
     required this.onSave,
     required this.onClear,
+    this.onSaved,
   });
 
   final String facilityId;
@@ -23,6 +24,7 @@ class WaitTimeEditor extends StatefulWidget {
   final Future<bool> Function(int waitMinutes) onSave;
 
   final Future<bool> Function() onClear;
+  final Future<void> Function(int waitMinutes)? onSaved;
 
   @override
   State<WaitTimeEditor> createState() {
@@ -96,6 +98,12 @@ class _WaitTimeEditorState extends State<WaitTimeEditor> {
     }
 
     FocusScope.of(context).unfocus();
+
+    final onSaved = widget.onSaved;
+    if (onSaved != null) {
+      await onSaved(value);
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${widget.facilityName}の待ち時間を$value分で保存しました。')),

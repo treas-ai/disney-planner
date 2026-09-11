@@ -6,6 +6,7 @@ import '../../../domain/entities/facility.dart';
 import '../../../domain/entities/wait_time_prediction.dart';
 import '../../../domain/enums/facility_category.dart';
 import '../live_controller.dart';
+import '../live_models.dart';
 
 class LiveWaitTimePredictionPanel extends StatelessWidget {
   const LiveWaitTimePredictionPanel({super.key, required this.controller});
@@ -27,11 +28,13 @@ class LiveWaitTimePredictionPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome_outlined, color: colorScheme.primary),
+              Icon(Icons.query_stats_outlined, color: colorScheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'AI待ち時間予測',
+                  controller.visitPhase == LiveVisitPhase.preVisit
+                      ? '来園日待ち時間予測'
+                      : '待ち時間予測',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -47,7 +50,9 @@ class LiveWaitTimePredictionPanel extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '手入力した現在値と蓄積履歴を使った参考予測です。公式の待ち時間ではありません。',
+            controller.visitPhase == LiveVisitPhase.preVisit
+                ? 'Gitで収集した時間帯別実績から予定時刻の代表待ち時間を予測します。太字が予測値、目安幅は予測値まわりの不確実性です。現在時刻は使用しません。'
+                : '収集済み実績と当日の現在値から代表待ち時間を予測します。太字が予測値、目安幅は補助情報です。公式の待ち時間ではありません。',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -75,7 +80,8 @@ class LiveWaitTimePredictionPanel extends StatelessWidget {
     for (final item in schedule.items) {
       final facility = controller.facilityById(item.facilityId);
       if (facility == null ||
-          facility.category != FacilityCategory.attraction) {
+          (facility.category != FacilityCategory.attraction &&
+              facility.category != FacilityCategory.greeting)) {
         continue;
       }
       facilities[facility.id] = facility;
@@ -93,6 +99,9 @@ class LiveWaitTimePredictionPanel extends StatelessWidget {
     }
 
     entries.sort((left, right) {
+      if (controller.visitPhase == LiveVisitPhase.preVisit) {
+        return left.prediction.targetTime.compareTo(right.prediction.targetTime);
+      }
       final leftMinutes = left.prediction.predictedMinutes ?? 9999;
       final rightMinutes = right.prediction.predictedMinutes ?? 9999;
       return leftMinutes.compareTo(rightMinutes);
@@ -156,7 +165,9 @@ class _PredictionRow extends StatelessWidget {
               ),
             ),
             Text(
-              prediction.rangeLabel,
+              prediction.isAvailable
+                  ? '${prediction.predictedMinutes}分'
+                  : '予測データ不足',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: prediction.isAvailable
                     ? colorScheme.primary
@@ -164,8 +175,19 @@ class _PredictionRow extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
+            if (prediction.isAvailable &&
+                prediction.lowerBoundMinutes != null &&
+                prediction.upperBoundMinutes != null &&
+                prediction.lowerBoundMinutes != prediction.upperBoundMinutes)
+              Text(
+                '目安 ${prediction.rangeLabel}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
             Text(
-              '信頼度 ${prediction.confidence.label}',
+              '信頼度 ${prediction.confidence.label}'
+              '${prediction.sampleCount > 0 ? '・実績${prediction.sampleCount}件' : ''}',
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ],

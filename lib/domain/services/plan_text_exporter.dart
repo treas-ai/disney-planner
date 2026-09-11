@@ -1,5 +1,6 @@
 import '../entities/day_schedule.dart';
 import '../entities/plan_preference.dart';
+import '../entities/schedule_item.dart';
 import '../entities/schedule_validation_issue.dart';
 import '../entities/trip_settings.dart';
 import '../enums/facility_access_method.dart';
@@ -130,8 +131,7 @@ class PlanTextExporter {
 
       final preference = _preferenceFor(preferences, item.facilityId);
       if (preference != null) {
-        final usesUnlimitedRide =
-            (item.waitEstimateSource ?? '').startsWith('バケーションパッケージ乗り放題');
+        final usesUnlimitedRide = _usesUnlimitedRide(item);
         buffer.writeln(
           '  利用方法：${usesUnlimitedRide ? 'バケパ乗り放題' : preference.accessMethod.label}',
         );
@@ -141,8 +141,7 @@ class PlanTextExporter {
       }
       if (item.estimatedWaitMinutes != null && item.experienceMinutes != null) {
         final totalMinutes = item.estimatedWaitMinutes! + item.experienceMinutes!;
-        final usesUnlimitedRide =
-            (item.waitEstimateSource ?? '').startsWith('バケーションパッケージ乗り放題');
+        final usesUnlimitedRide = _usesUnlimitedRide(item);
         buffer
           ..writeln(
             usesUnlimitedRide
@@ -198,6 +197,12 @@ class PlanTextExporter {
   }
 
   String _enabled(bool value) => value ? '利用する' : '利用しない';
+
+  bool _usesUnlimitedRide(ScheduleItem item) {
+    final source = item.waitEstimateSource?.trim() ?? '';
+    return source.startsWith('バケーションパッケージ乗り放題') ||
+        source.startsWith('バケパ乗り放題');
+  }
 
   PlanPreference? _preferenceFor(
     List<PlanPreference> preferences,

@@ -84,7 +84,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
       return;
     }
 
-    await controller.generateSchedule();
+    await controller.generateSchedule(preserveManualFixedItems: false);
 
     if (!mounted ||
         controller.errorMessage != null ||
@@ -433,6 +433,10 @@ class _PlanOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final schedule = controller.schedule;
+    final manualRepeatCount = schedule?.items
+            .where((item) => item.id.startsWith('manual_repeat_'))
+            .length ??
+        0;
     final colorScheme = Theme.of(context).colorScheme;
 
     return AppCard(
@@ -481,11 +485,19 @@ class _PlanOverviewCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+          const _OverviewInformationRow(
+            icon: Icons.edit_calendar_outlined,
+            label: '事前プラン：来園前の追加・再生成・空き時間調整はこの画面で行います。',
+          ),
+          const SizedBox(height: 7),
           _OverviewInformationRow(
             icon: Icons.auto_awesome_outlined,
             label: schedule == null
                 ? 'スケジュールは未生成です'
-                : '${schedule.items.length}件の予定を生成済み',
+                : manualRepeatCount == 0
+                    ? '${schedule.items.length}件の予定を生成済み'
+                    : '${schedule.items.length}件の予定を生成済み'
+                        '（手動再乗車 $manualRepeatCount件）',
           ),
           if (schedule != null) ...[
             const SizedBox(height: 7),
@@ -866,7 +878,31 @@ class _ScheduleTimeline extends StatelessWidget {
               message: '条件を変更して、プランを再生成してください。',
             )
           else
-            for (var index = 0; index < schedule.items.length; index++)
+            for (var index = 0; index < schedule.items.length; index++) ...[
+              if (index > 0) ...[
+                if (_planVisibleBufferMinutes(
+                      schedule.items[index - 1],
+                      schedule.items[index],
+                    ) >=
+                    30)
+                  _PlanBufferGapCard(
+                    startMinutes: _planScheduleEndMinutes(
+                      schedule.items[index - 1],
+                    ),
+                    endMinutes: _planScheduleStartMinutes(schedule.items[index]),
+                  )
+                else if (_planVisibleBufferMinutes(
+                          schedule.items[index - 1],
+                          schedule.items[index],
+                        ) >=
+                        15)
+                  _PlanCompactBufferGap(
+                    minutes: _planVisibleBufferMinutes(
+                      schedule.items[index - 1],
+                      schedule.items[index],
+                    ),
+                  ),
+              ],
               _ScheduleTimelineItem(
                 item: schedule.items[index],
                 facility: controller.facilityById(
@@ -875,10 +911,106 @@ class _ScheduleTimeline extends StatelessWidget {
                 preference: controller.preferenceByFacilityId(
                   schedule.items[index].facilityId,
                 ),
+                controller: controller,
                 isFirst: index == 0,
                 isLast: index == schedule.items.length - 1,
               ),
+            ],
         ],
+      ),
+    );
+  }
+}
+
+int _planScheduleStartMinutes(ScheduleItem item) {
+  return item.startHour * 60 + item.startMinute;
+}
+
+int _planScheduleEndMinutes(ScheduleItem item) {
+  return item.endHour * 60 + item.endMinute;
+}
+
+int _planVisibleBufferMinutes(ScheduleItem previous, ScheduleItem next) {
+  final gap =
+      _planScheduleStartMinutes(next) - _planScheduleEndMinutes(previous);
+  return gap > 0 ? gap : 0;
+}
+
+String _planClockLabel(int minutes) {
+  final hour = (minutes ~/ 60).toString().padLeft(2, '0');
+  final minute = (minutes % 60).toString().padLeft(2, '0');
+  return '$hour:$minute';
+}
+
+class _PlanCompactBufferGap extends StatelessWidget {
+  const _PlanCompactBufferGap({required this.minutes});
+
+  final int minutes;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 80, bottom: 6),
+      child: Row(
+        children: [
+          Icon(
+            Icons.directions_walk_outlined,
+            size: 15,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '移動・余裕 $minutes分',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanBufferGapCard extends StatelessWidget {
+  const _PlanBufferGapCard({
+    required this.startMinutes,
+    required this.endMinutes,
+  });
+
+  final int startMinutes;
+  final int endMinutes;
+
+  @override
+  Widget build(BuildContext context) {
+    final minutes = endMinutes - startMinutes;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.directions_walk_outlined, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '移動・余裕時間 $minutes分'
+                '（${_planClockLabel(startMinutes)} - ${_planClockLabel(endMinutes)}）',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -889,6 +1021,7 @@ class _ScheduleTimelineItem extends StatefulWidget {
     required this.item,
     required this.facility,
     required this.preference,
+    required this.controller,
     required this.isFirst,
     required this.isLast,
   });
@@ -896,6 +1029,7 @@ class _ScheduleTimelineItem extends StatefulWidget {
   final ScheduleItem item;
   final Facility? facility;
   final PlanPreference? preference;
+  final ScheduleController controller;
   final bool isFirst;
   final bool isLast;
 
@@ -907,6 +1041,8 @@ class _ScheduleTimelineItem extends StatefulWidget {
 
 class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
   bool _isExpanded = false;
+  bool _isLoadingFreeTimeChoices = false;
+  bool _isLoadingRepeatChoices = false;
 
   ScheduleItem get item {
     return widget.item;
@@ -923,6 +1059,253 @@ class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
   bool get _hasDetails {
     return (item.reason?.trim().isNotEmpty ?? false) ||
         (item.note?.trim().isNotEmpty ?? false);
+  }
+
+  bool get _isFreeTime {
+    return item.type.name == 'breakTime';
+  }
+
+  bool get _usesUnlimitedRide {
+    final source = item.waitEstimateSource?.trim() ?? '';
+    return source.startsWith('バケーションパッケージ乗り放題') ||
+        source.startsWith('バケパ乗り放題');
+  }
+
+  bool get _canAddPlannedRepeat {
+    return facility?.category == FacilityCategory.attraction &&
+        _usesUnlimitedRide;
+  }
+
+  Future<void> _showPlannedRepeatRide() async {
+    final target = facility;
+    if (target == null || _isLoadingRepeatChoices) return;
+
+    setState(() => _isLoadingRepeatChoices = true);
+    final choices = await widget.controller.loadRepeatRideChoicesForFacility(
+      target.id,
+    );
+    if (!mounted) return;
+    setState(() => _isLoadingRepeatChoices = false);
+
+    if (choices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('このアトラクションを追加できる20分以上の空き時間がありません。'),
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    final selected = await showModalBottomSheet<FreeTimeImprovementChoice>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.72,
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text('${target.name}をもう一度'),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  icon: const Icon(Icons.close),
+                  tooltip: '閉じる',
+                ),
+              ],
+            ),
+            body: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                AppSpacing.lg,
+              ),
+              itemCount: choices.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final choice = choices[index];
+                return ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.repeat)),
+                  title: Text(
+                    '${choice.plannedStartLabel} - ${choice.plannedEndLabel}',
+                  ),
+                  subtitle: Text(
+                    '${choice.repeatNumber ?? 2}回目として手動追加・前後の予定は維持',
+                  ),
+                  trailing: const Icon(Icons.add_circle_outline),
+                  onTap: () => Navigator.of(sheetContext).pop(choice),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+    if (selected == null || !mounted) return;
+
+    await widget.controller.applyFreeTimeImprovement(selected);
+    if (!mounted) return;
+    if (widget.controller.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.controller.errorMessage!)),
+      );
+      return;
+    }
+
+    final noticeWidth = MediaQuery.sizeOf(context).width;
+    final noticeHorizontalMargin =
+        noticeWidth >= 900 ? (noticeWidth - 560) / 2 : 16.0;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.fromLTRB(
+          noticeHorizontalMargin,
+          0,
+          noticeHorizontalMargin,
+          noticeWidth >= 900 ? 144.0 : 96.0,
+        ),
+        duration: const Duration(seconds: 4),
+        content: Text('${target.name}を${selected.repeatNumber ?? 2}回目として予定へ追加しました。'),
+      ),
+    );
+  }
+
+  Future<void> _showFreeTimeImprovement() {
+    return _showFreeTimeImprovementFor(item);
+  }
+
+  Future<void> _showFreeTimeImprovementFor(ScheduleItem targetItem) async {
+    if (_isLoadingFreeTimeChoices) return;
+    setState(() => _isLoadingFreeTimeChoices = true);
+    final choices = await widget.controller.loadFreeTimeImprovementChoices(targetItem);
+    if (!mounted) return;
+    setState(() => _isLoadingFreeTimeChoices = false);
+
+    if (choices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('この空き時間に、前後の移動まで含めて安全に入る候補がありません。'),
+        ),
+      );
+      return;
+    }
+
+    final contextInfo = _freeTimeContext(targetItem);
+    final selected = await showModalBottomSheet<FreeTimeImprovementChoice>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.90,
+          child: _FreeTimeImprovementSheet(
+            freeTimeItem: targetItem,
+            choices: choices,
+            previousTitle: contextInfo.previousTitle,
+            nextTitle: contextInfo.nextTitle,
+          ),
+        );
+      },
+    );
+    if (selected == null || !mounted) return;
+
+    await widget.controller.applyFreeTimeImprovement(selected);
+    if (!mounted) return;
+    if (widget.controller.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.controller.errorMessage!)),
+      );
+      return;
+    }
+
+    final remaining = _largestRemainingFreeTime(targetItem);
+    final action = selected.kind == FreeTimeImprovementKind.performance
+        ? '公演を追加して再生成しました'
+        : '${selected.plannedStartLabel}頃に、既存の予定を維持したまま空き時間へ追加しました';
+    final remainingMinutes = remaining == null
+        ? 0
+        : _scheduleItemDurationMinutes(remaining);
+    final noticeWidth = MediaQuery.sizeOf(context).width;
+    final noticeHorizontalMargin =
+        noticeWidth >= 900 ? (noticeWidth - 560) / 2 : 16.0;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.fromLTRB(
+          noticeHorizontalMargin,
+          0,
+          noticeHorizontalMargin,
+          noticeWidth >= 900 ? 144.0 : 96.0,
+        ),
+        duration: const Duration(seconds: 4),
+        content: Text('${selected.facility.name}を$action。'),
+        action: remaining == null || remainingMinutes < 20
+            ? null
+            : SnackBarAction(
+                label: '残り$remainingMinutes分を改善',
+                onPressed: () {
+                  if (!mounted) return;
+                  _showFreeTimeImprovementFor(remaining);
+                },
+              ),
+      ),
+    );
+  }
+
+  ({String? previousTitle, String? nextTitle}) _freeTimeContext(
+    ScheduleItem targetItem,
+  ) {
+    final currentSchedule = widget.controller.schedule;
+    if (currentSchedule == null) {
+      return (previousTitle: null, nextTitle: null);
+    }
+    final sorted = [...currentSchedule.items]
+      ..sort((a, b) {
+        final aStart = a.startHour * 60 + a.startMinute;
+        final bStart = b.startHour * 60 + b.startMinute;
+        return aStart.compareTo(bStart);
+      });
+    final index = sorted.indexWhere((candidate) => candidate.id == targetItem.id);
+    if (index < 0) {
+      return (previousTitle: null, nextTitle: null);
+    }
+    return (
+      previousTitle: index > 0 ? sorted[index - 1].title : null,
+      nextTitle: index + 1 < sorted.length ? sorted[index + 1].title : null,
+    );
+  }
+
+  ScheduleItem? _largestRemainingFreeTime(ScheduleItem originalGap) {
+    final currentSchedule = widget.controller.schedule;
+    if (currentSchedule == null) return null;
+    final originalStart = originalGap.startHour * 60 + originalGap.startMinute;
+    final originalEnd = originalGap.endHour * 60 + originalGap.endMinute;
+    final candidates = currentSchedule.items.where((candidate) {
+      if (candidate.type.name != 'breakTime') return false;
+      final start = candidate.startHour * 60 + candidate.startMinute;
+      final end = candidate.endHour * 60 + candidate.endMinute;
+      return start >= originalStart && end <= originalEnd && end - start >= 20;
+    }).toList(growable: false);
+    if (candidates.isEmpty) return null;
+    candidates.sort(
+      (left, right) => _scheduleItemDurationMinutes(right)
+          .compareTo(_scheduleItemDurationMinutes(left)),
+    );
+    return candidates.first;
+  }
+
+  int _scheduleItemDurationMinutes(ScheduleItem targetItem) {
+    final start = targetItem.startHour * 60 + targetItem.startMinute;
+    final end = targetItem.endHour * 60 + targetItem.endMinute;
+    return end - start;
   }
 
   @override
@@ -1040,7 +1423,47 @@ class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        if (facility != null)
+                        if (item.id.startsWith('manual_repeat_'))
+                          IconButton(
+                            tooltip: 'この再乗車だけ削除',
+                            onPressed: () {
+                              final removed = widget.controller.removeManualRepeat(
+                                item.id,
+                              );
+                              if (!removed || !mounted) return;
+                              final noticeWidth =
+                                  MediaQuery.sizeOf(context).width;
+                              final noticeHorizontalMargin =
+                                  noticeWidth >= 900
+                                      ? (noticeWidth - 560) / 2
+                                      : 16.0;
+                              final messenger =
+                                  ScaffoldMessenger.of(context);
+                              messenger.hideCurrentSnackBar();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: EdgeInsets.fromLTRB(
+                                    noticeHorizontalMargin,
+                                    0,
+                                    noticeHorizontalMargin,
+                                    noticeWidth >= 900 ? 144.0 : 96.0,
+                                  ),
+                                  duration: const Duration(seconds: 4),
+                                  content: Text(
+                                    '${item.title}を削除し、空き時間に戻しました。',
+                                  ),
+                                  action: SnackBarAction(
+                                    label: '元に戻す',
+                                    onPressed:
+                                        widget.controller.undoScheduleChange,
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.delete_outline),
+                          )
+                        else if (facility != null)
                           IconButton(
                             tooltip: '固定予定を編集して再生成',
                             onPressed: () async {
@@ -1072,7 +1495,45 @@ class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
                             facility: facility!,
                             preference: preference,
                           ),
+                          if (item.id.startsWith('manual_repeat_'))
+                            const _PreferenceBadge(
+                              icon: Icons.repeat,
+                              label: 'バケパ乗り放題・手動再乗車',
+                              foregroundColor: Color(0xFF4F378B),
+                              backgroundColor: Color(0xFFF1ECFF),
+                              borderColor: Color(0xFFC8B8F8),
+                            ),
                         ],
+                      ),
+                    ],
+                    if (_canAddPlannedRepeat) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoadingRepeatChoices
+                              ? null
+                              : _showPlannedRepeatRide,
+                          icon: _isLoadingRepeatChoices
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.repeat),
+                          label: Text(
+                            _isLoadingRepeatChoices
+                                ? '空き時間を確認中...'
+                                : 'もう一度乗る予定を追加',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '事前計画として追加します。Plannerが自動で2回目を入れることはありません。',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                       ),
                     ],
                     if (_shouldShowLotteryFallback(
@@ -1082,6 +1543,36 @@ class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
                       const SizedBox(height: 8),
                       _LotteryFallbackInformation(
                         action: preference!.lotteryFallbackAction,
+                      ),
+                    ],
+                    if (_isFreeTime) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.tonalIcon(
+                          onPressed: _isLoadingFreeTimeChoices
+                              ? null
+                              : _showFreeTimeImprovement,
+                          icon: _isLoadingFreeTimeChoices
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.auto_fix_high_outlined),
+                          label: Text(
+                            _isLoadingFreeTimeChoices
+                                ? '候補を計算中...'
+                                : 'この空き時間を改善',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '前後の移動と待ち時間を含め、この枠に収まる候補だけを表示します。自動では追加しません。',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                       ),
                     ],
                     if (_hasDetails) ...[
@@ -1172,6 +1663,19 @@ class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
           foregroundColor: const Color(0xFF287A4B),
           backgroundColor: const Color(0xFFE8F5ED),
           borderColor: const Color(0xFFA5D6B7),
+        ),
+      );
+    }
+
+    if (preference.fixedTimeStatus == FixedTimeStatus.planned &&
+        preference.scheduledAccessTime.trim().isNotEmpty) {
+      badges.add(
+        _PreferenceBadge(
+          icon: Icons.auto_fix_high_outlined,
+          label: '${preference.scheduledAccessTime} 空き時間で追加',
+          foregroundColor: const Color(0xFF4F378B),
+          backgroundColor: const Color(0xFFF1ECFF),
+          borderColor: const Color(0xFFC8B8F8),
         ),
       );
     }
@@ -1541,7 +2045,7 @@ class _ScheduleItemDetails extends StatelessWidget {
           if (reason != null && reason.isNotEmpty)
             _ScheduleDetailRow(
               icon: Icons.lightbulb_outline,
-              title: '理由',
+              title: 'AI配置理由',
               content: reason,
             ),
           if (reason != null &&
@@ -1552,7 +2056,7 @@ class _ScheduleItemDetails extends StatelessWidget {
           if (note != null && note.isNotEmpty)
             _ScheduleDetailRow(
               icon: Icons.note_outlined,
-              title: 'メモ',
+              title: '施設メモ',
               content: note,
             ),
         ],
@@ -1599,6 +2103,531 @@ class _ScheduleDetailRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+class _FreeTimeImprovementSheet extends StatefulWidget {
+  const _FreeTimeImprovementSheet({
+    required this.freeTimeItem,
+    required this.choices,
+    required this.previousTitle,
+    required this.nextTitle,
+  });
+
+  final ScheduleItem freeTimeItem;
+  final List<FreeTimeImprovementChoice> choices;
+  final String? previousTitle;
+  final String? nextTitle;
+
+  @override
+  State<_FreeTimeImprovementSheet> createState() =>
+      _FreeTimeImprovementSheetState();
+}
+
+class _FreeTimeImprovementSheetState extends State<_FreeTimeImprovementSheet> {
+  bool _showAllNewRecommendations = false;
+
+  int get _gapMinutes {
+    final start = widget.freeTimeItem.startHour * 60 +
+        widget.freeTimeItem.startMinute;
+    final end = widget.freeTimeItem.endHour * 60 + widget.freeTimeItem.endMinute;
+    return end - start;
+  }
+
+  List<FreeTimeImprovementChoice> _sorted(
+    Iterable<FreeTimeImprovementChoice> source,
+  ) {
+    final values = source.toList(growable: false);
+    values.sort((left, right) {
+      final scoreCompare = right.score.compareTo(left.score);
+      if (scoreCompare != 0) return scoreCompare;
+      return left.plannedStartMinutes.compareTo(right.plannedStartMinutes);
+    });
+    return values;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final wishlisted = _sorted(
+      widget.choices.where(
+        (choice) =>
+            choice.kind == FreeTimeImprovementKind.facility &&
+            choice.alreadySelected,
+      ),
+    );
+    final repeats = _sorted(
+      widget.choices.where(
+        (choice) => choice.kind == FreeTimeImprovementKind.repeatAttraction,
+      ),
+    );
+    final performances = _sorted(
+      widget.choices.where(
+        (choice) => choice.kind == FreeTimeImprovementKind.performance,
+      ),
+    );
+    final newRecommendations = _sorted(
+      widget.choices.where(
+        (choice) =>
+            choice.kind == FreeTimeImprovementKind.facility &&
+            !choice.alreadySelected,
+      ),
+    );
+
+    final visibleNewRecommendations = _showAllNewRecommendations
+        ? newRecommendations
+        : newRecommendations.take(3).toList(growable: false);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          '${widget.freeTimeItem.startTimeLabel}〜${widget.freeTimeItem.endTimeLabel}を改善',
+        ),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close),
+            tooltip: '閉じる',
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.lg,
+        ),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '空き時間 $_gapMinutes分',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                if (widget.previousTitle != null)
+                  Text('前の予定：${widget.previousTitle}'),
+                if (widget.nextTitle != null)
+                  Text('次の予定：${widget.nextTitle}'),
+                const SizedBox(height: 8),
+                const Text(
+                  'まず「やりたいこと」に登録済みの未実施施設を優先します。'
+                  'ショー・パレードと未登録施設は別枠で表示し、'
+                  '未登録候補が登録済み施設を押しのけないようにしています。'
+                  '候補は自動追加されません。',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          Text(
+            'やりたいことからおすすめ',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '登録済みで、まだ予定に入っていない施設を最優先で表示します。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 7),
+          if (wishlisted.isEmpty)
+            _FreeTimeEmptySection(
+              icon: Icons.favorite_border,
+              message: 'この空き時間に安全に入る未実施の「やりたいこと」はありません。',
+            )
+          else
+            for (var index = 0; index < wishlisted.length; index++)
+              _FreeTimeImprovementChoiceTile(
+                choice: wishlisted[index],
+                rank: index + 1,
+                emphasized: index == 0,
+              ),
+
+          if (repeats.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'もう一度乗る（乗り放題）',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'すでに予定に入っている乗り放題対象アトラクションです。'
+              'Disney Plannerは自動では追加しません。'
+              'もう一度乗りたい施設だけ、ユーザーが選んで追加できます。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 7),
+            for (var index = 0; index < repeats.length; index++)
+              _FreeTimeImprovementChoiceTile(
+                choice: repeats[index],
+                rank: index + 1,
+              ),
+          ],
+
+          if (performances.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'ショー・パレード',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'この時間枠に収まる公演です。エントリー受付やDPA対象公演は、'
+              '当選・購入済みの場合だけ追加してください。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 7),
+            for (var index = 0; index < performances.length; index++)
+              _FreeTimeImprovementChoiceTile(
+                choice: performances[index],
+                rank: index + 1,
+              ),
+          ],
+
+          if (newRecommendations.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              '新しいおすすめ',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '「やりたいこと」には未登録の候補です。'
+              'マスタ上の人気度は参考程度にとどめ、体験価値・待ち時間・移動・空き時間の有効活用を総合評価します。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 7),
+            for (var index = 0;
+                index < visibleNewRecommendations.length;
+                index++)
+              _FreeTimeImprovementChoiceTile(
+                choice: visibleNewRecommendations[index],
+                rank: index + 1,
+                emphasized: wishlisted.isEmpty &&
+                    repeats.isEmpty &&
+                    performances.isEmpty &&
+                    index == 0,
+              ),
+            if (newRecommendations.length > 3) ...[
+              const SizedBox(height: 2),
+              OutlinedButton.icon(
+                onPressed: () => setState(
+                  () => _showAllNewRecommendations =
+                      !_showAllNewRecommendations,
+                ),
+                icon: Icon(
+                  _showAllNewRecommendations
+                      ? Icons.expand_less
+                      : Icons.expand_more,
+                ),
+                label: Text(
+                  _showAllNewRecommendations
+                      ? '新しいおすすめを閉じる'
+                      : 'その他の新しいおすすめを表示（${newRecommendations.length - 3}件）',
+                ),
+              ),
+            ],
+          ],
+
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              '乗り放題対象の再乗車は「もう一度乗る」から手動で追加できます。'
+              'Disney Plannerが勝手に2回目・3回目を追加することはありません。'
+              '1件追加したあとも空き時間が20分以上残れば、残り時間を続けて改善できます。',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.free_breakfast_outlined),
+            label: const Text('このまま休憩・自由時間にする'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FreeTimeEmptySection extends StatelessWidget {
+  const _FreeTimeEmptySection({
+    required this.icon,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FreeTimeImprovementChoiceTile extends StatelessWidget {
+  const _FreeTimeImprovementChoiceTile({
+    required this.choice,
+    required this.rank,
+    this.emphasized = false,
+  });
+
+  final FreeTimeImprovementChoice choice;
+  final int rank;
+  final bool emphasized;
+
+  String _recommendationReason() {
+    final totalMovement = choice.movementInMinutes + choice.movementOutMinutes;
+    final wait = choice.estimatedWaitMinutes;
+    if (choice.kind == FreeTimeImprovementKind.repeatAttraction) {
+      final repeatNumber = choice.repeatNumber ?? 2;
+      return 'すでに予定にある乗り放題対象です。選んだ場合だけ$repeatNumber回目として手動追加します。';
+    }
+    if (choice.alreadySelected) {
+      return 'やりたいことに登録済みで、この空き時間に安全に収まります。';
+    }
+    if (choice.kind == FreeTimeImprovementKind.performance) {
+      return 'この時間枠で鑑賞でき、前後の予定にも間に合う公演です。';
+    }
+    if (choice.facility.category == FacilityCategory.greeting) {
+      return '未登録のグリーティング候補です。カテゴリだけでは優先せず、体験価値・待ち時間・移動・空き枠活用を総合評価しています。';
+    }
+    if (!choice.alreadySelected && choice.expertScore >= 75) {
+      return '体験価値が高く、空き時間を有効に使える新しいおすすめです。';
+    }
+    if (choice.fitSlackMinutes <= 30) {
+      return '前後の予定を守りながら、空き時間を無駄なく使える候補です。';
+    }
+    if (totalMovement <= 10) {
+      return '前後の移動が少なく、空き時間を効率よく使える候補です。';
+    }
+    if (wait != null && wait <= 15) {
+      return '待ち時間は短めですが、短さだけでなく体験価値と空き枠活用も含めて評価しています。';
+    }
+    return '体験価値・待ち時間・前後の移動・空き枠の使い切りやすさを総合評価した候補です。';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPerformance = choice.kind == FreeTimeImprovementKind.performance;
+    final isRepeat =
+        choice.kind == FreeTimeImprovementKind.repeatAttraction;
+    final wait = choice.estimatedWaitMinutes;
+    final colorScheme = Theme.of(context).colorScheme;
+    final kindLabel = isRepeat
+        ? 'もう一度乗る'
+        : isPerformance
+            ? choice.facility.category == FacilityCategory.parade
+                ? 'パレード'
+                : 'ショー'
+            : choice.facility.category == FacilityCategory.greeting
+                ? 'グリーティング'
+                : 'アトラクション';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 7),
+      color: emphasized ? colorScheme.primaryContainer : null,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.of(context).pop(choice),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                child: Icon(
+                  isPerformance
+                      ? choice.facility.category == FacilityCategory.parade
+                          ? Icons.celebration_outlined
+                          : Icons.theater_comedy_outlined
+                      : choice.facility.category == FacilityCategory.greeting
+                          ? Icons.people_alt_outlined
+                          : Icons.attractions_outlined,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          '$rank位',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            kindLabel,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        ),
+                        if (choice.alreadySelected && !isRepeat)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'やりたいこと',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ),
+                        if (isRepeat)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.tertiaryContainer,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '${choice.repeatNumber ?? 2}回目として追加',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      choice.facility.name,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      isPerformance
+                          ? '${choice.plannedStartLabel}開演・約${choice.facility.durationMinutes}分・${choice.preparationMinutes}分前準備'
+                          : '${choice.plannedStartLabel}〜${choice.plannedEndLabel}${wait == null ? '' : '・予測待ち約$wait分'}',
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '前から${choice.movementInMinutes}分 ／ 次へ${choice.movementOutMinutes}分'
+                      '${choice.fitSlackMinutes > 0 ? ' ／ 追加後の余白 約${choice.fitSlackMinutes}分' : ''}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _recommendationReason(),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: emphasized
+                                ? FontWeight.w700
+                                : FontWeight.normal,
+                          ),
+                    ),
+                    if (!isPerformance && choice.expertScore > 0) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'Disney通おすすめ評価 ${choice.expertScore.toStringAsFixed(1)}点'
+                        '${choice.expertReason == null || choice.expertReason!.trim().isEmpty ? '' : '（${choice.expertReason}）'}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                    if (!isPerformance && choice.waitSource != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        choice.waitSource!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Icon(Icons.add_circle_outline),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

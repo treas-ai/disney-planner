@@ -4,6 +4,7 @@ import '../entities/event_impact.dart';
 import '../entities/expert_recommendation_profile.dart';
 import '../entities/facility.dart';
 import '../entities/facility_location.dart';
+import '../entities/greeting_wait_planning_value.dart';
 import '../entities/plan_preference.dart';
 import '../entities/official_performance_opportunity.dart';
 import '../entities/schedule_item.dart';
@@ -62,6 +63,9 @@ class ScheduleEngine {
     List<FacilityLocation> facilityLocations = const [],
     List<ExpertRecommendationProfile> expertProfiles = const [],
     Map<String, int> unlimitedRideBufferMinutes = const <String, int>{},
+    Map<String, GreetingWaitPlanningValue> greetingWaitPlanning =
+        const <String, GreetingWaitPlanningValue>{},
+    List<ScheduleItem> manualFixedItems = const <ScheduleItem>[],
   }) {
     final items = <ScheduleItem>[];
     final visitDate = settings.visitDate ?? DateTime.now();
@@ -140,7 +144,37 @@ class ScheduleEngine {
       entryMinutes: entryEndMinutes,
       exitMinutes: exitMinutes,
       targetDate: visitDate,
+      waitProfiles: waitProfiles,
+      settings: settings,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      greetingWaitPlanning: greetingWaitPlanning,
     );
+
+    final operationalFacilityIds =
+        operationalFacilities.map((facility) => facility.id).toSet();
+    for (final manualItem in manualFixedItems) {
+      final manualStart =
+          manualItem.startHour * 60 + manualItem.startMinute;
+      final manualEnd = manualItem.endHour * 60 + manualItem.endMinute;
+      final facilityId = manualItem.facilityId;
+      if (!manualItem.id.startsWith('manual_repeat_') ||
+          manualItem.type != ScheduleItemType.facility ||
+          facilityId == null ||
+          !operationalFacilityIds.contains(facilityId) ||
+          manualStart < entryEndMinutes ||
+          manualEnd <= manualStart ||
+          manualEnd > exitMinutes) {
+        continue;
+      }
+      final overlapsExisting = items.any((existing) {
+        final existingStart = existing.startHour * 60 + existing.startMinute;
+        final existingEnd = existing.endHour * 60 + existing.endMinute;
+        return manualStart < existingEnd && manualEnd > existingStart;
+      });
+      if (!overlapsExisting) {
+        items.add(manualItem);
+      }
+    }
 
     final mealPlan = mealPlanner.plan(
       settings: settings,
@@ -232,6 +266,8 @@ class ScheduleEngine {
 
     while (remainingFacilities.isNotEmpty) {
       final nextDecision = _selectNextWaitAwareFacility(
+        scheduledItems: items,
+        allFacilities: operationalFacilities,
         remainingFacilities: remainingFacilities,
         routeOrder: optimizedFacilities,
         preferences: preferences,
@@ -246,6 +282,7 @@ class ScheduleEngine {
         expertProfiles: expertProfiles,
         targetDate: visitDate,
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        greetingWaitPlanning: greetingWaitPlanning,
       );
       final facility = nextDecision.facility;
       remainingFacilities.remove(facility);
@@ -307,6 +344,7 @@ class ScheduleEngine {
         scheduledStartMinutes: requestedStartMinutes,
         settings: settings,
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        greetingWaitPlanning: greetingWaitPlanning,
       );
       final durationMinutes = _resolvePlannedFacilityDuration(
         facility: facility,
@@ -350,10 +388,13 @@ class ScheduleEngine {
         continue;
       }
 
-      finalStartMinutes = _ensureTravelAfterInterveningFacility(
+      finalStartMinutes = _ensureTravelAroundScheduledFacilities(
         candidateStartMinutes: finalStartMinutes,
         durationMinutes: durationMinutes,
-        targetAreaId: facilityEntryAreaId,
+        targetEntryAreaId: facilityEntryAreaId,
+        targetExitAreaId:
+            facilityLocationById[facility.id]?.effectiveExitAreaId ??
+            facility.areaId,
         items: items,
         facilityLocationById: facilityLocationById,
         facilities: operationalFacilities,
@@ -384,6 +425,7 @@ class ScheduleEngine {
               scheduledStartMinutes: finalStartMinutes,
               settings: settings,
               unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+              greetingWaitPlanning: greetingWaitPlanning,
             );
       final finalDurationMinutes = _resolvePlannedFacilityDuration(
         facility: facility,
@@ -439,15 +481,16 @@ class ScheduleEngine {
             waitProfiles: waitProfiles,
             settings: settings,
             unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+            greetingWaitPlanning: greetingWaitPlanning,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
-          estimatedWaitMinutes: facility.category == FacilityCategory.attraction
+          estimatedWaitMinutes: _usesQueueWaitPlanning(facility)
               ? finalWaitEstimate.waitMinutes
               : null,
-          experienceMinutes: facility.category == FacilityCategory.attraction
+          experienceMinutes: _usesQueueWaitPlanning(facility)
               ? _resolveFacilityDuration(facility)
               : null,
-          waitEstimateSource: facility.category == FacilityCategory.attraction
+          waitEstimateSource: _usesQueueWaitPlanning(facility)
               ? finalWaitEstimate.source
               : null,
         ),
@@ -469,6 +512,13 @@ class ScheduleEngine {
       exitMinutes: exitMinutes,
       officialPerformanceOpportunities: officialPerformanceOpportunities,
       expertProfileById: expertProfileById,
+      facilities: operationalFacilities,
+      preferences: preferences,
+      facilityLocationById: facilityLocationById,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+      settings: settings,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
     );
 
     // Desired exit time is a soft constraint only for candidates that have
@@ -712,6 +762,10 @@ class ScheduleEngine {
     required int entryMinutes,
     required int exitMinutes,
     required DateTime targetDate,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required TripSettings settings,
+    required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
     final addedFacilityIds = <String>{};
 
@@ -729,10 +783,20 @@ class ScheduleEngine {
           final preference = candidate.preference;
 
           if (preference == null ||
-              preference.fixedTimeStatus != FixedTimeStatus.confirmed ||
               !preference.hasScheduledAccessTime ||
               _isShowOrParade(candidate.facility) ||
               candidate.facility.isRestaurant) {
+            return false;
+          }
+
+          final isUserPlannedStandby =
+              preference.fixedTimeStatus == FixedTimeStatus.planned &&
+              preference.accessMethod == FacilityAccessMethod.standby;
+          if (isUserPlannedStandby) {
+            return true;
+          }
+
+          if (preference.fixedTimeStatus != FixedTimeStatus.confirmed) {
             return false;
           }
 
@@ -766,7 +830,35 @@ class ScheduleEngine {
         continue;
       }
 
-      final durationMinutes = _resolveFacilityDuration(facility);
+      final isUserPlannedStandby =
+          preference.fixedTimeStatus == FixedTimeStatus.planned &&
+          preference.accessMethod == FacilityAccessMethod.standby;
+      final usesUnlimitedRide = isUserPlannedStandby &&
+          _usesUnlimitedRideBenefit(
+            facility: facility,
+            settings: settings,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          );
+      final waitEstimate = isUserPlannedStandby
+          ? _resolveWaitEstimate(
+              facility: facility,
+              preference: preference,
+              waitProfiles: waitProfiles,
+              scheduledStartMinutes: fixedStartMinutes,
+              settings: settings,
+              unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+              greetingWaitPlanning: greetingWaitPlanning,
+            )
+          : null;
+      final durationMinutes = isUserPlannedStandby
+          ? _resolvePlannedFacilityDuration(
+              facility: facility,
+              preference: preference,
+              settings: settings,
+              unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+              waitEstimate: waitEstimate,
+            )
+          : _resolveFacilityDuration(facility);
       final fixedEndMinutes = fixedStartMinutes + durationMinutes;
 
       if (fixedStartMinutes < entryMinutes || fixedEndMinutes > exitMinutes) {
@@ -802,8 +894,21 @@ class ScheduleEngine {
             facility: facility,
             preference: preference,
             durationMinutes: durationMinutes,
+            usesUnlimitedRide: usesUnlimitedRide,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
+          estimatedWaitMinutes:
+              isUserPlannedStandby && _usesQueueWaitPlanning(facility)
+                  ? waitEstimate?.waitMinutes
+                  : null,
+          experienceMinutes:
+              isUserPlannedStandby && _usesQueueWaitPlanning(facility)
+                  ? _resolveFacilityDuration(facility)
+                  : null,
+          waitEstimateSource:
+              isUserPlannedStandby && _usesQueueWaitPlanning(facility)
+                  ? waitEstimate?.source
+                  : null,
         ),
       );
 
@@ -819,6 +924,13 @@ class ScheduleEngine {
     required int exitMinutes,
     required List<OfficialPerformanceOpportunity> officialPerformanceOpportunities,
     required Map<String, ExpertRecommendationProfile> expertProfileById,
+    required List<Facility> facilities,
+    required List<PlanPreference> preferences,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required TripSettings settings,
+    required Map<String, int> unlimitedRideBufferMinutes,
   }) {
     const minimumGapMinutes = 60;
     const publicPerformanceArrivalBufferMinutes = 20;
@@ -856,7 +968,15 @@ class ScheduleEngine {
           .where((option) =>
               option.startMinutes >= gap.start &&
               option.startMinutes < gap.end &&
-              (option.endMinutes <= gap.end || isFinalExitGap))
+              (option.endMinutes <= gap.end || isFinalExitGap) &&
+              _performanceCandidateFitsSurroundingTravel(
+                option: option,
+                items: items,
+                facilities: facilities,
+                facilityLocationById: facilityLocationById,
+                eventImpacts: eventImpacts,
+                areaConnections: areaConnections,
+              ))
           .toList(growable: false)
         ..sort((a, b) {
           if (a.isSelected != b.isSelected) return a.isSelected ? -1 : 1;
@@ -980,6 +1100,118 @@ class ScheduleEngine {
     }
 
     return effectiveExitMinutes;
+  }
+
+  bool _performanceCandidateFitsSurroundingTravel({
+    required OfficialPerformanceOpportunity option,
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+  }) {
+    const preparationMinutes = 15;
+
+    Facility? performanceFacility;
+    for (final facility in facilities) {
+      if (facility.id == option.facilityId) {
+        performanceFacility = facility;
+        break;
+      }
+    }
+    final performanceAreaId =
+        facilityLocationById[option.facilityId]?.areaId ??
+        performanceFacility?.areaId;
+
+    ScheduleItem? previous;
+    ScheduleItem? next;
+    for (final item in items) {
+      final facilityId = item.facilityId;
+      if (facilityId == null || facilityId.isEmpty) continue;
+      final itemEnd = _itemEndMinutes(item);
+      final itemStart = _itemStartMinutes(item);
+      if (itemEnd <= option.startMinutes &&
+          (previous == null || itemEnd > _itemEndMinutes(previous))) {
+        previous = item;
+      }
+      if (itemStart >= option.endMinutes &&
+          (next == null || itemStart < _itemStartMinutes(next))) {
+        next = item;
+      }
+    }
+
+    if (previous != null) {
+      final previousAreaId = _scheduleItemExitAreaId(
+        item: previous,
+        facilities: facilities,
+        facilityLocationById: facilityLocationById,
+      );
+      final movement = performanceAreaId == null || previousAreaId == null
+          ? _movementDurationMinutes
+          : _calculateMovementMinutes(
+              previousAreaId: previousAreaId,
+              currentAreaId: performanceAreaId,
+              atMinutes: _itemEndMinutes(previous),
+              eventImpacts: eventImpacts,
+              areaConnections: areaConnections,
+            );
+      final latestArrival = option.startMinutes - preparationMinutes;
+      if (_itemEndMinutes(previous) + movement > latestArrival) {
+        return false;
+      }
+    }
+
+    if (next != null) {
+      final nextAreaId = _scheduleItemEntryAreaId(
+        item: next,
+        facilities: facilities,
+        facilityLocationById: facilityLocationById,
+      );
+      final movement = performanceAreaId == null || nextAreaId == null
+          ? _movementDurationMinutes
+          : _calculateMovementMinutes(
+              previousAreaId: performanceAreaId,
+              currentAreaId: nextAreaId,
+              atMinutes: option.endMinutes,
+              eventImpacts: eventImpacts,
+              areaConnections: areaConnections,
+            );
+      if (option.endMinutes + movement > _itemStartMinutes(next)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  String? _scheduleItemEntryAreaId({
+    required ScheduleItem item,
+    required List<Facility> facilities,
+    required Map<String, FacilityLocation> facilityLocationById,
+  }) {
+    final facilityId = item.facilityId;
+    if (facilityId == null || facilityId.isEmpty) return null;
+    final location = facilityLocationById[facilityId];
+    if (location != null) return location.areaId;
+    for (final facility in facilities) {
+      if (facility.id == facilityId) return facility.areaId;
+    }
+    return null;
+  }
+
+  String? _scheduleItemExitAreaId({
+    required ScheduleItem item,
+    required List<Facility> facilities,
+    required Map<String, FacilityLocation> facilityLocationById,
+  }) {
+    final facilityId = item.facilityId;
+    if (facilityId == null || facilityId.isEmpty) return null;
+    final location = facilityLocationById[facilityId];
+    if (location != null) return location.effectiveExitAreaId;
+    for (final facility in facilities) {
+      if (facility.id == facilityId) return facility.areaId;
+    }
+    return null;
   }
 
   void _addOpenTimeBlock({
@@ -1477,6 +1709,8 @@ class ScheduleEngine {
 
 
   _NextFacilityDecision _selectNextWaitAwareFacility({
+    required List<ScheduleItem> scheduledItems,
+    required List<Facility> allFacilities,
     required List<Facility> remainingFacilities,
     required List<Facility> routeOrder,
     required List<PlanPreference> preferences,
@@ -1491,6 +1725,7 @@ class ScheduleEngine {
     required List<ExpertRecommendationProfile> expertProfiles,
     required DateTime targetDate,
     required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
     if (remainingFacilities.length == 1) {
       return _NextFacilityDecision(facility: remainingFacilities.single);
@@ -1511,6 +1746,7 @@ class ScheduleEngine {
         expertProfiles: expertProfiles,
         targetDate: targetDate,
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        greetingWaitPlanning: greetingWaitPlanning,
       );
       if (openingDecision != null) {
         return _NextFacilityDecision(
@@ -1572,6 +1808,7 @@ class ScheduleEngine {
         scheduledStartMinutes: candidateStart,
         settings: settings,
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        greetingWaitPlanning: greetingWaitPlanning,
       );
       final experienceMinutes = _resolveFacilityDuration(facility);
       final expert = expertRecommendationService.evaluate(
@@ -1585,13 +1822,31 @@ class ScheduleEngine {
       final opportunityCost = timing == null
           ? 0.0
           : -timing.delayPenaltyMinutes.toDouble();
+      final anchorImpact = _futureScheduledAnchorImpact(
+        facility: facility,
+        candidateStartMinutes: candidateStart,
+        candidateDurationMinutes:
+            currentEstimate.waitMinutes + experienceMinutes,
+        scheduledItems: scheduledItems,
+        facilities: allFacilities,
+        facilityLocationById: facilityLocationById,
+        eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
+      );
       final totalTimeCost = movementMinutes.toDouble() +
           currentEstimate.waitMinutes +
           experienceMinutes +
           startDelay +
-          opportunityCost;
+          opportunityCost +
+          anchorImpact.movementMinutes * 0.8;
 
       var score = -totalTimeCost;
+      if (!anchorImpact.fitsBeforeAnchor) {
+        // Do not consume the slot immediately before a meal/fixed facility if
+        // doing so would make the anchor unreachable. Other candidates that
+        // fit the local area should win this iteration instead.
+        score -= 500.0;
+      }
       score += preferenceValue * 2.0;
       score += expert.score * 0.16;
       score -= (routeIndex < 0 ? routeOrder.length : routeIndex) * 0.5;
@@ -1665,9 +1920,10 @@ class ScheduleEngine {
     required List<ExpertRecommendationProfile> expertProfiles,
     required DateTime targetDate,
     required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
-    final attractionCandidates = remainingFacilities.where((facility) {
-      if (facility.category != FacilityCategory.attraction) return false;
+    final queueCandidates = remainingFacilities.where((facility) {
+      if (!_usesQueueWaitPlanning(facility)) return false;
       final preference = _findPreference(
         facilityId: facility.id,
         preferences: preferences,
@@ -1676,13 +1932,13 @@ class ScheduleEngine {
       return preferredTime == PreferredTime.anytime ||
           preferredTime == PreferredTime.morning;
     }).toList(growable: false);
-    if (attractionCandidates.isEmpty) return null;
+    if (queueCandidates.isEmpty) return null;
 
     _OpeningSequence? best;
-    for (final first in attractionCandidates) {
+    for (final first in queueCandidates) {
       final sequence = _buildOpeningSequence(
         first: first,
-        candidates: attractionCandidates,
+        candidates: queueCandidates,
         preferences: preferences,
         waitProfiles: waitProfiles,
         startMinutes: currentMinutes,
@@ -1695,6 +1951,7 @@ class ScheduleEngine {
         expertProfiles: expertProfiles,
         targetDate: targetDate,
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        greetingWaitPlanning: greetingWaitPlanning,
       );
       if (best == null || sequence.score > best.score) {
         best = sequence;
@@ -1709,9 +1966,17 @@ class ScheduleEngine {
         ? ' DPA/PP/シングルライダー等で後から短縮できる可能性を'
             '${detail.alternativeAccessPenalty.round()}分相当減点しました。'
         : '';
+    final hasReliableOpeningProfile = _hasReliableWaitProfile(
+      facilityId: first.id,
+      waitProfiles: waitProfiles,
+    );
     final difficulty = detail.dayDifficultyMinutes > 0
-        ? ' 一日を通した通常待機難易度は最大約'
-            '${detail.dayDifficultyMinutes}分として評価しました。'
+        ? first.category == FacilityCategory.greeting &&
+                !hasReliableOpeningProfile
+            ? ' グリーティング待ち時間は実測未取得のため、'
+                '計画用暫定値${detail.dayDifficultyMinutes}分を安全側の評価に使用しました。'
+            : ' 一日を通した通常待機難易度は最大約'
+                '${detail.dayDifficultyMinutes}分として評価しました。'
         : '';
     final transport = detail.transportPenalty > 0
         ? ' 移動型施設のため朝一枠の占有を'
@@ -1738,6 +2003,12 @@ class ScheduleEngine {
       settings: settings,
       unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
     );
+    final greetingPlan = greetingWaitPlanning[first.id];
+    final birthdaySummary = greetingPlan?.isCharacterBirthday == true
+        ? ' ${greetingPlan!.birthdayCharacterNames.join('・')}の記念日のため特殊混雑日として扱い、'
+            '計画待ち${greetingPlan.birthdayPlanningWaitMinutes}分を確保しています。'
+            '${greetingPlan.birthdayExtremeRiskMinutes}分級を極端混雑リスクとして別管理しています。'
+        : '';
     final strategySummary = usesUnlimitedRide
         ? '乗り放題対象は後からも優先入口を利用できるため朝一緊急性を抑え、'
             '対象外施設の通常待ち悪化との機会費用も比較しています。'
@@ -1761,6 +2032,7 @@ class ScheduleEngine {
           '$alternative'
           '$transport'
           '$expertReason'
+          '$birthdaySummary'
           '$strategySummary',
     );
   }
@@ -1780,6 +2052,7 @@ class ScheduleEngine {
     required List<ExpertRecommendationProfile> expertProfiles,
     required DateTime targetDate,
     required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
     const maxDepth = 3;
     const discounts = <double>[1.0, 0.65, 0.4];
@@ -1812,6 +2085,7 @@ class ScheduleEngine {
           expertProfiles: expertProfiles,
           targetDate: targetDate,
           unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          greetingWaitPlanning: greetingWaitPlanning,
         );
         if (evaluation.score > chosenScore) {
           chosen = facility;
@@ -1860,6 +2134,7 @@ class ScheduleEngine {
     required List<ExpertRecommendationProfile> expertProfiles,
     required DateTime targetDate,
     required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
     final preference = _findPreference(
       facilityId: facility.id,
@@ -1880,6 +2155,7 @@ class ScheduleEngine {
       scheduledStartMinutes: candidateStart,
       settings: settings,
       unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      greetingWaitPlanning: greetingWaitPlanning,
     );
     final timing = _waitTimingOpportunity(
       facility: facility,
@@ -1904,6 +2180,7 @@ class ScheduleEngine {
         : _openingDayDifficultyMinutes(
             facility: facility,
             waitProfiles: waitProfiles,
+            greetingWaitPlanning: greetingWaitPlanning,
           );
     final transportPenalty = _openingTransportPenalty(
       facility: facility,
@@ -1917,6 +2194,7 @@ class ScheduleEngine {
       preference: preference,
       waitProfiles: waitProfiles,
     );
+    final greetingPlan = greetingWaitPlanning[facility.id];
 
     // Opening is intentionally opportunity-cost dominant. A ride that is only
     // 5 minutes shorter now should not beat a ride that will become 40-60
@@ -1961,6 +2239,9 @@ class ScheduleEngine {
     score -= _resolveFacilityDuration(facility) * 0.15;
     score -= alternativeAccessPenalty;
     score -= transportPenalty;
+    if (greetingPlan?.isCharacterBirthday == true) {
+      score += greetingPlan!.birthdayOpeningUrgencyBonus;
+    }
 
     if (preference?.preferredTime == PreferredTime.morning) score += 18;
     if (facility.isSeasonal) score += 8;
@@ -1985,6 +2266,7 @@ class ScheduleEngine {
   int _openingDayDifficultyMinutes({
     required Facility facility,
     required List<TimeBandWaitProfile> waitProfiles,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
     TimeBandWaitProfile? profile;
     for (final item in waitProfiles) {
@@ -1993,7 +2275,12 @@ class ScheduleEngine {
         break;
       }
     }
-    if (profile == null) return 0;
+    if (profile == null) {
+      return facility.category == FacilityCategory.greeting
+          ? (greetingWaitPlanning[facility.id]?.waitMinutes ??
+              _fallbackWaitMinutes(facility))
+          : 0;
+    }
 
     var maximum = 0;
     for (final range in profile.ranges.values) {
@@ -2052,7 +2339,7 @@ class ScheduleEngine {
     required TripSettings settings,
     required Map<String, int> unlimitedRideBufferMinutes,
   }) {
-    if (facility.category != FacilityCategory.attraction ||
+    if (!_usesQueueWaitPlanning(facility) ||
         facility.waitTime != null ||
         _usesShortenedQueue(facility: facility, preference: preference) ||
         _usesUnlimitedRideBenefit(
@@ -2178,6 +2465,11 @@ class ScheduleEngine {
     return 60;
   }
 
+  bool _usesQueueWaitPlanning(Facility facility) {
+    return facility.category == FacilityCategory.attraction ||
+        facility.category == FacilityCategory.greeting;
+  }
+
   bool _usesUnlimitedRideBenefit({
     required Facility facility,
     required TripSettings settings,
@@ -2214,7 +2506,7 @@ class ScheduleEngine {
   }) {
     final experienceMinutes = _resolveFacilityDuration(facility);
 
-    if (facility.category != FacilityCategory.attraction) {
+    if (!_usesQueueWaitPlanning(facility)) {
       return experienceMinutes;
     }
 
@@ -2245,6 +2537,7 @@ class ScheduleEngine {
     required int scheduledStartMinutes,
     required TripSettings settings,
     required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
     final method = preference?.accessMethod ?? FacilityAccessMethod.standby;
     final usesUnlimitedRide = _usesUnlimitedRideBenefit(
@@ -2317,9 +2610,19 @@ class ScheduleEngine {
       }
     }
 
+    final greetingPlan = greetingWaitPlanning[facility.id];
+    if (facility.category == FacilityCategory.greeting && greetingPlan != null) {
+      return _WaitEstimate(
+        waitMinutes: timeRoundingService.ceilMinutes(greetingPlan.waitMinutes),
+        source: greetingPlan.source,
+      );
+    }
+
     return _WaitEstimate(
       waitMinutes: timeRoundingService.ceilMinutes(_fallbackWaitMinutes(facility)),
-      source: '待ち時間データ未登録のため優先度別の安全側暫定値',
+      source: facility.category == FacilityCategory.greeting
+          ? 'グリーティング待ち時間の実測データ未取得のためDisney Planner計画用暫定値（実測値ではありません）'
+          : '待ち時間データ未登録のため優先度別の安全側暫定値',
     );
   }
 
@@ -2368,6 +2671,19 @@ class ScheduleEngine {
   }
 
   int _fallbackWaitMinutes(Facility facility) {
+    if (facility.category == FacilityCategory.greeting) {
+      // Greeting waits are not currently available from the collected live
+      // source. Use conservative planning values rather than pretending that
+      // missing data means zero wait. These are planner fallbacks, not actual
+      // measured waits.
+      return switch (facility.priority.name) {
+        'highest' => 40,
+        'high' => 30,
+        'medium' => 25,
+        _ => 20,
+      };
+    }
+
     return switch (facility.priority.name) {
       'highest' => 60,
       'high' => 45,
@@ -2465,6 +2781,145 @@ class ScheduleEngine {
     );
 
     return entryMinutes < _toMinutes(10, 0);
+  }
+
+  _FutureAnchorImpact _futureScheduledAnchorImpact({
+    required Facility facility,
+    required int candidateStartMinutes,
+    required int candidateDurationMinutes,
+    required List<ScheduleItem> scheduledItems,
+    required List<Facility> facilities,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+  }) {
+    ScheduleItem? anchor;
+    for (final item in scheduledItems) {
+      final facilityId = item.facilityId;
+      if (facilityId == null || facilityId.isEmpty) continue;
+      final start = _itemStartMinutes(item);
+      if (start <= candidateStartMinutes) continue;
+      if (start - candidateStartMinutes > 120) continue;
+      if (anchor == null || start < _itemStartMinutes(anchor)) {
+        anchor = item;
+      }
+    }
+    if (anchor == null) return const _FutureAnchorImpact.none();
+
+    Facility? anchorFacility;
+    for (final item in facilities) {
+      if (item.id == anchor.facilityId) {
+        anchorFacility = item;
+        break;
+      }
+    }
+    final anchorAreaId =
+        facilityLocationById[anchor.facilityId!]?.areaId ??
+        anchorFacility?.areaId;
+    if (anchorAreaId == null || anchorAreaId.isEmpty) {
+      return const _FutureAnchorImpact.none();
+    }
+
+    final candidateExitAreaId =
+        facilityLocationById[facility.id]?.effectiveExitAreaId ??
+        facility.areaId;
+    final candidateEnd = candidateStartMinutes + candidateDurationMinutes;
+    final movement = _calculateMovementMinutes(
+      previousAreaId: candidateExitAreaId,
+      currentAreaId: anchorAreaId,
+      atMinutes: candidateEnd,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+    );
+    return _FutureAnchorImpact(
+      movementMinutes: movement,
+      fitsBeforeAnchor: candidateEnd + movement <= _itemStartMinutes(anchor),
+    );
+  }
+
+  int? _ensureTravelAroundScheduledFacilities({
+    required int candidateStartMinutes,
+    required int durationMinutes,
+    required String targetEntryAreaId,
+    required String targetExitAreaId,
+    required List<ScheduleItem> items,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<Facility> facilities,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required int exitMinutes,
+  }) {
+    var candidate = _ensureTravelAfterInterveningFacility(
+      candidateStartMinutes: candidateStartMinutes,
+      durationMinutes: durationMinutes,
+      targetAreaId: targetEntryAreaId,
+      items: items,
+      facilityLocationById: facilityLocationById,
+      facilities: facilities,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+      exitMinutes: exitMinutes,
+    );
+
+    for (var attempt = 0; candidate != null && attempt < items.length + 2; attempt++) {
+      ScheduleItem? nextFacilityItem;
+      for (final item in items) {
+        final facilityId = item.facilityId;
+        if (facilityId == null || facilityId.isEmpty) continue;
+        final start = _itemStartMinutes(item);
+        if (start <= candidate) continue;
+        if (nextFacilityItem == null ||
+            start < _itemStartMinutes(nextFacilityItem)) {
+          nextFacilityItem = item;
+        }
+      }
+      if (nextFacilityItem == null) return candidate;
+
+      Facility? nextFacility;
+      for (final facility in facilities) {
+        if (facility.id == nextFacilityItem.facilityId) {
+          nextFacility = facility;
+          break;
+        }
+      }
+      final nextAreaId =
+          facilityLocationById[nextFacilityItem.facilityId!]?.areaId ??
+          nextFacility?.areaId;
+      if (nextAreaId == null || nextAreaId.isEmpty) return candidate;
+
+      final candidateEnd = candidate + durationMinutes;
+      final movementToNext = _calculateMovementMinutes(
+        previousAreaId: targetExitAreaId,
+        currentAreaId: nextAreaId,
+        atMinutes: candidateEnd,
+        eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
+      );
+      if (candidateEnd + movementToNext <=
+          _itemStartMinutes(nextFacilityItem)) {
+        return candidate;
+      }
+
+      final afterAnchor = _findAvailableStart(
+        requestedStartMinutes: _itemEndMinutes(nextFacilityItem),
+        durationMinutes: durationMinutes,
+        items: items,
+        exitMinutes: exitMinutes,
+      );
+      if (afterAnchor == null) return null;
+      candidate = _ensureTravelAfterInterveningFacility(
+        candidateStartMinutes: afterAnchor,
+        durationMinutes: durationMinutes,
+        targetAreaId: targetEntryAreaId,
+        items: items,
+        facilityLocationById: facilityLocationById,
+        facilities: facilities,
+        eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
+        exitMinutes: exitMinutes,
+      );
+    }
+    return candidate;
   }
 
   int? _ensureTravelAfterInterveningFacility({
@@ -2643,11 +3098,22 @@ class ScheduleEngine {
     required Facility facility,
     required PlanPreference preference,
     required int durationMinutes,
+    required bool usesUnlimitedRide,
   }) {
+    final isUserPlannedStandby =
+        preference.fixedTimeStatus == FixedTimeStatus.planned &&
+        preference.accessMethod == FacilityAccessMethod.standby;
     final reasons = <String>[
-      '${_accessMethodShortLabel(preference.accessMethod)}の利用時刻'
-          '「${preference.scheduledAccessTime}」へ固定配置しました。',
-      _accessMethodReason(facility: facility, preference: preference),
+      if (isUserPlannedStandby)
+        'プラン確認画面の空き時間改善でユーザーが選択したため、'
+            '「${preference.scheduledAccessTime}」を目標時刻として配置しました。'
+      else
+        '${_accessMethodShortLabel(preference.accessMethod)}の利用時刻'
+            '「${preference.scheduledAccessTime}」へ固定配置しました。',
+      if (usesUnlimitedRide)
+        'バケーションパッケージ乗り放題対象のため、優先入口利用バッファを含めて計画しています。'
+      else
+        _accessMethodReason(facility: facility, preference: preference),
       '所要時間を$durationMinutes分として配置しました。',
     ];
 
@@ -2810,6 +3276,7 @@ class ScheduleEngine {
     List<TimeBandWaitProfile> waitProfiles = const [],
     required TripSettings settings,
     required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
     final reasons = <String>[];
 
@@ -2873,6 +3340,24 @@ class ScheduleEngine {
       }
     }
 
+    final greetingPlan = greetingWaitPlanning[facility.id];
+    if (facility.category == FacilityCategory.greeting && greetingPlan != null) {
+      if (greetingPlan.isCharacterBirthday) {
+        reasons.add(
+          '${greetingPlan.birthdayCharacterNames.join('・')}の記念日のため特殊混雑日として扱い、'
+          'Disney Planner計画待ち${greetingPlan.birthdayPlanningWaitMinutes}分を確保しました。'
+          '${greetingPlan.birthdayExtremeRiskMinutes}分級は極端混雑リスクとして別管理し、'
+          '通常の予測待ち時間とは扱っていません。',
+        );
+      } else if (greetingPlan.parkCrowdMultiplier > 1.001) {
+        reasons.add(
+          'Git収集済みのパーク混雑傾向からグリーティング基準待ち時間を'
+          '${greetingPlan.parkCrowdMultiplier.toStringAsFixed(2)}倍で安全側補正しています。'
+          'この値はグリーティング自体の実測待ち時間ではありません。',
+        );
+      }
+    }
+
     if (facility.supportsMobileOrder) {
       reasons.add('モバイルオーダー対応施設です。');
     }
@@ -2903,7 +3388,7 @@ class ScheduleEngine {
     if (preference == null) {
       reasons.add('施設の基本優先度を使用しています。');
     } else {
-      if (facility.category == FacilityCategory.attraction &&
+      if (_usesQueueWaitPlanning(facility) &&
           _hasReliableWaitProfile(
             facilityId: facility.id,
             waitProfiles: waitProfiles,
@@ -2912,10 +3397,14 @@ class ScheduleEngine {
           '希望時間「${preference.preferredTime.label}」と、'
           '収集した待ち時間実績・移動・体験時間による総時間評価を考慮しました。',
         );
-      } else if (facility.category == FacilityCategory.attraction) {
+      } else if (_usesQueueWaitPlanning(facility)) {
         reasons.add(
-          '希望時間「${preference.preferredTime.label}」を考慮しました。'
-          '待ち時間実績が不足しているため、フォールバック値を実績値としては扱っていません。',
+          facility.category == FacilityCategory.greeting
+              ? '希望時間「${preference.preferredTime.label}」を考慮しました。'
+                  'グリーティング待ち時間の実測データが取得できないため、'
+                  '計画用暫定値を使用しています。暫定値は実測値としては扱っていません。'
+              : '希望時間「${preference.preferredTime.label}」を考慮しました。'
+                  '待ち時間実績が不足しているため、フォールバック値を実績値としては扱っていません。',
         );
       } else {
         reasons.add(
@@ -3248,6 +3737,20 @@ class _OpeningStepEvaluation {
   final double transportPenalty;
   final double expertScore;
   final String expertReason;
+}
+
+class _FutureAnchorImpact {
+  const _FutureAnchorImpact({
+    required this.movementMinutes,
+    required this.fitsBeforeAnchor,
+  });
+
+  const _FutureAnchorImpact.none()
+      : movementMinutes = 0,
+        fitsBeforeAnchor = true;
+
+  final int movementMinutes;
+  final bool fitsBeforeAnchor;
 }
 
 class _NextFacilityDecision {

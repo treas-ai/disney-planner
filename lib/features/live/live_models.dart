@@ -4,8 +4,23 @@ import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/enums/facility_access_method.dart';
 
+enum LiveVisitPhase { preVisit, visitDay, postVisit, dateNotSet }
+
+LiveVisitPhase resolveLiveVisitPhase({
+  required DateTime now,
+  required DateTime? visitDate,
+}) {
+  if (visitDate == null) return LiveVisitPhase.dateNotSet;
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(visitDate.year, visitDate.month, visitDate.day);
+  if (target.isAfter(today)) return LiveVisitPhase.preVisit;
+  if (target.isBefore(today)) return LiveVisitPhase.postVisit;
+  return LiveVisitPhase.visitDay;
+}
+
 enum LiveScheduleStatus {
   beforeParkOpen,
+  pastVisit,
   current,
   upcoming,
   freeTime,
@@ -51,6 +66,8 @@ class LiveScheduleSnapshot {
     required this.status,
     required this.completedItemCount,
     required this.totalItemCount,
+    required this.visitPhase,
+    this.visitDate,
     this.currentItem,
     this.nextItem,
     this.currentFacility,
@@ -72,6 +89,15 @@ class LiveScheduleSnapshot {
 
   final int completedItemCount;
   final int totalItemCount;
+  final LiveVisitPhase visitPhase;
+  final DateTime? visitDate;
+
+  bool get isPreVisit => visitPhase == LiveVisitPhase.preVisit;
+  bool get isVisitDay => visitPhase == LiveVisitPhase.visitDay;
+  bool get isLiveMode =>
+      visitPhase == LiveVisitPhase.visitDay ||
+      visitPhase == LiveVisitPhase.dateNotSet;
+  bool get isPostVisit => visitPhase == LiveVisitPhase.postVisit;
 
   final ScheduleItem? currentItem;
   final ScheduleItem? nextItem;

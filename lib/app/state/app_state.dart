@@ -51,6 +51,7 @@ class AppState extends ChangeNotifier {
   final List<Facility> _selectedFacilities = [];
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
   final Map<String, WishItemState> _wishStatesByItemId = {};
+  final Set<String> _liveSuspendedFacilityIds = <String>{};
 
   DaySchedule? daySchedule;
   final List<DaySchedule> _scheduleUndoHistory = [];
@@ -87,6 +88,34 @@ class AppState extends ChangeNotifier {
     return _wishStatesByItemId.values
         .where((state) => state.selected && !state.completed)
         .length;
+  }
+
+  Set<String> get liveSuspendedFacilityIds =>
+      Set<String>.unmodifiable(_liveSuspendedFacilityIds);
+
+  bool isFacilitySuspendedForToday(String facilityId) {
+    return _liveSuspendedFacilityIds.contains(facilityId);
+  }
+
+  void suspendFacilityForToday(String facilityId) {
+    final normalized = facilityId.trim();
+    if (normalized.isEmpty || _liveSuspendedFacilityIds.contains(normalized)) {
+      return;
+    }
+    _liveSuspendedFacilityIds.add(normalized);
+    _saveAndNotify();
+  }
+
+  void resumeFacilityForToday(String facilityId) {
+    if (_liveSuspendedFacilityIds.remove(facilityId)) {
+      _saveAndNotify();
+    }
+  }
+
+  void clearLiveSuspensionsForToday() {
+    if (_liveSuspendedFacilityIds.isEmpty) return;
+    _liveSuspendedFacilityIds.clear();
+    _saveAndNotify();
   }
 
   List<Facility> selectedFacilitiesForPark(String parkId) {
@@ -188,6 +217,9 @@ class AppState extends ChangeNotifier {
       _createMissingPreferences();
 
       _wishStatesByItemId.clear();
+      _liveSuspendedFacilityIds
+        ..clear()
+        ..addAll(_readStringList(json['liveSuspendedFacilityIds']));
       final rawWishStates = json['wishItemStates'];
       if (rawWishStates is List) {
         for (final item in rawWishStates) {
@@ -234,6 +266,7 @@ class AppState extends ChangeNotifier {
       _selectedFacilities.clear();
       _preferencesByFacilityId.clear();
       _wishStatesByItemId.clear();
+      _liveSuspendedFacilityIds.clear();
       daySchedule = null;
       _scheduleUndoHistory.clear();
       _scheduleRedoHistory.clear();
@@ -270,6 +303,7 @@ class AppState extends ChangeNotifier {
     _selectedFacilities.clear();
     _preferencesByFacilityId.clear();
     _wishStatesByItemId.clear();
+    _liveSuspendedFacilityIds.clear();
     daySchedule = null;
     _scheduleUndoHistory.clear();
     _scheduleRedoHistory.clear();
@@ -295,6 +329,7 @@ class AppState extends ChangeNotifier {
       'wishItemStates': _wishStatesByItemId.values
           .map((state) => state.toJson())
           .toList(),
+      'liveSuspendedFacilityIds': _liveSuspendedFacilityIds.toList(),
       'daySchedule': daySchedule?.toJson(),
       'scheduleUndoHistory': _scheduleUndoHistory
           .map((schedule) => schedule.toJson())
@@ -352,13 +387,27 @@ class AppState extends ChangeNotifier {
 
   void updateActiveVisitDate(DateTime date) {
     final normalized = DateTime(date.year, date.month, date.day);
+    final previousDate = tripSettings.visitDate;
+    final dateChanged = previousDate == null ||
+        previousDate.year != normalized.year ||
+        previousDate.month != normalized.month ||
+        previousDate.day != normalized.day;
     tripSettings = tripSettings.copyWith(visitDateIso: normalized.toIso8601String());
+    if (dateChanged) {
+      _liveSuspendedFacilityIds.clear();
+    }
     daySchedule = null;
     _saveAndNotify();
   }
 
   void updateTripSettings(TripSettings settings) {
+    final visitContextChanged =
+        settings.parkId != tripSettings.parkId ||
+        settings.visitDateIso != tripSettings.visitDateIso;
     tripSettings = settings;
+    if (visitContextChanged) {
+      _liveSuspendedFacilityIds.clear();
+    }
     daySchedule = null;
     _saveAndNotify();
   }
@@ -1022,6 +1071,7 @@ class AppState extends ChangeNotifier {
       'selectedFacilityIds': _selectedFacilities.map((facility) => facility.id).toList(),
       'planPreferences': _preferencesByFacilityId.values.map((value) => value.toJson()).toList(),
       'wishItemStates': _wishStatesByItemId.values.map((value) => value.toJson()).toList(),
+      'liveSuspendedFacilityIds': _liveSuspendedFacilityIds.toList(),
       'daySchedule': daySchedule?.toJson(),
       'scheduleUndoHistory': _scheduleUndoHistory.map((value) => value.toJson()).toList(),
       'scheduleRedoHistory': _scheduleRedoHistory.map((value) => value.toJson()).toList(),
@@ -1034,6 +1084,7 @@ class AppState extends ChangeNotifier {
       'selectedFacilityIds': <String>[],
       'planPreferences': <dynamic>[],
       'wishItemStates': <dynamic>[],
+      'liveSuspendedFacilityIds': <String>[],
       'daySchedule': null,
       'scheduleUndoHistory': <dynamic>[],
       'scheduleRedoHistory': <dynamic>[],
@@ -1062,6 +1113,9 @@ class AppState extends ChangeNotifier {
     }
     _createMissingPreferences();
     _wishStatesByItemId.clear();
+    _liveSuspendedFacilityIds
+      ..clear()
+      ..addAll(_readStringList(state['liveSuspendedFacilityIds']));
     final rawWishStates = state['wishItemStates'];
     if (rawWishStates is List) {
       for (final item in rawWishStates.whereType<Map>()) {

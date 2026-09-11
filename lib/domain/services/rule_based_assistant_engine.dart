@@ -66,7 +66,7 @@ class RuleBasedAssistantEngine implements AssistantEngine {
       }
       return const AssistantResponse(
         message:
-            '待ち時間は公式アプリで確認し、Disney Plannerへ入力してください。入力後はAI待ち時間予測と再計算機能を利用できます。',
+            '待ち時間は公式アプリで確認し、Disney Plannerへ入力してください。入力後は待ち時間予測と再計算機能を利用できます。',
         reasons: ['このコンシェルジュは公式待ち時間を独自に生成しません。', '入力済みデータをプラン判断の補助に利用します。'],
       );
     }

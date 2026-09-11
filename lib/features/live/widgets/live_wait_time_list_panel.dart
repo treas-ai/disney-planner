@@ -4,6 +4,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../domain/entities/facility.dart';
 import '../../../domain/entities/plan_preference.dart';
+import '../../../domain/entities/schedule_item.dart';
 import '../../../domain/enums/facility_access_method.dart';
 import '../../../domain/enums/facility_category.dart';
 import '../live_approach_guidance.dart';
@@ -28,13 +29,16 @@ class LiveWaitTimeListPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final entries = _buildEntries();
 
-    final recommendationResult = const LiveRecommendationEvaluator().evaluate(
-      controller: controller,
-    );
+    final recommendationResult = controller.canUseLiveOperations
+        ? const LiveRecommendationEvaluator().evaluate(controller: controller)
+        : LiveRecommendationResult(
+            recommendations: const [],
+            evaluatedAt: controller.now,
+          );
 
-    final approachGuidance = const LiveApproachGuidanceResolver().resolve(
-      controller: controller,
-    );
+    final approachGuidance = controller.canUseLiveOperations
+        ? const LiveApproachGuidanceResolver().resolve(controller: controller)
+        : null;
 
     final hasPredictions =
         controller.schedule?.items.any((item) {
@@ -85,7 +89,7 @@ class LiveWaitTimeListPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  '当日プランに含まれるアトラクションの待ち時間です。',
+                  '予定で使う利用方法を主表示します。通常待機は必要な場合だけ参考値として表示します。',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -95,6 +99,7 @@ class LiveWaitTimeListPanel extends StatelessWidget {
                   _WaitTimeListItem(
                     entry: entries[index],
                     now: now,
+                    allowEdit: controller.canUseLiveOperations,
                     onEditPressed: () {
                       onEditPressed(entries[index].facility);
                     },
@@ -116,76 +121,107 @@ class LiveWaitTimeListPanel extends StatelessWidget {
       return const [];
     }
 
-    final facilitiesById = <String, Facility>{};
-
+    final firstScheduleItemByFacilityId = <String, ScheduleItem>{};
     for (final item in schedule.items) {
       final facility = controller.facilityById(item.facilityId);
-
       if (facility == null ||
-          facility.category != FacilityCategory.attraction) {
+          (facility.category != FacilityCategory.attraction &&
+              facility.category != FacilityCategory.greeting)) {
         continue;
       }
-
-      facilitiesById[facility.id] = facility;
+      firstScheduleItemByFacilityId.putIfAbsent(facility.id, () => item);
     }
 
-    final entries = facilitiesById.values
-        .map(
-          (facility) => _LiveWaitTimeListEntry(
-            facility: facility,
-            preference: controller.preferenceByFacilityId(facility.id),
-            waitTime: _resolveWaitTime(facility),
-          ),
-        )
-        .toList(growable: true);
+    final entries = firstScheduleItemByFacilityId.entries.map((entry) {
+      final facility = controller.facilityById(entry.key)!;
+      final preference = controller.preferenceByFacilityId(facility.id);
+      final display = _resolveWaitTime(
+        facility: facility,
+        item: entry.value,
+        preference: preference,
+      );
+      return _LiveWaitTimeListEntry(
+        facility: facility,
+        preference: preference,
+        waitTime: display,
+        standbyReferenceMinutes: display.kind == LiveWaitTimeKind.passEstimate
+            ? _resolveStandbyReferenceMinutes(facility)
+            : null,
+      );
+    }).toList(growable: true);
 
     entries.sort((left, right) {
       final leftMinutes = left.waitTime.waitMinutes;
-
       final rightMinutes = right.waitTime.waitMinutes;
-
       if (leftMinutes == null && rightMinutes == null) {
         return left.facility.name.compareTo(right.facility.name);
       }
-
-      if (leftMinutes == null) {
-        return 1;
-      }
-
-      if (rightMinutes == null) {
-        return -1;
-      }
-
-      final waitComparison = leftMinutes.compareTo(rightMinutes);
-
-      if (waitComparison != 0) {
-        return waitComparison;
-      }
-
-      return left.facility.name.compareTo(right.facility.name);
+      if (leftMinutes == null) return 1;
+      if (rightMinutes == null) return -1;
+      final comparison = leftMinutes.compareTo(rightMinutes);
+      return comparison != 0
+          ? comparison
+          : left.facility.name.compareTo(right.facility.name);
     });
 
     return List<_LiveWaitTimeListEntry>.unmodifiable(entries);
   }
 
-  LiveWaitTimeDisplay _resolveWaitTime(Facility facility) {
-    final preference = controller.preferenceByFacilityId(facility.id);
+  LiveWaitTimeDisplay _resolveWaitTime({
+    required Facility facility,
+    required ScheduleItem item,
+    required PlanPreference? preference,
+  }) {
+    if (_usesUnlimitedRide(item) && item.estimatedWaitMinutes != null) {
+      return LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.passEstimate,
+        label: 'バケパ乗り放題・優先入口バッファ',
+        waitMinutes: item.estimatedWaitMinutes,
+        isStale: false,
+      );
+    }
 
     final passWaitTime = _passWaitTime(
       facility: facility,
       preference: preference,
     );
+    if (passWaitTime != null) return passWaitTime;
 
-    if (passWaitTime != null) {
-      return passWaitTime;
+    if (!controller.canUseLiveOperations) {
+      if (item.estimatedWaitMinutes != null) {
+        return LiveWaitTimeDisplay(
+          kind: LiveWaitTimeKind.facilityEstimate,
+          label: facility.category == FacilityCategory.greeting
+              ? 'グリーティング計画値'
+              : '来園日プランの通常待機計画値',
+          waitMinutes: item.estimatedWaitMinutes,
+          isStale: false,
+        );
+      }
+      return const LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.unknown,
+        label: '来園日前は現在値を使用しません',
+        waitMinutes: null,
+        isStale: false,
+      );
+    }
+
+    final simulatedWaitMinutes =
+        controller.simulationWaitMinutesForFacility(facility.id);
+    if (simulatedWaitMinutes != null) {
+      return LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.manual,
+        label: 'シミュレーション・仮想通常待機',
+        waitMinutes: simulatedWaitMinutes,
+        isStale: false,
+      );
     }
 
     final manualWaitTime = controller.manualWaitTimeByFacilityId(facility.id);
-
     if (manualWaitTime != null) {
       return LiveWaitTimeDisplay(
         kind: LiveWaitTimeKind.manual,
-        label: '手動入力',
+        label: '手動入力・通常待機',
         waitMinutes: manualWaitTime.waitMinutes,
         isStale: manualWaitTime.isStaleAt(now),
         updatedAt: manualWaitTime.updatedAt,
@@ -193,22 +229,46 @@ class LiveWaitTimeListPanel extends StatelessWidget {
     }
 
     final facilityWaitMinutes = facility.waitTime?.minutes;
-
     if (facilityWaitMinutes != null) {
       return LiveWaitTimeDisplay(
         kind: LiveWaitTimeKind.facilityEstimate,
-        label: '施設データの目安',
+        label: '通常待機の施設データ目安',
         waitMinutes: facilityWaitMinutes,
+        isStale: false,
+      );
+    }
+
+    if (item.estimatedWaitMinutes != null) {
+      return LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.facilityEstimate,
+        label: facility.category == FacilityCategory.greeting
+            ? 'グリーティング計画値'
+            : 'プラン作成時の通常待機計画値',
+        waitMinutes: item.estimatedWaitMinutes,
         isStale: false,
       );
     }
 
     return const LiveWaitTimeDisplay(
       kind: LiveWaitTimeKind.unknown,
-      label: '待ち時間不明',
+      label: '通常待機時間不明',
       waitMinutes: null,
       isStale: false,
     );
+  }
+
+  int? _resolveStandbyReferenceMinutes(Facility facility) {
+    final simulated = controller.simulationWaitMinutesForFacility(facility.id);
+    if (simulated != null) return simulated;
+    final manual = controller.manualWaitTimeByFacilityId(facility.id);
+    if (manual != null) return manual.waitMinutes;
+    return facility.waitTime?.minutes;
+  }
+
+  bool _usesUnlimitedRide(ScheduleItem item) {
+    final source = item.waitEstimateSource?.trim() ?? '';
+    return source.startsWith('バケーションパッケージ乗り放題') ||
+        source.startsWith('バケパ乗り放題');
   }
 
   LiveWaitTimeDisplay? _passWaitTime({
@@ -222,34 +282,35 @@ class LiveWaitTimeListPanel extends StatelessWidget {
       FacilityAccessMethod.dpa when facility.supportsDpa =>
         const LiveWaitTimeDisplay(
           kind: LiveWaitTimeKind.passEstimate,
-          label: 'DPA利用時の目安',
+          label: 'DPA・優先入口バッファ',
           waitMinutes: 10,
           isStale: false,
         ),
       FacilityAccessMethod.priorityPass when facility.supportsPriorityPass =>
         const LiveWaitTimeDisplay(
           kind: LiveWaitTimeKind.passEstimate,
-          label: 'プライオリティパス利用時の目安',
+          label: 'プライオリティパス・優先入口バッファ',
           waitMinutes: 15,
           isStale: false,
         ),
       FacilityAccessMethod.standbyPass when facility.supportsStandbyPass =>
         const LiveWaitTimeDisplay(
           kind: LiveWaitTimeKind.passEstimate,
-          label: 'スタンバイパス利用時の目安',
+          label: 'スタンバイパス利用バッファ',
           waitMinutes: 20,
           isStale: false,
         ),
       FacilityAccessMethod.entryRequest when facility.requiresEntryRequest =>
         const LiveWaitTimeDisplay(
           kind: LiveWaitTimeKind.passEstimate,
-          label: 'エントリー受付利用時の目安',
+          label: 'エントリー受付利用バッファ',
           waitMinutes: 15,
           isStale: false,
         ),
       _ => null,
     };
   }
+
 }
 
 class _ApproachGuidancePanel extends StatelessWidget {
@@ -974,7 +1035,7 @@ class _PanelHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            'アトラクション待ち時間',
+            '施設の利用時間・通常待機',
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -1011,11 +1072,13 @@ class _WaitTimeListItem extends StatelessWidget {
   const _WaitTimeListItem({
     required this.entry,
     required this.now,
+    required this.allowEdit,
     required this.onEditPressed,
   });
 
   final _LiveWaitTimeListEntry entry;
   final DateTime now;
+  final bool allowEdit;
   final VoidCallback onEditPressed;
 
   @override
@@ -1089,6 +1152,15 @@ class _WaitTimeListItem extends StatelessWidget {
                   ),
                 ),
               ],
+              if (entry.standbyReferenceMinutes != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '参考：通常待機 ${entry.standbyReferenceMinutes}分',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1104,19 +1176,23 @@ class _WaitTimeListItem extends StatelessWidget {
               ),
             ),
             Text(
-              '分',
+              waitTime.kind == LiveWaitTimeKind.passEstimate ? '分 バッファ' : '分',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: foregroundColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 3),
-            IconButton(
-              tooltip: '待ち時間を編集',
-              onPressed: onEditPressed,
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.edit_outlined, size: 19),
-            ),
+            if (allowEdit) ...[
+              const SizedBox(height: 3),
+              IconButton(
+                tooltip: waitTime.kind == LiveWaitTimeKind.passEstimate
+                    ? '通常待機の参考値を編集'
+                    : '待ち時間を編集',
+                onPressed: onEditPressed,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.edit_outlined, size: 19),
+              ),
+            ],
           ],
         ),
       ],
@@ -1234,11 +1310,13 @@ class _LiveWaitTimeListEntry {
     required this.facility,
     required this.preference,
     required this.waitTime,
+    required this.standbyReferenceMinutes,
   });
 
   final Facility facility;
   final PlanPreference? preference;
   final LiveWaitTimeDisplay waitTime;
+  final int? standbyReferenceMinutes;
 }
 
 class _RecommendationVisualStyle {

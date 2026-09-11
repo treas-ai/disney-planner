@@ -4,6 +4,7 @@ import 'package:disney_planner/domain/entities/dpa_strategy.dart';
 import 'package:disney_planner/domain/entities/event_impact.dart';
 import 'package:disney_planner/domain/entities/expert_recommendation_profile.dart';
 import 'package:disney_planner/domain/entities/facility.dart';
+import 'package:disney_planner/domain/entities/greeting_wait_planning_value.dart';
 import 'package:disney_planner/domain/entities/plan_preference.dart';
 import 'package:disney_planner/domain/entities/time_band_wait_profile.dart';
 import 'package:disney_planner/domain/entities/trip_settings.dart';
@@ -34,6 +35,8 @@ class AiDayPlanner {
     WaitTimeBand targetBand = WaitTimeBand.afterLunch,
     List<ExpertRecommendationProfile> expertProfiles = const [],
     Map<String, int> unlimitedRideBufferMinutes = const <String, int>{},
+    Map<String, GreetingWaitPlanningValue> greetingWaitPlanning =
+        const <String, GreetingWaitPlanningValue>{},
   }) {
     final availableMinutes = _availableMinutes(settings);
     final targetDate = settings.visitDate ?? DateTime.now();
@@ -52,6 +55,7 @@ class AiDayPlanner {
       hasHappyEntry: settings.hasHappyEntry,
       expertProfiles: expertProfiles,
       unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      greetingWaitPlanning: greetingWaitPlanning,
     );
     final realistic = scoringEngine.selectRealisticCount(
       scored: ranked,
@@ -97,6 +101,7 @@ class AiDayPlanner {
             maxUses: attractionDpaMaxUses,
             expertProfiles: expertProfiles,
             unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+            greetingWaitPlanning: greetingWaitPlanning,
           )
         : _applyDpaSelection(preferences, const <String>{});
 
@@ -117,6 +122,7 @@ class AiDayPlanner {
       },
       expertProfiles: expertProfiles,
       unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      greetingWaitPlanning: greetingWaitPlanning,
     );
 
     return AiPlanResult(
@@ -140,6 +146,7 @@ class AiDayPlanner {
     required int maxUses,
     required List<ExpertRecommendationProfile> expertProfiles,
     required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
     final eligibleIds = candidates
         .where(
@@ -163,6 +170,7 @@ class AiDayPlanner {
         morningScores: morningScores,
         expertProfiles: expertProfiles,
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        greetingWaitPlanning: greetingWaitPlanning,
       ),
       facilities: facilities,
       preferences: bestPreferences,
@@ -189,6 +197,7 @@ class AiDayPlanner {
           morningScores: morningScores,
           expertProfiles: expertProfiles,
           unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          greetingWaitPlanning: greetingWaitPlanning,
         );
         final trialScore = _scoreWholeDay(
           schedule: trialSchedule,

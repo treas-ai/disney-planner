@@ -1,10 +1,13 @@
 import 'dart:math' as math;
 
 import '../entities/activity_history_record.dart';
+import '../entities/time_band_wait_profile.dart';
 import '../entities/wait_time_prediction.dart';
+import '../entities/wait_time_range.dart';
 import '../enums/activity_history_type.dart';
 import '../enums/prediction_confidence.dart';
 import '../enums/prediction_source.dart';
+import '../enums/wait_time_band.dart';
 import '../repositories/history_repository.dart';
 import 'time_rounding_service.dart';
 import 'wait_time_prediction_engine.dart';
@@ -25,8 +28,13 @@ class RuleBasedWaitTimePredictionEngine implements WaitTimePredictionEngine {
     required DateTime targetTime,
     int? currentWaitMinutes,
     DateTime? currentWaitUpdatedAt,
+    DateTime? referenceTime,
+    TimeBandWaitProfile? waitProfile,
+    int? planningFallbackMinutes,
+    String? planningFallbackReason,
   }) async {
-    final now = DateTime.now();
+    final generatedAt = DateTime.now();
+    final effectiveReferenceTime = referenceTime ?? generatedAt;
     final records = (await _historyRepository.loadForFacility(facilityId))
         .where(
           (record) =>
@@ -40,96 +48,217 @@ class RuleBasedWaitTimePredictionEngine implements WaitTimePredictionEngine {
     final comparable = records
         .where((record) {
           final sameWeekday = record.recordedAt.weekday == targetTime.weekday;
-          final hourDifference = (record.recordedAt.hour - targetTime.hour)
-              .abs();
+          final hourDifference = (record.recordedAt.hour - targetTime.hour).abs();
           return sameWeekday && hourDifference <= 1;
         })
         .toList(growable: false);
 
     final historyPool = comparable.isNotEmpty ? comparable : records;
-    final historyAverage = _average(historyPool);
+    final localHistoryAverage = _average(historyPool);
+    final profileRange = _reliableRangeFor(waitProfile, targetTime);
+    final profileTypical = profileRange?.typicalMinutes.toDouble();
+    final profileSamples =
+        profileRange?.sampleCount ?? waitProfile?.sampleCount ?? 0;
+
     final currentIsFresh =
         currentWaitMinutes != null &&
         currentWaitUpdatedAt != null &&
-        now.difference(currentWaitUpdatedAt).abs() <= const Duration(hours: 2);
+        generatedAt.difference(currentWaitUpdatedAt).abs() <=
+            const Duration(hours: 2);
 
-    if (currentWaitMinutes == null && historyAverage == null) {
+    final historicalBase = _historicalBase(
+      profileTypical: profileTypical,
+      localHistoryAverage: localHistoryAverage,
+    );
+
+    if (currentWaitMinutes == null &&
+        historicalBase == null &&
+        planningFallbackMinutes == null) {
       return WaitTimePrediction(
         parkId: parkId,
         facilityId: facilityId,
         targetTime: targetTime,
-        generatedAt: now,
+        generatedAt: generatedAt,
         confidence: PredictionConfidence.unavailable,
         source: PredictionSource.historyOnly,
-        reasons: const ['現在値と学習可能な履歴がありません。'],
+        reasons: const ['収集済み待ち時間実績・現在値・利用可能な計画値がありません。'],
       );
     }
 
-    final minutesAhead = math
-        .max(0, targetTime.difference(now).inMinutes)
-        .toInt();
-    final timeAdjustment = _timeAdjustment(targetTime.hour, minutesAhead);
     final reasons = <String>[];
     double base;
     PredictionSource source;
 
-    if (currentWaitMinutes != null && historyAverage != null) {
+    if (currentWaitMinutes != null && historicalBase != null) {
       final currentWeight = currentIsFresh ? 0.65 : 0.45;
-      base =
-          currentWaitMinutes * currentWeight +
-          historyAverage * (1 - currentWeight);
-      source = PredictionSource.hybrid;
-      reasons.add('現在の待ち時間と過去の同条件データを組み合わせました。');
+      base = currentWaitMinutes * currentWeight +
+          historicalBase * (1 - currentWeight);
+      source = profileTypical != null
+          ? PredictionSource.currentAndWaitProfile
+          : PredictionSource.hybrid;
+      reasons.add(
+        profileTypical != null
+            ? '現在の待ち時間とGitで収集した同時間帯の実績を組み合わせました。'
+            : '現在の待ち時間と端末内の過去履歴を組み合わせました。',
+      );
     } else if (currentWaitMinutes != null) {
       base = currentWaitMinutes.toDouble();
       source = PredictionSource.currentOnly;
-      reasons.add('現在の待ち時間を基準に時間帯補正しました。');
+      reasons.add('現在の待ち時間を基準にしました。');
+    } else if (historicalBase != null) {
+      base = historicalBase;
+      source = profileTypical != null
+          ? PredictionSource.waitProfile
+          : PredictionSource.historyOnly;
+      reasons.add(
+        profileTypical != null
+            ? 'Gitで収集した待ち時間実績のうち、予定時刻に対応する時間帯を使用しました。'
+            : '端末内の過去履歴を基準にしました。',
+      );
     } else {
-      base = historyAverage!;
-      source = PredictionSource.historyOnly;
-      reasons.add('過去の同曜日・近い時間帯の履歴を基準にしました。');
+      base = planningFallbackMinutes!.toDouble();
+      source = PredictionSource.planningFallback;
+      reasons.add(
+        planningFallbackReason?.trim().isNotEmpty == true
+            ? planningFallbackReason!.trim()
+            : '実測を取得できないためDisney Plannerの計画値を使用しました。',
+      );
     }
 
-    if (timeAdjustment != 0) {
-      reasons.add(
-        timeAdjustment > 0
-            ? '混雑しやすい時間帯として上方補正しました。'
-            : '比較的落ち着きやすい時間帯として下方補正しました。',
-      );
+    // TimeBandWaitProfile already contains the time-of-day pattern. Avoid
+    // adding a second synthetic hour correction when a measured band exists.
+    var timeAdjustment = 0;
+    if (profileTypical == null && source != PredictionSource.planningFallback) {
+      final minutesAhead = math
+          .max(0, targetTime.difference(effectiveReferenceTime).inMinutes)
+          .toInt();
+      timeAdjustment = _timeAdjustment(targetTime.hour, minutesAhead);
+      if (timeAdjustment != 0) {
+        reasons.add(
+          timeAdjustment > 0
+              ? '時間帯傾向として上方補正しました。'
+              : '時間帯傾向として下方補正しました。',
+        );
+      }
     }
 
     final predicted = timeRoundingService.ceilMinutes(
       math.max(0, (base + timeAdjustment).round()).toInt(),
     );
+
+    final effectiveSamples = profileTypical != null
+        ? math.max(profileSamples, historyPool.length).toInt()
+        : historyPool.length;
     final confidence = _confidence(
-      sampleCount: historyPool.length,
+      sampleCount: effectiveSamples,
       hasCurrent: currentWaitMinutes != null,
       currentIsFresh: currentIsFresh,
+      hasWaitProfile: profileTypical != null,
+      usesPlanningFallback: source == PredictionSource.planningFallback,
     );
-    final spread = switch (confidence) {
-      PredictionConfidence.high =>
-        math.max(5, (predicted * 0.12).round()).toInt(),
-      PredictionConfidence.medium =>
-        math.max(10, (predicted * 0.22).round()).toInt(),
-      PredictionConfidence.low =>
-        math.max(15, (predicted * 0.35).round()).toInt(),
-      PredictionConfidence.unavailable => 0,
-    };
+
+    final bounds = _predictionBounds(
+      predicted: predicted,
+      confidence: confidence,
+      profileRange: profileRange,
+      hasCurrent: currentWaitMinutes != null,
+      usesPlanningFallback: source == PredictionSource.planningFallback,
+    );
+
+    if (profileRange != null) {
+      reasons.add(
+        '時間帯サンプル${profileRange.sampleCount ?? waitProfile?.sampleCount ?? 0}件を参照しました。',
+      );
+    }
+    if (source == PredictionSource.planningFallback) {
+      reasons.add('この値は実測待ち時間ではありません。');
+    }
 
     return WaitTimePrediction(
       parkId: parkId,
       facilityId: facilityId,
       targetTime: targetTime,
-      generatedAt: now,
+      generatedAt: generatedAt,
       predictedMinutes: predicted,
-      lowerBoundMinutes: timeRoundingService.ceilMinutes(
-        math.max(0, predicted - spread).toInt(),
-      ),
-      upperBoundMinutes: timeRoundingService.ceilMinutes(predicted + spread),
+      lowerBoundMinutes: bounds.$1,
+      upperBoundMinutes: bounds.$2,
       confidence: confidence,
       source: source,
       reasons: List<String>.unmodifiable(reasons),
-      sampleCount: historyPool.length,
+      sampleCount: effectiveSamples,
+    );
+  }
+
+  double? _historicalBase({
+    required double? profileTypical,
+    required double? localHistoryAverage,
+  }) {
+    if (profileTypical != null && localHistoryAverage != null) {
+      // The Git profile normally contains far more observations than one
+      // device's history, so keep it as the primary baseline.
+      return profileTypical * 0.85 + localHistoryAverage * 0.15;
+    }
+    return profileTypical ?? localHistoryAverage;
+  }
+
+  WaitTimeRange? _reliableRangeFor(
+    TimeBandWaitProfile? profile,
+    DateTime targetTime,
+  ) {
+    if (profile == null) return null;
+    final range = profile.rangeFor(_waitTimeBandForHour(targetTime.hour));
+    if (range == null || range.typicalMinutes <= 0) return null;
+    if (range.sampleCount != null && range.sampleCount! < 3) return null;
+    return range;
+  }
+
+  WaitTimeBand _waitTimeBandForHour(int hour) {
+    if (hour < 11) return WaitTimeBand.afterOpening;
+    if (hour < 12) return WaitTimeBand.beforeLunch;
+    if (hour < 15) return WaitTimeBand.afterLunch;
+    if (hour < 17) return WaitTimeBand.aroundShows;
+    if (hour < 18) return WaitTimeBand.beforeDinner;
+    if (hour < 20) return WaitTimeBand.afterDinner;
+    return WaitTimeBand.beforeClosing;
+  }
+
+  (int, int) _predictionBounds({
+    required int predicted,
+    required PredictionConfidence confidence,
+    required WaitTimeRange? profileRange,
+    required bool hasCurrent,
+    required bool usesPlanningFallback,
+  }) {
+    // Wait profile min/max are observed extrema for the whole time band, not
+    // a forecast confidence interval. Showing them directly produced ranges
+    // such as 50-120 minutes, which are too broad to support planning. Keep
+    // the profile typical value as the point forecast and show a narrower
+    // uncertainty band around it. When an observed range exists, never expand
+    // the guide beyond its observed extrema.
+    final spread = switch (confidence) {
+      PredictionConfidence.high =>
+        math.max(10, (predicted * 0.15).round()).toInt(),
+      PredictionConfidence.medium =>
+        math.max(15, (predicted * 0.25).round()).toInt(),
+      PredictionConfidence.low => math
+          .max(
+            15,
+            (predicted * (usesPlanningFallback ? 0.30 : 0.35)).round(),
+          )
+          .toInt(),
+      PredictionConfidence.unavailable => 0,
+    };
+
+    var lower = math.max(0, predicted - spread).toInt();
+    var upper = predicted + spread;
+    if (profileRange != null) {
+      lower = math.max(lower, profileRange.minMinutes).toInt();
+      upper = math.min(upper, profileRange.maxMinutes).toInt();
+    }
+
+    return (
+      timeRoundingService.ceilMinutes(lower),
+      timeRoundingService.ceilMinutes(upper),
     );
   }
 
@@ -161,7 +290,18 @@ class RuleBasedWaitTimePredictionEngine implements WaitTimePredictionEngine {
     required int sampleCount,
     required bool hasCurrent,
     required bool currentIsFresh,
+    required bool hasWaitProfile,
+    required bool usesPlanningFallback,
   }) {
+    if (usesPlanningFallback) {
+      return PredictionConfidence.low;
+    }
+    if (hasWaitProfile && sampleCount >= 100) {
+      return PredictionConfidence.high;
+    }
+    if (hasWaitProfile && sampleCount >= 30) {
+      return PredictionConfidence.medium;
+    }
     if (hasCurrent && currentIsFresh && sampleCount >= 5) {
       return PredictionConfidence.high;
     }

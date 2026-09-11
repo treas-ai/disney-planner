@@ -1,8 +1,10 @@
 import 'package:disney_planner/domain/entities/facility.dart';
+import 'package:disney_planner/domain/entities/greeting_wait_planning_value.dart';
 import 'package:disney_planner/domain/entities/plan_preference.dart';
 import 'package:disney_planner/domain/entities/time_band_wait_profile.dart';
 import 'package:disney_planner/domain/entities/wait_time_range.dart';
 import 'package:disney_planner/domain/enums/facility_category.dart';
+import 'package:disney_planner/domain/enums/priority_level.dart';
 import 'package:disney_planner/domain/enums/wait_time_band.dart';
 import 'package:disney_planner/domain/services/wish_candidate_scoring_engine.dart';
 import 'package:disney_planner/domain/value_objects/coordinate.dart';
@@ -174,6 +176,82 @@ void main() {
 
     expect(uncoveredScore.firstMoveScore!,
         greaterThan(coveredScore.firstMoveScore!));
+  });
+
+
+  test('実測なしグリーティングは0分ではなく計画用待ち時間を使う', () {
+    final greeting = Facility(
+      id: 'greeting_no_profile',
+      parkId: 'tokyo_disneyland',
+      areaId: 'test_area',
+      name: 'Greeting',
+      category: FacilityCategory.greeting,
+      coordinate: const Coordinate(latitude: 0, longitude: 0),
+      durationMinutes: 10,
+      priority: PriorityLevel.highest,
+    );
+
+    final scored = const WishCandidateScoringEngine().score(
+      facilities: [greeting],
+      preferences: [
+        PlanPreference.initial(facilityId: greeting.id),
+      ],
+      waitProfiles: const [],
+      availableMinutes: 600,
+    ).single;
+
+    expect(scored.predictedWaitMinutes, 40);
+    expect(
+      scored.firstMoveReasons.join(' '),
+      contains('グリーティング計画用暫定待ち時間40分'),
+    );
+    expect(
+      scored.firstMoveReasons.join(' '),
+      contains('実測値ではありません'),
+    );
+  });
+
+
+  test('誕生日グリーティングは240分計画でも朝一候補から落とさない', () {
+    final greeting = Facility(
+      id: 'birthday_greeting',
+      parkId: 'tokyo_disneyland',
+      areaId: 'test_area',
+      name: 'Birthday Greeting',
+      category: FacilityCategory.greeting,
+      coordinate: const Coordinate(latitude: 0, longitude: 0),
+      durationMinutes: 10,
+      priority: PriorityLevel.highest,
+    );
+    const plan = GreetingWaitPlanningValue(
+      facilityId: 'birthday_greeting',
+      waitMinutes: 240,
+      baseWaitMinutes: 40,
+      parkCrowdMultiplier: 1.0,
+      isCharacterBirthday: true,
+      birthdayCharacterNames: ['ミッキーマウス'],
+      birthdayPlanningWaitMinutes: 240,
+      birthdayExtremeRiskMinutes: 480,
+      birthdayOpeningUrgencyBonus: 180,
+      source: '誕生日計画値',
+    );
+
+    final scored = const WishCandidateScoringEngine().score(
+      facilities: [greeting],
+      preferences: [
+        PlanPreference.initial(facilityId: greeting.id),
+      ],
+      waitProfiles: const [],
+      availableMinutes: 720,
+      greetingWaitPlanning: const {
+        'birthday_greeting': plan,
+      },
+    ).single;
+
+    expect(scored.predictedWaitMinutes, 240);
+    expect(scored.score, greaterThan(0));
+    expect(scored.firstMoveScore, greaterThan(150));
+    expect(scored.firstMoveReasons.join(' '), contains('480分級'));
   });
 
 }

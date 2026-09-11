@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../app/state/app_state.dart';
+import '../../domain/entities/live_operating_status.dart';
 import '../../domain/entities/schedule_recalculation_request.dart';
 import '../../domain/entities/schedule_recalculation_result.dart';
 import '../../domain/entities/weather_snapshot.dart';
@@ -27,10 +28,25 @@ class ScheduleRecalculationController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   ScheduleRecalculationResult? get pendingResult => _pendingResult;
   bool get canApply => _pendingResult != null;
-  bool get canUndo => _appState.canUndoScheduleChange;
+  bool get canUndo => _liveController.simulationEnabled
+      ? _liveController.canUndoSimulationSchedule
+      : _appState.canUndoScheduleChange;
+  Set<String> get suspendedFacilityIds => _liveController.suspendedFacilityIds;
+
+  bool isSuspended(String facilityId) {
+    return _liveController.isFacilitySuspended(facilityId);
+  }
+
+  void suspendFacility(String facilityId) {
+    _liveController.suspendFacility(facilityId);
+  }
+
+  void resumeFacility(String facilityId) {
+    _liveController.resumeFacility(facilityId);
+  }
 
   Future<ScheduleRecalculationResult?> createProposal() async {
-    final schedule = _appState.daySchedule;
+    final schedule = _liveController.schedule;
     if (schedule == null) {
       _errorMessage = '再計算するスケジュールがありません。';
       notifyListeners();
@@ -50,9 +66,18 @@ class ScheduleRecalculationController extends ChangeNotifier {
             ) ??
             _liveController.manualWaitTimeByFacilityId(facility.id);
         if (wait != null) waitTimes[facility.id] = wait;
-        final status = _liveController.liveDataController
-            .operatingStatusForFacility(facility.id);
+        final status = _liveController.operatingStatusForFacility(facility.id);
         if (status != null) operating[facility.id] = status;
+      }
+
+      for (final facilityId in _liveController.suspendedFacilityIds) {
+        operating[facilityId] = LiveOperatingStatus(
+          parkId: schedule.parkId,
+          facilityId: facilityId,
+          state: LiveOperatingState.temporarilyClosed,
+          updatedAt: _liveController.now,
+          message: 'ユーザーが当日ガイドで一時運営中止として設定',
+        );
       }
 
       _pendingResult = _service.createProposal(
@@ -72,6 +97,8 @@ class ScheduleRecalculationController extends ChangeNotifier {
               : null,
           passStatuses: _liveController.liveDataController.passStatuses,
         ),
+        simulatedWaitMinutesByFacilityId:
+            _liveController.simulationWaitMinutesByFacilityId,
       );
       return _pendingResult;
     } catch (error, stackTrace) {
@@ -88,7 +115,11 @@ class ScheduleRecalculationController extends ChangeNotifier {
   void applyProposal() {
     final result = _pendingResult;
     if (result == null) return;
-    _appState.applyRecalculatedSchedule(result.afterSchedule);
+    if (_liveController.simulationEnabled) {
+      _liveController.applySimulationSchedule(result.afterSchedule);
+    } else {
+      _appState.applyRecalculatedSchedule(result.afterSchedule);
+    }
     _pendingResult = null;
     notifyListeners();
   }
@@ -99,7 +130,11 @@ class ScheduleRecalculationController extends ChangeNotifier {
   }
 
   void undoLastApply() {
-    _appState.undoLastScheduleChange();
+    if (_liveController.simulationEnabled) {
+      _liveController.undoSimulationSchedule();
+    } else {
+      _appState.undoLastScheduleChange();
+    }
     notifyListeners();
   }
 }

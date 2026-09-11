@@ -1,3 +1,4 @@
+import '../entities/time_band_wait_profile.dart';
 import '../entities/wait_time_prediction.dart';
 
 abstract interface class WaitTimePredictionEngine {
@@ -7,5 +8,9 @@ abstract interface class WaitTimePredictionEngine {
     required DateTime targetTime,
     int? currentWaitMinutes,
     DateTime? currentWaitUpdatedAt,
+    DateTime? referenceTime,
+    TimeBandWaitProfile? waitProfile,
+    int? planningFallbackMinutes,
+    String? planningFallbackReason,
   });
 }

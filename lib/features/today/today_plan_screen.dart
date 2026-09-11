@@ -6,16 +6,20 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state.dart';
+import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
+import '../../domain/entities/live_operating_status.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/enums/facility_access_method.dart';
+import '../../domain/enums/facility_category.dart';
 import '../facility/widgets/fixed_schedule_editor_sheet.dart';
 import '../assistant/assistant_controller.dart';
 import '../live/live_controller.dart';
 import '../live/live_models.dart';
 import '../live/widgets/live_wait_time_list_panel.dart';
 import '../live/widgets/wait_time_editor.dart';
+import '../plan_review/schedule_controller.dart';
 import 'schedule_recalculation_controller.dart';
 import 'widgets/schedule_recalculation_preview_sheet.dart';
 
@@ -32,6 +36,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
   AppState? _appState;
   LiveController? _liveController;
   ScheduleRecalculationController? _recalculationController;
+  ScheduleController? _scheduleController;
   AssistantController? _assistantController;
 
   late final ScrollController _mobileScrollController;
@@ -68,10 +73,12 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
       appState,
       _liveController!,
     );
+    _scheduleController = ScheduleController(appState);
     _assistantController = AssistantController(appState);
 
     _liveController!.addListener(_refresh);
     _recalculationController!.addListener(_refresh);
+    _scheduleController!.addListener(_refresh);
     _liveController!.initialize();
   }
 
@@ -88,12 +95,15 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
   void _disposeController() {
     _recalculationController?.removeListener(_refresh);
     _recalculationController?.dispose();
+    _scheduleController?.removeListener(_refresh);
+    _scheduleController?.dispose();
     _liveController?.removeListener(_refresh);
     _liveController?.dispose();
 
     _assistantController?.dispose();
     _assistantController = null;
     _recalculationController = null;
+    _scheduleController = null;
     _liveController = null;
   }
 
@@ -194,7 +204,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     });
   }
 
-  void _openWaitTimeEditor(Facility facility) {
+  Future<void> _openWaitTimeEditor(Facility facility) async {
     final liveController = _liveController;
 
     if (liveController == null) {
@@ -205,7 +215,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
       facility.id,
     );
 
-    showModalBottomSheet<void>(
+    final updatedWaitMinutes = await showModalBottomSheet<int>(
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
@@ -247,6 +257,11 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
                     onClear: () {
                       return liveController.clearWaitTime(facility);
                     },
+                    onSaved: (waitMinutes) async {
+                      if (sheetContext.mounted) {
+                        Navigator.of(sheetContext).pop(waitMinutes);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -255,35 +270,469 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
         );
       },
     );
+
+    if (!mounted || updatedWaitMinutes == null) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            '${facility.name}を待ち$updatedWaitMinutes分で更新しました。'
+            '残り予定への影響を確認できます。',
+          ),
+          action: SnackBarAction(
+            label: '残りを再最適化',
+            onPressed: () {
+              _createRecalculationProposal();
+            },
+          ),
+        ),
+      );
   }
 
-  Future<void> _createRecalculationProposal() async {
+  Future<bool> _previewAndApplyRecalculation({
+    String successMessage = '再計算した予定を反映しました。',
+  }) async {
     final controller = _recalculationController;
-    if (controller == null) return;
+    if (controller == null) return false;
     final result = await controller.createProposal();
-    if (!mounted || result == null) return;
+    if (!mounted || result == null) return false;
     final apply = await showScheduleRecalculationPreviewSheet(
       context: context,
       result: result,
     );
-    if (!mounted) return;
+    if (!mounted) return false;
     if (apply) {
       controller.applyProposal();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('再計算した予定を反映しました。')));
-    } else {
-      controller.discardProposal();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage)),
+      );
+      return true;
+    }
+    controller.discardProposal();
+    return false;
+  }
+
+  Future<void> _createRecalculationProposal() async {
+    await _previewAndApplyRecalculation(
+      successMessage: '残り予定を再最適化しました。',
+    );
+  }
+
+  Future<void> _suspendFacilityForToday(Facility facility) async {
+    final controller = _recalculationController;
+    if (controller == null || controller.isSuspended(facility.id)) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('一時運営中止として扱いますか？'),
+          content: Text(
+            '${facility.name}をいったん保留にし、終了済み・進行中・食事・ショーなどを維持して、'
+            'これから先だけ再最適化します。再開後は保留一覧から戻せます。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('キャンセル'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('保留して再計算'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
+    controller.suspendFacility(facility.id);
+    final applied = await _previewAndApplyRecalculation(
+      successMessage: '${facility.name}を保留し、残り予定を再最適化しました。',
+    );
+    if (!applied) {
+      controller.resumeFacility(facility.id);
+    }
+  }
+
+  Future<void> _resumeFacilityForToday(Facility facility) async {
+    final controller = _recalculationController;
+    final liveController = _liveController;
+    if (controller == null || !controller.isSuspended(facility.id)) return;
+
+    final liveStatus = liveController?.simulationEnabled == true
+        ? null
+        : liveController?.operatingStatusForFacility(facility.id);
+    if (liveStatus != null &&
+        liveStatus.state != LiveOperatingState.operating &&
+        liveStatus.state != LiveOperatingState.unknown) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${facility.name}はライブデータ上まだ${liveStatus.state.label}です。'
+            '運営状況を更新し、再開を確認してから戻してください。',
+          ),
+        ),
+      );
+      return;
+    }
+
+    controller.resumeFacility(facility.id);
+    final applied = await _previewAndApplyRecalculation(
+      successMessage: '${facility.name}を再開扱いに戻し、残り予定を再最適化しました。',
+    );
+    if (!applied) {
+      controller.suspendFacility(facility.id);
     }
   }
 
   void _undoRecalculation() {
     final controller = _recalculationController;
-    if (controller == null || !controller.canUndo) return;
+    final appState = _appState;
+    if (controller == null || appState == null || !controller.canUndo) return;
+
     controller.undoLastApply();
+
+    if (_liveController?.simulationEnabled != true) {
+      final restoredFacilityIds = appState.daySchedule?.items
+              .map((item) => item.facilityId)
+              .whereType<String>()
+              .toSet() ??
+          const <String>{};
+      final restoredSuspensions = appState.liveSuspendedFacilityIds
+          .where(restoredFacilityIds.contains)
+          .toList(growable: false);
+      for (final facilityId in restoredSuspensions) {
+        appState.resumeFacilityForToday(facilityId);
+      }
+    }
+
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('直前のスケジュールへ戻しました。')));
+  }
+
+  Future<void> _showAddPerformance() async {
+    final scheduleController = _scheduleController;
+    final liveController = _liveController;
+    if (liveController?.simulationEnabled == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('シミュレーション中は実プランを変更する操作を無効にしています。'),
+        ),
+      );
+      return;
+    }
+    final appState = _appState;
+    if (scheduleController == null ||
+        liveController == null ||
+        appState == null ||
+        scheduleController.schedule == null) {
+      return;
+    }
+
+    final choices = await scheduleController.loadPerformancePlanChoices();
+    if (!mounted) return;
+    if (choices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('この日の追加可能なショー・パレードがありません。')),
+      );
+      return;
+    }
+
+    final selected = await showModalBottomSheet<PerformancePlanChoice>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.88,
+          child: _TodayAddPerformanceSheet(
+            choices: choices,
+            schedule: scheduleController.schedule!,
+            minimumStartMinutes: liveController.visitPhase == LiveVisitPhase.visitDay
+                ? liveController.now.hour * 60 + liveController.now.minute
+                : null,
+          ),
+        );
+      },
+    );
+    if (selected == null || !mounted) return;
+
+    final originalSchedule = appState.daySchedule;
+    final wasVisitDay = liveController.visitPhase == LiveVisitPhase.visitDay;
+    await scheduleController.addPerformanceToPlan(selected);
+    if (!mounted) return;
+
+    if (scheduleController.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(scheduleController.errorMessage!)),
+      );
+      return;
+    }
+
+    final regenerated = scheduleController.schedule;
+    if (wasVisitDay && originalSchedule != null && regenerated != null) {
+      appState.updateDaySchedule(
+        _mergePerformanceIntoLiveDay(
+          original: originalSchedule,
+          regenerated: regenerated,
+          now: liveController.now,
+        ),
+      );
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${selected.option.startTime} ${selected.facility.name}を追加しました。'
+          '${wasVisitDay ? '終了済み・進行中の予定は維持し、残りだけ再構成しています。' : '公演時刻を固定してプランを再生成しました。'}',
+        ),
+      ),
+    );
+  }
+
+  DaySchedule _mergePerformanceIntoLiveDay({
+    required DaySchedule original,
+    required DaySchedule regenerated,
+    required DateTime now,
+  }) {
+    final nowMinutes = now.hour * 60 + now.minute;
+    final preserved = original.items.where((item) {
+      final start = item.startHour * 60 + item.startMinute;
+      final end = item.endHour * 60 + item.endMinute;
+      if (item.type.name == 'entry') return true;
+      if (item.type.name == 'exit') return false;
+      return end <= nowMinutes || (start <= nowMinutes && nowMinutes < end);
+    }).toList(growable: false);
+
+    final preservedFacilityIds = preserved
+        .map((item) => item.facilityId)
+        .whereType<String>()
+        .toSet();
+    final future = regenerated.items.where((item) {
+      if (item.type.name == 'entry' || item.type.name == 'exit') return false;
+      if (item.facilityId != null &&
+          preservedFacilityIds.contains(item.facilityId)) {
+        return false;
+      }
+      final start = item.startHour * 60 + item.startMinute;
+      return start > nowMinutes;
+    });
+    final exitItem = regenerated.items
+        .where((item) => item.type.name == 'exit')
+        .cast<ScheduleItem?>()
+        .firstOrNull;
+
+    final items = <ScheduleItem>[...preserved, ...future, ?exitItem]
+      ..sort(
+        (left, right) =>
+            (left.startHour * 60 + left.startMinute).compareTo(
+              right.startHour * 60 + right.startMinute,
+            ),
+      );
+
+    return DaySchedule(
+      id: 'schedule_${DateTime.now().millisecondsSinceEpoch}',
+      parkId: regenerated.parkId,
+      items: List<ScheduleItem>.unmodifiable(items),
+      createdAt: DateTime.now(),
+    );
+  }
+
+  Future<void> _openSimulationSettings() async {
+    final controller = _liveController;
+    if (controller == null) return;
+
+    final visitDate = controller.visitDate;
+    if (visitDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('来園日を設定してからシミュレーションを開始してください。')),
+      );
+      return;
+    }
+
+    var selectedTime = TimeOfDay.fromDateTime(
+      controller.simulationEnabled
+          ? controller.now
+          : DateTime(
+              visitDate.year,
+              visitDate.month,
+              visitDate.day,
+              13,
+              30,
+            ),
+    );
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final enabled = controller.simulationEnabled;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.science_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '当日シミュレーション',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      const Spacer(),
+                      if (enabled)
+                        const Chip(
+                          avatar: Icon(Icons.play_circle_outline, size: 17),
+                          label: Text('実行中'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '実際のプランや当日データは変更しません。仮想時刻で、一時運営中止・待ち時間更新・残り再最適化を確認できます。',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.schedule_outlined),
+                    title: const Text('仮想現在時刻'),
+                    subtitle: Text(
+                      '${visitDate.month}/${visitDate.day} '
+                      '${selectedTime.hour.toString().padLeft(2, '0')}:'
+                      '${selectedTime.minute.toString().padLeft(2, '0')}',
+                    ),
+                    trailing: OutlinedButton(
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
+                        if (picked != null) {
+                          setSheetState(() {
+                            selectedTime = picked;
+                          });
+                        }
+                      },
+                      child: const Text('変更'),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final preset in const [
+                        (10, 30, '午前 10:30'),
+                        (13, 30, '午後 13:30'),
+                        (18, 30, '夜 18:30'),
+                      ])
+                        ActionChip(
+                          label: Text(preset.$3),
+                          onPressed: () {
+                            setSheetState(() {
+                              selectedTime = TimeOfDay(
+                                hour: preset.$1,
+                                minute: preset.$2,
+                              );
+                            });
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      if (enabled)
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop('stop'),
+                            icon: const Icon(Icons.stop_circle_outlined),
+                            label: const Text('シミュレーション終了'),
+                          ),
+                        ),
+                      if (enabled) const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop('start'),
+                          icon: Icon(
+                            enabled
+                                ? Icons.update_outlined
+                                : Icons.play_circle_outline,
+                          ),
+                          label: Text(enabled ? '時刻を反映' : '開始'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted || action == null) return;
+
+    if (action == 'stop') {
+      controller.stopSimulation();
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('当日シミュレーションを終了し、実際のプラン表示へ戻しました。'),
+          ),
+        );
+      return;
+    }
+
+    final simulatedNow = DateTime(
+      visitDate.year,
+      visitDate.month,
+      visitDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+    if (controller.simulationEnabled) {
+      controller.setSimulationTime(simulatedNow);
+    } else {
+      controller.startSimulation(simulatedNow: simulatedNow);
+    }
+    _hasScheduledInitialScroll = false;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            'シミュレーション開始：'
+            '${selectedTime.hour.toString().padLeft(2, '0')}:'
+            '${selectedTime.minute.toString().padLeft(2, '0')}。'
+            '施設カードから一時運営中止や待ち時間変更を試せます。',
+          ),
+        ),
+      );
   }
 
   @override
@@ -304,70 +753,48 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     final recalculationController = _recalculationController;
 
     return AppScaffold(
-      child: Stack(
-        children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final useTwoColumns = constraints.maxWidth >= 900;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final useTwoColumns = constraints.maxWidth >= 900;
 
-              if (useTwoColumns) {
-                return _DesktopTodayLayout(
-                  controller: liveController,
-                  assistantController: _assistantController,
-                  snapshot: snapshot,
-                  scheduleScrollController: _scheduleScrollController,
-                  scheduleItemKeys: _scheduleItemKeys,
-                  onCurrentSchedulePressed: _scrollToCurrentSchedule,
-                  onWaitTimeEditPressed: _openWaitTimeEditor,
-                );
-              }
+          if (useTwoColumns) {
+            return _DesktopTodayLayout(
+              controller: liveController,
+              assistantController: _assistantController,
+              snapshot: snapshot,
+              scheduleScrollController: _scheduleScrollController,
+              scheduleItemKeys: _scheduleItemKeys,
+              onCurrentSchedulePressed: _scrollToCurrentSchedule,
+              onWaitTimeEditPressed: _openWaitTimeEditor,
+              onRecalculatePressed: _createRecalculationProposal,
+              onAddPerformancePressed: _showAddPerformance,
+              onUndoPressed: _undoRecalculation,
+              onSuspendFacilityPressed: _suspendFacilityForToday,
+              onResumeFacilityPressed: _resumeFacilityForToday,
+              onSimulationPressed: _openSimulationSettings,
+              isCalculating: recalculationController?.isCalculating == true,
+              canUndo: recalculationController?.canUndo == true,
+            );
+          }
 
-              return _MobileTodayLayout(
-                controller: liveController,
-                assistantController: _assistantController,
-                snapshot: snapshot,
-                scrollController: _mobileScrollController,
-                scheduleItemKeys: _scheduleItemKeys,
-                onCurrentSchedulePressed: _scrollToCurrentSchedule,
-                onWaitTimeEditPressed: _openWaitTimeEditor,
-              );
-            },
-          ),
-          if (liveController.schedule != null &&
-              recalculationController != null)
-            Positioned(
-              right: 12,
-              bottom: 12,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (recalculationController.canUndo) ...[
-                    FloatingActionButton.small(
-                      heroTag: 'undo_schedule_recalculation',
-                      onPressed: _undoRecalculation,
-                      tooltip: '直前の再計算を元に戻す',
-                      child: const Icon(Icons.undo),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  FloatingActionButton.extended(
-                    heroTag: 'create_schedule_recalculation',
-                    onPressed: recalculationController.isCalculating
-                        ? null
-                        : _createRecalculationProposal,
-                    icon: recalculationController.isCalculating
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.auto_fix_high_outlined),
-                    label: const Text('残り予定を再計算'),
-                  ),
-                ],
-              ),
-            ),
-        ],
+          return _MobileTodayLayout(
+            controller: liveController,
+            assistantController: _assistantController,
+            snapshot: snapshot,
+            scrollController: _mobileScrollController,
+            scheduleItemKeys: _scheduleItemKeys,
+            onCurrentSchedulePressed: _scrollToCurrentSchedule,
+            onWaitTimeEditPressed: _openWaitTimeEditor,
+            onRecalculatePressed: _createRecalculationProposal,
+            onAddPerformancePressed: _showAddPerformance,
+            onUndoPressed: _undoRecalculation,
+            onSuspendFacilityPressed: _suspendFacilityForToday,
+            onResumeFacilityPressed: _resumeFacilityForToday,
+            onSimulationPressed: _openSimulationSettings,
+            isCalculating: recalculationController?.isCalculating == true,
+            canUndo: recalculationController?.canUndo == true,
+          );
+        },
       ),
     );
   }
@@ -382,6 +809,14 @@ class _MobileTodayLayout extends StatelessWidget {
     required this.scheduleItemKeys,
     required this.onCurrentSchedulePressed,
     required this.onWaitTimeEditPressed,
+    required this.onRecalculatePressed,
+    required this.onAddPerformancePressed,
+    required this.onUndoPressed,
+    required this.onSuspendFacilityPressed,
+    required this.onResumeFacilityPressed,
+    required this.onSimulationPressed,
+    required this.isCalculating,
+    required this.canUndo,
   });
 
   final LiveController controller;
@@ -392,6 +827,14 @@ class _MobileTodayLayout extends StatelessWidget {
 
   final VoidCallback onCurrentSchedulePressed;
   final ValueChanged<Facility> onWaitTimeEditPressed;
+  final VoidCallback onRecalculatePressed;
+  final VoidCallback onAddPerformancePressed;
+  final VoidCallback onUndoPressed;
+  final Future<void> Function(Facility) onSuspendFacilityPressed;
+  final Future<void> Function(Facility) onResumeFacilityPressed;
+  final VoidCallback onSimulationPressed;
+  final bool isCalculating;
+  final bool canUndo;
 
   @override
   Widget build(BuildContext context) {
@@ -405,16 +848,23 @@ class _MobileTodayLayout extends StatelessWidget {
         controller: scrollController,
         padding: const EdgeInsets.only(right: 14, bottom: 96),
         children: [
-          const _FieldModeBanner(),
-          const SizedBox(height: AppSpacing.sm),
-          _TodayConciergeCard(controller: assistantController),
-          const SizedBox(height: AppSpacing.sm),
           _LiveDashboardCard(
             controller: controller,
             snapshot: snapshot,
             onCurrentSchedulePressed: onCurrentSchedulePressed,
             onWaitTimeEditPressed: onWaitTimeEditPressed,
+            onRecalculatePressed: onRecalculatePressed,
+            onAddPerformancePressed: onAddPerformancePressed,
+            onUndoPressed: onUndoPressed,
+            onSimulationPressed: onSimulationPressed,
+            simulationEnabled: controller.simulationEnabled,
+            isCalculating: isCalculating,
+            canUndo: canUndo,
           ),
+          if (snapshot.isLiveMode) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _TodayConciergeCard(controller: assistantController),
+          ],
           if (controller.errorMessage != null) ...[
             const SizedBox(height: AppSpacing.sm),
             _LiveErrorCard(
@@ -422,18 +872,23 @@ class _MobileTodayLayout extends StatelessWidget {
               onClose: controller.clearError,
             ),
           ],
-          const SizedBox(height: AppSpacing.sm),
-          LiveWaitTimeListPanel(
-            controller: controller,
-            now: snapshot.now,
-            onEditPressed: onWaitTimeEditPressed,
-          ),
+          if (snapshot.isLiveMode) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _CollapsibleWaitDataSection(
+              controller: controller,
+              now: snapshot.now,
+              onEditPressed: onWaitTimeEditPressed,
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           _TodayScheduleContent(
             controller: controller,
             snapshot: snapshot,
             scheduleItemKeys: scheduleItemKeys,
             onWaitTimeEditPressed: onWaitTimeEditPressed,
+            onRecalculatePressed: onRecalculatePressed,
+            onSuspendFacilityPressed: onSuspendFacilityPressed,
+            onResumeFacilityPressed: onResumeFacilityPressed,
           ),
         ],
       ),
@@ -450,6 +905,14 @@ class _DesktopTodayLayout extends StatelessWidget {
     required this.scheduleItemKeys,
     required this.onCurrentSchedulePressed,
     required this.onWaitTimeEditPressed,
+    required this.onRecalculatePressed,
+    required this.onAddPerformancePressed,
+    required this.onUndoPressed,
+    required this.onSuspendFacilityPressed,
+    required this.onResumeFacilityPressed,
+    required this.onSimulationPressed,
+    required this.isCalculating,
+    required this.canUndo,
   });
 
   final LiveController controller;
@@ -460,6 +923,14 @@ class _DesktopTodayLayout extends StatelessWidget {
 
   final VoidCallback onCurrentSchedulePressed;
   final ValueChanged<Facility> onWaitTimeEditPressed;
+  final VoidCallback onRecalculatePressed;
+  final VoidCallback onAddPerformancePressed;
+  final VoidCallback onUndoPressed;
+  final Future<void> Function(Facility) onSuspendFacilityPressed;
+  final Future<void> Function(Facility) onResumeFacilityPressed;
+  final VoidCallback onSimulationPressed;
+  final bool isCalculating;
+  final bool canUndo;
 
   @override
   Widget build(BuildContext context) {
@@ -472,16 +943,23 @@ class _DesktopTodayLayout extends StatelessWidget {
             padding: const EdgeInsets.only(right: AppSpacing.sm, bottom: 48),
             child: Column(
               children: [
-                const _FieldModeBanner(),
-                const SizedBox(height: AppSpacing.sm),
-                _TodayConciergeCard(controller: assistantController),
-                const SizedBox(height: AppSpacing.sm),
                 _LiveDashboardCard(
                   controller: controller,
                   snapshot: snapshot,
                   onCurrentSchedulePressed: onCurrentSchedulePressed,
                   onWaitTimeEditPressed: onWaitTimeEditPressed,
+                  onRecalculatePressed: onRecalculatePressed,
+                  onAddPerformancePressed: onAddPerformancePressed,
+                  onUndoPressed: onUndoPressed,
+                  onSimulationPressed: onSimulationPressed,
+                  simulationEnabled: controller.simulationEnabled,
+                  isCalculating: isCalculating,
+                  canUndo: canUndo,
                 ),
+                if (snapshot.isLiveMode) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _TodayConciergeCard(controller: assistantController),
+                ],
                 if (controller.errorMessage != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _LiveErrorCard(
@@ -489,12 +967,14 @@ class _DesktopTodayLayout extends StatelessWidget {
                     onClose: controller.clearError,
                   ),
                 ],
-                const SizedBox(height: AppSpacing.sm),
-                LiveWaitTimeListPanel(
-                  controller: controller,
-                  now: snapshot.now,
-                  onEditPressed: onWaitTimeEditPressed,
-                ),
+                if (snapshot.isLiveMode) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _CollapsibleWaitDataSection(
+                    controller: controller,
+                    now: snapshot.now,
+                    onEditPressed: onWaitTimeEditPressed,
+                  ),
+                ],
               ],
             ),
           ),
@@ -516,11 +996,89 @@ class _DesktopTodayLayout extends StatelessWidget {
                   snapshot: snapshot,
                   scheduleItemKeys: scheduleItemKeys,
                   onWaitTimeEditPressed: onWaitTimeEditPressed,
+                  onRecalculatePressed: onRecalculatePressed,
+                  onSuspendFacilityPressed: onSuspendFacilityPressed,
+                  onResumeFacilityPressed: onResumeFacilityPressed,
                 ),
               ],
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _CollapsibleWaitDataSection extends StatefulWidget {
+  const _CollapsibleWaitDataSection({
+    required this.controller,
+    required this.now,
+    required this.onEditPressed,
+  });
+
+  final LiveController controller;
+  final DateTime now;
+  final ValueChanged<Facility> onEditPressed;
+
+  @override
+  State<_CollapsibleWaitDataSection> createState() =>
+      _CollapsibleWaitDataSectionState();
+}
+
+class _CollapsibleWaitDataSectionState
+    extends State<_CollapsibleWaitDataSection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        AppCard(
+          child: Row(
+            children: [
+              Icon(Icons.query_stats_outlined, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '待ち時間・予測',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      _expanded
+                          ? '待ち時間一覧と予測を表示中です。'
+                          : '必要なときだけ開いて確認できます。',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => setState(() => _expanded = !_expanded),
+                icon: Icon(
+                  _expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 18,
+                ),
+                label: Text(_expanded ? '閉じる' : '表示'),
+              ),
+            ],
+          ),
+        ),
+        if (_expanded) ...[
+          const SizedBox(height: AppSpacing.sm),
+          LiveWaitTimeListPanel(
+            controller: widget.controller,
+            now: widget.now,
+            onEditPressed: widget.onEditPressed,
+          ),
+        ],
       ],
     );
   }
@@ -595,51 +1153,8 @@ class _TodayConciergeCardState extends State<_TodayConciergeCard> {
             Text(controller!.response!.message),
           ] else ...[
             const SizedBox(height: 8),
-            const Text('現在のプランから次の行動を案内します。'),
+            const Text('今日の予定から次の行動を案内します。'),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _FieldModeBanner extends StatelessWidget {
-  const _FieldModeBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.directions_walk, color: colorScheme.onPrimaryContainer),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '現地モード',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  '現在・次の予定、待ち時間、再計算をこの画面で確認できます。',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -652,17 +1167,32 @@ class _LiveDashboardCard extends StatelessWidget {
     required this.snapshot,
     required this.onCurrentSchedulePressed,
     required this.onWaitTimeEditPressed,
+    required this.onRecalculatePressed,
+    required this.onAddPerformancePressed,
+    required this.onUndoPressed,
+    required this.onSimulationPressed,
+    required this.simulationEnabled,
+    required this.isCalculating,
+    required this.canUndo,
   });
 
   final LiveController controller;
   final LiveScheduleSnapshot snapshot;
-
   final VoidCallback onCurrentSchedulePressed;
   final ValueChanged<Facility> onWaitTimeEditPressed;
+  final VoidCallback onRecalculatePressed;
+  final VoidCallback onAddPerformancePressed;
+  final VoidCallback onUndoPressed;
+  final VoidCallback onSimulationPressed;
+  final bool simulationEnabled;
+  final bool isCalculating;
+  final bool canUndo;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final remaining = (snapshot.totalItemCount - snapshot.completedItemCount)
+        .clamp(0, snapshot.totalItemCount);
 
     return AppCard(
       child: Column(
@@ -698,7 +1228,9 @@ class _LiveDashboardCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      _formatCurrentDate(snapshot.now),
+                      snapshot.visitDate == null
+                          ? _formatCurrentDate(snapshot.now)
+                          : '${_formatCurrentDate(snapshot.visitDate!)}・${_visitPhaseLabel(snapshot.visitPhase)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -706,33 +1238,164 @@ class _LiveDashboardCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: '現在時刻を更新',
-                onPressed: controller.refreshCurrentTime,
-                icon: const Icon(Icons.refresh),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: snapshot.isLiveMode
+                      ? colorScheme.surfaceContainerLow
+                      : colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  snapshot.isLiveMode
+                      ? _formatTime(snapshot.now)
+                      : _visitPhaseLabel(snapshot.visitPhase),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: snapshot.isLiveMode
+                        ? null
+                        : colorScheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
+              if (snapshot.isLiveMode && !simulationEnabled)
+                IconButton(
+                  tooltip: '現在時刻を更新',
+                  onPressed: controller.refreshCurrentTime,
+                  icon: const Icon(Icons.refresh),
+                ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          _CurrentTimePanel(now: snapshot.now),
           const SizedBox(height: AppSpacing.sm),
+          InkWell(
+            onTap: onSimulationPressed,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: simulationEnabled
+                    ? const Color(0xFFFFF3E0)
+                    : colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: simulationEnabled
+                      ? const Color(0xFFFFB74D)
+                      : colorScheme.outlineVariant,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.science_outlined,
+                    size: 18,
+                    color: simulationEnabled
+                        ? const Color(0xFF8A4B08)
+                        : colorScheme.primary,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      simulationEnabled
+                          ? 'シミュレーション中 ${_formatTime(snapshot.now)}'
+                          : '当日シミュレーション',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                  Text(
+                    simulationEnabled ? '設定' : '試す',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right, size: 18),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
           _LiveMainStatusPanel(
             snapshot: snapshot,
             onWaitTimeEditPressed: onWaitTimeEditPressed,
           ),
           if (snapshot.hasSchedule &&
               snapshot.status != LiveScheduleStatus.parkMismatch) ...[
-            const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onCurrentSchedulePressed,
-                icon: const Icon(Icons.my_location_outlined, size: 18),
-                label: const Text('現在・次の予定へ移動'),
-              ),
-            ),
             const SizedBox(height: AppSpacing.md),
-            _TodayProgressSummary(snapshot: snapshot),
+            if (snapshot.isLiveMode) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: isCalculating ? null : onRecalculatePressed,
+                    icon: isCalculating
+                        ? const SizedBox(
+                            width: 17,
+                            height: 17,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_fix_high_outlined, size: 18),
+                    label: Text(isCalculating ? '再最適化中...' : '残りを再最適化'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed:
+                        simulationEnabled ? null : onAddPerformancePressed,
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text('ショー・パレードを追加'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: onCurrentSchedulePressed,
+                    icon: const Icon(Icons.my_location_outlined, size: 18),
+                    label: const Text('今の予定へ'),
+                  ),
+                  if (canUndo)
+                    TextButton.icon(
+                      onPressed: onUndoPressed,
+                      icon: const Icon(Icons.undo, size: 18),
+                      label: const Text('元に戻す'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '予定の遅れ・待ち時間変化・一時運営中止を反映し、終了済みや固定予定を維持したまま未来部分だけ見直します。',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: _TodayMetricTile(
+                      label: '終了',
+                      value: '${snapshot.completedItemCount}件',
+                      icon: Icons.check_circle_outline,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _TodayMetricTile(
+                      label: '残り',
+                      value: '$remaining件',
+                      icon: Icons.route_outlined,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 9),
+              _TodayProgressSummary(snapshot: snapshot),
+            ] else if (snapshot.isPostVisit) ...[
+              const _LiveMessagePanel(
+                icon: Icons.history_outlined,
+                title: '来園履歴',
+                message: '来園日の記録として保存された予定を閲覧します。再計算や当日操作は行いません。',
+              ),
+            ],
           ],
         ],
       ),
@@ -740,39 +1403,170 @@ class _LiveDashboardCard extends StatelessWidget {
   }
 }
 
-class _CurrentTimePanel extends StatelessWidget {
-  const _CurrentTimePanel({required this.now});
+class _TodayAddPerformanceSheet extends StatelessWidget {
+  const _TodayAddPerformanceSheet({
+    required this.choices,
+    required this.schedule,
+    this.minimumStartMinutes,
+  });
 
-  final DateTime now;
+  final List<PerformancePlanChoice> choices;
+  final DaySchedule schedule;
+  final int? minimumStartMinutes;
+
+  bool _hasExactPerformance(PerformancePlanChoice choice) {
+    return schedule.items.any((item) {
+      return item.facilityId == choice.facility.id &&
+          item.startTimeLabel == choice.option.startTime;
+    });
+  }
+
+  bool _hasOverlap(PerformancePlanChoice choice) {
+    final parts = choice.option.startTime.split(':');
+    if (parts.length != 2) return false;
+    final start =
+        (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+    final end = start + choice.facility.durationMinutes;
+    return schedule.items.any((item) {
+      if (item.type.name == 'entry' || item.type.name == 'exit') return false;
+      final itemStart = item.startHour * 60 + item.startMinute;
+      final itemEnd = item.endHour * 60 + item.endMinute;
+      return start < itemEnd && end > itemStart;
+    });
+  }
+
+  bool _isPastPerformance(PerformancePlanChoice choice) {
+    final minimum = minimumStartMinutes;
+    if (minimum == null) return false;
+    final parts = choice.option.startTime.split(':');
+    if (parts.length != 2) return false;
+    final start =
+        (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+    return start <= minimum;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ショー・パレードを追加'),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close),
+            tooltip: '閉じる',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                '当日に追加する公演を選択してください。終了済み・進行中の予定は維持し、これからの予定だけを再構成します。',
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.lg,
+              ),
+              itemCount: choices.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final choice = choices[index];
+                final alreadyAdded = _hasExactPerformance(choice);
+                final overlaps = _hasOverlap(choice);
+                final isPast = _isPastPerformance(choice);
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 4,
+                  ),
+                  leading: CircleAvatar(
+                    child: Icon(
+                      choice.facility.category == FacilityCategory.parade
+                          ? Icons.celebration_outlined
+                          : Icons.theater_comedy_outlined,
+                    ),
+                  ),
+                  title: Text(choice.facility.name),
+                  subtitle: Text(
+                    '${choice.option.startTime} 開演・約${choice.facility.durationMinutes}分'
+                    '${isPast ? '　終了済み' : overlaps && !alreadyAdded ? '　現在の予定と重なります（追加後に再調整）' : ''}',
+                  ),
+                  trailing: alreadyAdded
+                      ? const Chip(label: Text('追加済み'))
+                      : isPast
+                      ? const Chip(label: Text('終了済み'))
+                      : const Icon(Icons.add),
+                  enabled: !alreadyAdded && !isPast,
+                  onTap: alreadyAdded || isPast
+                      ? null
+                      : () => Navigator.of(context).pop(choice),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayMetricTile extends StatelessWidget {
+  const _TodayMetricTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: colorScheme.outlineVariant),
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          Icon(Icons.schedule, size: 21, color: colorScheme.primary),
-          const SizedBox(width: 8),
+          Icon(icon, size: 17, color: colorScheme.primary),
+          const SizedBox(width: 6),
           Text(
-            '現在時刻',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),
           const Spacer(),
           Text(
-            _formatTime(now),
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -794,7 +1588,7 @@ class _LiveMainStatusPanel extends StatelessWidget {
     return switch (snapshot.status) {
       LiveScheduleStatus.noSchedule => const _LiveMessagePanel(
         icon: Icons.event_note_outlined,
-        title: '当日のプランがありません',
+        title: '実行する予定がありません',
         message: 'プラン確認画面でスケジュールを生成してください。',
       ),
       LiveScheduleStatus.parkMismatch => const _LiveMessagePanel(
@@ -809,36 +1603,116 @@ class _LiveMainStatusPanel extends StatelessWidget {
         message: '今日の予定はすべて終了しました。',
         success: true,
       ),
-      LiveScheduleStatus.current => _CurrentSchedulePanel(snapshot: snapshot),
+      LiveScheduleStatus.pastVisit => const _LiveMessagePanel(
+        icon: Icons.history_outlined,
+        title: '来園履歴です',
+        message: '予定時刻は保存時の内容として表示します。現在時刻では進行させません。',
+      ),
+      LiveScheduleStatus.current => _CurrentSchedulePanel(
+        snapshot: snapshot,
+        onWaitTimeEditPressed: onWaitTimeEditPressed,
+      ),
       LiveScheduleStatus.freeTime => _NextSchedulePanel(
         snapshot: snapshot,
         onWaitTimeEditPressed: onWaitTimeEditPressed,
         showFreeTime: true,
       ),
-      LiveScheduleStatus.upcoming ||
-      LiveScheduleStatus.beforeParkOpen => _NextSchedulePanel(
+      LiveScheduleStatus.upcoming => _NextSchedulePanel(
         snapshot: snapshot,
         onWaitTimeEditPressed: onWaitTimeEditPressed,
         showFreeTime: false,
+      ),
+      LiveScheduleStatus.beforeParkOpen => _PreVisitSchedulePanel(
+        snapshot: snapshot,
       ),
     };
   }
 }
 
-class _CurrentSchedulePanel extends StatelessWidget {
-  const _CurrentSchedulePanel({required this.snapshot});
+class _PreVisitSchedulePanel extends StatelessWidget {
+  const _PreVisitSchedulePanel({required this.snapshot});
 
   final LiveScheduleSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
-    final item = snapshot.currentItem;
+    final item = snapshot.nextItem;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.event_available_outlined,
+                size: 19,
+                color: colorScheme.onSecondaryContainer,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                '来園前プレビュー',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            snapshot.visitDate == null
+                ? '来園前プレビュー'
+                : '${snapshot.visitDate!.month}/${snapshot.visitDate!.day}の予定',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: colorScheme.onSecondaryContainer,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item == null
+                ? '現在時刻では進行させません。'
+                : '最初の予定 ${item.startTimeLabel} ${item.title}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSecondaryContainer,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '事前の変更は「プラン確認」で行います。来園日になると、この画面が当日実行モードへ自動で切り替わります。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSecondaryContainer,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-    if (item == null) {
-      return const SizedBox.shrink();
-    }
+class _CurrentSchedulePanel extends StatelessWidget {
+  const _CurrentSchedulePanel({
+    required this.snapshot,
+    required this.onWaitTimeEditPressed,
+  });
+
+  final LiveScheduleSnapshot snapshot;
+  final ValueChanged<Facility> onWaitTimeEditPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = snapshot.currentItem;
+    if (item == null) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;
+    final next = snapshot.nextItem;
 
     return Container(
       width: double.infinity,
@@ -859,17 +1733,16 @@ class _CurrentSchedulePanel extends StatelessWidget {
               ),
               const SizedBox(width: 7),
               Text(
-                '現在の予定',
+                'いま',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               const Spacer(),
               if (snapshot.currentRemainingMinutes != null)
                 Text(
-                  '残り約'
-                  '${snapshot.currentRemainingMinutes}分',
+                  '残り約${snapshot.currentRemainingMinutes}分',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.w700,
@@ -882,7 +1755,7 @@ class _CurrentSchedulePanel extends StatelessWidget {
             item.title,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 4),
@@ -898,6 +1771,72 @@ class _CurrentSchedulePanel extends StatelessWidget {
               waitTime: snapshot.currentWaitTime!,
               now: snapshot.now,
               lightForeground: true,
+              isUnlimitedRide: _usesUnlimitedRideScheduleItem(item),
+            ),
+          ],
+          if (snapshot.currentFacility != null &&
+              _supportsWaitTimeUpdate(snapshot.currentFacility)) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: () =>
+                    onWaitTimeEditPressed(snapshot.currentFacility!),
+                icon: const Icon(Icons.edit_outlined, size: 17),
+                label: const Text('現在の待ち時間を更新'),
+              ),
+            ),
+          ],
+          if (next != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colorScheme.surface.withValues(alpha: 0.62),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.arrow_forward,
+                        size: 17,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '次 ${next.startTimeLabel}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (snapshot.minutesUntilNext != null)
+                        Text(
+                          'あと${snapshot.minutesUntilNext}分',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    next.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
@@ -1000,6 +1939,7 @@ class _NextSchedulePanel extends StatelessWidget {
               waitTime: snapshot.nextWaitTime!,
               now: snapshot.now,
               lightForeground: true,
+              isUnlimitedRide: _usesUnlimitedRideScheduleItem(item),
             ),
           ],
           if (snapshot.nextExpectedEndAt != null) ...[
@@ -1045,7 +1985,25 @@ class _NextSchedulePanel extends StatelessWidget {
               ),
             ),
           ],
-          if (snapshot.nextFacility != null) ...[
+          if (_isProvisionalScheduleItem(item)) ...[
+            const SizedBox(height: 9),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: colorScheme.surface.withValues(alpha: 0.62),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                '仮予定です。ショー当選・予約確定・待ち時間変化があれば、残り予定の再計算で差し替えできます。',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          if (_supportsWaitTimeUpdate(snapshot.nextFacility)) ...[
             const SizedBox(height: 9),
             SizedBox(
               width: double.infinity,
@@ -1106,11 +2064,13 @@ class _WaitTimeInformationRow extends StatelessWidget {
     required this.waitTime,
     required this.now,
     required this.lightForeground,
+    this.isUnlimitedRide = false,
   });
 
   final LiveWaitTimeDisplay waitTime;
   final DateTime now;
   final bool lightForeground;
+  final bool isUnlimitedRide;
 
   @override
   Widget build(BuildContext context) {
@@ -1137,9 +2097,12 @@ class _WaitTimeInformationRow extends StatelessWidget {
             children: [
               Text(
                 waitTime.hasWaitMinutes
-                    ? '待ち時間 '
-                          '${waitTime.waitMinutes}分'
-                    : '待ち時間不明',
+                    ? isUnlimitedRide
+                        ? '優先入口利用バッファ ${waitTime.waitMinutes}分'
+                        : '待ち時間 ${waitTime.waitMinutes}分'
+                    : isUnlimitedRide
+                        ? '優先入口利用バッファ不明'
+                        : '待ち時間不明',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: foregroundColor,
                   fontWeight: FontWeight.w700,
@@ -1223,26 +2186,177 @@ class _TodayProgressSummary extends StatelessWidget {
   }
 }
 
-class _TodayScheduleContent extends StatelessWidget {
+bool _usesUnlimitedRideScheduleItem(ScheduleItem item) {
+  final source = item.waitEstimateSource?.trim() ?? '';
+  return source.startsWith('バケーションパッケージ乗り放題') ||
+      source.startsWith('バケパ乗り放題');
+}
+
+class _TodayScheduleContent extends StatefulWidget {
   const _TodayScheduleContent({
     required this.controller,
     required this.snapshot,
     required this.scheduleItemKeys,
     required this.onWaitTimeEditPressed,
+    required this.onRecalculatePressed,
+    required this.onSuspendFacilityPressed,
+    required this.onResumeFacilityPressed,
   });
 
   final LiveController controller;
   final LiveScheduleSnapshot snapshot;
   final Map<String, GlobalKey> scheduleItemKeys;
   final ValueChanged<Facility> onWaitTimeEditPressed;
+  final VoidCallback onRecalculatePressed;
+  final Future<void> Function(Facility) onSuspendFacilityPressed;
+  final Future<void> Function(Facility) onResumeFacilityPressed;
+
+  @override
+  State<_TodayScheduleContent> createState() => _TodayScheduleContentState();
+}
+
+class _TodayScheduleContentState extends State<_TodayScheduleContent> {
+  bool _showCompleted = false;
+  String? _loadingRepeatFacilityId;
+
+  Future<void> _showLiveRepeatRide(Facility facility) async {
+    final snapshot = widget.snapshot;
+    if (!snapshot.isLiveMode || _loadingRepeatFacilityId != null) return;
+
+    setState(() => _loadingRepeatFacilityId = facility.id);
+    final appState = AppStateScope.of(context);
+    final scheduleController = ScheduleController(appState);
+
+    try {
+      final nowMinutes = snapshot.now.hour * 60 + snapshot.now.minute;
+      final choices = await scheduleController.loadRepeatRideChoicesForFacility(
+        facility.id,
+        minimumStartMinutes: nowMinutes,
+      );
+      if (!mounted) return;
+
+      if (choices.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('今日の残り予定には、このアトラクションをもう一度入れられる空き時間がありません。'),
+          ),
+        );
+        return;
+      }
+
+      final selected = await showModalBottomSheet<FreeTimeImprovementChoice>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (sheetContext) {
+          return FractionallySizedBox(
+            heightFactor: 0.72,
+            child: Scaffold(
+              appBar: AppBar(
+                title: Text('${facility.name}をもう一度'),
+                automaticallyImplyLeading: false,
+                actions: [
+                  IconButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    icon: const Icon(Icons.close),
+                    tooltip: '閉じる',
+                  ),
+                ],
+              ),
+              body: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.sm,
+                      AppSpacing.md,
+                      AppSpacing.xs,
+                    ),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: Theme.of(sheetContext).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '当日の残り時間だけを対象に、既存の予定を動かさず追加できる時間を表示します。',
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.xs,
+                        AppSpacing.md,
+                        AppSpacing.lg,
+                      ),
+                      itemCount: choices.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final choice = choices[index];
+                        return ListTile(
+                          leading: const CircleAvatar(child: Icon(Icons.repeat)),
+                          title: Text(
+                            '${choice.plannedStartLabel} - ${choice.plannedEndLabel}',
+                          ),
+                          subtitle: Text(
+                            '${choice.repeatNumber ?? 2}回目として手動追加・バケパ乗り放題',
+                          ),
+                          trailing: const Icon(Icons.add_circle_outline),
+                          onTap: () => Navigator.of(sheetContext).pop(choice),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      if (selected == null || !mounted) return;
+
+      await scheduleController.applyFreeTimeImprovement(selected);
+      if (!mounted) return;
+      if (scheduleController.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(scheduleController.errorMessage!)),
+        );
+        return;
+      }
+
+      final snackbarBottomMargin =
+          MediaQuery.sizeOf(context).width >= 900 ? 144.0 : 96.0;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.fromLTRB(16, 0, 16, snackbarBottomMargin),
+          content: Text(
+            '${facility.name}を${selected.repeatNumber ?? 2}回目として今日の予定へ追加しました。',
+          ),
+        ),
+      );
+    } finally {
+      scheduleController.dispose();
+      if (mounted) {
+        setState(() => _loadingRepeatFacilityId = null);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final snapshot = widget.snapshot;
     final schedule = controller.schedule;
 
     if (schedule == null) {
       return const EmptyState(
-        title: '当日のプランがありません',
+        title: '実行する予定がありません',
         message: 'プラン確認画面でスケジュールを生成してください。',
         icon: Icons.event_note_outlined,
       );
@@ -1264,49 +2378,312 @@ class _TodayScheduleContent extends StatelessWidget {
       );
     }
 
+    final suspendedFacilities = controller.suspendedFacilityIds
+        .map(controller.facilityById)
+        .whereType<Facility>()
+        .toList(growable: false)
+      ..sort((left, right) => left.name.compareTo(right.name));
+
+    final completedItems = schedule.items
+        .where((item) =>
+            _scheduleStatus(item, snapshot.now, snapshot.visitPhase) == _TodayScheduleStatus.completed)
+        .toList(growable: false);
+    final remainingItems = schedule.items
+        .where((item) =>
+            _scheduleStatus(item, snapshot.now, snapshot.visitPhase) != _TodayScheduleStatus.completed)
+        .toList(growable: false);
+    final displayedItems = _showCompleted ? schedule.items : remainingItems;
+    final provisionalCount = remainingItems
+        .where(_isProvisionalScheduleItem)
+        .length;
+    final manualRepeatCount = schedule.items
+        .where((item) => item.id.startsWith('manual_repeat_'))
+        .length;
+
+    ScheduleItem? latestCompletedRepeatable;
+    Facility? latestCompletedRepeatableFacility;
+    if (snapshot.isLiveMode) {
+      for (final completed in completedItems.reversed) {
+        if (!_usesUnlimitedRideScheduleItem(completed)) continue;
+        final completedFacility = controller.facilityById(completed.facilityId);
+        if (completedFacility?.category != FacilityCategory.attraction) continue;
+        latestCompletedRepeatable = completed;
+        latestCompletedRepeatableFacility = completedFacility;
+        break;
+      }
+    }
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.today_outlined, size: 22),
+              const Icon(Icons.route_outlined, size: 22),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  '当日の予定',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      snapshot.isPreVisit
+                          ? snapshot.visitDate == null
+                              ? '予定タイムライン'
+                              : '${snapshot.visitDate!.month}/${snapshot.visitDate!.day}の予定'
+                          : snapshot.isPostVisit
+                          ? '来園履歴'
+                          : '今日のタイムライン',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      snapshot.isPreVisit
+                          ? '閲覧専用です。事前の編集はプラン確認で行ってください。'
+                          : snapshot.isPostVisit
+                          ? '来園日の記録として保存時の順番を表示します。'
+                          : '現在時刻を基準に、進行中・次の予定・残り予定を表示します。',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                '${schedule.items.length}件',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          for (var index = 0; index < schedule.items.length; index++)
-            _TodayScheduleItemCard(
-              key: scheduleItemKeys[schedule.items[index].id],
-              item: schedule.items[index],
-              facility: controller.facilityById(
-                schedule.items[index].facilityId,
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (snapshot.isLiveMode)
+                _TodaySmallBadge(
+                  icon: Icons.check_circle_outline,
+                  label: '終了 ${completedItems.length}件',
+                  foregroundColor: const Color(0xFF616161),
+                  backgroundColor: const Color(0xFFEEEEEE),
+                ),
+              _TodaySmallBadge(
+                icon: Icons.route_outlined,
+                label: snapshot.isLiveMode
+                    ? '残り ${remainingItems.length}件'
+                    : manualRepeatCount == 0
+                        ? '予定 ${schedule.items.length}件'
+                        : '予定 ${schedule.items.length}件・手動 $manualRepeatCount件',
+                foregroundColor: const Color(0xFF287A4B),
+                backgroundColor: const Color(0xFFE8F5ED),
               ),
-              preference: controller.preferenceByFacilityId(
-                schedule.items[index].facilityId,
+              if (provisionalCount > 0)
+                _TodaySmallBadge(
+                  icon: Icons.auto_awesome_outlined,
+                  label: '仮予定 $provisionalCount件',
+                  foregroundColor: const Color(0xFF7A5B16),
+                  backgroundColor: const Color(0xFFFFF8DF),
+                ),
+            ],
+          ),
+          if (snapshot.isLiveMode && suspendedFacilities.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFCC80)),
               ),
-              waitTime: _waitTimeForItem(
-                controller: controller,
-                item: schedule.items[index],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.pause_circle_outline,
+                        size: 20,
+                        color: Color(0xFF8A4B08),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        '保留中の施設',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF8A4B08),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    '一時運営中止として外した施設です。再開後は、残り時間へ戻せるか再計算できます。',
+                  ),
+                  const SizedBox(height: 8),
+                  if (!controller.simulationEnabled)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: controller.reloadWaitTimes,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('運営状況を更新'),
+                      ),
+                    ),
+                  for (final facility in suspendedFacilities)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              facility.name,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                widget.onResumeFacilityPressed(facility),
+                            icon: const Icon(Icons.play_circle_outline, size: 18),
+                            label: const Text('再開として扱う'),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-              now: snapshot.now,
-              isLast: index == schedule.items.length - 1,
-              onWaitTimeEditPressed: onWaitTimeEditPressed,
             ),
+          ],
+          if (snapshot.isLiveMode && completedItems.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _showCompleted = !_showCompleted),
+                icon: Icon(
+                  _showCompleted ? Icons.visibility_off_outlined : Icons.history,
+                  size: 18,
+                ),
+                label: Text(
+                  _showCompleted
+                      ? '終了済みを隠す'
+                      : '終了済み${completedItems.length}件も表示',
+                ),
+              ),
+            ),
+          ],
+          if (snapshot.isLiveMode &&
+              !controller.simulationEnabled &&
+              !_showCompleted &&
+              latestCompletedRepeatable != null &&
+              latestCompletedRepeatableFacility != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.repeat),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'もう一度乗りたい？',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          '${latestCompletedRepeatable.title}の空き枠を探せます。',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: _loadingRepeatFacilityId == null
+                        ? () => _showLiveRepeatRide(
+                              latestCompletedRepeatableFacility!,
+                            )
+                        : null,
+                    icon: _loadingRepeatFacilityId ==
+                            latestCompletedRepeatableFacility.id
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.repeat, size: 18),
+                    label: const Text('もう一度乗る'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          if (displayedItems.isEmpty)
+            const _LiveMessagePanel(
+              icon: Icons.celebration_outlined,
+              title: '今日の予定は終了しました',
+              message: '終了済みの予定は上のボタンから確認できます。',
+              success: true,
+            )
+          else
+            for (var index = 0; index < displayedItems.length; index++) ...[
+              if (index > 0) ...[
+                if (_visibleBufferMinutes(
+                      displayedItems[index - 1],
+                      displayedItems[index],
+                    ) >=
+                    30)
+                  _TodayBufferGapCard(
+                    startMinutes:
+                        _scheduleEndMinutes(displayedItems[index - 1]),
+                    endMinutes: _scheduleStartMinutes(displayedItems[index]),
+                  )
+                else if (_visibleBufferMinutes(
+                          displayedItems[index - 1],
+                          displayedItems[index],
+                        ) >=
+                        15)
+                  _TodayCompactBufferGap(
+                    minutes: _visibleBufferMinutes(
+                      displayedItems[index - 1],
+                      displayedItems[index],
+                    ),
+                  ),
+              ],
+              _TodayScheduleItemCard(
+                key: widget.scheduleItemKeys[displayedItems[index].id],
+                item: displayedItems[index],
+                facility: controller.facilityById(
+                  displayedItems[index].facilityId,
+                ),
+                preference: controller.preferenceByFacilityId(
+                  displayedItems[index].facilityId,
+                ),
+                waitTime: _waitTimeForItem(
+                  controller: controller,
+                  item: displayedItems[index],
+                ),
+                now: snapshot.now,
+                visitPhase: snapshot.visitPhase,
+                allowLiveEdit: snapshot.isLiveMode,
+                simulationEnabled: controller.simulationEnabled,
+                isLast: index == displayedItems.length - 1,
+                repeatRideLoading: _loadingRepeatFacilityId ==
+                    controller.facilityById(displayedItems[index].facilityId)?.id,
+                operatingStatus: controller.operatingStatusForFacility(
+                  displayedItems[index].facilityId,
+                ),
+                onWaitTimeEditPressed: widget.onWaitTimeEditPressed,
+                onRecalculatePressed: widget.onRecalculatePressed,
+                onSuspendFacilityPressed: widget.onSuspendFacilityPressed,
+                onRepeatRidePressed: _showLiveRepeatRide,
+              ),
+            ],
         ],
       ),
     );
@@ -1317,13 +2694,49 @@ class _TodayScheduleContent extends StatelessWidget {
     required ScheduleItem item,
   }) {
     final facility = controller.facilityById(item.facilityId);
+    if (!_supportsWaitTimeUpdate(facility)) return null;
 
-    if (facility == null) {
-      return null;
+    if (_usesUnlimitedRideScheduleItem(item) &&
+        item.estimatedWaitMinutes != null) {
+      return LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.passEstimate,
+        label: 'バケパ乗り放題・優先入口利用バッファ',
+        waitMinutes: item.estimatedWaitMinutes,
+        isStale: false,
+      );
+    }
+
+    if (!controller.canUseLiveOperations) {
+      if (item.estimatedWaitMinutes != null) {
+        return LiveWaitTimeDisplay(
+          kind: LiveWaitTimeKind.facilityEstimate,
+          label: facility!.category == FacilityCategory.greeting
+              ? 'グリーティング計画値'
+              : '来園日プランの計画値',
+          waitMinutes: item.estimatedWaitMinutes,
+          isStale: false,
+        );
+      }
+      return const LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.unknown,
+        label: '来園日前は現在値を使用しません',
+        waitMinutes: null,
+        isStale: false,
+      );
+    }
+
+    final simulatedWaitMinutes =
+        controller.simulationWaitMinutesForFacility(facility!.id);
+    if (simulatedWaitMinutes != null) {
+      return LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.manual,
+        label: 'シミュレーション・仮想通常待機',
+        waitMinutes: simulatedWaitMinutes,
+        isStale: false,
+      );
     }
 
     final manualWaitTime = controller.manualWaitTimeByFacilityId(facility.id);
-
     if (manualWaitTime != null) {
       return LiveWaitTimeDisplay(
         kind: LiveWaitTimeKind.manual,
@@ -1335,16 +2748,122 @@ class _TodayScheduleContent extends StatelessWidget {
     }
 
     final facilityWaitTime = facility.waitTime?.minutes;
-
-    if (facilityWaitTime == null) {
-      return null;
+    if (facilityWaitTime != null) {
+      return LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.facilityEstimate,
+        label: '施設データの目安',
+        waitMinutes: facilityWaitTime,
+        isStale: false,
+      );
     }
 
-    return LiveWaitTimeDisplay(
-      kind: LiveWaitTimeKind.facilityEstimate,
-      label: '施設データの目安',
-      waitMinutes: facilityWaitTime,
+    if (item.estimatedWaitMinutes != null) {
+      return LiveWaitTimeDisplay(
+        kind: LiveWaitTimeKind.facilityEstimate,
+        label: 'プラン作成時の計画値',
+        waitMinutes: item.estimatedWaitMinutes,
+        isStale: false,
+      );
+    }
+
+    return const LiveWaitTimeDisplay(
+      kind: LiveWaitTimeKind.unknown,
+      label: '待ち時間不明',
+      waitMinutes: null,
       isStale: false,
+    );
+  }
+}
+
+int _scheduleStartMinutes(ScheduleItem item) {
+  return item.startHour * 60 + item.startMinute;
+}
+
+int _scheduleEndMinutes(ScheduleItem item) {
+  return item.endHour * 60 + item.endMinute;
+}
+
+int _visibleBufferMinutes(ScheduleItem previous, ScheduleItem next) {
+  final gap = _scheduleStartMinutes(next) - _scheduleEndMinutes(previous);
+  return gap > 0 ? gap : 0;
+}
+
+String _minutesToClockLabel(int minutes) {
+  final hour = (minutes ~/ 60).toString().padLeft(2, '0');
+  final minute = (minutes % 60).toString().padLeft(2, '0');
+  return '$hour:$minute';
+}
+
+class _TodayCompactBufferGap extends StatelessWidget {
+  const _TodayCompactBufferGap({required this.minutes});
+
+  final int minutes;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 6),
+      child: Row(
+        children: [
+          Icon(
+            Icons.directions_walk_outlined,
+            size: 15,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '移動・余裕 $minutes分',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayBufferGapCard extends StatelessWidget {
+  const _TodayBufferGapCard({
+    required this.startMinutes,
+    required this.endMinutes,
+  });
+
+  final int startMinutes;
+  final int endMinutes;
+
+  @override
+  Widget build(BuildContext context) {
+    final minutes = endMinutes - startMinutes;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.directions_walk_outlined, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '移動・余裕時間 $minutes分'
+                '（${_minutesToClockLabel(startMinutes)} - ${_minutesToClockLabel(endMinutes)}）',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1357,8 +2876,16 @@ class _TodayScheduleItemCard extends StatefulWidget {
     required this.preference,
     required this.waitTime,
     required this.now,
+    required this.visitPhase,
+    required this.allowLiveEdit,
+    required this.simulationEnabled,
     required this.isLast,
+    required this.repeatRideLoading,
+    required this.operatingStatus,
     required this.onWaitTimeEditPressed,
+    required this.onRecalculatePressed,
+    required this.onSuspendFacilityPressed,
+    required this.onRepeatRidePressed,
   });
 
   final ScheduleItem item;
@@ -1367,9 +2894,17 @@ class _TodayScheduleItemCard extends StatefulWidget {
   final LiveWaitTimeDisplay? waitTime;
 
   final DateTime now;
+  final LiveVisitPhase visitPhase;
+  final bool allowLiveEdit;
+  final bool simulationEnabled;
   final bool isLast;
+  final bool repeatRideLoading;
+  final LiveOperatingStatus? operatingStatus;
 
   final ValueChanged<Facility> onWaitTimeEditPressed;
+  final VoidCallback onRecalculatePressed;
+  final Future<void> Function(Facility) onSuspendFacilityPressed;
+  final Future<void> Function(Facility) onRepeatRidePressed;
 
   @override
   State<_TodayScheduleItemCard> createState() {
@@ -1389,9 +2924,27 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
         (item.note?.trim().isNotEmpty ?? false);
   }
 
+  bool get _usesUnlimitedRide {
+    return _usesUnlimitedRideScheduleItem(item);
+  }
+
+  bool get _hasOperatingDisruption {
+    final operatingStatus = widget.operatingStatus;
+    if (operatingStatus == null) return false;
+    return operatingStatus.state != LiveOperatingState.operating &&
+        operatingStatus.state != LiveOperatingState.unknown;
+  }
+
+  bool get _canSuspendManually {
+    final facility = widget.facility;
+    if (facility == null) return false;
+    return facility.category == FacilityCategory.attraction ||
+        facility.category == FacilityCategory.greeting;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final status = _scheduleStatus(item, widget.now);
+    final status = _scheduleStatus(item, widget.now, widget.visitPhase);
 
     final statusStyle = _statusStyle(status);
 
@@ -1460,7 +3013,9 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                                   ),
                             ),
                           ),
-                          if (widget.facility != null &&
+                          if (widget.allowLiveEdit &&
+                              !widget.simulationEnabled &&
+                              widget.facility != null &&
                               status != _TodayScheduleStatus.completed)
                             IconButton(
                               tooltip: '固定予定を編集して残りを再計算',
@@ -1473,10 +3028,7 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                                       facility: widget.facility!,
                                     );
                                 if (!changed || !context.mounted) return;
-                                final controller = LiveController(appState);
-                                controller.refreshCurrentTime();
-                                await controller.regenerateRemainingSchedule();
-                                controller.dispose();
+                                widget.onRecalculatePressed();
                               },
                               icon: const Icon(Icons.edit_calendar_outlined),
                             ),
@@ -1499,13 +3051,34 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                             foregroundColor: statusStyle.foregroundColor,
                             backgroundColor: statusStyle.backgroundColor,
                           ),
+                          if (_hasOperatingDisruption)
+                            _TodaySmallBadge(
+                              icon: Icons.warning_amber_outlined,
+                              label: widget.operatingStatus!.state.label,
+                              foregroundColor: const Color(0xFFC62828),
+                              backgroundColor: const Color(0xFFFFEBEE),
+                            ),
+                          if (_isProvisionalScheduleItem(item))
+                            const _TodaySmallBadge(
+                              icon: Icons.auto_awesome_outlined,
+                              label: '仮予定',
+                              foregroundColor: Color(0xFF7A5B16),
+                              backgroundColor: Color(0xFFFFF8DF),
+                            ),
                           _TodaySmallBadge(
                             icon: Icons.schedule_outlined,
                             label: item.timeRangeLabel,
                             foregroundColor: colorScheme.onSurfaceVariant,
                             backgroundColor: colorScheme.surfaceContainerLow,
                           ),
-                          if (widget.preference != null)
+                          if (_usesUnlimitedRide)
+                            const _TodaySmallBadge(
+                              icon: Icons.repeat,
+                              label: 'バケパ乗り放題',
+                              foregroundColor: Color(0xFF4F378B),
+                              backgroundColor: Color(0xFFF1ECFF),
+                            )
+                          else if (widget.preference != null)
                             _TodaySmallBadge(
                               icon: _accessMethodIcon(
                                 widget.preference!.accessMethod,
@@ -1519,18 +3092,27 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                             ),
                           if (widget.waitTime?.waitMinutes != null)
                             _TodaySmallBadge(
-                              icon: widget.waitTime!.isStale
-                                  ? Icons.warning_amber_outlined
-                                  : Icons.groups_outlined,
-                              label:
-                                  '待ち${widget.waitTime!.waitMinutes}分'
-                                  '${widget.waitTime!.isStale ? '・要更新' : ''}',
-                              foregroundColor: widget.waitTime!.isStale
-                                  ? const Color(0xFFC62828)
-                                  : const Color(0xFF287A4B),
-                              backgroundColor: widget.waitTime!.isStale
-                                  ? const Color(0xFFFFEBEE)
-                                  : const Color(0xFFE8F5ED),
+                              icon: _usesUnlimitedRide
+                                  ? Icons.timer_outlined
+                                  : widget.waitTime!.isStale
+                                      ? Icons.warning_amber_outlined
+                                      : Icons.groups_outlined,
+                              label: _usesUnlimitedRide
+                                  ? '優先入口利用バッファ${widget.waitTime!.waitMinutes}分'
+                                  : widget.visitPhase == LiveVisitPhase.preVisit
+                                      ? '計画待ち${widget.waitTime!.waitMinutes}分'
+                                      : '待ち${widget.waitTime!.waitMinutes}分'
+                                          '${widget.waitTime!.isStale ? '・要更新' : ''}',
+                              foregroundColor: _usesUnlimitedRide
+                                  ? const Color(0xFF4F378B)
+                                  : widget.waitTime!.isStale
+                                      ? const Color(0xFFC62828)
+                                      : const Color(0xFF287A4B),
+                              backgroundColor: _usesUnlimitedRide
+                                  ? const Color(0xFFF1ECFF)
+                                  : widget.waitTime!.isStale
+                                      ? const Color(0xFFFFEBEE)
+                                      : const Color(0xFFE8F5ED),
                             ),
                         ],
                       ),
@@ -1539,7 +3121,47 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                 ),
               ],
             ),
-            if (widget.facility != null) ...[
+            if (widget.allowLiveEdit &&
+                _hasOperatingDisruption &&
+                status != _TodayScheduleStatus.completed) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFFCDD2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_outlined,
+                      color: Color(0xFFC62828),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${widget.operatingStatus!.state.label}の情報があります。'
+                        '終了済み・進行中の他予定や固定予定を維持し、これから先だけ組み直せます。',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.tonal(
+                      onPressed: widget.facility == null
+                          ? widget.onRecalculatePressed
+                          : () => widget.onSuspendFacilityPressed(
+                                widget.facility!,
+                              ),
+                      child: const Text('保留して再最適化'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (widget.allowLiveEdit &&
+                !_usesUnlimitedRide &&
+                _supportsWaitTimeUpdate(widget.facility)) ...[
               const SizedBox(height: 7),
               Align(
                 alignment: Alignment.centerRight,
@@ -1549,6 +3171,46 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                   },
                   icon: const Icon(Icons.edit_outlined, size: 17),
                   label: const Text('待ち時間を更新'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ],
+            if (widget.allowLiveEdit &&
+                !widget.simulationEnabled &&
+                _usesUnlimitedRide &&
+                widget.facility?.category == FacilityCategory.attraction) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.tonalIcon(
+                  onPressed: widget.repeatRideLoading
+                      ? null
+                      : () => widget.onRepeatRidePressed(widget.facility!),
+                  icon: widget.repeatRideLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.repeat, size: 17),
+                  label: const Text('もう一度乗る'),
+                ),
+              ),
+            ],
+            if (widget.allowLiveEdit &&
+                _canSuspendManually &&
+                !_hasOperatingDisruption &&
+                status != _TodayScheduleStatus.completed) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () =>
+                      widget.onSuspendFacilityPressed(widget.facility!),
+                  icon: const Icon(Icons.pause_circle_outline, size: 17),
+                  label: const Text('一時運営中止として扱う'),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                   ),
@@ -1934,7 +3596,28 @@ class _TodayTypeStyle {
   final Color backgroundColor;
 }
 
-_TodayScheduleStatus _scheduleStatus(ScheduleItem item, DateTime now) {
+bool _supportsWaitTimeUpdate(Facility? facility) {
+  if (facility == null) return false;
+  return facility.category == FacilityCategory.attraction ||
+      facility.category == FacilityCategory.greeting;
+}
+
+bool _isProvisionalScheduleItem(ScheduleItem item) {
+  return item.title.contains('（仮予定）') ||
+      (item.reason?.contains('仮予定') ?? false) ||
+      (item.note?.contains('仮予定') ?? false);
+}
+
+_TodayScheduleStatus _scheduleStatus(
+  ScheduleItem item,
+  DateTime now,
+  LiveVisitPhase visitPhase,
+) {
+  if (visitPhase == LiveVisitPhase.preVisit ||
+      visitPhase == LiveVisitPhase.postVisit) {
+    return _TodayScheduleStatus.upcoming;
+  }
+
   final currentMinutes = now.hour * 60 + now.minute;
 
   final startMinutes = item.startHour * 60 + item.startMinute;
@@ -1961,6 +3644,15 @@ IconData _accessMethodIcon(FacilityAccessMethod method) {
     FacilityAccessMethod.entryRequest => Icons.how_to_reg_outlined,
     FacilityAccessMethod.reservation => Icons.event_available_outlined,
     FacilityAccessMethod.freeSeating => Icons.chair_alt_outlined,
+  };
+}
+
+String _visitPhaseLabel(LiveVisitPhase phase) {
+  return switch (phase) {
+    LiveVisitPhase.preVisit => '来園前',
+    LiveVisitPhase.visitDay => '当日',
+    LiveVisitPhase.postVisit => '来園済み',
+    LiveVisitPhase.dateNotSet => '来園日未設定',
   };
 }
 
@@ -1995,4 +3687,12 @@ IconData _parkIcon(String parkId) {
     'tokyo_disneysea' => Icons.water_outlined,
     _ => Icons.park_outlined,
   };
+}
+
+
+extension<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
+  }
 }

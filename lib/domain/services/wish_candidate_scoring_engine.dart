@@ -1,7 +1,9 @@
 import '../entities/expert_recommendation_profile.dart';
 import '../entities/facility.dart';
+import '../entities/greeting_wait_planning_value.dart';
 import '../entities/plan_preference.dart';
 import '../entities/time_band_wait_profile.dart';
+import '../enums/facility_category.dart';
 import '../enums/wait_time_band.dart';
 import 'disney_expert_recommendation_service.dart';
 import 'dynamic_wait_scoring_service.dart';
@@ -47,6 +49,8 @@ class WishCandidateScoringEngine {
     bool hasHappyEntry = false,
     List<ExpertRecommendationProfile> expertProfiles = const [],
     Map<String, int> unlimitedRideBufferMinutes = const <String, int>{},
+    Map<String, GreetingWaitPlanningValue> greetingWaitPlanning =
+        const <String, GreetingWaitPlanningValue>{},
   }) {
     final preferenceById = {for (final item in preferences) item.facilityId: item};
     final profileById = {for (final item in waitProfiles) item.facilityId: item};
@@ -64,8 +68,13 @@ class WishCandidateScoringEngine {
           : null;
       final isUnlimitedRide =
           unlimitedRideBufferMinutes.containsKey(facility.id);
+      final greetingPlan = greetingWaitPlanning[facility.id];
       final normalPredictedWait =
-          reliableRange?.typicalMinutes ?? facility.waitTime?.minutes ?? 30;
+          reliableRange?.typicalMinutes ??
+          facility.waitTime?.minutes ??
+          (facility.category == FacilityCategory.greeting && greetingPlan != null
+              ? greetingPlan.waitMinutes
+              : _fallbackWaitMinutes(facility));
       final predictedWait = isUnlimitedRide
           ? (unlimitedRideBufferMinutes[facility.id] ?? 15)
           : normalPredictedWait;
@@ -88,6 +97,9 @@ class WishCandidateScoringEngine {
       value += expert.score * 0.40;
       value -= predictedWait * 0.65;
       value -= facility.durationMinutes * 0.15;
+      if (greetingPlan?.isCharacterBirthday == true) {
+        value += greetingPlan!.birthdayOpeningUrgencyBonus;
+      }
       if (facility.supportsDpa && predictedWait >= 60) value += 12;
       if (totalMinutes > availableMinutes) value -= 1000;
 
@@ -114,6 +126,16 @@ class WishCandidateScoringEngine {
       firstMove += expert.score * 0.30;
       if (!isUnlimitedRide) {
         firstMove += openingCrowd.weightedValueMinutes;
+        if (facility.category == FacilityCategory.greeting &&
+            waitScore.usedFallback) {
+          // A greeting with no collected profile must not look like a zero-cost
+          // activity. Add only a modest planning premium; do not invent a
+          // time-of-day saving that has not been measured.
+          firstMove += normalPredictedWait * 0.30;
+          if (greetingPlan?.isCharacterBirthday == true) {
+            firstMove += greetingPlan!.birthdayOpeningUrgencyBonus;
+          }
+        }
       }
       firstMove += baseExperienceValue;
       if (facility.isSeasonal) firstMove += 12;
@@ -132,6 +154,18 @@ class WishCandidateScoringEngine {
         if (isUnlimitedRide) ...[
           '乗り放題対象: 優先入口利用バッファ$predictedWait分',
           '通常待ち時間による朝一緊急性は評価対象外',
+        ] else if (facility.category == FacilityCategory.greeting &&
+            waitScore.usedFallback) ...[
+          'グリーティング計画用暫定待ち時間$normalPredictedWait分（実測値ではありません）',
+          if (greetingPlan?.parkCrowdMultiplier != null &&
+              greetingPlan!.parkCrowdMultiplier > 1.001)
+            'Git収集のパーク混雑傾向で${greetingPlan.parkCrowdMultiplier.toStringAsFixed(2)}倍補正',
+          if (greetingPlan?.isCharacterBirthday == true)
+            '${greetingPlan!.birthdayCharacterNames.join('・')}の記念日: 計画${greetingPlan.birthdayPlanningWaitMinutes}分・極端混雑リスク${greetingPlan.birthdayExtremeRiskMinutes}分級',
+          '時間帯別の実測がないため朝一節約分は0分として扱う',
+          '待ち時間データ: ${waitScore.source}',
+          'サンプル数${waitScore.sampleCount}件',
+          '信頼度${waitScore.confidence.name}',
         ] else ...[
           '朝一予測${waitScore.openingMinutes}分',
           '通常時間帯代表${waitScore.normalMinutes}分',
@@ -180,6 +214,18 @@ class WishCandidateScoringEngine {
     }).toList(growable: false);
     scored.sort((a, b) => b.score.compareTo(a.score));
     return scored;
+  }
+
+  int _fallbackWaitMinutes(Facility facility) {
+    if (facility.category == FacilityCategory.greeting) {
+      return switch (facility.priority.name) {
+        'highest' => 40,
+        'high' => 30,
+        'medium' => 25,
+        _ => 20,
+      };
+    }
+    return 30;
   }
 
   List<WishCandidateScore> selectRealisticCount({

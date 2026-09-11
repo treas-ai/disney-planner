@@ -1,4 +1,5 @@
 import 'package:disney_planner/domain/entities/day_schedule.dart';
+import 'package:disney_planner/domain/entities/plan_preference.dart';
 import 'package:disney_planner/domain/entities/schedule_item.dart';
 import 'package:disney_planner/domain/entities/trip_settings.dart';
 import 'package:disney_planner/domain/enums/schedule_item_type.dart';
@@ -119,6 +120,47 @@ void main() {
     expect(text, contains('体験時間：8分'));
     expect(text, contains('合計拘束時間：28分'));
     expect(text, isNot(contains('推定待ち時間：20分')));
+  });
+
+
+  test('manual repeat export uses vacation package unlimited ride labels', () {
+    final repeatSchedule = DaySchedule(
+      id: 'repeat',
+      parkId: 'tokyo_disneyland',
+      createdAt: DateTime(2026, 10, 5),
+      items: const [
+        ScheduleItem(
+          id: 'manual_repeat_20261005_ride_1',
+          title: 'テストライド（2回目）',
+          type: ScheduleItemType.facility,
+          startHour: 14,
+          startMinute: 0,
+          endHour: 14,
+          endMinute: 30,
+          facilityId: 'ride',
+          estimatedWaitMinutes: 15,
+          experienceMinutes: 15,
+          // Old saved manual-repeat source is also recognized for compatibility.
+          waitEstimateSource: 'バケパ乗り放題の優先入口利用バッファ',
+        ),
+      ],
+    );
+
+    final text = exporter.export(
+      schedule: repeatSchedule,
+      settings: settings.copyWith(
+        usesVacationPackage: true,
+        hasUnlimitedAttractionRides: true,
+      ),
+      parkName: '東京ディズニーランド',
+      preferences: [PlanPreference.initial(facilityId: 'ride')],
+      validationIssues: const [],
+      format: PlanTextExportFormat.evaluation,
+    );
+
+    expect(text, contains('利用方法：バケパ乗り放題'));
+    expect(text, contains('優先入口利用バッファ：15分'));
+    expect(text, isNot(contains('推定待ち時間：15分')));
   });
 
 }

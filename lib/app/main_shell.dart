@@ -75,14 +75,14 @@ class _MainShellState extends State<MainShell> {
     _MainDestination(
       title: 'プラン確認',
       navigationLabel: 'プラン',
-      subtitle: '候補施設から作成した一日のプランを確認・調整します。',
+      subtitle: '来園前の計画を作成・調整します。空き時間改善や再乗車の事前追加もここで行います。',
       icon: AppIcons.planReview,
       selectedIcon: AppIcons.planReviewSelected,
     ),
     _MainDestination(
-      title: '当日の予定',
+      title: '当日ガイド',
       navigationLabel: '当日',
-      subtitle: '採用したプランを現地向け表示で確認します。',
+      subtitle: '来園日は現在時刻と当日の状況を使って、次の行動を案内します。',
       icon: AppIcons.today,
       selectedIcon: AppIcons.todaySelected,
     ),
@@ -782,8 +782,8 @@ class _PlannerFlowActionBar extends StatelessWidget {
     }
 
     return _PlannerFlowAction(
-      title: '当日の予定を見る',
-      description: '${flowState.scheduleItemCount}件の予定を時系列で確認します。',
+      title: '当日ガイドを開く',
+      description: '${flowState.scheduleItemCount}件の事前プランを来園日の実行画面で確認します。',
       icon: Icons.event_available_outlined,
       onPressed: onTodayPressed,
     );
@@ -831,8 +831,8 @@ class _PlannerFlowActionBar extends StatelessWidget {
       _MainShellState._reviewIndex =>
         flowState.hasCurrentSchedule
             ? _PlannerFlowAction(
-                title: '当日の予定へ',
-                description: '${flowState.scheduleItemCount}件の予定を現地表示で確認します。',
+                title: '当日ガイドへ',
+                description: '${flowState.scheduleItemCount}件の事前プランを、来園日の実行画面で確認します。',
                 icon: Icons.event_available_outlined,
                 onPressed: onTodayPressed,
               )
@@ -844,7 +844,7 @@ class _PlannerFlowActionBar extends StatelessWidget {
               ),
       _MainShellState._todayIndex => _PlannerFlowAction(
         title: 'プラン確認へ戻る',
-        description: '生成内容の確認や再生成を行います。',
+        description: '事前プランの編集・再生成はプラン確認で行います。',
         icon: Icons.arrow_back,
         onPressed: onReviewPressed,
       ),
@@ -952,7 +952,7 @@ class _DesktopFlowActions extends StatelessWidget {
             const SizedBox(width: 8),
             _FlowShortcutButton(
               icon: Icons.event_available_outlined,
-              label: '当日の予定',
+              label: '当日ガイド',
               onPressed: onTodayPressed,
             ),
           ] else if (flowState.selectedFacilityCount > 0) ...[

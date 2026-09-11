@@ -1,6 +1,7 @@
 import '../entities/day_schedule.dart';
 import '../entities/facility.dart';
 import '../entities/live_operating_status.dart';
+import '../entities/plan_preference.dart';
 import '../entities/schedule_change.dart';
 import '../entities/schedule_item.dart';
 import '../entities/schedule_recalculation_request.dart';
@@ -23,12 +24,17 @@ class ScheduleRecalculationService {
   final RealtimeReplanningService replanningService;
 
   ScheduleRecalculationResult createProposal(
-    ScheduleRecalculationRequest request,
-  ) {
+    ScheduleRecalculationRequest request, {
+    Map<String, int> simulatedWaitMinutesByFacilityId = const <String, int>{},
+  }) {
     final nowMinutes = request.now.hour * 60 + request.now.minute;
     final preferenceById = {
       for (final preference in request.preferences)
         preference.facilityId: preference,
+    };
+
+    final facilityById = {
+      for (final facility in request.facilities) facility.id: facility,
     };
 
     final preserved = request.currentSchedule.items
@@ -39,13 +45,40 @@ class ScheduleRecalculationService {
               item.type == ScheduleItemType.exit) {
             return true;
           }
-          if (end <= nowMinutes || (start <= nowMinutes && nowMinutes < end)) {
+
+          // Past actions are facts and must never be rewritten.
+          if (end <= nowMinutes) {
             return true;
           }
+
           final facilityId = item.facilityId;
-          return facilityId != null &&
-              preferenceById[facilityId]?.fixedTimeStatus ==
-                  FixedTimeStatus.confirmed;
+          final unavailable = facilityId != null &&
+              _isUnavailable(request.operatingStatuses[facilityId]);
+
+          // A currently running activity is normally protected, but a facility
+          // that has just gone down must be released so the remaining plan can
+          // recover from the disruption.
+          if (start <= nowMinutes && nowMinutes < end) {
+            if (item.type == ScheduleItemType.breakTime) {
+              return false;
+            }
+            return !unavailable;
+          }
+
+          if (unavailable) {
+            return false;
+          }
+
+          final facility =
+              facilityId == null ? null : facilityById[facilityId];
+          final preference =
+              facilityId == null ? null : preferenceById[facilityId];
+
+          return _isProtectedFutureItem(
+            item: item,
+            facility: facility,
+            preference: preference,
+          );
         })
         .toList(growable: false);
 
@@ -104,7 +137,7 @@ class ScheduleRecalculationService {
       preserved: preserved,
       facilities: request.facilities,
     );
-    final nextFixed = _nextConfirmedFixed(
+    final nextFixed = _nextProtectedFuture(
       request: request,
       nowMinutes: nowMinutes,
     );
@@ -135,20 +168,111 @@ class ScheduleRecalculationService {
       replanningContext,
     );
 
+    final replanningSettings = request.settings.copyWith(
+      queueArrivalTimeHour: request.now.hour,
+      queueArrivalTimeMinute: request.now.minute,
+      // Existing meal blocks are protected anchors during live replanning.
+      // Do not create a second breakfast/lunch/dinner from the morning planner.
+      wantsBreakfast: false,
+      wantsLunch: false,
+      wantsDinner: false,
+    );
+
     final generated = scheduleEngine.generate(
-      settings: request.settings,
+      settings: replanningSettings,
       facilities: prioritizedFacilities,
       preferences: eligiblePreferences,
     );
 
     final preservedKeys = preserved.map(_key).toSet();
-    final futureGenerated = generated.items.where((item) {
-      if (item.type == ScheduleItemType.entry ||
-          item.type == ScheduleItemType.exit) {
-        return false;
+    final anchors = preserved
+        .where(
+          (item) =>
+              item.type != ScheduleItemType.entry &&
+              item.type != ScheduleItemType.exit &&
+              _end(item) > nowMinutes,
+        )
+        .toList(growable: false)
+      ..sort((left, right) => _start(left).compareTo(_start(right)));
+
+    final exitMinutes =
+        request.settings.exitTimeHour * 60 + request.settings.exitTimeMinute;
+    final generatedCandidates = generated.items
+        .where(
+          (item) =>
+              item.type != ScheduleItemType.entry &&
+              item.type != ScheduleItemType.exit &&
+              item.type != ScheduleItemType.breakTime &&
+              _start(item) > nowMinutes &&
+              !preservedKeys.contains(_key(item)),
+        )
+        .toList(growable: false)
+      ..sort((left, right) => _start(left).compareTo(_start(right)));
+
+    final futureGenerated = <ScheduleItem>[];
+    var cursor = nowMinutes;
+    for (final item in generatedCandidates) {
+      var duration = _end(item) - _start(item);
+      if (duration <= 0) continue;
+
+      int? liveWaitMinutes;
+      String? liveWaitSourceLabel;
+      final facilityId = item.facilityId;
+      final liveWait =
+          facilityId == null ? null : request.waitTimes[facilityId];
+      final simulatedWait = facilityId == null
+          ? null
+          : simulatedWaitMinutesByFacilityId[facilityId];
+      final plannedWait = item.estimatedWaitMinutes;
+      final usableLiveWait = liveWait != null && !liveWait.isStaleAt(request.now);
+      final effectiveWait = simulatedWait ?? (usableLiveWait ? liveWait.waitMinutes : null);
+      if (effectiveWait != null &&
+          plannedWait != null &&
+          !_usesPriorityAccessPlanning(item)) {
+        liveWaitMinutes = effectiveWait;
+        liveWaitSourceLabel = simulatedWait != null
+            ? 'シミュレーション待ち時間'
+            : liveWait!.source.label;
+        final experienceMinutes =
+            item.experienceMinutes ?? (duration - plannedWait).clamp(0, 999).toInt();
+        duration = effectiveWait + experienceMinutes;
+        final delta = effectiveWait - plannedWait;
+        if (delta.abs() >= 15) {
+          warnings.add(
+            '${item.title}の待ち時間を計画$plannedWait分から'
+            '${simulatedWait != null ? 'シミュレーション' : '当日'}'
+            '$effectiveWait分へ更新して再配置しました。',
+          );
+        }
       }
-      return _start(item) > nowMinutes && !preservedKeys.contains(_key(item));
-    });
+
+      var start = _start(item) > cursor ? _start(item) : cursor;
+      var movedPastAnchor = true;
+      while (movedPastAnchor) {
+        movedPastAnchor = false;
+        final end = start + duration;
+        for (final anchor in anchors) {
+          if (_rangesOverlap(start, end, _start(anchor), _end(anchor))) {
+            start = _end(anchor);
+            movedPastAnchor = true;
+            break;
+          }
+        }
+      }
+
+      final end = start + duration;
+      if (end > exitMinutes) continue;
+
+      final shifted = _shiftScheduleItem(
+        item,
+        startMinutes: start,
+        endMinutes: end,
+        liveWaitMinutes: liveWaitMinutes,
+        liveWaitSourceLabel: liveWaitSourceLabel,
+      );
+      futureGenerated.add(shifted);
+      cursor = end;
+    }
 
     final exitItem = request.currentSchedule.items
         .where((item) => item.type == ScheduleItemType.exit)
@@ -181,7 +305,83 @@ class ScheduleRecalculationService {
   }
 
 
-  ScheduleItem? _nextConfirmedFixed({
+  bool _isUnavailable(LiveOperatingStatus? status) {
+    if (status == null) return false;
+    return status.state != LiveOperatingState.operating &&
+        status.state != LiveOperatingState.unknown;
+  }
+
+  bool _isProtectedFutureItem({
+    required ScheduleItem item,
+    required Facility? facility,
+    required PlanPreference? preference,
+  }) {
+    if (item.type == ScheduleItemType.breakfast ||
+        item.type == ScheduleItemType.lunch ||
+        item.type == ScheduleItemType.dinner) {
+      return true;
+    }
+
+    if (item.id.startsWith('manual_repeat_')) {
+      return true;
+    }
+
+    if (facility != null &&
+        (facility.category == FacilityCategory.show ||
+            facility.category == FacilityCategory.parade)) {
+      return true;
+    }
+
+    return preference?.fixedTimeStatus == FixedTimeStatus.confirmed;
+  }
+
+  ScheduleItem _shiftScheduleItem(
+    ScheduleItem item, {
+    required int startMinutes,
+    required int endMinutes,
+    int? liveWaitMinutes,
+    String? liveWaitSourceLabel,
+  }) {
+    return ScheduleItem(
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      startHour: startMinutes ~/ 60,
+      startMinute: startMinutes % 60,
+      endHour: endMinutes ~/ 60,
+      endMinute: endMinutes % 60,
+      facilityId: item.facilityId,
+      reason: item.reason == null
+          ? '当日の状況を反映し、残り時間へ再配置しました。'
+          : '${item.reason} 当日の状況を反映し、残り時間へ再配置しました。',
+      note: item.note,
+      estimatedWaitMinutes: liveWaitMinutes ?? item.estimatedWaitMinutes,
+      experienceMinutes: item.experienceMinutes,
+      waitEstimateSource: liveWaitMinutes == null
+          ? item.waitEstimateSource
+          : '当日${liveWaitSourceLabel ?? '待ち時間'}を再最適化へ反映',
+    );
+  }
+
+  bool _usesPriorityAccessPlanning(ScheduleItem item) {
+    final source = item.waitEstimateSource?.trim() ?? '';
+    return source.contains('バケーションパッケージ乗り放題') ||
+        source.contains('バケパ乗り放題') ||
+        source.contains('優先入口') ||
+        source.contains('DPA') ||
+        source.contains('プライオリティ');
+  }
+
+  bool _rangesOverlap(
+    int leftStart,
+    int leftEnd,
+    int rightStart,
+    int rightEnd,
+  ) {
+    return leftStart < rightEnd && leftEnd > rightStart;
+  }
+
+  ScheduleItem? _nextProtectedFuture({
     required ScheduleRecalculationRequest request,
     required int nowMinutes,
   }) {
@@ -189,11 +389,21 @@ class ScheduleRecalculationService {
       for (final preference in request.preferences)
         preference.facilityId: preference,
     };
+    final facilityById = {
+      for (final facility in request.facilities) facility.id: facility,
+    };
     final candidates = request.currentSchedule.items.where((item) {
+      if (_start(item) <= nowMinutes) return false;
       final facilityId = item.facilityId;
-      if (facilityId == null || _start(item) <= nowMinutes) return false;
-      return preferenceById[facilityId]?.fixedTimeStatus ==
-          FixedTimeStatus.confirmed;
+      if (facilityId != null &&
+          _isUnavailable(request.operatingStatuses[facilityId])) {
+        return false;
+      }
+      return _isProtectedFutureItem(
+        item: item,
+        facility: facilityId == null ? null : facilityById[facilityId],
+        preference: facilityId == null ? null : preferenceById[facilityId],
+      );
     }).toList(growable: false)
       ..sort((a, b) => _start(a).compareTo(_start(b)));
     return candidates.isEmpty ? null : candidates.first;
