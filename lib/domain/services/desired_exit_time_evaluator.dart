@@ -22,11 +22,19 @@ class DesiredExitTimeEvaluation {
 /// overtime threshold. The evaluator intentionally knows nothing about shows,
 /// attractions, or facility names; callers provide the value and impact terms.
 class DesiredExitTimeEvaluator {
-  const DesiredExitTimeEvaluator({this.overtimeCostMultiplier = 1.25});
+  const DesiredExitTimeEvaluator({
+    this.overtimeCostMultiplier = 1.0,
+    this.overtimeEscalationWindowMinutes = 120.0,
+  });
 
   /// Soft penalty for deviating from the user's desired exit time. This is a
   /// continuous cost multiplier, not a hard number-of-minutes cutoff.
   final double overtimeCostMultiplier;
+
+  /// Makes larger overruns progressively more expensive without introducing
+  /// a hard cutoff. At the default 120 minutes, a 20-minute overrun adds only
+  /// about 3 minutes of escalation cost, while a 60-minute overrun adds 30.
+  final double overtimeEscalationWindowMinutes;
 
   DesiredExitTimeEvaluation evaluate({
     required int desiredExitMinutes,
@@ -43,8 +51,14 @@ class DesiredExitTimeEvaluator {
     final totalValueMinutes = _nonNegative(experienceValueMinutes) +
         _nonNegative(opportunityValueMinutes) +
         _nonNegative(userPreferenceValueMinutes);
-    final totalCostMinutes = overtimeMinutes.toDouble() *
-            _nonNegative(overtimeCostMultiplier) +
+    final overtime = overtimeMinutes.toDouble();
+    final baseOvertimeCost = overtime * _nonNegative(overtimeCostMultiplier);
+    final escalationWindow = _nonNegative(overtimeEscalationWindowMinutes);
+    final escalationCost = overtime == 0 || escalationWindow == 0
+        ? 0.0
+        : (overtime * overtime) / escalationWindow;
+    final totalCostMinutes = baseOvertimeCost +
+        escalationCost +
         _nonNegative(downstreamImpactMinutes);
     final netValueMinutes = totalValueMinutes - totalCostMinutes;
 
