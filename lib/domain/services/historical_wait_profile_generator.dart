@@ -14,7 +14,7 @@ class HistoricalWaitGenerationResult {
 
 class HistoricalWaitProfileGenerator {
   const HistoricalWaitProfileGenerator({
-    this.methodVersion = '5.1.1',
+    this.methodVersion = '5.2.0',
     this.timeRoundingService = const TimeRoundingService(),
   });
   final String methodVersion;
@@ -43,6 +43,7 @@ class HistoricalWaitProfileGenerator {
         source: samples.map((e) => e.source).toSet().join(', '),
         calculatedAt: now,
         sampleCount: samples.length,
+        recentWeekdayRanges: _recentWeekdayRanges(samples),
       ));
       final groups = <String, List<HistoricalWaitRecord>>{};
       for (final sample in samples) {
@@ -85,6 +86,89 @@ class HistoricalWaitProfileGenerator {
       }
     }
     return HistoricalWaitGenerationResult(factors: List.unmodifiable(factors), waitProfiles: List.unmodifiable(profiles));
+  }
+
+  Map<int, Map<WaitTimeBand, WaitTimeRange>> _recentWeekdayRanges(
+    List<HistoricalWaitRecord> samples,
+  ) {
+    // Collapse the 5-minute collector samples into one median per local day
+    // and time band first. This prevents a day with more polling samples from
+    // receiving more influence merely because it was observed more often.
+    final daily = <String, List<int>>{};
+    for (final sample in samples) {
+      if (sample.isHoliday || sample.eventIds.isNotEmpty) continue;
+      final local = _localTime(sample.observedAt);
+      final band = _bandFor(sample.observedAt);
+      final dayKey = '${local.year.toString().padLeft(4, '0')}-'
+          '${local.month.toString().padLeft(2, '0')}-'
+          '${local.day.toString().padLeft(2, '0')}';
+      daily.putIfAbsent('$dayKey|${local.weekday}|${band.name}', () => <int>[])
+          .add(sample.waitMinutes);
+    }
+
+    final byWeekdayBand = <String, List<_DailyWaitMedian>>{};
+    for (final entry in daily.entries) {
+      final parts = entry.key.split('|');
+      final date = DateTime.parse(parts[0]);
+      final weekday = int.parse(parts[1]);
+      final band = WaitTimeBand.fromName(parts[2]);
+      byWeekdayBand
+          .putIfAbsent('$weekday|${band.name}', () => <_DailyWaitMedian>[])
+          .add(_DailyWaitMedian(
+            date: date,
+            minutes: _percentile(entry.value, 0.5),
+          ));
+    }
+
+    final result = <int, Map<WaitTimeBand, WaitTimeRange>>{};
+    for (final entry in byWeekdayBand.entries) {
+      final parts = entry.key.split('|');
+      final weekday = int.parse(parts[0]);
+      final band = WaitTimeBand.fromName(parts[1]);
+      final days = entry.value..sort((a, b) => b.date.compareTo(a.date));
+      // "Latest four weeks" means the latest four matching weekday
+      // occurrences, not a fixed 27-day window from the newest observation.
+      // A Tuesday four occurrences back can be 28+ calendar days away when
+      // the newest record is a later special day or another weekday.
+      final latest = days.take(4).toList(growable: false);
+      if (latest.isEmpty) continue;
+      result.putIfAbsent(weekday, () => <WaitTimeBand, WaitTimeRange>{})[band] =
+          _weightedRecentRange(latest);
+    }
+    return {
+      for (final entry in result.entries)
+        entry.key: Map<WaitTimeBand, WaitTimeRange>.unmodifiable(entry.value),
+    };
+  }
+
+  WaitTimeRange _weightedRecentRange(List<_DailyWaitMedian> days) {
+    const weights = <double>[0.50, 0.25, 0.15, 0.10];
+    var weightedSum = 0.0;
+    var weightSum = 0.0;
+    var minMinutes = days.first.minutes;
+    var maxMinutes = days.first.minutes;
+    for (var i = 0; i < days.length; i++) {
+      final weight = weights[i];
+      final minutes = days[i].minutes;
+      weightedSum += minutes * weight;
+      weightSum += weight;
+      if (minutes < minMinutes) minMinutes = minutes;
+      if (minutes > maxMinutes) maxMinutes = minutes;
+    }
+    final typical = timeRoundingService.ceilMinutes(
+      (weightedSum / weightSum).round(),
+    );
+    return WaitTimeRange(
+      minMinutes: timeRoundingService.ceilMinutes(minMinutes),
+      typicalMinutes: typical.clamp(
+        timeRoundingService.ceilMinutes(minMinutes),
+        timeRoundingService.ceilMinutes(maxMinutes),
+      ).toInt(),
+      maxMinutes: timeRoundingService.ceilMinutes(maxMinutes),
+      // Here sampleCount intentionally means distinct local days, not raw
+      // collector observations.
+      sampleCount: days.length,
+    );
   }
 
   WaitTimeRange _range(List<int> values) {
@@ -131,4 +215,10 @@ class HistoricalWaitProfileGenerator {
     if (minute < 1200) return WaitTimeBand.afterDinner;
     return WaitTimeBand.beforeClosing;
   }
+}
+
+class _DailyWaitMedian {
+  const _DailyWaitMedian({required this.date, required this.minutes});
+  final DateTime date;
+  final int minutes;
 }

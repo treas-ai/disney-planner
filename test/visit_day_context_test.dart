@@ -155,6 +155,87 @@ void main() {
     expect(result.single.source, contains('weekday:'));
     expect(result.single.source, isNot(contains('×1.50')));
   });
+
+  test('ordinary visit day prefers recent same-weekday band and avoids weekday double correction', () {
+    final profile = TimeBandWaitProfile(
+      facilityId: 'ride',
+      parkId: 'tokyo_disneyland',
+      ranges: const {
+        WaitTimeBand.afterLunch: WaitTimeRange(
+          minMinutes: 20,
+          typicalMinutes: 40,
+          maxMinutes: 60,
+          sampleCount: 100,
+        ),
+      },
+      recentWeekdayRanges: const {
+        DateTime.saturday: {
+          WaitTimeBand.afterLunch: WaitTimeRange(
+            minMinutes: 20,
+            typicalMinutes: 30,
+            maxMinutes: 45,
+            sampleCount: 4,
+          ),
+        },
+      },
+      source: 'history',
+      calculatedAt: DateTime(2026, 9, 1),
+      sampleCount: 100,
+    );
+    final date = DateTime(2026, 9, 12);
+    final factor = _factor('weekday:${date.weekday}|band:afterLunch', 1.5, 80);
+
+    final result = const VisitDayWaitProfileAdjuster().apply(
+      profiles: [profile],
+      factors: [factor],
+      context: VisitDayContext(date: date, isNationalHoliday: false),
+    );
+
+    expect(result.single.rangeFor(WaitTimeBand.afterLunch)!.typicalMinutes, 30);
+    expect(result.single.source, contains('recent4w:weekday:6|band:afterLunch'));
+  });
+
+  test('special visit day skips ordinary recent weekday profile', () {
+    final profile = TimeBandWaitProfile(
+      facilityId: 'ride',
+      parkId: 'tokyo_disneyland',
+      ranges: const {
+        WaitTimeBand.afterLunch: WaitTimeRange(
+          minMinutes: 20,
+          typicalMinutes: 40,
+          maxMinutes: 60,
+          sampleCount: 100,
+        ),
+      },
+      recentWeekdayRanges: const {
+        DateTime.saturday: {
+          WaitTimeBand.afterLunch: WaitTimeRange(
+            minMinutes: 10,
+            typicalMinutes: 20,
+            maxMinutes: 30,
+            sampleCount: 4,
+          ),
+        },
+      },
+      source: 'history',
+      calculatedAt: DateTime(2026, 9, 1),
+      sampleCount: 100,
+    );
+    final date = DateTime(2026, 9, 12);
+    final result = const VisitDayWaitProfileAdjuster().apply(
+      profiles: [profile],
+      factors: const [],
+      context: VisitDayContext(
+        date: date,
+        isNationalHoliday: false,
+        specialEventIds: const ['goods_launch_day'],
+        specialEventNames: const ['グッズ発売日'],
+      ),
+    );
+
+    expect(result.single.rangeFor(WaitTimeBand.afterLunch)!.typicalMinutes, 40);
+  });
+
 }
 
 CrowdFactorProfile _factor(String dimension, double factor, int sampleCount) {

@@ -20,7 +20,7 @@ void main() {
     expect(result.waitProfiles.single.ranges.keys.toSet(), WaitTimeBand.values.toSet());
     expect(result.factors, isNotEmpty);
     expect(result.factors.every((item) => item.sampleCount > 0), isTrue);
-    expect(result.factors.every((item) => item.methodVersion == '5.1.1'), isTrue);
+    expect(result.factors.every((item) => item.methodVersion == '5.2.0'), isTrue);
   });
 
 
@@ -127,6 +127,51 @@ void main() {
     for (final band in WaitTimeBand.values) {
       expect(ranges[band]!.sampleCount, 1);
     }
+  });
+
+  test('recent weekday profile weights latest four daily medians without polling bias', () {
+    final records = <HistoricalWaitRecord>[];
+    final days = <DateTime>[
+      DateTime(2026, 9, 8, 13),
+      DateTime(2026, 9, 1, 13),
+      DateTime(2026, 8, 25, 13),
+      DateTime(2026, 8, 18, 13),
+    ];
+    final waits = <int>[10, 20, 30, 40];
+    for (var i = 0; i < days.length; i++) {
+      final repeats = i == 0 ? 20 : 1;
+      for (var j = 0; j < repeats; j++) {
+        records.add(HistoricalWaitRecord(
+          parkId: 'tokyo_disneyland',
+          facilityId: 'ride_a',
+          observedAt: days[i].add(Duration(minutes: j)),
+          waitMinutes: waits[i],
+          source: 'test',
+        ));
+      }
+    }
+    // A special Tuesday must not contaminate the ordinary-Tuesday recent profile.
+    records.add(HistoricalWaitRecord(
+      parkId: 'tokyo_disneyland',
+      facilityId: 'ride_a',
+      observedAt: DateTime(2026, 9, 15, 13),
+      waitMinutes: 180,
+      source: 'test',
+      eventIds: const ['goods_launch_day'],
+    ));
+
+    final result = const HistoricalWaitProfileGenerator().generate(
+      parkId: 'tokyo_disneyland',
+      records: records,
+      calculatedAt: DateTime(2026, 9, 16),
+    );
+    final recent = result.waitProfiles.single
+        .recentRangeFor(DateTime.tuesday, WaitTimeBand.afterLunch);
+    expect(recent, isNotNull);
+    expect(recent!.sampleCount, 4);
+    // 10*0.50 + 20*0.25 + 30*0.15 + 40*0.10 = 18.5 -> 5-min ceil = 20.
+    expect(recent.typicalMinutes, 20);
+    expect(recent.maxMinutes, 40);
   });
 
 }

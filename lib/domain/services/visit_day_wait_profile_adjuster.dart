@@ -19,7 +19,7 @@ class VisitDayWaitProfileAdjuster {
     int minimumSamples = 30,
     double maximumMultiplier = 1.75,
   }) {
-    if (profiles.isEmpty || factors.isEmpty) {
+    if (profiles.isEmpty) {
       return profiles;
     }
 
@@ -31,13 +31,23 @@ class VisitDayWaitProfileAdjuster {
 
       for (final entry in profile.ranges.entries) {
         final band = entry.key;
-        final range = entry.value;
+        var range = entry.value;
+        final recent = context.hasSpecialContext
+            ? null
+            : profile.recentRangeFor(context.date.weekday, band);
+        final usesRecent = recent != null && (recent.sampleCount ?? 0) >= 2;
+        if (usesRecent) {
+          range = recent;
+          changed = true;
+          appliedKeys.add('recent4w:weekday:${context.date.weekday}|band:${band.name}');
+        }
         final selected = _selectFactor(
           profile: profile,
           factors: factors,
           context: context,
           band: band,
           minimumSamples: minimumSamples,
+          skipWeekdayAndSeason: usesRecent,
         );
         if (selected == null) {
           ranges[band] = range;
@@ -79,6 +89,7 @@ class VisitDayWaitProfileAdjuster {
               '(${appliedKeys.join(', ')})',
           calculatedAt: profile.calculatedAt,
           sampleCount: profile.sampleCount,
+          recentWeekdayRanges: profile.recentWeekdayRanges,
         ),
       );
     }
@@ -92,13 +103,18 @@ class VisitDayWaitProfileAdjuster {
     required VisitDayContext context,
     required WaitTimeBand band,
     required int minimumSamples,
+    bool skipWeekdayAndSeason = false,
   }) {
     final specificKeys = <String>{
-      'weekday:${context.date.weekday}|band:${band.name}',
+      if (!skipWeekdayAndSeason)
+        'weekday:${context.date.weekday}|band:${band.name}',
       if (context.isNationalHoliday) 'holiday:true|band:${band.name}',
       ...context.eventIds.map((id) => 'event:$id|band:${band.name}'),
     };
-    final generalKeys = context.factorDimensionKeys().toSet();
+    final generalKeys = context.factorDimensionKeys().where((key) {
+      if (!skipWeekdayAndSeason) return true;
+      return !key.startsWith('weekday:') && !key.startsWith('season:');
+    }).toSet();
 
     final specific = _strongestMeasuredFactor(
       profile: profile,

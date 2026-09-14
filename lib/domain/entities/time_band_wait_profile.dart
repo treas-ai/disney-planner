@@ -9,6 +9,7 @@ class TimeBandWaitProfile {
     required this.source,
     required this.calculatedAt,
     required this.sampleCount,
+    this.recentWeekdayRanges = const {},
   });
 
   factory TimeBandWaitProfile.fromJson(Map<String, dynamic> json) {
@@ -29,6 +30,19 @@ class TimeBandWaitProfile {
           DateTime.tryParse(json['calculatedAt'] as String? ?? '') ??
           DateTime(2000),
       sampleCount: json['sampleCount'] as int? ?? 0,
+      recentWeekdayRanges: {
+        for (final weekdayEntry in
+            (json['recentWeekdayRanges'] as Map<String, dynamic>? ??
+                    const <String, dynamic>{})
+                .entries)
+          int.parse(weekdayEntry.key): {
+              for (final bandEntry in
+                  (weekdayEntry.value as Map<String, dynamic>).entries)
+                WaitTimeBand.fromName(bandEntry.key): WaitTimeRange.fromJson(
+                  bandEntry.value as Map<String, dynamic>,
+                ),
+            },
+      },
     );
   }
 
@@ -38,6 +52,15 @@ class TimeBandWaitProfile {
   final String source;
   final DateTime calculatedAt;
   final int sampleCount;
+
+  /// Recency-weighted daily-median ranges for the latest four ordinary
+  /// occurrences of each weekday. Keys are DateTime.weekday (1..7).
+  /// Holiday/event observations are deliberately excluded so an ordinary
+  /// Tuesday is not distorted by a special Tuesday.
+  final Map<int, Map<WaitTimeBand, WaitTimeRange>> recentWeekdayRanges;
+
+  WaitTimeRange? recentRangeFor(int weekday, WaitTimeBand band) =>
+      recentWeekdayRanges[weekday]?[band];
 
   WaitTimeRange? rangeFor(WaitTimeBand band) => ranges[band];
 
@@ -52,6 +75,14 @@ class TimeBandWaitProfile {
       'source': source,
       'calculatedAt': calculatedAt.toIso8601String(),
       'sampleCount': sampleCount,
+      if (recentWeekdayRanges.isNotEmpty)
+        'recentWeekdayRanges': {
+          for (final weekdayEntry in recentWeekdayRanges.entries)
+            weekdayEntry.key.toString(): {
+              for (final bandEntry in weekdayEntry.value.entries)
+                bandEntry.key.name: bandEntry.value.toJson(),
+            },
+        },
     };
   }
 }
