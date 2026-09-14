@@ -7,6 +7,7 @@ import '../../domain/entities/facility.dart';
 import '../../domain/entities/greeting_wait_planning_value.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/services/park_crowd_factor_estimator.dart';
+import '../local/local_visit_day_context_repository.dart';
 
 class LocalGreetingWaitPlanningRepository {
   const LocalGreetingWaitPlanningRepository({
@@ -67,10 +68,16 @@ class LocalGreetingWaitPlanningRepository {
       }
     }
 
+    final visitDayContext = await const LocalVisitDayContextRepository()
+        .loadContext(targetDate);
     final crowdMultiplier = crowdEstimator.estimate(
       factors: crowdFactors,
       targetDate: targetDate,
       maximumMultiplier: maximumCrowdMultiplier,
+      extraDimensionKeys: [
+        if (visitDayContext.isNationalHoliday) 'holiday:true',
+        ...visitDayContext.eventIds.map((id) => 'event:$id'),
+      ],
     );
 
     final result = <String, GreetingWaitPlanningValue>{};

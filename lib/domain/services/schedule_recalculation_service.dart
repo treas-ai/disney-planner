@@ -133,6 +133,13 @@ class ScheduleRecalculationService {
         .where((preference) => eligibleIds.contains(preference.facilityId))
         .toList(growable: false);
 
+    _appendLiveWaitDecisionWarnings(
+      request: request,
+      eligibleFacilities: eligibleFacilities,
+      warnings: warnings,
+      simulatedWaitMinutesByFacilityId: simulatedWaitMinutesByFacilityId,
+    );
+
     final currentFacility = _latestFacility(
       preserved: preserved,
       facilities: request.facilities,
@@ -182,6 +189,7 @@ class ScheduleRecalculationService {
       settings: replanningSettings,
       facilities: prioritizedFacilities,
       preferences: eligiblePreferences,
+      waitProfiles: request.waitProfiles,
     );
 
     final preservedKeys = preserved.map(_key).toSet();
@@ -261,7 +269,12 @@ class ScheduleRecalculationService {
       }
 
       final end = start + duration;
-      if (end > exitMinutes) continue;
+      if (end > exitMinutes) {
+        warnings.add(
+          '${item.title}は現在の待ち時間・固定予定を反映すると退園時刻までに収まらないため、今回は見送り候補にしました。',
+        );
+        continue;
+      }
 
       final shifted = _shiftScheduleItem(
         item,
@@ -304,6 +317,79 @@ class ScheduleRecalculationService {
     );
   }
 
+
+  void _appendLiveWaitDecisionWarnings({
+    required ScheduleRecalculationRequest request,
+    required List<Facility> eligibleFacilities,
+    required List<String> warnings,
+    required Map<String, int> simulatedWaitMinutesByFacilityId,
+  }) {
+    final existingByFacilityId = <String, ScheduleItem>{};
+    for (final item in request.currentSchedule.items) {
+      final facilityId = item.facilityId;
+      if (facilityId == null || _end(item) <= request.now.hour * 60 + request.now.minute) {
+        continue;
+      }
+      existingByFacilityId.putIfAbsent(facilityId, () => item);
+    }
+
+    final exitMinutes =
+        request.settings.exitTimeHour * 60 + request.settings.exitTimeMinute;
+    final nowMinutes = request.now.hour * 60 + request.now.minute;
+
+    for (final facility in eligibleFacilities) {
+      final existing = existingByFacilityId[facility.id];
+      if (existing?.usesPriorityAccessPlanning == true) continue;
+
+      final simulated = simulatedWaitMinutesByFacilityId[facility.id];
+      final live = request.waitTimes[facility.id];
+      final hasFreshLive = live != null && !live.isStaleAt(request.now);
+      final currentWait = simulated ?? (hasFreshLive ? live.waitMinutes : null);
+      if (currentWait == null) continue;
+
+      final plannedWait = existing?.standbyWaitMinutes ??
+          (existing?.usesPriorityAccessPlanning == true
+              ? null
+              : existing?.estimatedWaitMinutes);
+      if (plannedWait != null) {
+        final delta = currentWait - plannedWait;
+        if (delta <= -15) {
+          warnings.add(
+            '${facility.name}は計画$plannedWait分に対して現在$currentWait分で、今すぐ行く候補です（${-delta}分短い）。',
+          );
+        } else if (delta >= 20) {
+          warnings.add(
+            '${facility.name}は計画$plannedWait分に対して現在$currentWait分まで増えているため、固定予定に支障がなければ後回し候補です。',
+          );
+        }
+      }
+
+      var latestUsableMinutes = exitMinutes;
+      final windows = facility.operatingWindowsFor(request.now);
+      if (windows.isNotEmpty) {
+        final closes = windows
+            .map((window) => window.close.hour * 60 + window.close.minute)
+            .where((value) => value > nowMinutes)
+            .toList(growable: false);
+        if (closes.isNotEmpty) {
+          final facilityClose = closes.reduce((a, b) => a > b ? a : b);
+          if (facilityClose < latestUsableMinutes) latestUsableMinutes = facilityClose;
+        }
+      }
+
+      final required = currentWait + facility.durationMinutes;
+      final remaining = latestUsableMinutes - nowMinutes;
+      if (remaining > 0 && required > remaining) {
+        warnings.add(
+          '${facility.name}は現在待ち$currentWait分では営業終了・退園までに収まりにくいため、今回は見送り候補です。',
+        );
+      } else if (remaining > 0 && remaining <= 120) {
+        warnings.add(
+          '${facility.name}は利用可能時間が残り約$remaining分のため、後回しにし過ぎない候補です。',
+        );
+      }
+    }
+  }
 
   bool _isUnavailable(LiveOperatingStatus? status) {
     if (status == null) return false;
@@ -360,10 +446,15 @@ class ScheduleRecalculationService {
       waitEstimateSource: liveWaitMinutes == null
           ? item.waitEstimateSource
           : '当日${liveWaitSourceLabel ?? '待ち時間'}を再最適化へ反映',
+      accessMethod: item.accessMethod,
+      usesVacationPackageUnlimited: item.usesVacationPackageUnlimited,
+      standbyWaitMinutes: liveWaitMinutes ?? item.standbyWaitMinutes,
+      priorityAccessBufferMinutes: item.priorityAccessBufferMinutes,
     );
   }
 
   bool _usesPriorityAccessPlanning(ScheduleItem item) {
+    if (item.usesPriorityAccessPlanning) return true;
     final source = item.waitEstimateSource?.trim() ?? '';
     return source.contains('バケーションパッケージ乗り放題') ||
         source.contains('バケパ乗り放題') ||

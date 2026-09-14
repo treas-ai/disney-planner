@@ -36,6 +36,20 @@ void main() {
     expect(result, 1.5);
   });
 
+
+  test('祝日・特殊日係数は十分な実績がある場合だけ安全側に反映する', () {
+    final result = const ParkCrowdFactorEstimator().estimate(
+      factors: [
+        _factor(1.1, 'weekday:2'),
+        _factor(1.45, 'holiday:true'),
+      ],
+      targetDate: DateTime(2026, 9, 22),
+      extraDimensionKeys: const ['holiday:true'],
+    );
+
+    expect(result, 1.45);
+  });
+
   test('低い代理係数でも基準値を下回らせない', () {
     final result = const ParkCrowdFactorEstimator().estimate(
       factors: [

@@ -2187,6 +2187,7 @@ class _TodayProgressSummary extends StatelessWidget {
 }
 
 bool _usesUnlimitedRideScheduleItem(ScheduleItem item) {
+  if (item.usesVacationPackageUnlimited) return true;
   final source = item.waitEstimateSource?.trim() ?? '';
   return source.startsWith('バケーションパッケージ乗り放題') ||
       source.startsWith('バケパ乗り放題');
@@ -2697,11 +2698,11 @@ class _TodayScheduleContentState extends State<_TodayScheduleContent> {
     if (!_supportsWaitTimeUpdate(facility)) return null;
 
     if (_usesUnlimitedRideScheduleItem(item) &&
-        item.estimatedWaitMinutes != null) {
+        item.priorityAccessBufferMinutes != null) {
       return LiveWaitTimeDisplay(
         kind: LiveWaitTimeKind.passEstimate,
         label: 'バケパ乗り放題・優先入口利用バッファ',
-        waitMinutes: item.estimatedWaitMinutes,
+        waitMinutes: item.priorityAccessBufferMinutes,
         isStale: false,
       );
     }

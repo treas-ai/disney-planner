@@ -4,6 +4,7 @@ import 'live_operating_status.dart';
 import 'live_wait_time.dart';
 import 'plan_preference.dart';
 import 'trip_settings.dart';
+import 'time_band_wait_profile.dart';
 import 'weather_snapshot.dart';
 import 'live_pass_status.dart';
 import '../enums/fatigue_level.dart';
@@ -22,6 +23,7 @@ class ScheduleRecalculationRequest {
     this.fatigueLevel = FatigueLevel.low,
     this.hasBaggage = false,
     this.hotelBreakAvailable = false,
+    this.waitProfiles = const <TimeBandWaitProfile>[],
   });
 
   final DateTime now;
@@ -36,4 +38,5 @@ class ScheduleRecalculationRequest {
   final FatigueLevel fatigueLevel;
   final bool hasBaggage;
   final bool hotelBreakAvailable;
+  final List<TimeBandWaitProfile> waitProfiles;
 }

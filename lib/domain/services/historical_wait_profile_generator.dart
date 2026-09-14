@@ -46,11 +46,19 @@ class HistoricalWaitProfileGenerator {
       ));
       final groups = <String, List<HistoricalWaitRecord>>{};
       for (final sample in samples) {
+        final local = _localTime(sample.observedAt);
+        final band = _bandFor(sample.observedAt);
         final keys = <String>[
-          'weekday:${sample.observedAt.weekday}',
-          'season:${_season(sample.observedAt.month)}',
-          if (sample.isHoliday) 'holiday:true',
-          ...sample.eventIds.map((id) => 'event:$id'),
+          'weekday:${local.weekday}',
+          'season:${_season(local.month)}',
+          'weekday:${local.weekday}|band:${band.name}',
+          if (sample.isHoliday) ...[
+            'holiday:true',
+            'holiday:true|band:${band.name}',
+          ],
+          ...sample.eventIds.expand(
+            (id) => ['event:$id', 'event:$id|band:${band.name}'],
+          ),
         ];
         for (final key in keys) {
           groups.putIfAbsent(key, () => []).add(sample);
@@ -106,11 +114,14 @@ class HistoricalWaitProfileGenerator {
   CrowdFactorConfidence _confidence(int count) => count >= 100 ? CrowdFactorConfidence.high : count >= 30 ? CrowdFactorConfidence.medium : CrowdFactorConfidence.low;
   String _season(int month) => month == 12 || month <= 2 ? 'winter' : month <= 5 ? 'spring' : month <= 8 ? 'summer' : 'autumn';
 
+  DateTime _localTime(DateTime time) =>
+      time.isUtc ? time.add(const Duration(hours: 9)) : time;
+
   WaitTimeBand _bandFor(DateTime time) {
     // ThemeParks.wiki履歴はUTC (Z) で保存されるため、
     // 東京ディズニーリゾートの時間帯判定はJSTへ変換してから行う。
     // timezone packageに依存せず、TDRは通年UTC+9（DSTなし）として扱う。
-    final local = time.isUtc ? time.add(const Duration(hours: 9)) : time;
+    final local = _localTime(time);
     final minute = local.hour * 60 + local.minute;
     if (minute < 660) return WaitTimeBand.afterOpening;
     if (minute < 720) return WaitTimeBand.beforeLunch;

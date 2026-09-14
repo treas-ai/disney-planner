@@ -4,6 +4,8 @@ import 'package:disney_planner/domain/entities/time_band_wait_profile.dart';
 import 'package:disney_planner/domain/entities/trip_settings.dart';
 import 'package:disney_planner/domain/entities/wait_time_range.dart';
 import 'package:disney_planner/domain/enums/facility_category.dart';
+import 'package:disney_planner/domain/enums/facility_access_method.dart';
+import 'package:disney_planner/domain/enums/fixed_time_status.dart';
 import 'package:disney_planner/domain/enums/wait_time_band.dart';
 import 'package:disney_planner/domain/services/schedule_engine.dart';
 import 'package:disney_planner/domain/value_objects/coordinate.dart';
@@ -196,6 +198,44 @@ void main() {
 
     expect(item.estimatedWaitMinutes, 30);
     expect(item.waitEstimateSource, '待ち時間データ未登録のため優先度別の安全側暫定値');
+  });
+
+
+  test('confirmed DPA keeps priority-entry buffer separate from standby wait', () {
+    const facility = Facility(
+      id: 'tdl_dpa_test',
+      parkId: 'tokyo_disneyland',
+      areaId: 'tdl_test_area',
+      name: 'DPA内部モデルテスト',
+      category: FacilityCategory.attraction,
+      coordinate: Coordinate(latitude: 0, longitude: 0),
+      durationMinutes: 10,
+      supportsDpa: true,
+    );
+    final preference = PlanPreference.initial(facilityId: facility.id).copyWith(
+      accessMethod: FacilityAccessMethod.dpa,
+      useDpa: true,
+      scheduledAccessTime: '13:00',
+      fixedTimeStatus: FixedTimeStatus.confirmed,
+    );
+
+    final schedule = const ScheduleEngine().generate(
+      settings: _settings(),
+      facilities: const [facility],
+      preferences: [preference],
+    );
+    final item = schedule.items.singleWhere(
+      (item) => item.facilityId == facility.id,
+    );
+
+    expect(item.accessMethod, FacilityAccessMethod.dpa);
+    expect(item.standbyWaitMinutes, isNull);
+    expect(item.priorityAccessBufferMinutes, 10);
+    expect(item.estimatedWaitMinutes, 10);
+    expect(item.usesPriorityAccessPlanning, isTrue);
+    final start = item.startHour * 60 + item.startMinute;
+    final end = item.endHour * 60 + item.endMinute;
+    expect(end - start, 20);
   });
 
 }

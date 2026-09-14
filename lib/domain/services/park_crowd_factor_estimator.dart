@@ -7,6 +7,7 @@ class ParkCrowdFactorEstimator {
     required List<CrowdFactorProfile> factors,
     required DateTime targetDate,
     double maximumMultiplier = 1.75,
+    List<String> extraDimensionKeys = const [],
   }) {
     if (factors.isEmpty) return 1.0;
 
@@ -23,15 +24,23 @@ class ParkCrowdFactorEstimator {
         if (factor.sampleCount >= 30 && factor.dimensions.contains(seasonKey))
           factor.factor,
     ];
+    final specialFactors = <double>[
+      for (final factor in factors)
+        if (factor.sampleCount >= 30 &&
+            factor.dimensions.any(extraDimensionKeys.contains))
+          factor.factor,
+    ];
 
     final weekday = _upperQuartile(weekdayFactors);
     final season = _upperQuartile(seasonFactors);
+    final special = _upperQuartile(specialFactors);
 
     // A greeting has no facility-specific measured factor. Reuse the
     // upper-middle park tendency from the collected attraction history, but
     // never lower the safe fallback below 1.0 or multiply independent factors
     // together. This avoids turning limited proxy data into false precision.
-    final estimate = [1.0, weekday, season].reduce((a, b) => a >= b ? a : b);
+    final estimate = [1.0, weekday, season, special]
+        .reduce((a, b) => a >= b ? a : b);
     return estimate.clamp(1.0, maximumMultiplier).toDouble();
   }
 

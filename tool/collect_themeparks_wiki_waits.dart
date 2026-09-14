@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:disney_planner/data/importers/historical_wait_data_importer.dart';
 import 'package:disney_planner/data/providers/themeparks_wiki_live_parser.dart';
+import 'package:disney_planner/domain/entities/historical_wait_record.dart';
+import 'package:disney_planner/domain/entities/visit_day_context.dart';
 import 'package:disney_planner/domain/services/historical_wait_profile_generator.dart';
 import 'package:http/http.dart' as http;
 
@@ -59,17 +61,6 @@ Future<void> _collectPark({
     for (final entry in rawAliases.entries)
       _normalize(entry.key): entry.value.toString(),
   };
-  final rawSourceAliases =
-      park['sourceEntityAliases'] as Map<String, dynamic>? ?? const {};
-  final sourceAliases = <String, String>{
-    for (final entry in rawSourceAliases.entries)
-      entry.key: entry.value.toString(),
-  };
-  final ignoredSourceIds = <String>{
-    for (final value
-        in (park['ignoredSourceEntityIds'] as List<dynamic>? ?? const []))
-      value.toString(),
-  };
 
   final uri = Uri.parse('https://api.themeparks.wiki/v1/entity/$entityId/live');
   http.Response response;
@@ -125,11 +116,10 @@ Future<void> _collectPark({
   final unmatched = <String>[];
   final rows = <String>[];
   for (final entry in entries) {
-    if (ignoredSourceIds.contains(entry.sourceEntityId)) continue;
+    if (entry.entityType.toUpperCase() != 'ATTRACTION') continue;
     final wait = entry.standbyMinutes;
     if (wait == null || wait < 0) continue;
-    final localId =
-        sourceAliases[entry.sourceEntityId] ?? aliases[_normalize(entry.name)];
+    final localId = aliases[_normalize(entry.name)];
     if (localId == null) {
       unmatched.add('${entry.name} (${entry.sourceEntityId})');
       continue;
@@ -171,15 +161,24 @@ Future<void> _rebuildProfiles(String parkId, File csv) async {
     }
     return;
   }
+  final contextSource = jsonDecode(
+    await File('assets/master/visit_day_context.json').readAsString(),
+  );
+  if (contextSource is! Map<String, dynamic>) {
+    stderr.writeln('visit_day_context.json is invalid');
+    return;
+  }
+  final visitDayRules = VisitDayRuleSet.fromJson(contextSource);
+  final records = _enrichVisitDayContext(imported.records, visitDayRules);
   final result = const HistoricalWaitProfileGenerator().generate(
     parkId: parkId,
-    records: imported.records,
+    records: records,
   );
   await _writeJson('assets/master/crowd_factors/$parkId.json', {
     'parkId': parkId,
     'status': result.factors.isEmpty ? 'not_calculated' : 'generated',
     'source': 'ThemeParks.wiki live history',
-    'sampleCount': imported.records.length,
+    'sampleCount': records.length,
     'generatedAt': DateTime.now().toUtc().toIso8601String(),
     'items': result.factors.map((item) => item.toJson()).toList(),
   });
@@ -187,14 +186,40 @@ Future<void> _rebuildProfiles(String parkId, File csv) async {
     'parkId': parkId,
     'status': result.waitProfiles.isEmpty ? 'not_calculated' : 'generated',
     'source': 'ThemeParks.wiki live history',
-    'sampleCount': imported.records.length,
+    'sampleCount': records.length,
     'generatedAt': DateTime.now().toUtc().toIso8601String(),
     'items': result.waitProfiles.map((item) => item.toJson()).toList(),
   });
   stdout.writeln(
-    '$parkId: profiles rebuilt from ${imported.records.length} observations '
+    '$parkId: profiles rebuilt from ${records.length} observations '
     '(${result.waitProfiles.length} facilities)',
   );
+}
+
+
+List<HistoricalWaitRecord> _enrichVisitDayContext(
+  List<HistoricalWaitRecord> records,
+  VisitDayRuleSet rules,
+) {
+  return records.map((record) {
+    final jst = record.observedAt.isUtc
+        ? record.observedAt.add(const Duration(hours: 9))
+        : record.observedAt;
+    final context = rules.contextFor(jst);
+    final eventIds = <String>{...record.eventIds, ...context.eventIds}.toList()
+      ..sort();
+    return HistoricalWaitRecord(
+      parkId: record.parkId,
+      facilityId: record.facilityId,
+      observedAt: record.observedAt,
+      waitMinutes: record.waitMinutes,
+      source: record.source,
+      eventIds: eventIds,
+      isHoliday: record.isHoliday || context.isNationalHoliday,
+      isExcluded: record.isExcluded,
+      exclusionReason: record.exclusionReason,
+    );
+  }).toList(growable: false);
 }
 
 Future<void> _writeJson(String path, Map<String, dynamic> value) async {

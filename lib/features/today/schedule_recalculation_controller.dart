@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../app/state/app_state.dart';
+import '../../data/repositories/crowd_factor_repository_impl.dart';
 import '../../domain/entities/live_operating_status.dart';
 import '../../domain/entities/schedule_recalculation_request.dart';
 import '../../domain/entities/schedule_recalculation_result.dart';
@@ -80,6 +81,12 @@ class ScheduleRecalculationController extends ChangeNotifier {
         );
       }
 
+      final waitProfiles = await const CrowdFactorRepositoryImpl()
+          .loadWaitProfilesForDate(
+            parkId: schedule.parkId,
+            targetDate: _appState.tripSettings.visitDate ?? _liveController.now,
+          );
+
       _pendingResult = _service.createProposal(
         ScheduleRecalculationRequest(
           now: _liveController.now,
@@ -96,6 +103,7 @@ class ScheduleRecalculationController extends ChangeNotifier {
                 )
               : null,
           passStatuses: _liveController.liveDataController.passStatuses,
+          waitProfiles: waitProfiles,
         ),
         simulatedWaitMinutesByFacilityId:
             _liveController.simulationWaitMinutesByFacilityId,

@@ -139,20 +139,22 @@ class PlanTextExporter {
           buffer.writeln('  希望メモ：${preference.memo.trim()}');
         }
       }
-      if (item.estimatedWaitMinutes != null && item.experienceMinutes != null) {
-        final totalMinutes = item.estimatedWaitMinutes! + item.experienceMinutes!;
+      if (item.effectiveQueueMinutes != null && item.experienceMinutes != null) {
+        final queueMinutes = item.effectiveQueueMinutes!;
+        final totalMinutes = queueMinutes + item.experienceMinutes!;
         final usesUnlimitedRide = _usesUnlimitedRide(item);
+        final usesPriorityAccess = _usesPriorityAccess(item);
         buffer
           ..writeln(
-            usesUnlimitedRide
-                ? '  優先入口利用バッファ：${item.estimatedWaitMinutes}分'
-                : '  推定待ち時間：${item.estimatedWaitMinutes}分',
+            usesPriorityAccess
+                ? '  ${usesUnlimitedRide ? '優先入口利用バッファ' : '優先利用バッファ'}：$queueMinutes分'
+                : '  推定待ち時間：$queueMinutes分',
           )
           ..writeln('  体験時間：${item.experienceMinutes}分')
           ..writeln('  合計拘束時間：$totalMinutes分');
         if ((item.waitEstimateSource ?? '').trim().isNotEmpty) {
           buffer.writeln(
-            usesUnlimitedRide
+            usesPriorityAccess
                 ? '  バッファ設定根拠：${item.waitEstimateSource}'
                 : '  待ち時間推定根拠：${item.waitEstimateSource}',
           );
@@ -199,9 +201,19 @@ class PlanTextExporter {
   String _enabled(bool value) => value ? '利用する' : '利用しない';
 
   bool _usesUnlimitedRide(ScheduleItem item) {
+    if (item.usesVacationPackageUnlimited) return true;
     final source = item.waitEstimateSource?.trim() ?? '';
     return source.startsWith('バケーションパッケージ乗り放題') ||
         source.startsWith('バケパ乗り放題');
+  }
+
+  bool _usesPriorityAccess(ScheduleItem item) {
+    if (item.usesPriorityAccessPlanning || _usesUnlimitedRide(item)) return true;
+    final source = item.waitEstimateSource?.trim() ?? '';
+    return source.contains('優先入口') ||
+        source.contains('DPA') ||
+        source.contains('プライオリティ') ||
+        source.contains('パス利用時');
   }
 
   PlanPreference? _preferenceFor(

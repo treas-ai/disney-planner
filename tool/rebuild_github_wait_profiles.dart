@@ -3,13 +3,20 @@ import 'dart:io';
 
 import 'package:disney_planner/data/importers/historical_wait_data_importer.dart';
 import 'package:disney_planner/domain/entities/historical_wait_record.dart';
+import 'package:disney_planner/domain/entities/visit_day_context.dart';
 import 'package:disney_planner/domain/services/historical_wait_profile_generator.dart';
 
 Future<void> main(List<String> args) async {
   final dataRoot = _readDataRoot(args);
+  final contextFile = File('assets/master/visit_day_context.json');
+  final decodedContext = jsonDecode(await contextFile.readAsString());
+  if (decodedContext is! Map<String, dynamic>) {
+    throw const FormatException('visit_day_context.json is invalid');
+  }
+  final visitDayRules = VisitDayRuleSet.fromJson(decodedContext);
   stdout.writeln('wait data root: $dataRoot');
   for (final parkId in const ['tokyo_disneyland', 'tokyo_disneysea']) {
-    await _rebuild(parkId, dataRoot);
+    await _rebuild(parkId, dataRoot, visitDayRules);
   }
 }
 
@@ -32,7 +39,11 @@ String _readDataRoot(List<String> args) {
   return 'tool/wait_data';
 }
 
-Future<void> _rebuild(String parkId, String dataRoot) async {
+Future<void> _rebuild(
+  String parkId,
+  String dataRoot,
+  VisitDayRuleSet visitDayRules,
+) async {
   final records = <HistoricalWaitRecord>[];
   final importer = const HistoricalWaitDataImporter();
 
@@ -43,7 +54,9 @@ Future<void> _rebuild(String parkId, String dataRoot) async {
       await legacy.readAsString(),
       source: 'ThemeParks.wiki legacy live history',
     );
-    if (result.isValid) records.addAll(result.records);
+    if (result.isValid) {
+      records.addAll(_enrichVisitDayContext(result.records, visitDayRules));
+    }
   }
 
   final root = Directory('$dataRoot/github_history');
@@ -65,7 +78,7 @@ Future<void> _rebuild(String parkId, String dataRoot) async {
         stderr.writeln('${file.path}: ${result.errors.take(3).join('; ')}');
         continue;
       }
-      records.addAll(result.records);
+      records.addAll(_enrichVisitDayContext(result.records, visitDayRules));
     }
   }
 
@@ -90,7 +103,9 @@ Future<void> _rebuild(String parkId, String dataRoot) async {
         stderr.writeln('${file.path}: ${archiveResult.errors.take(3).join('; ')}');
         continue;
       }
-      records.addAll(archiveResult.records);
+      records.addAll(
+        _enrichVisitDayContext(archiveResult.records, visitDayRules),
+      );
     }
   }
 
@@ -116,6 +131,32 @@ Future<void> _rebuild(String parkId, String dataRoot) async {
     'items': result.waitProfiles.map((item) => item.toJson()).toList(),
   });
   stdout.writeln('$parkId: rebuilt from ${records.length} observations');
+}
+
+
+List<HistoricalWaitRecord> _enrichVisitDayContext(
+  List<HistoricalWaitRecord> records,
+  VisitDayRuleSet rules,
+) {
+  return records.map((record) {
+    final jst = record.observedAt.isUtc
+        ? record.observedAt.add(const Duration(hours: 9))
+        : record.observedAt;
+    final context = rules.contextFor(jst);
+    final eventIds = <String>{...record.eventIds, ...context.eventIds}.toList()
+      ..sort();
+    return HistoricalWaitRecord(
+      parkId: record.parkId,
+      facilityId: record.facilityId,
+      observedAt: record.observedAt,
+      waitMinutes: record.waitMinutes,
+      source: record.source,
+      eventIds: eventIds,
+      isHoliday: record.isHoliday || context.isNationalHoliday,
+      isExcluded: record.isExcluded,
+      exclusionReason: record.exclusionReason,
+    );
+  }).toList(growable: false);
 }
 
 String _convertGitHubCsv(List<String> lines) {

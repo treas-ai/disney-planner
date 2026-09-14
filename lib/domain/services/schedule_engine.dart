@@ -493,6 +493,20 @@ class ScheduleEngine {
           waitEstimateSource: _usesQueueWaitPlanning(facility)
               ? finalWaitEstimate.source
               : null,
+          accessMethod: preference?.accessMethod ?? FacilityAccessMethod.standby,
+          usesVacationPackageUnlimited: _usesUnlimitedRideBenefit(
+            facility: facility,
+            settings: settings,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          ),
+          standbyWaitMinutes: _usesQueueWaitPlanning(facility) &&
+                  !finalWaitEstimate.isPriorityAccessBuffer
+              ? finalWaitEstimate.waitMinutes
+              : null,
+          priorityAccessBufferMinutes: _usesQueueWaitPlanning(facility) &&
+                  finalWaitEstimate.isPriorityAccessBuffer
+              ? finalWaitEstimate.waitMinutes
+              : null,
         ),
       );
 
@@ -839,6 +853,11 @@ class ScheduleEngine {
             settings: settings,
             unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
           );
+      final priorityAccessBufferMinutes = _priorityAccessBufferMinutes(
+        facility: facility,
+        preference: preference,
+      );
+      final hasPriorityAccess = priorityAccessBufferMinutes != null;
       final waitEstimate = isUserPlannedStandby
           ? _resolveWaitEstimate(
               facility: facility,
@@ -849,7 +868,14 @@ class ScheduleEngine {
               unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
               greetingWaitPlanning: greetingWaitPlanning,
             )
-          : null;
+          : hasPriorityAccess
+              ? _WaitEstimate(
+                  waitMinutes: priorityAccessBufferMinutes,
+                  source:
+                      '${preference.accessMethod.label}（優先利用バッファ$priorityAccessBufferMinutes分・Disney Planner計画値）',
+                  isPriorityAccessBuffer: true,
+                )
+              : null;
       final durationMinutes = isUserPlannedStandby
           ? _resolvePlannedFacilityDuration(
               facility: facility,
@@ -858,7 +884,10 @@ class ScheduleEngine {
               unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
               waitEstimate: waitEstimate,
             )
-          : _resolveFacilityDuration(facility);
+          : hasPriorityAccess
+              ? _resolveFacilityDuration(facility) +
+                  priorityAccessBufferMinutes
+              : _resolveFacilityDuration(facility);
       final fixedEndMinutes = fixedStartMinutes + durationMinutes;
 
       if (fixedStartMinutes < entryMinutes || fixedEndMinutes > exitMinutes) {
@@ -898,17 +927,30 @@ class ScheduleEngine {
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
           estimatedWaitMinutes:
-              isUserPlannedStandby && _usesQueueWaitPlanning(facility)
+              (isUserPlannedStandby || hasPriorityAccess) &&
+                      _usesQueueWaitPlanning(facility)
                   ? waitEstimate?.waitMinutes
                   : null,
           experienceMinutes:
-              isUserPlannedStandby && _usesQueueWaitPlanning(facility)
+              (isUserPlannedStandby || hasPriorityAccess) &&
+                      _usesQueueWaitPlanning(facility)
                   ? _resolveFacilityDuration(facility)
                   : null,
           waitEstimateSource:
-              isUserPlannedStandby && _usesQueueWaitPlanning(facility)
+              (isUserPlannedStandby || hasPriorityAccess) &&
+                      _usesQueueWaitPlanning(facility)
                   ? waitEstimate?.source
                   : null,
+          accessMethod: preference.accessMethod,
+          usesVacationPackageUnlimited: usesUnlimitedRide,
+          standbyWaitMinutes: waitEstimate != null &&
+                  !waitEstimate.isPriorityAccessBuffer
+              ? waitEstimate.waitMinutes
+              : null,
+          priorityAccessBufferMinutes: waitEstimate != null &&
+                  waitEstimate.isPriorityAccessBuffer
+              ? waitEstimate.waitMinutes
+              : null,
         ),
       );
 
@@ -2481,20 +2523,40 @@ class ScheduleEngine {
         unlimitedRideBufferMinutes.containsKey(facility.id);
   }
 
-  bool _usesShortenedQueue({
+  int? _priorityAccessBufferMinutes({
     required Facility facility,
     required PlanPreference? preference,
   }) {
     final method = preference?.accessMethod ?? FacilityAccessMethod.standby;
-    return (method == FacilityAccessMethod.dpa && facility.supportsDpa) ||
-        (method == FacilityAccessMethod.priorityPass &&
-            facility.supportsPriorityPass) ||
-        (method == FacilityAccessMethod.standbyPass &&
-            facility.supportsStandbyPass) ||
-        (preference?.useDpa == true && facility.supportsDpa) ||
-        (preference?.usePriorityPass == true &&
-            facility.supportsPriorityPass) ||
-        (preference?.useStandbyPass == true && facility.supportsStandbyPass);
+    if (method == FacilityAccessMethod.dpa && facility.supportsDpa) return 10;
+    if (method == FacilityAccessMethod.priorityPass &&
+        facility.supportsPriorityPass) {
+      return 15;
+    }
+    if (method == FacilityAccessMethod.standbyPass &&
+        facility.supportsStandbyPass) {
+      return 20;
+    }
+    if (preference?.useDpa == true && facility.supportsDpa) return 10;
+    if (preference?.usePriorityPass == true &&
+        facility.supportsPriorityPass) {
+      return 15;
+    }
+    if (preference?.useStandbyPass == true && facility.supportsStandbyPass) {
+      return 20;
+    }
+    return null;
+  }
+
+  bool _usesShortenedQueue({
+    required Facility facility,
+    required PlanPreference? preference,
+  }) {
+    return _priorityAccessBufferMinutes(
+          facility: facility,
+          preference: preference,
+        ) !=
+        null;
   }
 
   int _resolvePlannedFacilityDuration({
@@ -2522,8 +2584,12 @@ class ScheduleEngine {
 
     // DPA/PP等でも入場から乗車までの時間は0分ではないため、
     // 最低限のキュー・乗降バッファを確保する。
-    if (_usesShortenedQueue(facility: facility, preference: preference)) {
-      return experienceMinutes + 10;
+    final priorityAccessBuffer = _priorityAccessBufferMinutes(
+      facility: facility,
+      preference: preference,
+    );
+    if (priorityAccessBuffer != null) {
+      return experienceMinutes + priorityAccessBuffer;
     }
 
     return experienceMinutes +
@@ -2550,21 +2616,21 @@ class ScheduleEngine {
       return _WaitEstimate(
         waitMinutes: bufferMinutes,
         source: 'バケーションパッケージ乗り放題（優先入口利用バッファ$bufferMinutes分・Disney Planner計画値）',
+        isPriorityAccessBuffer: true,
       );
     }
 
-    final shortened =
-        (method == FacilityAccessMethod.dpa && facility.supportsDpa) ||
-        (method == FacilityAccessMethod.priorityPass && facility.supportsPriorityPass) ||
-        (method == FacilityAccessMethod.standbyPass && facility.supportsStandbyPass) ||
-        (preference?.useDpa == true && facility.supportsDpa) ||
-        (preference?.usePriorityPass == true && facility.supportsPriorityPass) ||
-        (preference?.useStandbyPass == true && facility.supportsStandbyPass);
+    final priorityAccessBuffer = _priorityAccessBufferMinutes(
+      facility: facility,
+      preference: preference,
+    );
 
-    if (shortened) {
-      return const _WaitEstimate(
-        waitMinutes: 10,
-        source: 'パス利用時の暫定バッファ',
+    if (priorityAccessBuffer != null) {
+      return _WaitEstimate(
+        waitMinutes: priorityAccessBuffer,
+        source:
+            '${method.label}（優先利用バッファ$priorityAccessBuffer分・Disney Planner計画値）',
+        isPriorityAccessBuffer: true,
       );
     }
 
@@ -3596,6 +3662,10 @@ class ScheduleEngine {
     int? estimatedWaitMinutes,
     int? experienceMinutes,
     String? waitEstimateSource,
+    FacilityAccessMethod? accessMethod,
+    bool usesVacationPackageUnlimited = false,
+    int? standbyWaitMinutes,
+    int? priorityAccessBufferMinutes,
   }) {
     return ScheduleItem(
       id: id,
@@ -3611,6 +3681,10 @@ class ScheduleEngine {
       estimatedWaitMinutes: estimatedWaitMinutes,
       experienceMinutes: experienceMinutes,
       waitEstimateSource: waitEstimateSource,
+      accessMethod: accessMethod,
+      usesVacationPackageUnlimited: usesVacationPackageUnlimited,
+      standbyWaitMinutes: standbyWaitMinutes,
+      priorityAccessBufferMinutes: priorityAccessBufferMinutes,
     );
   }
 
@@ -3675,10 +3749,15 @@ class _FixedAccessCandidate {
 }
 
 class _WaitEstimate {
-  const _WaitEstimate({required this.waitMinutes, required this.source});
+  const _WaitEstimate({
+    required this.waitMinutes,
+    required this.source,
+    this.isPriorityAccessBuffer = false,
+  });
 
   final int waitMinutes;
   final String source;
+  final bool isPriorityAccessBuffer;
 }
 
 

@@ -291,7 +291,10 @@ class ScheduleController extends ChangeNotifier {
           .loadEventImpacts(parkId: selectedParkId);
 
       final waitProfiles = await const CrowdFactorRepositoryImpl()
-          .loadWaitProfiles(parkId: selectedParkId);
+          .loadWaitProfilesForDate(
+            parkId: selectedParkId,
+            targetDate: targetDate,
+          );
       final crowdFactors = await const CrowdFactorRepositoryImpl()
           .loadCrowdFactors(parkId: selectedParkId);
       final greetingWaitPlanning =
@@ -507,7 +510,10 @@ class ScheduleController extends ChangeNotifier {
     final connections = await ServiceLocator.movementRepository
         .loadAreaConnections(parkId: selectedParkId);
     final waitProfiles = await const CrowdFactorRepositoryImpl()
-        .loadWaitProfiles(parkId: selectedParkId);
+        .loadWaitProfilesForDate(
+          parkId: selectedParkId,
+          targetDate: targetDate,
+        );
     final expertProfiles = await ServiceLocator.expertRecommendationRepository
         .loadProfiles(parkId: selectedParkId);
     final waitProfileById = {
@@ -866,6 +872,8 @@ class ScheduleController extends ChangeNotifier {
     if (choice.kind == FreeTimeImprovementKind.repeatAttraction) {
       final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
       final repeatNumber = choice.repeatNumber ?? 2;
+      final waitSource = _canonicalUnlimitedRideSource(choice);
+      final usesUnlimitedRide = _isUnlimitedRideSource(waitSource);
       final item = ScheduleItem(
         id:
             'manual_repeat_${_dateToken(targetDate)}_${choice.facility.id}_'
@@ -885,7 +893,13 @@ class ScheduleController extends ChangeNotifier {
             'ユーザーが手動追加した再乗車です。不要になった場合はプランを元に戻すか再編集できます。',
         estimatedWaitMinutes: choice.estimatedWaitMinutes,
         experienceMinutes: choice.facility.durationMinutes,
-        waitEstimateSource: _canonicalUnlimitedRideSource(choice),
+        waitEstimateSource: waitSource,
+        accessMethod: FacilityAccessMethod.standby,
+        usesVacationPackageUnlimited: usesUnlimitedRide,
+        standbyWaitMinutes:
+            usesUnlimitedRide ? null : choice.estimatedWaitMinutes,
+        priorityAccessBufferMinutes:
+            usesUnlimitedRide ? choice.estimatedWaitMinutes : null,
       );
       if (!_insertFreeTimeItemLocally(item)) {
         errorMessage =
@@ -922,6 +936,9 @@ class ScheduleController extends ChangeNotifier {
       ]);
     }
 
+    final waitSource = _canonicalUnlimitedRideSource(choice);
+    final usesUnlimitedRide = _isUnlimitedRideSource(waitSource);
+    final preference = _appState.getPreference(facility.id);
     final item = ScheduleItem(
       id:
           'manual_free_time_${_dateToken(_appState.tripSettings.visitDate ?? DateTime.now())}_'
@@ -939,7 +956,13 @@ class ScheduleController extends ChangeNotifier {
       note: '空き時間改善で手動追加した予定です。',
       estimatedWaitMinutes: choice.estimatedWaitMinutes,
       experienceMinutes: facility.durationMinutes,
-      waitEstimateSource: _canonicalUnlimitedRideSource(choice),
+      waitEstimateSource: waitSource,
+      accessMethod: preference?.accessMethod ?? FacilityAccessMethod.standby,
+      usesVacationPackageUnlimited: usesUnlimitedRide,
+      standbyWaitMinutes:
+          usesUnlimitedRide ? null : choice.estimatedWaitMinutes,
+      priorityAccessBufferMinutes:
+          usesUnlimitedRide ? choice.estimatedWaitMinutes : null,
     );
     if (!_insertFreeTimeItemLocally(item)) {
       errorMessage =
@@ -1158,6 +1181,12 @@ class ScheduleController extends ChangeNotifier {
       return 'バケーションパッケージ乗り放題（優先入口利用バッファ$minutes分・Disney Planner計画値）';
     }
     return source;
+  }
+
+  bool _isUnlimitedRideSource(String? source) {
+    final value = source?.trim() ?? '';
+    return value.startsWith('バケーションパッケージ乗り放題') ||
+        value.startsWith('バケパ乗り放題');
   }
 
   bool _insertFreeTimeItemLocally(ScheduleItem insertedItem) {

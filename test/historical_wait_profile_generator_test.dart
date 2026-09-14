@@ -23,6 +23,41 @@ void main() {
     expect(result.factors.every((item) => item.methodVersion == '5.1.1'), isTrue);
   });
 
+
+  test('generates weekday x time-band and holiday x time-band factors', () {
+    final records = List.generate(
+      40,
+      (index) => HistoricalWaitRecord(
+        parkId: 'tokyo_disneyland',
+        facilityId: 'ride_a',
+        observedAt: DateTime.utc(2026, 8, 1 + (index % 28), 4), // 13:00 JST
+        waitMinutes: 30 + (index % 10),
+        source: 'test',
+        isHoliday: true,
+      ),
+    );
+
+    final result = const HistoricalWaitProfileGenerator().generate(
+      parkId: 'tokyo_disneyland',
+      records: records,
+      calculatedAt: DateTime.utc(2026, 9, 1),
+    );
+    expect(
+      result.factors.any(
+        (factor) => factor.dimensions.any(
+          (dimension) => dimension.contains('|band:afterLunch'),
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      result.factors.any(
+        (factor) => factor.dimensions.contains('holiday:true|band:afterLunch'),
+      ),
+      isTrue,
+    );
+  });
+
   test('ThemeParks.wiki UTC timestamps are classified using JST time bands', () {
     final records = <HistoricalWaitRecord>[
       HistoricalWaitRecord(

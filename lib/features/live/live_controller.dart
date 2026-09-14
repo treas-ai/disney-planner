@@ -447,7 +447,7 @@ class LiveController extends ChangeNotifier {
       final nextWaitTime = _resolveWaitTimeDisplay(
         facility: nextFacility,
         preference: nextPreference,
-        plannedWaitMinutes: nextItem.estimatedWaitMinutes,
+        plannedWaitMinutes: _standbyPlannedWait(nextItem),
         plannedWaitSource: nextItem.waitEstimateSource,
       );
       final nextExpectedEndAt = _calculateExpectedEndAt(
@@ -532,13 +532,13 @@ class LiveController extends ChangeNotifier {
     final currentWaitTime = _resolveWaitTimeDisplay(
       facility: currentFacility,
       preference: currentPreference,
-      plannedWaitMinutes: currentItem?.estimatedWaitMinutes,
+      plannedWaitMinutes: _standbyPlannedWait(currentItem),
       plannedWaitSource: currentItem?.waitEstimateSource,
     );
     final nextWaitTime = _resolveWaitTimeDisplay(
       facility: nextFacility,
       preference: nextPreference,
-      plannedWaitMinutes: nextItem?.estimatedWaitMinutes,
+      plannedWaitMinutes: _standbyPlannedWait(nextItem),
       plannedWaitSource: nextItem?.waitEstimateSource,
     );
     final minutesUntilNext = nextItem == null
@@ -617,6 +617,13 @@ class LiveController extends ChangeNotifier {
     }
 
     return currentSchedule.items.length - 1;
+  }
+
+  int? _standbyPlannedWait(ScheduleItem? item) {
+    if (item == null) return null;
+    if (item.standbyWaitMinutes != null) return item.standbyWaitMinutes;
+    if (item.usesPriorityAccessPlanning) return null;
+    return item.estimatedWaitMinutes;
   }
 
   LiveWaitTimeDisplay? _resolveWaitTimeDisplay({
@@ -876,7 +883,10 @@ class LiveController extends ChangeNotifier {
           );
 
     final waitProfiles = await const CrowdFactorRepositoryImpl()
-        .loadWaitProfiles(parkId: currentParkId);
+        .loadWaitProfilesForDate(
+          parkId: currentParkId,
+          targetDate: targetDate,
+        );
     final plannedTargetByFacilityId = <String, DateTime>{};
     final plannedWaitByFacilityId = <String, int>{};
     final plannedSourceByFacilityId = <String, String>{};
@@ -895,7 +905,7 @@ class LiveController extends ChangeNotifier {
             item.startMinute,
           ),
         );
-        final plannedWait = item.estimatedWaitMinutes;
+        final plannedWait = _standbyPlannedWait(item);
         if (plannedWait != null) {
           plannedWaitByFacilityId.putIfAbsent(facilityId, () => plannedWait);
         }

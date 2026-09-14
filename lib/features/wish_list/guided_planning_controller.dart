@@ -594,7 +594,10 @@ class GuidedPlanningController extends ChangeNotifier {
     final parkItems = items.where((item) => item.parkId == parkId && item.isAvailableOn(date)).toList(growable: false);
     final facilities = await ServiceLocator.facilityRepository.getFacilitiesByParkId(parkId);
     final operationalById = <String, Facility>{for (final f in facilities) if (f.canAddToPlanAt(date)) f.id: f};
-    final profiles = await const CrowdFactorRepositoryImpl().loadWaitProfiles(parkId: parkId);
+    final profiles = await const CrowdFactorRepositoryImpl().loadWaitProfilesForDate(
+      parkId: parkId,
+      targetDate: date,
+    );
     final expertProfiles = await ServiceLocator.expertRecommendationRepository
         .loadProfiles(parkId: parkId);
     const waitScorer = DynamicWaitScoringService();

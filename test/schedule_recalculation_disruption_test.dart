@@ -5,8 +5,11 @@ import 'package:disney_planner/domain/entities/plan_preference.dart';
 import 'package:disney_planner/domain/entities/schedule_item.dart';
 import 'package:disney_planner/domain/entities/schedule_recalculation_request.dart';
 import 'package:disney_planner/domain/entities/trip_settings.dart';
+import 'package:disney_planner/domain/entities/time_band_wait_profile.dart';
+import 'package:disney_planner/domain/entities/wait_time_range.dart';
 import 'package:disney_planner/domain/enums/facility_category.dart';
 import 'package:disney_planner/domain/enums/schedule_item_type.dart';
+import 'package:disney_planner/domain/enums/wait_time_band.dart';
 import 'package:disney_planner/domain/services/schedule_recalculation_service.dart';
 import 'package:disney_planner/domain/value_objects/coordinate.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -245,6 +248,102 @@ void main() {
       result.warnings.any((message) => message.contains('シミュレーション60分')),
       isTrue,
     );
+  });
+
+
+  test('当日再最適化でも収集済み待ち時間プロファイルを利用する', () {
+    const target = Facility(
+      id: 'profile_target',
+      parkId: 'tokyo_disneyland',
+      areaId: 'area_a',
+      name: '履歴プロファイル対象',
+      category: FacilityCategory.attraction,
+      coordinate: Coordinate(latitude: 0, longitude: 0),
+      durationMinutes: 10,
+    );
+    final now = DateTime(2026, 10, 5, 13, 0);
+    final settings = TripSettings.initial().copyWith(
+      parkId: 'tokyo_disneyland',
+      visitDateIso: '2026-10-05T00:00:00.000',
+      entryTimeHour: 9,
+      entryTimeMinute: 0,
+      exitTimeHour: 21,
+      exitTimeMinute: 0,
+      wantsLunch: false,
+      wantsDinner: false,
+    );
+    final schedule = DaySchedule(
+      id: 'before_profile',
+      parkId: 'tokyo_disneyland',
+      createdAt: now,
+      items: const [
+        ScheduleItem(
+          id: 'entry',
+          title: '入園',
+          type: ScheduleItemType.entry,
+          startHour: 9,
+          startMinute: 0,
+          endHour: 9,
+          endMinute: 5,
+        ),
+        ScheduleItem(
+          id: 'old_target',
+          title: '履歴プロファイル対象',
+          type: ScheduleItemType.facility,
+          startHour: 14,
+          startMinute: 0,
+          endHour: 14,
+          endMinute: 20,
+          facilityId: 'profile_target',
+          estimatedWaitMinutes: 10,
+          standbyWaitMinutes: 10,
+          experienceMinutes: 10,
+        ),
+        ScheduleItem(
+          id: 'exit',
+          title: '退園',
+          type: ScheduleItemType.exit,
+          startHour: 21,
+          startMinute: 0,
+          endHour: 21,
+          endMinute: 0,
+        ),
+      ],
+    );
+    final profile = TimeBandWaitProfile(
+      facilityId: target.id,
+      parkId: target.parkId,
+      ranges: const {
+        WaitTimeBand.afterLunch: WaitTimeRange(
+          minMinutes: 35,
+          typicalMinutes: 45,
+          maxMinutes: 60,
+          sampleCount: 20,
+        ),
+      },
+      source: 'Git収集履歴',
+      calculatedAt: now,
+      sampleCount: 20,
+    );
+
+    final result = const ScheduleRecalculationService().createProposal(
+      ScheduleRecalculationRequest(
+        now: now,
+        currentSchedule: schedule,
+        settings: settings,
+        facilities: const [target],
+        preferences: [PlanPreference.initial(facilityId: target.id)],
+        waitTimes: const {},
+        operatingStatuses: const {},
+        waitProfiles: [profile],
+      ),
+    );
+
+    final replanned = result.afterSchedule.items
+        .singleWhere((item) => item.facilityId == target.id);
+    expect(replanned.standbyWaitMinutes, 45);
+    expect(replanned.estimatedWaitMinutes, 45);
+    expect(replanned.waitEstimateSource, contains('実績待ち時間プロファイル'));
   });
 
 }

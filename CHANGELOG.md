@@ -1,4 +1,26 @@
-- UIの情報量を増やさず明瞭さを改善。プラン概要と来園前プレビューで手動再乗車件数を予定件数に併記し、自動生成分との違いを分かりやすくした。\n- 来園前プレビューの技術的な「進行判定なし」バッジを削除し、予定件数だけを簡潔に表示するよう整理。\n- 15〜29分の予定間隔は大きなカードにせず「移動・余裕 ○分」のコンパクト表示にし、30分以上のみ従来の余裕時間カードを表示。\n- 詳細欄の見出しを「AI配置理由」「施設メモ」に明確化し、内容を隠したり追加操作を増やさず読み分けやすくした。\n- 空き時間改善・再乗車追加・再乗車削除の通知を横幅の小さいフローティング表示へ統一し、モーダル表示前には既存通知を消して重複表示を防止。\n\n## v7.5.5
+# Disney Planner CHANGELOG
+
+## v7.5.7
+
+- 来園日コンテキスト層を追加。2026/2027年の国民の祝日を内閣府公表値で登録し、都民の日（10/1）・千葉県民の日（6/15）・埼玉県民の日（11/14）を1都3県の地域混雑シグナルとしてデータ化。神奈川県は県全域の同等休業日を公式確認できないため推測追加しない。
+- 3日以上の連休を自動判定し、連休初日・中日・最終日を履歴イベントタグとして蓄積できるようにした。
+- グッズ発売初日を特殊日として登録できるデータ駆動レイヤーを追加。2026/9/15、10/15、12/3、2027/1/12の公式確認済み主要グッズ発売初日を `goods_launch_day` として登録。
+- 待ち時間履歴の再構築時に祝日・地域日・特殊日・連休タグを過去観測へ付与し、将来十分なサンプルが集まった要因だけ `holiday:true` / `event:*` の混雑係数として学習できるよう改善。
+- アトラクション待ち時間は時間帯profileに加え、来園日の曜日・季節・祝日・特殊日の実績係数を参照。相関する係数を掛け合わせず、30サンプル以上ある最も強い上方シグナル1つだけを最大1.75倍まで適用して過補正を防止。
+- グリーティングのパーク混雑代理係数にも祝日・特殊日factorを受け取れるよう拡張。実績不足時は従来の安全側基準値を維持する。
+- `schedule_engine.dart` の不要なnon-null assertion 2件を削除し、v7.5.7初回ZIPで発生した analyzer warning を修正。
+- 待ち時間と優先入口利用バッファを内部モデルで分離。ScheduleItemに通常待機・優先入口バッファ・利用方法・バケパ乗り放題フラグを保持し、旧保存データは従来の根拠文から後方互換で復元。
+- DPA/プライオリティパス等の時間指定利用でも、体験時間とは別に優先利用バッファを確保し、通常待機時間として扱わないよう修正。
+- 当日再最適化でもGit収集済み待ち時間プロファイルを読み込み、来園時刻帯の履歴値を再計画へ引き継ぐよう改善。
+- 当日待ち時間が計画値より大幅に短い場合は「今すぐ行く候補」、大幅に長い場合は「後回し候補」、営業終了・退園まで収まりにくい場合は「見送り候補」として判断理由を追加。
+- 朝一戦略は既存の最初の3手比較ロジックを維持し、後回し損失・移動・待ち時間履歴・代替アクセス・施設価値を比較するテストを継続。
+
+- UIの情報量を増やさず明瞭さを改善。プラン概要と来園前プレビューで手動再乗車件数を予定件数に併記し、自動生成分との違いを分かりやすくした。
+- 来園前プレビューの技術的な「進行判定なし」バッジを削除し、予定件数だけを簡潔に表示するよう整理。
+- 15〜29分の予定間隔は大きなカードにせず「移動・余裕 ○分」のコンパクト表示にし、30分以上のみ従来の余裕時間カードを表示。
+- 詳細欄の見出しを「AI配置理由」「施設メモ」に明確化し、内容を隠したり追加操作を増やさず読み分けやすくした。
+- 空き時間改善・再乗車追加・再乗車削除の通知を横幅の小さいフローティング表示へ統一し、モーダル表示前には既存通知を消して重複表示を防止。
+
 
 ## v7.5.6
 
@@ -104,6 +126,8 @@
 - 記念日・混雑日の数値は実測値ではなくDisney Planner計画値として理由文へ明示し、将来実測wait profileが得られた場合は実測を優先。
 
 
+## v7.5.5
+
 - バケーションパッケージ設定に「対象アトラクション乗り放題」を追加。
 - 公式「アトラクション利用券スペシャル（乗り放題）」対象施設をデータ駆動マスタで管理。
 - 乗り放題対象施設は通常待ち時間ではなく、施設別の優先入口利用バッファ（15/20/25分）+体験時間でスケジュール評価。
@@ -117,6 +141,7 @@
 - 未確定のエントリー受付公演は当日判断用の自由時間として扱う方針を維持し、案内文を「再最適化」から「当日の状況に合わせてプランを再生成」へ更新。
 
 - プラン確認画面から「プランを再最適化」を削除。通常のプラン生成を唯一のスケジュール生成経路とし、ショー・パレード追加後は通常生成で全体を再構成する方針へ整理。
+
 ## 2026-09-09 - v7.5.4 プラン生成品質改善
 
 - 朝一候補の理由文で、入園予測に含まれる「入口→最初の施設」の5分移動を明示し、移動0分という誤解を解消。
@@ -141,6 +166,57 @@
 - 開発者へのお問い合わせ先として `treas0623@gmail.com` を掲載。
 - メールアプリ起動とメールアドレスコピーの導線を追加。
 - アプリ表示バージョンを v7.5.3 に更新。
+
+## v7.5.2 candidate — Simple DPA / Entry Request Strategy
+- 施設ごとのDPA指定を基本操作から外し、旅行設定で「アトラクションDPA 最大0〜3個」を指定する。
+- AIの事前DPA自動配分はアトラクションだけを対象にし、設定上限以内で高効果候補へ配分する。
+- ショー／パレードDPAはアトラクションDPA上限へ含めない。エントリー受付を先に行い、落選時のみ「DPAを検討」を既定フォールバックにする。
+- 既存の施設別DPA・時刻指定は詳細設定／当日確定情報として互換維持する。
+- 旧保存データの `canUseDpa=true` はアトラクションDPA最大1個として移行する。
+
+
+## v7.5.2 candidate fix — whole-day DPA and evening reuse
+- Attraction DPA allocation now evaluates the resulting whole-day schedule instead of ranking a facility in isolation.
+- `maximum N` remains a ceiling: an extra DPA is used only when the simulated day plan improves.
+- High-priority wish candidates remain available as reserve candidates so meal/show anchors do not create avoidable multi-hour gaps.
+- Shows and parades without a resolved performance time are not inserted into arbitrary free slots; resolved/entry-request performance times remain fixed anchors.
+- Evening free time can therefore be reused by remaining wanted attractions around fixed show/parade plans rather than being treated as automatically bad or automatically filled.
+
+## v7.5.2 candidate fix2 — explicit whole-day open-time handling
+- 60分以上の未使用時間を無言の空白にせず、休憩・自由時間として明示する。
+- 17:00以降の長い空白は「ショー・パレード／自由時間」とし、公演時刻を捏造せず夜の使い道を表現する。
+- 公演時刻が解決済みのショー・パレードは従来どおり固定予定を優先する。
+- 希望施設が尽きた後に未選択アトラクションを勝手に追加しない。
+
+## v7.5.2 candidate — Official performance opportunity awareness
+- 長時間の自由枠を「ショー・パレード」と曖昧表示せず、来園日・対象パークに一致する `performance_schedules.json` の公式公演時刻を候補として表示する。
+- 未選択のショーを自動予約・当選扱いにはしない。選択済みで公演時刻が解決されたショー／パレードは従来どおり固定予定を優先する。
+- エントリー受付対象／DPA対象も候補表示に付記する。
+
+- 当日ガイドの利用時間表示を整理し、バケパ乗り放題・DPA・PP等の優先利用バッファと通常待機時間を明確に分離。
+- 優先利用予定では優先入口バッファを主表示し、通常待機値は参考情報へ変更。
+- シミュレーション待ち時間を「仮想通常待機」と明示し、優先利用バッファとの混同を防止。
+## v7.5.0 - Wait-aware Schedule Optimization（候補）
+
+- AIプラン生成で施設の時間帯別待ち時間変動を配置順に反映
+- 「今行かないと後で大幅に混む」施設を後回し損失として評価
+- 朝一しか比較的空いていない施設が複数ある場合、後回し損失・優先度・移動を比較して朝枠を競合解決
+- 後の時間帯が明確に空く施設は、固定予定等を壊さない範囲で後回し候補にする
+- 配置順変更には時間帯サンプル3件以上のprofileのみ使用
+- 固定予定や営業時間調整で実開始時刻が変わった場合、待ち時間と拘束時間を最終時刻で再評価
+## v7.5.0 candidate fix2
+- 朝一上位2件の固定先頭化を廃止し、全候補を毎回 wait-aware 再評価。
+- 後回し損失、現在待ち時間、朝一価値、優先度、移動、希望時間を統合して次施設を選択。
+- DPA利用可かつ高混雑DPA対象がある場合、AIが保守的に最大1件を自動割当。
+- AI自動DPAは生成結果用のPreferenceとして保持し、評価用プランにもDPA利用を表示。
+- 食事枠に採用されなかったレストランを通常施設として大量配置しない。
+- 配置順やDPA判断に使う時間帯profileは3サンプル以上を原則とする。
+
+
+## v7.5.0 candidate fix4 — near-term wait-loss ordering
+- Wait-aware ordering now compares the next two reliable time bands instead of the cheapest band anywhere later in the day.
+- This prevents a late-day wait drop from hiding a large morning-to-midday wait increase.
+- Near-term wait growth receives stronger ordering weight so multiple morning-sensitive attractions compete by the cost of postponement.
 
 ## 2026-09-09 - October 2026 date-aware operations update
 
@@ -192,6 +268,16 @@
 - `Facility.waitTime` がある場合は従来どおり現在値を優先し、DPA/PP/Standby Passの10分暫定バッファも維持。
 - サンプル無し時間帯の0/0/0レンジを実待ち0分と誤認せず、安全側フォールバックへ戻す。
 - `schedule_engine_wait_profile_integration_test.dart` を追加し、profile反映と0/0/0安全策を回帰テスト。
+
+## v7.4.4 - Live data branch separation
+
+- Separate frequent TDR raw observation commits from the application `main` branch.
+- `Collect TDR live data` now runs the collector code from `main` but writes wait/DPA/unmatched/diagnostic files to `live-data`.
+- Remove GitHub scheduled triggers from the 5-minute collector; cron-job.org `workflow_dispatch` remains the production trigger.
+- Monthly history compaction now operates on `live-data`.
+- Daily wait-profile rebuild reads raw history from `live-data` and commits only generated `wait_profiles` / `crowd_factors` to `main`.
+- Add configurable wait-data roots to the Python collector/diagnostic/compaction tools and `--data-root` support to the Dart rebuild tool.
+- Add `setup_live_data_branch.ps1` for one-time beginner-friendly creation of the remote `live-data` branch.
 
 ## Dynamic Wait-Time Scoring Integration
 - Historical wait profile based First Move saving score
@@ -355,7 +441,6 @@
 - 公演時刻データがある場合は、従来どおり登録済みの公演時刻から選択します。
 - 公演時刻データがない場合の説明を、予約確認画面の時刻を入力する案内へ変更しました。
 
-# Disney Planner CHANGELOG
 
 ## 7.3.0 - 2026-08-07
 
@@ -749,7 +834,6 @@
 -   質問カードの最大幅とヘッダー余白を最適化。
 -   複数選択の確定ボタンを明確化。
 
-# Changelog
 
 ------------------------------------------------------------------------
 
@@ -1567,66 +1651,3 @@ dart run tool/audit_wish_data.dart
 ------------------------------------------------------------------------
 
 
-## v7.4.4 - Live data branch separation
-
-- Separate frequent TDR raw observation commits from the application `main` branch.
-- `Collect TDR live data` now runs the collector code from `main` but writes wait/DPA/unmatched/diagnostic files to `live-data`.
-- Remove GitHub scheduled triggers from the 5-minute collector; cron-job.org `workflow_dispatch` remains the production trigger.
-- Monthly history compaction now operates on `live-data`.
-- Daily wait-profile rebuild reads raw history from `live-data` and commits only generated `wait_profiles` / `crowd_factors` to `main`.
-- Add configurable wait-data roots to the Python collector/diagnostic/compaction tools and `--data-root` support to the Dart rebuild tool.
-- Add `setup_live_data_branch.ps1` for one-time beginner-friendly creation of the remote `live-data` branch.
-
-## v7.5.0 - Wait-aware Schedule Optimization（候補）
-
-- AIプラン生成で施設の時間帯別待ち時間変動を配置順に反映
-- 「今行かないと後で大幅に混む」施設を後回し損失として評価
-- 朝一しか比較的空いていない施設が複数ある場合、後回し損失・優先度・移動を比較して朝枠を競合解決
-- 後の時間帯が明確に空く施設は、固定予定等を壊さない範囲で後回し候補にする
-- 配置順変更には時間帯サンプル3件以上のprofileのみ使用
-- 固定予定や営業時間調整で実開始時刻が変わった場合、待ち時間と拘束時間を最終時刻で再評価
-## v7.5.0 candidate fix2
-- 朝一上位2件の固定先頭化を廃止し、全候補を毎回 wait-aware 再評価。
-- 後回し損失、現在待ち時間、朝一価値、優先度、移動、希望時間を統合して次施設を選択。
-- DPA利用可かつ高混雑DPA対象がある場合、AIが保守的に最大1件を自動割当。
-- AI自動DPAは生成結果用のPreferenceとして保持し、評価用プランにもDPA利用を表示。
-- 食事枠に採用されなかったレストランを通常施設として大量配置しない。
-- 配置順やDPA判断に使う時間帯profileは3サンプル以上を原則とする。
-
-
-
-## v7.5.0 candidate fix4 — near-term wait-loss ordering
-- Wait-aware ordering now compares the next two reliable time bands instead of the cheapest band anywhere later in the day.
-- This prevents a late-day wait drop from hiding a large morning-to-midday wait increase.
-- Near-term wait growth receives stronger ordering weight so multiple morning-sensitive attractions compete by the cost of postponement.
-
-## v7.5.2 candidate — Simple DPA / Entry Request Strategy
-- 施設ごとのDPA指定を基本操作から外し、旅行設定で「アトラクションDPA 最大0〜3個」を指定する。
-- AIの事前DPA自動配分はアトラクションだけを対象にし、設定上限以内で高効果候補へ配分する。
-- ショー／パレードDPAはアトラクションDPA上限へ含めない。エントリー受付を先に行い、落選時のみ「DPAを検討」を既定フォールバックにする。
-- 既存の施設別DPA・時刻指定は詳細設定／当日確定情報として互換維持する。
-- 旧保存データの `canUseDpa=true` はアトラクションDPA最大1個として移行する。
-
-
-
-## v7.5.2 candidate fix — whole-day DPA and evening reuse
-- Attraction DPA allocation now evaluates the resulting whole-day schedule instead of ranking a facility in isolation.
-- `maximum N` remains a ceiling: an extra DPA is used only when the simulated day plan improves.
-- High-priority wish candidates remain available as reserve candidates so meal/show anchors do not create avoidable multi-hour gaps.
-- Shows and parades without a resolved performance time are not inserted into arbitrary free slots; resolved/entry-request performance times remain fixed anchors.
-- Evening free time can therefore be reused by remaining wanted attractions around fixed show/parade plans rather than being treated as automatically bad or automatically filled.
-
-## v7.5.2 candidate fix2 — explicit whole-day open-time handling
-- 60分以上の未使用時間を無言の空白にせず、休憩・自由時間として明示する。
-- 17:00以降の長い空白は「ショー・パレード／自由時間」とし、公演時刻を捏造せず夜の使い道を表現する。
-- 公演時刻が解決済みのショー・パレードは従来どおり固定予定を優先する。
-- 希望施設が尽きた後に未選択アトラクションを勝手に追加しない。
-
-## v7.5.2 candidate — Official performance opportunity awareness
-- 長時間の自由枠を「ショー・パレード」と曖昧表示せず、来園日・対象パークに一致する `performance_schedules.json` の公式公演時刻を候補として表示する。
-- 未選択のショーを自動予約・当選扱いにはしない。選択済みで公演時刻が解決されたショー／パレードは従来どおり固定予定を優先する。
-- エントリー受付対象／DPA対象も候補表示に付記する。
-
-- 当日ガイドの利用時間表示を整理し、バケパ乗り放題・DPA・PP等の優先利用バッファと通常待機時間を明確に分離。
-- 優先利用予定では優先入口バッファを主表示し、通常待機値は参考情報へ変更。
-- シミュレーション待ち時間を「仮想通常待機」と明示し、優先利用バッファとの混同を防止。

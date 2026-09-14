@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-14",
+  "sourceNote": "国民の祝日は内閣府公表値。地域日は1都3県の公式情報で確認した、来園者行動に影響し得る記念日・学校休業シグナルのみ登録する。固定倍率は持たず、蓄積待ち時間から十分なサンプルが得られた場合だけ event / holiday factor を予測へ適用する。神奈川県には東京都・千葉県・埼玉県の県民の日に相当する県全域の休業日を確認できていないため、推測で追加しない。",
+  "nationalHolidays": [
+    {
+      "id": "jp_2026_01_01",
+      "name": "元日",
+      "date": "2026-01-01"
+    },
+    {
+      "id": "jp_2026_01_12",
+      "name": "成人の日",
+      "date": "2026-01-12"
+    },
+    {
+      "id": "jp_2026_02_11",
+      "name": "建国記念の日",
+      "date": "2026-02-11"
+    },
+    {
+      "id": "jp_2026_02_23",
+      "name": "天皇誕生日",
+      "date": "2026-02-23"
+    },
+    {
+      "id": "jp_2026_03_20",
+      "name": "春分の日",
+      "date": "2026-03-20"
+    },
+    {
+      "id": "jp_2026_04_29",
+      "name": "昭和の日",
+      "date": "2026-04-29"
+    },
+    {
+      "id": "jp_2026_05_03",
+      "name": "憲法記念日",
+      "date": "2026-05-03"
+    },
+    {
+      "id": "jp_2026_05_04",
+      "name": "みどりの日",
+      "date": "2026-05-04"
+    },
+    {
+      "id": "jp_2026_05_05",
+      "name": "こどもの日",
+      "date": "2026-05-05"
+    },
+    {
+      "id": "jp_2026_05_06",
+      "name": "休日（振替休日）",
+      "date": "2026-05-06"
+    },
+    {
+      "id": "jp_2026_07_20",
+      "name": "海の日",
+      "date": "2026-07-20"
+    },
+    {
+      "id": "jp_2026_08_11",
+      "name": "山の日",
+      "date": "2026-08-11"
+    },
+    {
+      "id": "jp_2026_09_21",
+      "name": "敬老の日",
+      "date": "2026-09-21"
+    },
+    {
+      "id": "jp_2026_09_22",
+      "name": "休日（国民の休日）",
+      "date": "2026-09-22"
+    },
+    {
+      "id": "jp_2026_09_23",
+      "name": "秋分の日",
+      "date": "2026-09-23"
+    },
+    {
+      "id": "jp_2026_10_12",
+      "name": "スポーツの日",
+      "date": "2026-10-12"
+    },
+    {
+      "id": "jp_2026_11_03",
+      "name": "文化の日",
+      "date": "2026-11-03"
+    },
+    {
+      "id": "jp_2026_11_23",
+      "name": "勤労感謝の日",
+      "date": "2026-11-23"
+    },
+    {
+      "id": "jp_2027_01_01",
+      "name": "元日",
+      "date": "2027-01-01"
+    },
+    {
+      "id": "jp_2027_01_11",
+      "name": "成人の日",
+      "date": "2027-01-11"
+    },
+    {
+      "id": "jp_2027_02_11",
+      "name": "建国記念の日",
+      "date": "2027-02-11"
+    },
+    {
+      "id": "jp_2027_02_23",
+      "name": "天皇誕生日",
+      "date": "2027-02-23"
+    },
+    {
+      "id": "jp_2027_03_21",
+      "name": "春分の日",
+      "date": "2027-03-21"
+    },
+    {
+      "id": "jp_2027_03_22",
+      "name": "休日（振替休日）",
+      "date": "2027-03-22"
+    },
+    {
+      "id": "jp_2027_04_29",
+      "name": "昭和の日",
+      "date": "2027-04-29"
+    },
+    {
+      "id": "jp_2027_05_03",
+      "name": "憲法記念日",
+      "date": "2027-05-03"
+    },
+    {
+      "id": "jp_2027_05_04",
+      "name": "みどりの日",
+      "date": "2027-05-04"
+    },
+    {
+      "id": "jp_2027_05_05",
+      "name": "こどもの日",
+      "date": "2027-05-05"
+    },
+    {
+      "id": "jp_2027_07_19",
+      "name": "海の日",
+      "date": "2027-07-19"
+    },
+    {
+      "id": "jp_2027_08_11",
+      "name": "山の日",
+      "date": "2027-08-11"
+    },
+    {
+      "id": "jp_2027_09_20",
+      "name": "敬老の日",
+      "date": "2027-09-20"
+    },
+    {
+      "id": "jp_2027_09_23",
+      "name": "秋分の日",
+      "date": "2027-09-23"
+    },
+    {
+      "id": "jp_2027_10_11",
+      "name": "スポーツの日",
+      "date": "2027-10-11"
+    },
+    {
+      "id": "jp_2027_11_03",
+      "name": "文化の日",
+      "date": "2027-11-03"
+    },
+    {
+      "id": "jp_2027_11_23",
+      "name": "勤労感謝の日",
+      "date": "2027-11-23"
+    }
+  ],
+  "regionalDays": [
+    {
+      "id": "tokyo_citizens_day",
+      "name": "都民の日",
+      "monthDay": "10-01",
+      "region": "東京都",
+      "schoolHolidaySignal": true,
+      "sourceUrl": "https://www.metro.tokyo.lg.jp/information/press/2026/08/2026082607"
+    },
+    {
+      "id": "chiba_prefectural_day",
+      "name": "千葉県民の日",
+      "monthDay": "06-15",
+      "region": "千葉県",
+      "schoolHolidaySignal": true,
+      "sourceUrl": "https://www.pref.chiba.lg.jp/kkbunka/kenminnohi/"
+    },
+    {
+      "id": "saitama_prefectural_day",
+      "name": "埼玉県民の日",
+      "monthDay": "11-14",
+      "region": "埼玉県",
+      "schoolHolidaySignal": true,
+      "sourceUrl": "https://www.pref.saitama.lg.jp/a0301/kenminnohi/kentyouopenday.html"
+    }
+  ],
+  "specialDays": [
+    {
+      "id": "goods_launch_day",
+      "name": "ディズニー・ハロウィーン スペシャルグッズ販売初日",
+      "date": "2026-09-15",
+      "scope": "TDR",
+      "sourceUrl": "https://www.tokyodisneyresort.jp/treasure/halloween2026/tdl/"
+    },
+    {
+      "id": "goods_launch_day",
+      "name": "イマジニング・ザ・マジック 第1弾グッズ販売初日",
+      "date": "2026-10-15",
+      "scope": "TDR",
+      "sourceUrl": "https://www.tokyodisneyresort.jp/treasure/imagining2026/"
+    },
+    {
+      "id": "goods_launch_day",
+      "name": "イマジニング・ザ・マジック 第2弾グッズ販売初日",
+      "date": "2026-12-03",
+      "scope": "TDR",
+      "sourceUrl": "https://www.tokyodisneyresort.jp/treasure/imagining2026/"
+    },
+    {
+      "id": "goods_launch_day",
+      "name": "イマジニング・ザ・マジック 第3弾グッズ販売初日",
+      "date": "2027-01-12",
+      "scope": "TDR",
+      "sourceUrl": "https://www.tokyodisneyresort.jp/treasure/imagining2026/"
+    }
+  ]
+}

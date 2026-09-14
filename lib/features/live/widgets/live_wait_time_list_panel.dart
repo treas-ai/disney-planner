@@ -172,11 +172,11 @@ class LiveWaitTimeListPanel extends StatelessWidget {
     required ScheduleItem item,
     required PlanPreference? preference,
   }) {
-    if (_usesUnlimitedRide(item) && item.estimatedWaitMinutes != null) {
+    if (_usesUnlimitedRide(item) && item.priorityAccessBufferMinutes != null) {
       return LiveWaitTimeDisplay(
         kind: LiveWaitTimeKind.passEstimate,
         label: 'バケパ乗り放題・優先入口バッファ',
-        waitMinutes: item.estimatedWaitMinutes,
+        waitMinutes: item.priorityAccessBufferMinutes,
         isStale: false,
       );
     }
@@ -266,6 +266,7 @@ class LiveWaitTimeListPanel extends StatelessWidget {
   }
 
   bool _usesUnlimitedRide(ScheduleItem item) {
+    if (item.usesVacationPackageUnlimited) return true;
     final source = item.waitEstimateSource?.trim() ?? '';
     return source.startsWith('バケーションパッケージ乗り放題') ||
         source.startsWith('バケパ乗り放題');
