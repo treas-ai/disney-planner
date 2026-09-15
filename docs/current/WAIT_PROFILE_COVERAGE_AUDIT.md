@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-15T04:35:00+09:00
+Generated: 2026-09-16T03:27:20+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -8,12 +8,11 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - Active master attractions: 33
 - Mapped active attractions: 33
-- Generated profiles: 31
-- Profile source observations: 17695
+- Generated profiles: 33
+- Profile source observations: 18394
 
 ### 1. Profile missing facilities
 
-- `tdl_fantasyland_haunted_mansion` — ホーンテッドマンション; raw observations=0
 - `tdl_toontown_toon_park` — トゥーンパーク; raw observations=0
 - `tdl_world_bazaar_penny_arcade` — ペニーアーケード; raw observations=0
 
@@ -56,7 +55,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 23389
+- Profile source observations: 24582
 
 ### 1. Profile missing facilities
 
@@ -67,11 +66,13 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - `tds_ac_a_004` — マジックランプシアター: no usable samples in 閉園前
 - `tds_aw_a_005` — ビッグシティ・ヴィークル: no usable samples in 開園直後, 昼前, 昼過ぎ
-- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: no usable samples in 開園直後, 昼前, 昼過ぎ
+- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: no usable samples in 昼前
 
 ### 2b. Low-confidence time bands (<3 samples)
 
 - `tds_ac_a_004` — マジックランプシアター: 夕食前 = 2 samples
+- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 開園直後 = 1 samples
+- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 昼過ぎ = 2 samples
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
 - `tds_pd_a_002` — ニモ＆フレンズ・シーライダー: 閉園前 = 1 samples
 
