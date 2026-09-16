@@ -32,6 +32,12 @@ if (-not $planReviewSource.Contains("ScheduleOptimizationMode.minimumWait") -or
     -not $planReviewSource.Contains("if (hasExistingPlan)")) {
     throw "Baseline wait-first generation or post-generation optimization adjustment is not connected."
 }
+
+if (-not $scheduleEngineSource.Contains("int _compareUnifiedOptimizationCost(") -or
+    -not $scheduleEngineSource.Contains("if (mode == ScheduleOptimizationMode.minimumWait)") -or
+    -not $scheduleEngineSource.Contains("a.standbyWaitMinutes.compareTo(b.standbyWaitMinutes)")) {
+    throw "minimumWait must use standby wait as the primary lexicographic objective."
+}
 $enumMatch = [regex]::Match(
     $tripSettingsSource,
     'enum\s+ScheduleOptimizationMode\s*\{(?<body>[^}]*)\}',

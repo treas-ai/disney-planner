@@ -1,4 +1,26 @@
-﻿# Disney Planner CHANGELOG
+# Disney Planner CHANGELOG
+
+## v7.5.21 - 2026-09-16 minimumWait lexicographic optimization
+
+- 初回生成で使う「待ち時間重視」を、待ち時間・移動・細切れ自由時間の加重和ではなく、通常待機時間を第一キーとする辞書式比較へ変更。
+- 全希望達成と固定予定を守った後の全日Beam Searchでは、通常待機時間が短い候補を移動量や自由時間評価より必ず優先する。待ち時間が同じ場合だけ移動時間、さらに同じ場合だけ細切れ自由時間で比較する。
+- Beam Searchの途中frontier、完成候補の選択、既存プランからの採用判定を同じ比較関数へ統一し、「待ち時間重視」の意味が探索途中と最終判定でずれないようにした。
+- 10/10の希望達成ガード、固定予定、朝一戦略の最初の施設固定、10分刻み探索、他3モードの目的関数は維持。
+- `minimum_wait_lexicographic_structure_test.dart` を追加し、待ち時間第一比較と10/10 coverage guardの回帰を固定。
+
+## v7.5.20 - 2026-09-16 wait-first guided planning
+
+- 初回のプラン生成は4モード選択を先に求めず、希望達成を優先したうえで「待ち時間重視」を基準プランとして生成する導線へ変更。
+- 生成結果に通常待機時間と使える空き時間を提示し、レストラン・休憩・追加施設などを残った余白から考える段階型Plannerへの移行を開始。
+- 4つの最適化モードは削除せず、既存プラン生成後の「プランを調整」から再生成する機能として維持。
+- v7.5.19の生成後フリーズ対策を維持。
+
+## v7.5.19 - 2026-09-16 post-generation freeze fix
+
+- 表示済みプランの後で自動実行される「やりたいこと達成 / DPA分析」が、DPA件数ごとに重い `ScheduleEngine.generate()` をUI isolate上で繰り返していた問題を修正。
+- DPA/coverageシミュレーションも既存のトップレベル `Isolate.spawn` 経路へ移し、プラン表示後のスクロールやボタン操作を塞がない構造へ変更。
+- 生成本体と生成後分析の双方がoff-UI isolate経路を使うことをsource regression testと `verify.ps1` で固定。
+- 代表評価プランで、生成完了後のUIフリーズが解消したことを実機確認。
 
 ## v7.5.17 - 2026-09-16 isolate / regression guard hardening
 

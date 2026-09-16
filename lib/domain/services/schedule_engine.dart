@@ -2222,25 +2222,19 @@ class ScheduleEngine {
       }
       if (expanded.isEmpty) return;
 
-      expanded.sort((a, b) {
-        final aScore = _unifiedOptimizationScore(
-          waitMinutes: a.standbyWaitMinutes,
-          movementMinutes: a.movementMinutes,
-          fragmentedFreeMinutes: a.fragmentedFreeMinutes,
-          mode: settings.scheduleOptimizationMode,
-        );
-        final bScore = _unifiedOptimizationScore(
-          waitMinutes: b.standbyWaitMinutes,
-          movementMinutes: b.movementMinutes,
-          fragmentedFreeMinutes: b.fragmentedFreeMinutes,
-          mode: settings.scheduleOptimizationMode,
-        );
-        final scoreCompare = aScore.compareTo(bScore);
-        if (scoreCompare != 0) return scoreCompare;
-        final waitCompare = a.standbyWaitMinutes.compareTo(b.standbyWaitMinutes);
-        if (waitCompare != 0) return waitCompare;
-        return a.movementMinutes.compareTo(b.movementMinutes);
-      });
+      expanded.sort((a, b) => _compareUnifiedOptimizationCost(
+            _CoveredWishTimingCost(
+              standbyWaitMinutes: a.standbyWaitMinutes,
+              movementMinutes: a.movementMinutes,
+              fragmentedFreeMinutes: a.fragmentedFreeMinutes,
+            ),
+            _CoveredWishTimingCost(
+              standbyWaitMinutes: b.standbyWaitMinutes,
+              movementMinutes: b.movementMinutes,
+              fragmentedFreeMinutes: b.fragmentedFreeMinutes,
+            ),
+            settings.scheduleOptimizationMode,
+          ));
 
       // Dominance pruning by the actual placed schedule fingerprint keeps
       // equivalent states from consuming the frontier without deleting slots
@@ -2262,23 +2256,19 @@ class ScheduleEngine {
 
     final completed = frontier.where((state) => state.remaining.isEmpty).toList();
     if (completed.isEmpty) return;
-    completed.sort((a, b) {
-      final aScore = _unifiedOptimizationScore(
-        waitMinutes: a.standbyWaitMinutes,
-        movementMinutes: a.movementMinutes,
-        fragmentedFreeMinutes: a.fragmentedFreeMinutes,
-        mode: settings.scheduleOptimizationMode,
-      );
-      final bScore = _unifiedOptimizationScore(
-        waitMinutes: b.standbyWaitMinutes,
-        movementMinutes: b.movementMinutes,
-        fragmentedFreeMinutes: b.fragmentedFreeMinutes,
-        mode: settings.scheduleOptimizationMode,
-      );
-      final scoreCompare = aScore.compareTo(bScore);
-      if (scoreCompare != 0) return scoreCompare;
-      return a.standbyWaitMinutes.compareTo(b.standbyWaitMinutes);
-    });
+    completed.sort((a, b) => _compareUnifiedOptimizationCost(
+          _CoveredWishTimingCost(
+            standbyWaitMinutes: a.standbyWaitMinutes,
+            movementMinutes: a.movementMinutes,
+            fragmentedFreeMinutes: a.fragmentedFreeMinutes,
+          ),
+          _CoveredWishTimingCost(
+            standbyWaitMinutes: b.standbyWaitMinutes,
+            movementMinutes: b.movementMinutes,
+            fragmentedFreeMinutes: b.fragmentedFreeMinutes,
+          ),
+          settings.scheduleOptimizationMode,
+        ));
     final best = completed.first;
     if (!hasFullRegularWishCoverage(best.items)) return;
 
@@ -2437,31 +2427,51 @@ class ScheduleEngine {
     }
   }
 
+  int _compareUnifiedOptimizationCost(
+    _CoveredWishTimingCost a,
+    _CoveredWishTimingCost b,
+    ScheduleOptimizationMode mode,
+  ) {
+    // minimumWait is deliberately lexicographic. Full desired-facility
+    // coverage and fixed anchors have already been enforced before this
+    // optimizer runs, so walking/free-time must never buy a longer standby
+    // total in this mode.
+    if (mode == ScheduleOptimizationMode.minimumWait) {
+      final waitCompare =
+          a.standbyWaitMinutes.compareTo(b.standbyWaitMinutes);
+      if (waitCompare != 0) return waitCompare;
+      final movementCompare = a.movementMinutes.compareTo(b.movementMinutes);
+      if (movementCompare != 0) return movementCompare;
+      return a.fragmentedFreeMinutes.compareTo(b.fragmentedFreeMinutes);
+    }
+
+    final aScore = _unifiedOptimizationScore(
+      waitMinutes: a.standbyWaitMinutes,
+      movementMinutes: a.movementMinutes,
+      fragmentedFreeMinutes: a.fragmentedFreeMinutes,
+      mode: mode,
+    );
+    final bScore = _unifiedOptimizationScore(
+      waitMinutes: b.standbyWaitMinutes,
+      movementMinutes: b.movementMinutes,
+      fragmentedFreeMinutes: b.fragmentedFreeMinutes,
+      mode: mode,
+    );
+    final scoreCompare = aScore.compareTo(bScore);
+    if (scoreCompare != 0) return scoreCompare;
+    final waitCompare = a.standbyWaitMinutes.compareTo(b.standbyWaitMinutes);
+    if (waitCompare != 0) return waitCompare;
+    final movementCompare = a.movementMinutes.compareTo(b.movementMinutes);
+    if (movementCompare != 0) return movementCompare;
+    return a.fragmentedFreeMinutes.compareTo(b.fragmentedFreeMinutes);
+  }
+
   bool _isUnifiedOptimizationCostBetter(
     _CoveredWishTimingCost candidate,
     _CoveredWishTimingCost baseline,
     ScheduleOptimizationMode mode,
   ) {
-    final candidateScore = _unifiedOptimizationScore(
-      waitMinutes: candidate.standbyWaitMinutes,
-      movementMinutes: candidate.movementMinutes,
-      fragmentedFreeMinutes: candidate.fragmentedFreeMinutes,
-      mode: mode,
-    );
-    final baselineScore = _unifiedOptimizationScore(
-      waitMinutes: baseline.standbyWaitMinutes,
-      movementMinutes: baseline.movementMinutes,
-      fragmentedFreeMinutes: baseline.fragmentedFreeMinutes,
-      mode: mode,
-    );
-    if (candidateScore != baselineScore) return candidateScore < baselineScore;
-    if (candidate.standbyWaitMinutes != baseline.standbyWaitMinutes) {
-      return candidate.standbyWaitMinutes < baseline.standbyWaitMinutes;
-    }
-    if (candidate.movementMinutes != baseline.movementMinutes) {
-      return candidate.movementMinutes < baseline.movementMinutes;
-    }
-    return candidate.fragmentedFreeMinutes < baseline.fragmentedFreeMinutes;
+    return _compareUnifiedOptimizationCost(candidate, baseline, mode) < 0;
   }
 
   bool _isCoveredWishTimingCostBetter(
