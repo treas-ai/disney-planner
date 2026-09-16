@@ -360,7 +360,7 @@ class _MainShellState extends State<MainShell> {
           searchController: _editorSearchController,
           onWishListPressed: _goToWishList,
         ),
-        const PlanReviewScreen(),
+        PlanReviewScreen(onContinueToToday: _goToToday),
         const TodayPlanScreen(),
       ],
     );

@@ -73,17 +73,12 @@ class WishListScreenState extends State<WishListScreen> {
   }
 
   Future<void> applyAndContinue() async {
-    final added = await wishController.applySelectedItemsToPlan();
+    await wishController.applySelectedItemsToPlan();
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          added == 0 ? '候補施設はすでに反映されています。' : '$added件の施設をプラン候補へ追加しました。',
-        ),
-      ),
-    );
+    // 成功は次画面への遷移で明確に分かるため、操作を遮る通知は表示しません。
+    // エラーやユーザー対応が必要な通知だけを SnackBar に残します。
     widget.onCandidateReviewPressed();
   }
 
@@ -110,7 +105,7 @@ class WishListScreenState extends State<WishListScreen> {
     try {
       // UIスレッドへ描画機会を渡しますが、演出目的の待機時間は追加しません。
       await Future<void>.delayed(Duration.zero);
-      final selected = await chatController.applyToWishListWithDynamicScoring(
+      await chatController.applyToWishListWithDynamicScoring(
         wishController.allItems,
       );
       if (!mounted || requestId != _guidedApplyRequestId) {
@@ -120,9 +115,7 @@ class WishListScreenState extends State<WishListScreen> {
       setState(() => _showList = true);
       // 候補作成が完了した時点で、下部の「プラン候補を確認」を有効化します。
       _notifyFlowContinueAvailability();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$selected件をやりたいことへ反映しました。')),
-      );
+      // 候補一覧の表示自体を成功フィードバックとし、成功通知は重ねません。
     } finally {
       if (mounted && requestId == _guidedApplyRequestId) {
         setState(() {
@@ -138,14 +131,7 @@ class WishListScreenState extends State<WishListScreen> {
     setState(() => _showList = false);
     _notifyFlowContinueAvailability();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'デバッグ回答「${preset.label}」を適用しました。'
-          '「この回答でAI候補を作成」から続行できます。',
-        ),
-      ),
-    );
+    // 回答チップの更新で適用状態が見えるため、デバッグ用の成功通知は表示しません。
   }
 
   Future<void> _resetWishSelection() async {
@@ -174,9 +160,7 @@ class WishListScreenState extends State<WishListScreen> {
       _showList = false;
     });
     _notifyFlowContinueAvailability();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('質問の回答とやりたいことの選択をリセットしました。')),
-    );
+    // リセット結果は画面状態で確認できるため、成功通知は表示しません。
   }
 
   @override

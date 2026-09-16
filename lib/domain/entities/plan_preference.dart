@@ -62,7 +62,7 @@ class PlanPreference {
 
     final accessMethodName = json['accessMethod'] as String?;
 
-    final accessMethod = accessMethodName == null
+    final rawAccessMethod = accessMethodName == null
         ? _legacyAccessMethod(
             useDpa: useDpa,
             usePriorityPass: usePriorityPass,
@@ -72,6 +72,12 @@ class PlanPreference {
             (method) => method.name == accessMethodName,
             orElse: () => FacilityAccessMethod.standby,
           );
+
+    // 40周年記念プライオリティパスは2026-08-31で終了。
+    // 旧保存データは読み込めるまま、現行Plannerでは通常待機へ移行する。
+    final accessMethod = rawAccessMethod == FacilityAccessMethod.priorityPass
+        ? FacilityAccessMethod.standby
+        : rawAccessMethod;
 
     return PlanPreference(
       id: json['id'] as String? ?? '',
@@ -93,8 +99,7 @@ class PlanPreference {
         orElse: () => MealPreference.flexible,
       ),
       useDpa: accessMethod == FacilityAccessMethod.dpa || useDpa,
-      usePriorityPass:
-          accessMethod == FacilityAccessMethod.priorityPass || usePriorityPass,
+      usePriorityPass: false,
       useStandbyPass:
           accessMethod == FacilityAccessMethod.standbyPass || useStandbyPass,
       prioritizeCapsuleToy: json['prioritizeCapsuleToy'] as bool? ?? false,
@@ -138,7 +143,7 @@ class PlanPreference {
   /// レストラン予約・PS・モバイルオーダー受取時刻。HH:mm形式。
   final String reservationTime;
 
-  /// DPA・PP・SP・時間指定アトラクション等の利用時刻。HH:mm形式。
+  /// DPA・SP・時間指定アトラクション等の利用時刻。HH:mm形式。
   final String scheduledAccessTime;
 
   final FixedTimeStatus fixedTimeStatus;
@@ -273,8 +278,9 @@ class PlanPreference {
       return FacilityAccessMethod.dpa;
     }
 
+    // 旧保存データのPP指定は現行Plannerでは通常待機へ移行する。
     if (usePriorityPass) {
-      return FacilityAccessMethod.priorityPass;
+      return FacilityAccessMethod.standby;
     }
 
     if (useStandbyPass) {

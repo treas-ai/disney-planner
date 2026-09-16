@@ -6,14 +6,17 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/scroll_time_picker.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/live_operating_status.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
+import '../../domain/entities/today_access_result.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
-import '../facility/widgets/fixed_schedule_editor_sheet.dart';
+import '../../domain/enums/today_access_kind.dart';
+import '../../domain/enums/today_access_status.dart';
 import '../assistant/assistant_controller.dart';
 import '../live/live_controller.dart';
 import '../live/live_models.dart';
@@ -21,6 +24,7 @@ import '../live/widgets/live_wait_time_list_panel.dart';
 import '../live/widgets/wait_time_editor.dart';
 import '../plan_review/schedule_controller.dart';
 import 'schedule_recalculation_controller.dart';
+import 'today_access_input_screen.dart';
 import 'widgets/schedule_recalculation_preview_sheet.dart';
 
 class TodayPlanScreen extends StatefulWidget {
@@ -319,6 +323,13 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     await _previewAndApplyRecalculation(
       successMessage: '残り予定を再最適化しました。',
     );
+  }
+
+  Future<void> _openTodayAccessInput() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const TodayAccessInputScreen()),
+    );
+    if (mounted) setState(() {});
   }
 
   Future<void> _suspendFacilityForToday(Facility facility) async {
@@ -620,9 +631,14 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
                     ),
                     trailing: OutlinedButton(
                       onPressed: () async {
-                        final picked = await showTimePicker(
+                        final picked = await showScrollTimePicker(
                           context: context,
                           initialTime: selectedTime,
+                          minTime: const TimeOfDay(hour: 9, minute: 0),
+                          maxTime: const TimeOfDay(hour: 21, minute: 0),
+                          minuteStep: 10,
+                          title: '仮想現在時刻',
+                          helperText: '当日シミュレーション用の時刻を選択します。',
                         );
                         if (picked != null) {
                           setSheetState(() {
@@ -772,6 +788,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
               onSuspendFacilityPressed: _suspendFacilityForToday,
               onResumeFacilityPressed: _resumeFacilityForToday,
               onSimulationPressed: _openSimulationSettings,
+              onAccessResultsPressed: _openTodayAccessInput,
               isCalculating: recalculationController?.isCalculating == true,
               canUndo: recalculationController?.canUndo == true,
             );
@@ -791,6 +808,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
             onSuspendFacilityPressed: _suspendFacilityForToday,
             onResumeFacilityPressed: _resumeFacilityForToday,
             onSimulationPressed: _openSimulationSettings,
+            onAccessResultsPressed: _openTodayAccessInput,
             isCalculating: recalculationController?.isCalculating == true,
             canUndo: recalculationController?.canUndo == true,
           );
@@ -815,6 +833,7 @@ class _MobileTodayLayout extends StatelessWidget {
     required this.onSuspendFacilityPressed,
     required this.onResumeFacilityPressed,
     required this.onSimulationPressed,
+    required this.onAccessResultsPressed,
     required this.isCalculating,
     required this.canUndo,
   });
@@ -833,6 +852,7 @@ class _MobileTodayLayout extends StatelessWidget {
   final Future<void> Function(Facility) onSuspendFacilityPressed;
   final Future<void> Function(Facility) onResumeFacilityPressed;
   final VoidCallback onSimulationPressed;
+  final VoidCallback onAccessResultsPressed;
   final bool isCalculating;
   final bool canUndo;
 
@@ -860,6 +880,11 @@ class _MobileTodayLayout extends StatelessWidget {
             simulationEnabled: controller.simulationEnabled,
             isCalculating: isCalculating,
             canUndo: canUndo,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _TodayAccessResultsCard(
+            onEditPressed: onAccessResultsPressed,
+            onRecalculatePressed: onRecalculatePressed,
           ),
           if (snapshot.isLiveMode) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -896,6 +921,92 @@ class _MobileTodayLayout extends StatelessWidget {
   }
 }
 
+
+class _TodayAccessResultsCard extends StatelessWidget {
+  const _TodayAccessResultsCard({
+    required this.onEditPressed,
+    required this.onRecalculatePressed,
+  });
+
+  final VoidCallback onEditPressed;
+  final VoidCallback onRecalculatePressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = AppStateScope.of(context);
+    final results = appState.todayAccessResults
+        .where((result) => result.kind != TodayAccessKind.priorityPass)
+        .toList(growable: false);
+    final facilityById = {
+      for (final facility in appState.selectedFacilities) facility.id: facility,
+    };
+    final scheme = Theme.of(context).colorScheme;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.fact_check_outlined, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '当日の取得結果',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+              TextButton(onPressed: onEditPressed, child: const Text('入力・編集')),
+            ],
+          ),
+          Text(
+            results.isEmpty
+                ? 'DPA・SP・エントリー受付・MOの実績はまだ入力されていません。'
+                : '${results.length}件の実績を保存済みです。取得・当選時刻は再最適化で固定枠として反映します。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+          if (results.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            for (final result in results.take(4))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  '・${facilityById[result.facilityId]?.name ?? result.facilityId} '
+                  '${result.kind.label}：${_todayResultSummary(result)}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            if (results.length > 4)
+              Text(
+                'ほか ${results.length - 4}件',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            const SizedBox(height: 9),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: onRecalculatePressed,
+                icon: const Icon(Icons.auto_fix_high_outlined, size: 18),
+                label: const Text('取得結果を反映して残りを再最適化'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String _todayResultSummary(TodayAccessResult result) {
+  final pieces = <String>[result.status.label];
+  if (result.hasTime) pieces.add(result.time);
+  return pieces.join(' / ');
+}
+
 class _DesktopTodayLayout extends StatelessWidget {
   const _DesktopTodayLayout({
     required this.controller,
@@ -911,6 +1022,7 @@ class _DesktopTodayLayout extends StatelessWidget {
     required this.onSuspendFacilityPressed,
     required this.onResumeFacilityPressed,
     required this.onSimulationPressed,
+    required this.onAccessResultsPressed,
     required this.isCalculating,
     required this.canUndo,
   });
@@ -929,6 +1041,7 @@ class _DesktopTodayLayout extends StatelessWidget {
   final Future<void> Function(Facility) onSuspendFacilityPressed;
   final Future<void> Function(Facility) onResumeFacilityPressed;
   final VoidCallback onSimulationPressed;
+  final VoidCallback onAccessResultsPressed;
   final bool isCalculating;
   final bool canUndo;
 
@@ -955,6 +1068,11 @@ class _DesktopTodayLayout extends StatelessWidget {
                   simulationEnabled: controller.simulationEnabled,
                   isCalculating: isCalculating,
                   canUndo: canUndo,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _TodayAccessResultsCard(
+                  onEditPressed: onAccessResultsPressed,
+                  onRecalculatePressed: onRecalculatePressed,
                 ),
                 if (snapshot.isLiveMode) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -3017,21 +3135,22 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                           if (widget.allowLiveEdit &&
                               !widget.simulationEnabled &&
                               widget.facility != null &&
-                              status != _TodayScheduleStatus.completed)
+                              status != _TodayScheduleStatus.completed &&
+                              (widget.facility!.supportsReservationAccess ||
+                                  widget.preference?.accessMethod ==
+                                      FacilityAccessMethod.dpa ||
+                                  widget.preference?.accessMethod ==
+                                      FacilityAccessMethod.standbyPass))
                             IconButton(
-                              tooltip: '固定予定を編集して残りを再計算',
+                              tooltip: '当日の取得結果を入力',
                               onPressed: () async {
-                                final appState = AppStateScope.of(context);
-                                final changed =
-                                    await showFixedScheduleEditorSheet(
-                                      context: context,
-                                      appState: appState,
-                                      facility: widget.facility!,
-                                    );
-                                if (!changed || !context.mounted) return;
-                                widget.onRecalculatePressed();
+                                await Navigator.of(context).push<void>(
+                                  MaterialPageRoute(
+                                    builder: (_) => const TodayAccessInputScreen(),
+                                  ),
+                                );
                               },
-                              icon: const Icon(Icons.edit_calendar_outlined),
+                              icon: const Icon(Icons.fact_check_outlined),
                             ),
                         ],
                       ),

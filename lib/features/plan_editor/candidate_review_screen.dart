@@ -1032,7 +1032,6 @@ String _reasonFor(Facility facility, PriorityLevel priority) {
       '最優先の体験としてスケジュールを優先します。',
     if (facility.supportsDpa)
       'アトラクションDPAは旅行設定の上限からAIが自動配分します。取得済み時刻だけ詳細設定できます。',
-    if (facility.supportsPriorityPass) 'プライオリティパスの利用候補です。',
   ];
   return parts.join('\n');
 }

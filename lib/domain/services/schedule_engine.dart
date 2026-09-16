@@ -263,6 +263,7 @@ class ScheduleEngine {
     var currentMinutes = entryEndMinutes;
     String? previousAreaId;
     final remainingFacilities = optimizedFacilities.toList(growable: true);
+    final committedOpeningFacilityIds = <String>[];
 
     while (remainingFacilities.isNotEmpty) {
       final nextDecision = _selectNextWaitAwareFacility(
@@ -283,9 +284,20 @@ class ScheduleEngine {
         targetDate: visitDate,
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
         greetingWaitPlanning: greetingWaitPlanning,
+        committedOpeningFacilityIds: committedOpeningFacilityIds,
       );
+      if (nextDecision.openingSequenceFacilityIds.isNotEmpty &&
+          committedOpeningFacilityIds.isEmpty) {
+        committedOpeningFacilityIds.addAll(
+          nextDecision.openingSequenceFacilityIds.skip(1),
+        );
+      }
       final facility = nextDecision.facility;
       remainingFacilities.remove(facility);
+      if (committedOpeningFacilityIds.isNotEmpty &&
+          committedOpeningFacilityIds.first == facility.id) {
+        committedOpeningFacilityIds.removeAt(0);
+      }
 
       final preference = _findPreference(
         facilityId: facility.id,
@@ -515,6 +527,71 @@ class ScheduleEngine {
           facilityLocationById[facility.id]?.effectiveExitAreaId ??
           facility.areaId;
     }
+
+    // A fixed meal/show can make the forward-only pass jump over an earlier
+    // gap. Revisit wishes that were not scheduled before declaring that gap
+    // free time or concluding that DPA is required for full wish coverage.
+    _backfillUnscheduledWishFacilities(
+      items: items,
+      facilities: operationalFacilities,
+      regularFacilities: optimizedFacilities,
+      preferences: preferences,
+      waitProfiles: waitProfiles,
+      settings: settings,
+      entryMinutes: entryEndMinutes,
+      exitMinutes: exitMinutes,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+      facilityLocationById: facilityLocationById,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      greetingWaitPlanning: greetingWaitPlanning,
+    );
+
+    // Coverage-first local repair. A greedy forward pass can leave one wish
+    // unscheduled even though a different ordering would fit every wish.
+    // Try a bounded one-item relocation before declaring free time or DPA
+    // necessary: temporarily remove one already-scheduled regular facility,
+    // then ask the existing gap fitter to place both the missing wish and the
+    // displaced facility. Commit only when both are present in the trial day.
+    _repairWishCoverageBySingleRelocation(
+      items: items,
+      facilities: operationalFacilities,
+      regularFacilities: optimizedFacilities,
+      preferences: preferences,
+      waitProfiles: waitProfiles,
+      settings: settings,
+      entryMinutes: entryEndMinutes,
+      exitMinutes: exitMinutes,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+      facilityLocationById: facilityLocationById,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      greetingWaitPlanning: greetingWaitPlanning,
+    );
+
+    // Unified full-day optimizer. Once coverage is complete, stop stacking
+    // one-off relocation passes. Rebuild every movable wish and non-reserved
+    // meal together on one 10-minute search space while keeping only genuine
+    // hard anchors (fixed performances/access/reservations/manual fixed items).
+    // The search is lexicographic: full coverage is mandatory, then standby
+    // wait, then movement. This removes the old dependency on greedy -> single
+    // -> pair repair chains and lets flexible meals participate in the same day.
+    _optimizeCoveredDayByUnifiedBeamSearch(
+      items: items,
+      facilities: operationalFacilities,
+      regularFacilities: optimizedFacilities,
+      preferences: preferences,
+      waitProfiles: waitProfiles,
+      settings: settings,
+      targetDate: visitDate,
+      entryMinutes: entryEndMinutes,
+      exitMinutes: exitMinutes,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+      facilityLocationById: facilityLocationById,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      greetingWaitPlanning: greetingWaitPlanning,
+    );
 
     // Make long unused periods explicit instead of silently leaving multi-hour
     // holes in the generated day. These are flexible blocks, not invented
@@ -960,6 +1037,1443 @@ class ScheduleEngine {
     return addedFacilityIds;
   }
 
+  void _backfillUnscheduledWishFacilities({
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required List<Facility> regularFacilities,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required TripSettings settings,
+    required int entryMinutes,
+    required int exitMinutes,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
+  }) {
+    final scheduledIds = items
+        .map((item) => item.facilityId)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final unscheduled = regularFacilities
+        .where((facility) => !scheduledIds.contains(facility.id))
+        .toList(growable: false);
+
+    for (final facility in unscheduled) {
+      final preference = _findPreference(
+        facilityId: facility.id,
+        preferences: preferences,
+      );
+      if (preference?.isExcluded ?? false) continue;
+      final waitDecision = _evaluateWaitTolerance(
+        facility: facility,
+        preference: preference,
+      );
+      if (waitDecision.shouldSkip) continue;
+
+      // First estimate only finds a candidate gap. The wait is recalculated at
+      // the actual gap time before insertion because afternoon/evening queues
+      // can differ substantially from the morning estimate.
+      var probeStart = entryMinutes;
+      var inserted = false;
+      for (var attempt = 0; attempt < items.length + 4 && !inserted; attempt++) {
+        final probeWait = _resolveWaitEstimate(
+          facility: facility,
+          preference: preference,
+          waitProfiles: waitProfiles,
+          scheduledStartMinutes: probeStart,
+          settings: settings,
+          unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          greetingWaitPlanning: greetingWaitPlanning,
+        );
+        final probeDuration = _resolvePlannedFacilityDuration(
+          facility: facility,
+          preference: preference,
+          waitEstimate: probeWait,
+          settings: settings,
+          unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        );
+        var start = _findAvailableStart(
+          requestedStartMinutes: probeStart,
+          durationMinutes: probeDuration,
+          items: items,
+          exitMinutes: exitMinutes,
+        );
+        if (start == null) break;
+        start = _adjustStartForOperatingHours(
+          facility: facility,
+          requestedStartMinutes: start,
+          durationMinutes: probeDuration,
+          exitMinutes: exitMinutes,
+          targetDate: settings.visitDate ?? DateTime.now(),
+        );
+        if (start == null) break;
+
+        final wait = _resolveWaitEstimate(
+          facility: facility,
+          preference: preference,
+          waitProfiles: waitProfiles,
+          scheduledStartMinutes: start,
+          settings: settings,
+          unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          greetingWaitPlanning: greetingWaitPlanning,
+        );
+        final duration = _resolvePlannedFacilityDuration(
+          facility: facility,
+          preference: preference,
+          waitEstimate: wait,
+          settings: settings,
+          unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        );
+        if (duration != probeDuration) {
+          final refit = _findAvailableStart(
+            requestedStartMinutes: start,
+            durationMinutes: duration,
+            items: items,
+            exitMinutes: exitMinutes,
+          );
+          if (refit == null) break;
+          if (refit != start) {
+            probeStart = refit;
+            continue;
+          }
+        }
+
+        final entryArea = facilityLocationById[facility.id]?.areaId ?? facility.areaId;
+        final exitArea = facilityLocationById[facility.id]?.effectiveExitAreaId ?? facility.areaId;
+        final travelSafeStart = _ensureTravelAroundScheduledFacilities(
+          candidateStartMinutes: start,
+          durationMinutes: duration,
+          targetEntryAreaId: entryArea,
+          targetExitAreaId: exitArea,
+          items: items,
+          facilityLocationById: facilityLocationById,
+          facilities: facilities,
+          eventImpacts: eventImpacts,
+          areaConnections: areaConnections,
+          exitMinutes: exitMinutes,
+        );
+        if (travelSafeStart == null) break;
+        if (travelSafeStart != start) {
+          probeStart = travelSafeStart;
+          continue;
+        }
+        if (!_fitsOperatingHours(
+          facility: facility,
+          startMinutes: start,
+          durationMinutes: duration,
+          targetDate: settings.visitDate ?? DateTime.now(),
+        )) {
+          probeStart = start + 10;
+          continue;
+        }
+
+        items.add(_createScheduleItem(
+          id: 'backfill_${facility.id}',
+          title: facility.name,
+          type: ScheduleItemType.facility,
+          startMinutes: start,
+          endMinutes: start + duration,
+          facilityId: facility.id,
+          reason: '固定予定の前後に残った空き時間を再探索し、未採用の希望をDPA追加判定より先に組み込みました。 '
+              '来園日の待ち時間・移動・施設運営時間を再計算し、この空き枠に収まることを確認しています。 '
+              '所要時間を$duration分として配置しました。',
+          note: _buildScheduleNote(facility: facility, preference: preference),
+          estimatedWaitMinutes: _usesQueueWaitPlanning(facility) ? wait.waitMinutes : null,
+          experienceMinutes: _usesQueueWaitPlanning(facility) ? _resolveFacilityDuration(facility) : null,
+          waitEstimateSource: _usesQueueWaitPlanning(facility) ? wait.source : null,
+          accessMethod: preference?.accessMethod ?? FacilityAccessMethod.standby,
+          usesVacationPackageUnlimited: _usesUnlimitedRideBenefit(
+            facility: facility,
+            settings: settings,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          ),
+          standbyWaitMinutes: _usesQueueWaitPlanning(facility) && !wait.isPriorityAccessBuffer
+              ? wait.waitMinutes
+              : null,
+          priorityAccessBufferMinutes: _usesQueueWaitPlanning(facility) && wait.isPriorityAccessBuffer
+              ? wait.waitMinutes
+              : null,
+        ));
+        inserted = true;
+      }
+    }
+  }
+
+  void _repairWishCoverageBySingleRelocation({
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required List<Facility> regularFacilities,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required TripSettings settings,
+    required int entryMinutes,
+    required int exitMinutes,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
+  }) {
+    final regularById = {for (final facility in regularFacilities) facility.id: facility};
+
+    bool hasFacility(List<ScheduleItem> source, String facilityId) =>
+        source.any((item) => item.facilityId == facilityId);
+
+    // Keep the search bounded. Each successful repair strictly increases (or
+    // preserves while rearranging toward) full wish coverage, and we restart
+    // from the new schedule after a commit.
+    for (var repairRound = 0; repairRound < regularFacilities.length; repairRound++) {
+      final missing = regularFacilities
+          .where((facility) => !hasFacility(items, facility.id))
+          .toList(growable: false);
+      if (missing.isEmpty) return;
+
+      var committed = false;
+      for (final missingFacility in missing) {
+        final movableItems = items.where((item) {
+          final facilityId = item.facilityId;
+          return facilityId != null && regularById.containsKey(facilityId);
+        }).toList(growable: false)
+          ..sort((a, b) => _itemStartMinutes(a).compareTo(_itemStartMinutes(b)));
+
+        for (final movable in movableItems) {
+          final displacedId = movable.facilityId!;
+          if (displacedId == missingFacility.id) continue;
+          final displaced = regularById[displacedId];
+          if (displaced == null) continue;
+
+          final trial = List<ScheduleItem>.of(items)..remove(movable);
+          _backfillUnscheduledWishFacilities(
+            items: trial,
+            facilities: facilities,
+            // Missing wish first: this explores a materially different order.
+            // The displaced wish must also fit before the trial is accepted.
+            regularFacilities: [missingFacility, displaced],
+            preferences: preferences,
+            waitProfiles: waitProfiles,
+            settings: settings,
+            entryMinutes: entryMinutes,
+            exitMinutes: exitMinutes,
+            eventImpacts: eventImpacts,
+            areaConnections: areaConnections,
+            facilityLocationById: facilityLocationById,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+            greetingWaitPlanning: greetingWaitPlanning,
+          );
+
+          if (!hasFacility(trial, missingFacility.id) ||
+              !hasFacility(trial, displacedId)) {
+            continue;
+          }
+
+          items
+            ..clear()
+            ..addAll(trial);
+          committed = true;
+          break;
+        }
+        if (committed) break;
+      }
+      if (!committed) return;
+    }
+  }
+
+  // ignore: unused_element -- retained as legacy fallback/reference during unified optimizer migration.
+  void _optimizeCoveredWishTimingByLocalRepack({
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required List<Facility> regularFacilities,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required TripSettings settings,
+    required int entryMinutes,
+    required int exitMinutes,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
+  }) {
+    if (regularFacilities.length < 2) return;
+    final regularById = {for (final facility in regularFacilities) facility.id: facility};
+
+    bool hasFullCoverage(List<ScheduleItem> candidate) {
+      final ids = candidate.map((item) => item.facilityId).whereType<String>().toSet();
+      return regularFacilities.every((facility) => ids.contains(facility.id));
+    }
+
+    // Do not optimize a partial plan: coverage repair owns that problem.
+    if (!hasFullCoverage(items)) return;
+
+    // Fixed anchors can also arrive on the day itself (for example a newly
+    // successful Entry Request / show time). The rolling repack may move only
+    // regular wishes; every non-regular timed item must survive unchanged.
+    final fixedAnchorFingerprint = _coveredWishFixedAnchorFingerprint(
+      items: items,
+      regularFacilityIds: regularById.keys.toSet(),
+    );
+
+    var baseline = _coveredWishTimingCost(
+      items: items,
+      regularFacilityIds: regularById.keys.toSet(),
+      facilities: facilities,
+      facilityLocationById: facilityLocationById,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+    );
+
+    // Bounded hill-climb. One- and two-item removals are enough to discover
+    // useful swaps around meals/shows without factorial whole-day search.
+    const maxRounds = 3;
+    for (var round = 0; round < maxRounds; round++) {
+      final movable = items.where((item) {
+        final id = item.facilityId;
+        return id != null && regularById.containsKey(id);
+      }).toList(growable: false)
+        ..sort((a, b) => _itemStartMinutes(a).compareTo(_itemStartMinutes(b)));
+
+      List<ScheduleItem>? bestTrial;
+      _CoveredWishTimingCost? bestCost;
+
+      void consider(List<ScheduleItem> trial) {
+        if (!hasFullCoverage(trial)) return;
+        if (_coveredWishFixedAnchorFingerprint(
+              items: trial,
+              regularFacilityIds: regularById.keys.toSet(),
+            ) !=
+            fixedAnchorFingerprint) {
+          return;
+        }
+        final cost = _coveredWishTimingCost(
+          items: trial,
+          regularFacilityIds: regularById.keys.toSet(),
+          facilities: facilities,
+          facilityLocationById: facilityLocationById,
+          eventImpacts: eventImpacts,
+          areaConnections: areaConnections,
+        );
+        if (!_isCoveredWishTimingCostBetter(cost, baseline)) return;
+        final currentBestCost = bestCost;
+        if (currentBestCost == null ||
+            _isCoveredWishTimingCostBetter(cost, currentBestCost)) {
+          bestTrial = trial;
+          bestCost = cost;
+        }
+      }
+
+      void refill(List<ScheduleItem> trial, List<Facility> order) {
+        _backfillUnscheduledWishFacilities(
+          items: trial,
+          facilities: facilities,
+          regularFacilities: order,
+          preferences: preferences,
+          waitProfiles: waitProfiles,
+          settings: settings,
+          entryMinutes: entryMinutes,
+          exitMinutes: exitMinutes,
+          eventImpacts: eventImpacts,
+          areaConnections: areaConnections,
+          facilityLocationById: facilityLocationById,
+          unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          greetingWaitPlanning: greetingWaitPlanning,
+        );
+        consider(trial);
+      }
+
+      for (var i = 0; i < movable.length; i++) {
+        final firstId = movable[i].facilityId!;
+        final first = regularById[firstId]!;
+
+        final single = List<ScheduleItem>.of(items)..remove(movable[i]);
+        refill(single, [first]);
+
+        for (var j = i + 1; j < movable.length; j++) {
+          final secondId = movable[j].facilityId!;
+          final second = regularById[secondId]!;
+          final pairBase = List<ScheduleItem>.of(items)
+            ..remove(movable[i])
+            ..remove(movable[j]);
+
+          refill(List<ScheduleItem>.of(pairBase), [first, second]);
+          refill(List<ScheduleItem>.of(pairBase), [second, first]);
+        }
+
+        // Cross-anchor rolling 3-step look-ahead. Do not restrict the third
+        // facility to an adjacent schedule item: a useful full-coverage repair
+        // can move a wish from before a parade to the evening gap (or vice
+        // versa). Non-regular timed items remain immutable through the fixed
+        // anchor fingerprint above, so a same-day Entry Request/show can split
+        // the future day without being moved by this search.
+        //
+        // Keep the expansion bounded for larger wish lists. Pairs are still
+        // explored exhaustively above; triples add the extra degree of freedom
+        // needed to repack across fixed anchors.
+        const maxCrossAnchorTripleSetsPerRound = 60;
+        var expandedTripleSets = 0;
+        for (var j = i + 1;
+            j < movable.length &&
+                expandedTripleSets < maxCrossAnchorTripleSetsPerRound;
+            j++) {
+          final secondId = movable[j].facilityId!;
+          final second = regularById[secondId]!;
+          for (var k = j + 1;
+              k < movable.length &&
+                  expandedTripleSets < maxCrossAnchorTripleSetsPerRound;
+              k++) {
+            final thirdId = movable[k].facilityId!;
+            final third = regularById[thirdId]!;
+            final tripleBase = List<ScheduleItem>.of(items)
+              ..remove(movable[i])
+              ..remove(movable[j])
+              ..remove(movable[k]);
+            final permutations = <List<Facility>>[
+              [first, second, third],
+              [first, third, second],
+              [second, first, third],
+              [second, third, first],
+              [third, first, second],
+              [third, second, first],
+            ];
+            for (final order in permutations) {
+              refill(List<ScheduleItem>.of(tripleBase), order);
+            }
+            expandedTripleSets++;
+          }
+        }
+      }
+
+      final selectedTrial = bestTrial;
+      final selectedCost = bestCost;
+      if (selectedTrial == null || selectedCost == null) return;
+      items
+        ..clear()
+        ..addAll(selectedTrial);
+      baseline = selectedCost;
+    }
+  }
+
+  // ignore: unused_element -- retained as legacy fallback/reference during unified optimizer migration.
+  void _optimizeCoveredWishTimingByTenMinuteSlots({
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required List<Facility> regularFacilities,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required TripSettings settings,
+    required int entryMinutes,
+    required int exitMinutes,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
+  }) {
+    if (regularFacilities.isEmpty) return;
+    final regularById = {
+      for (final facility in regularFacilities) facility.id: facility,
+    };
+    final regularIds = regularById.keys.toSet();
+
+    bool hasFullCoverage(List<ScheduleItem> candidate) {
+      final ids = candidate
+          .map((item) => item.facilityId)
+          .whereType<String>()
+          .toSet();
+      return regularFacilities.every((facility) => ids.contains(facility.id));
+    }
+
+    if (!hasFullCoverage(items)) return;
+    final fixedAnchorFingerprint = _coveredWishFixedAnchorFingerprint(
+      items: items,
+      regularFacilityIds: regularIds,
+    );
+    var baseline = _coveredWishTimingCost(
+      items: items,
+      regularFacilityIds: regularIds,
+      facilities: facilities,
+      facilityLocationById: facilityLocationById,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+    );
+
+    // The opening strategy answers a different question from the all-day slot
+    // assignment: which attraction is most costly to defer out of the opening
+    // window. Preserve that first opening choice here so a cheap late-day dip
+    // cannot retroactively replace it after the dedicated opening look-ahead
+    // has already selected the route. Later regular wishes remain movable.
+    final openingRegularItems = items.where((item) {
+      final facilityId = item.facilityId;
+      return facilityId != null &&
+          regularIds.contains(facilityId) &&
+          _waitTimeBandForMinutes(_itemStartMinutes(item)) ==
+              WaitTimeBand.afterOpening;
+    }).toList(growable: false)
+      ..sort((a, b) =>
+          _itemStartMinutes(a).compareTo(_itemStartMinutes(b)));
+    final protectedOpeningFacilityId = openingRegularItems.isEmpty
+        ? null
+        : openingRegularItems.first.facilityId;
+
+    // One committed relocation per round makes the assignment stable while
+    // still allowing several attractions to exchange scarce cheap windows.
+    const maxRounds = 8;
+    for (var round = 0; round < maxRounds; round++) {
+      final movable = items.where((item) {
+        final facilityId = item.facilityId;
+        return facilityId != null &&
+            regularIds.contains(facilityId) &&
+            facilityId != protectedOpeningFacilityId;
+      }).toList(growable: false);
+
+      // Evaluate the most time-sensitive attractions first. This does not
+      // decide the winner: every feasible trial still competes on total wait.
+      movable.sort((a, b) {
+        final aFacility = regularById[a.facilityId!];
+        final bFacility = regularById[b.facilityId!];
+        if (aFacility == null || bFacility == null) return 0;
+        final aSpread = _waitProfileSpreadOpportunity(
+          facility: aFacility,
+          waitProfiles: waitProfiles,
+          scheduledStartMinutes: _itemStartMinutes(a),
+        ).spreadMinutes;
+        final bSpread = _waitProfileSpreadOpportunity(
+          facility: bFacility,
+          waitProfiles: waitProfiles,
+          scheduledStartMinutes: _itemStartMinutes(b),
+        ).spreadMinutes;
+        return bSpread.compareTo(aSpread);
+      });
+
+      List<ScheduleItem>? bestTrial;
+      _CoveredWishTimingCost? bestCost;
+
+      for (final original in movable) {
+        final facility = regularById[original.facilityId!];
+        if (facility == null) continue;
+        final preference = _findPreference(
+          facilityId: facility.id,
+          preferences: preferences,
+        );
+        if (preference?.isExcluded ?? false) continue;
+
+        final base = List<ScheduleItem>.of(items)..remove(original);
+        final starts = <int>{entryMinutes, _itemStartMinutes(original)};
+        var slot = ((entryMinutes + 9) ~/ 10) * 10;
+        while (slot < exitMinutes) {
+          starts.add(slot);
+          slot += 10;
+        }
+        final orderedStarts = starts.toList()..sort();
+
+        for (final requestedStart in orderedStarts) {
+          final wait = _resolveWaitEstimate(
+            facility: facility,
+            preference: preference,
+            waitProfiles: waitProfiles,
+            scheduledStartMinutes: requestedStart,
+            settings: settings,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+            greetingWaitPlanning: greetingWaitPlanning,
+          );
+          final duration = _resolvePlannedFacilityDuration(
+            facility: facility,
+            preference: preference,
+            waitEstimate: wait,
+            settings: settings,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+          );
+          if (requestedStart + duration > exitMinutes) continue;
+
+          // Slot assignment must score the requested slot itself. Do not let
+          // the generic gap finder silently jump to a later opening.
+          final available = _findAvailableStart(
+            requestedStartMinutes: requestedStart,
+            durationMinutes: duration,
+            items: base,
+            exitMinutes: exitMinutes,
+          );
+          if (available != requestedStart) continue;
+          final operatingStart = _adjustStartForOperatingHours(
+            facility: facility,
+            requestedStartMinutes: requestedStart,
+            durationMinutes: duration,
+            exitMinutes: exitMinutes,
+            targetDate: settings.visitDate ?? DateTime.now(),
+          );
+          if (operatingStart != requestedStart) continue;
+
+          final entryArea =
+              facilityLocationById[facility.id]?.areaId ?? facility.areaId;
+          final exitArea = facilityLocationById[facility.id]
+                  ?.effectiveExitAreaId ??
+              facility.areaId;
+          final travelSafeStart = _ensureTravelAroundScheduledFacilities(
+            candidateStartMinutes: requestedStart,
+            durationMinutes: duration,
+            targetEntryAreaId: entryArea,
+            targetExitAreaId: exitArea,
+            items: base,
+            facilityLocationById: facilityLocationById,
+            facilities: facilities,
+            eventImpacts: eventImpacts,
+            areaConnections: areaConnections,
+            exitMinutes: exitMinutes,
+          );
+          if (travelSafeStart != requestedStart) continue;
+          if (!_fitsOperatingHours(
+            facility: facility,
+            startMinutes: requestedStart,
+            durationMinutes: duration,
+            targetDate: settings.visitDate ?? DateTime.now(),
+          )) {
+            continue;
+          }
+
+          final trial = List<ScheduleItem>.of(base)
+            ..add(_createScheduleItem(
+              id: 'slot_repack_${facility.id}',
+              title: facility.name,
+              type: ScheduleItemType.facility,
+              startMinutes: requestedStart,
+              endMinutes: requestedStart + duration,
+              facilityId: facility.id,
+              reason: '全希望と固定予定を維持したまま、来園日の待ち時間テーブルを10分刻みで比較し、'
+                  '待ち時間差の大きい施設の安い時間帯を逃さないよう再配置しました。 '
+                  '移動時間と施設運営時間も再確認しています。所要時間を$duration分として配置しました。',
+              note: _buildScheduleNote(
+                facility: facility,
+                preference: preference,
+              ),
+              estimatedWaitMinutes:
+                  _usesQueueWaitPlanning(facility) ? wait.waitMinutes : null,
+              experienceMinutes: _usesQueueWaitPlanning(facility)
+                  ? _resolveFacilityDuration(facility)
+                  : null,
+              waitEstimateSource:
+                  _usesQueueWaitPlanning(facility) ? wait.source : null,
+              accessMethod:
+                  preference?.accessMethod ?? FacilityAccessMethod.standby,
+              usesVacationPackageUnlimited: _usesUnlimitedRideBenefit(
+                facility: facility,
+                settings: settings,
+                unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+              ),
+              standbyWaitMinutes:
+                  _usesQueueWaitPlanning(facility) && !wait.isPriorityAccessBuffer
+                      ? wait.waitMinutes
+                      : null,
+              priorityAccessBufferMinutes:
+                  _usesQueueWaitPlanning(facility) && wait.isPriorityAccessBuffer
+                      ? wait.waitMinutes
+                      : null,
+            ));
+
+          if (!hasFullCoverage(trial)) continue;
+          if (_coveredWishFixedAnchorFingerprint(
+                items: trial,
+                regularFacilityIds: regularIds,
+              ) !=
+              fixedAnchorFingerprint) {
+            continue;
+          }
+          final cost = _coveredWishTimingCost(
+            items: trial,
+            regularFacilityIds: regularIds,
+            facilities: facilities,
+            facilityLocationById: facilityLocationById,
+            eventImpacts: eventImpacts,
+            areaConnections: areaConnections,
+          );
+          if (!_isCoveredWishTimingCostBetter(cost, baseline)) continue;
+          if (bestCost == null ||
+              _isCoveredWishTimingCostBetter(cost, bestCost)) {
+            bestTrial = trial;
+            bestCost = cost;
+          }
+        }
+      }
+
+      if (bestTrial == null || bestCost == null) return;
+      items
+        ..clear()
+        ..addAll(bestTrial);
+      baseline = bestCost;
+    }
+  }
+
+  // ignore: unused_element -- retained as legacy fallback/reference during unified optimizer migration.
+  void _optimizeCoveredWishTimingByPairSlots({
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required List<Facility> regularFacilities,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required TripSettings settings,
+    required int entryMinutes,
+    required int exitMinutes,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
+  }) {
+    if (regularFacilities.length < 2) return;
+    final regularById = {
+      for (final facility in regularFacilities) facility.id: facility,
+    };
+    final regularIds = regularById.keys.toSet();
+
+    bool hasFullCoverage(List<ScheduleItem> candidate) {
+      final ids = candidate
+          .map((item) => item.facilityId)
+          .whereType<String>()
+          .toSet();
+      return regularFacilities.every((facility) => ids.contains(facility.id));
+    }
+
+    if (!hasFullCoverage(items)) return;
+    final fixedAnchorFingerprint = _coveredWishFixedAnchorFingerprint(
+      items: items,
+      regularFacilityIds: regularIds,
+    );
+    var baseline = _coveredWishTimingCost(
+      items: items,
+      regularFacilityIds: regularIds,
+      facilities: facilities,
+      facilityLocationById: facilityLocationById,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+    );
+
+    final openingRegularItems = items.where((item) {
+      final facilityId = item.facilityId;
+      return facilityId != null &&
+          regularIds.contains(facilityId) &&
+          _waitTimeBandForMinutes(_itemStartMinutes(item)) ==
+              WaitTimeBand.afterOpening;
+    }).toList(growable: false)
+      ..sort((a, b) =>
+          _itemStartMinutes(a).compareTo(_itemStartMinutes(b)));
+    final protectedOpeningFacilityId = openingRegularItems.isEmpty
+        ? null
+        : openingRegularItems.first.facilityId;
+
+    // Four improving exchanges are enough for the small requested-facility
+    // set while keeping plan generation bounded.
+    const maxRounds = 4;
+    const legacyPairSlotCandidateLimit = 18;
+    for (var round = 0; round < maxRounds; round++) {
+      final movable = items.where((item) {
+        final facilityId = item.facilityId;
+        return facilityId != null &&
+            regularIds.contains(facilityId) &&
+            facilityId != protectedOpeningFacilityId;
+      }).toList(growable: false);
+      if (movable.length < 2) return;
+
+      List<ScheduleItem>? bestTrial;
+      _CoveredWishTimingCost? bestCost;
+
+      for (var i = 0; i < movable.length - 1; i++) {
+        for (var j = i + 1; j < movable.length; j++) {
+          final firstOriginal = movable[i];
+          final secondOriginal = movable[j];
+          final firstFacility = regularById[firstOriginal.facilityId!];
+          final secondFacility = regularById[secondOriginal.facilityId!];
+          if (firstFacility == null || secondFacility == null) continue;
+          final firstPreference = _findPreference(
+            facilityId: firstFacility.id,
+            preferences: preferences,
+          );
+          final secondPreference = _findPreference(
+            facilityId: secondFacility.id,
+            preferences: preferences,
+          );
+          if ((firstPreference?.isExcluded ?? false) ||
+              (secondPreference?.isExcluded ?? false)) {
+            continue;
+          }
+
+          final base = List<ScheduleItem>.of(items)
+            ..remove(firstOriginal)
+            ..remove(secondOriginal);
+
+          List<({int start, int duration, _WaitEstimate wait})> candidatesFor(
+            Facility facility,
+            PlanPreference? preference,
+            ScheduleItem original,
+          ) {
+            final candidates = <({int start, int duration, _WaitEstimate wait})>[];
+            final starts = <int>{entryMinutes, _itemStartMinutes(original)};
+            var slot = ((entryMinutes + 9) ~/ 10) * 10;
+            while (slot < exitMinutes) {
+              starts.add(slot);
+              slot += 10;
+            }
+            for (final requestedStart in starts) {
+              final wait = _resolveWaitEstimate(
+                facility: facility,
+                preference: preference,
+                waitProfiles: waitProfiles,
+                scheduledStartMinutes: requestedStart,
+                settings: settings,
+                unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+                greetingWaitPlanning: greetingWaitPlanning,
+              );
+              final duration = _resolvePlannedFacilityDuration(
+                facility: facility,
+                preference: preference,
+                waitEstimate: wait,
+                settings: settings,
+                unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+              );
+              if (requestedStart + duration > exitMinutes) continue;
+              if (_findAvailableStart(
+                    requestedStartMinutes: requestedStart,
+                    durationMinutes: duration,
+                    items: base,
+                    exitMinutes: exitMinutes,
+                  ) !=
+                  requestedStart) {
+                continue;
+              }
+              if (_adjustStartForOperatingHours(
+                    facility: facility,
+                    requestedStartMinutes: requestedStart,
+                    durationMinutes: duration,
+                    exitMinutes: exitMinutes,
+                    targetDate: settings.visitDate ?? DateTime.now(),
+                  ) !=
+                  requestedStart) {
+                continue;
+              }
+              candidates.add((start: requestedStart, duration: duration, wait: wait));
+            }
+            candidates.sort((a, b) {
+              final byWait = a.wait.waitMinutes.compareTo(b.wait.waitMinutes);
+              if (byWait != 0) return byWait;
+              final aDistance = (a.start - _itemStartMinutes(original)).abs();
+              final bDistance = (b.start - _itemStartMinutes(original)).abs();
+              return aDistance.compareTo(bDistance);
+            });
+            return candidates.take(legacyPairSlotCandidateLimit).toList(growable: false);
+          }
+
+          final firstCandidates =
+              candidatesFor(firstFacility, firstPreference, firstOriginal);
+          final secondCandidates =
+              candidatesFor(secondFacility, secondPreference, secondOriginal);
+          if (firstCandidates.isEmpty || secondCandidates.isEmpty) continue;
+
+          ScheduleItem buildItem(
+            Facility facility,
+            PlanPreference? preference,
+            ({int start, int duration, _WaitEstimate wait}) candidate,
+          ) {
+            return _createScheduleItem(
+              id: 'pair_slot_repack_${facility.id}',
+              title: facility.name,
+              type: ScheduleItemType.facility,
+              startMinutes: candidate.start,
+              endMinutes: candidate.start + candidate.duration,
+              facilityId: facility.id,
+              reason: '全希望と固定予定を維持したまま、2施設の時間枠を同時に外して10分刻みで交換探索し、'
+                  '単独移動では使えなかった安い待ち時間帯へ再配置しました。 '
+                  '移動時間と施設運営時間も再確認しています。所要時間を${candidate.duration}分として配置しました。',
+              note: _buildScheduleNote(
+                facility: facility,
+                preference: preference,
+              ),
+              estimatedWaitMinutes: _usesQueueWaitPlanning(facility)
+                  ? candidate.wait.waitMinutes
+                  : null,
+              experienceMinutes: _usesQueueWaitPlanning(facility)
+                  ? _resolveFacilityDuration(facility)
+                  : null,
+              waitEstimateSource: _usesQueueWaitPlanning(facility)
+                  ? candidate.wait.source
+                  : null,
+              accessMethod:
+                  preference?.accessMethod ?? FacilityAccessMethod.standby,
+              usesVacationPackageUnlimited: _usesUnlimitedRideBenefit(
+                facility: facility,
+                settings: settings,
+                unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+              ),
+              standbyWaitMinutes: _usesQueueWaitPlanning(facility) &&
+                      !candidate.wait.isPriorityAccessBuffer
+                  ? candidate.wait.waitMinutes
+                  : null,
+              priorityAccessBufferMinutes: _usesQueueWaitPlanning(facility) &&
+                      candidate.wait.isPriorityAccessBuffer
+                  ? candidate.wait.waitMinutes
+                  : null,
+            );
+          }
+
+          for (final firstCandidate in firstCandidates) {
+            for (final secondCandidate in secondCandidates) {
+              final firstEnd = firstCandidate.start + firstCandidate.duration;
+              final secondEnd = secondCandidate.start + secondCandidate.duration;
+              if (firstCandidate.start < secondEnd &&
+                  secondCandidate.start < firstEnd) {
+                continue;
+              }
+              final firstItem =
+                  buildItem(firstFacility, firstPreference, firstCandidate);
+              final secondItem =
+                  buildItem(secondFacility, secondPreference, secondCandidate);
+              final trial = List<ScheduleItem>.of(base)
+                ..add(firstItem)
+                ..add(secondItem);
+
+              bool travelSafe(
+                ScheduleItem target,
+                Facility facility,
+                int duration,
+              ) {
+                final withoutTarget = List<ScheduleItem>.of(trial)..remove(target);
+                final entryArea =
+                    facilityLocationById[facility.id]?.areaId ?? facility.areaId;
+                final exitArea = facilityLocationById[facility.id]
+                        ?.effectiveExitAreaId ??
+                    facility.areaId;
+                return _ensureTravelAroundScheduledFacilities(
+                      candidateStartMinutes: _itemStartMinutes(target),
+                      durationMinutes: duration,
+                      targetEntryAreaId: entryArea,
+                      targetExitAreaId: exitArea,
+                      items: withoutTarget,
+                      facilityLocationById: facilityLocationById,
+                      facilities: facilities,
+                      eventImpacts: eventImpacts,
+                      areaConnections: areaConnections,
+                      exitMinutes: exitMinutes,
+                    ) ==
+                    _itemStartMinutes(target);
+              }
+
+              if (!travelSafe(firstItem, firstFacility, firstCandidate.duration) ||
+                  !travelSafe(secondItem, secondFacility, secondCandidate.duration)) {
+                continue;
+              }
+              if (!hasFullCoverage(trial)) continue;
+              if (_coveredWishFixedAnchorFingerprint(
+                    items: trial,
+                    regularFacilityIds: regularIds,
+                  ) !=
+                  fixedAnchorFingerprint) {
+                continue;
+              }
+              final cost = _coveredWishTimingCost(
+                items: trial,
+                regularFacilityIds: regularIds,
+                facilities: facilities,
+                facilityLocationById: facilityLocationById,
+                eventImpacts: eventImpacts,
+                areaConnections: areaConnections,
+              );
+              if (!_isCoveredWishTimingCostBetter(cost, baseline)) continue;
+              if (bestCost == null ||
+                  _isCoveredWishTimingCostBetter(cost, bestCost)) {
+                bestTrial = trial;
+                bestCost = cost;
+              }
+            }
+          }
+        }
+      }
+
+      if (bestTrial == null || bestCost == null) return;
+      final committedTrial = bestTrial;
+      final committedCost = bestCost;
+      items
+        ..clear()
+        ..addAll(committedTrial);
+      baseline = committedCost;
+    }
+  }
+
+  void _optimizeCoveredDayByUnifiedBeamSearch({
+    required List<ScheduleItem> items,
+    required List<Facility> facilities,
+    required List<Facility> regularFacilities,
+    required List<PlanPreference> preferences,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required TripSettings settings,
+    required DateTime targetDate,
+    required int entryMinutes,
+    required int exitMinutes,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required Map<String, int> unlimitedRideBufferMinutes,
+    required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
+  }) {
+    final regularIds = regularFacilities.map((facility) => facility.id).toSet();
+
+    bool hasFullRegularWishCoverage(List<ScheduleItem> candidate) {
+      final scheduledIds = candidate
+          .map((item) => item.facilityId)
+          .whereType<String>()
+          .toSet();
+      return regularIds.every(scheduledIds.contains);
+    }
+
+    if (!hasFullRegularWishCoverage(items)) {
+      return;
+    }
+
+    bool isFlexibleMeal(ScheduleItem item) {
+      if (item.id.startsWith('fixed_restaurant_')) return false;
+      return item.type == ScheduleItemType.breakfast ||
+          item.type == ScheduleItemType.lunch ||
+          item.type == ScheduleItemType.dinner;
+    }
+
+    // The opening strategy has its own objective (defer-loss, day difficulty,
+    // transport ambiguity, congestion traps). A full-day standby-wait search
+    // must not overwrite that decision merely because another first facility
+    // has a cheaper whole-day wait sum.
+    //
+    // Preserve the first regular facility that the opening strategy already
+    // committed in the after-opening band. The rest of the regular wishes and
+    // non-reserved meals remain globally movable.
+    final openingCommittedItem = items
+        .where((item) {
+          final facilityId = item.facilityId;
+          if (facilityId == null || !regularIds.contains(facilityId)) {
+            return false;
+          }
+          return _waitTimeBandForMinutes(_itemStartMinutes(item)) ==
+              WaitTimeBand.afterOpening;
+        })
+        .fold<ScheduleItem?>(null, (earliest, item) {
+          if (earliest == null) return item;
+          return _itemStartMinutes(item) < _itemStartMinutes(earliest)
+              ? item
+              : earliest;
+        });
+
+    final movable = items.where((item) {
+      if (identical(item, openingCommittedItem)) return false;
+      final facilityId = item.facilityId;
+      return (facilityId != null && regularIds.contains(facilityId)) ||
+          isFlexibleMeal(item);
+    }).toList(growable: false);
+    if (movable.isEmpty) return;
+
+    // Genuine anchors plus the opening-strategy commitment. Flexible meals are
+    // intentionally excluded here unless they are confirmed reservations.
+    final hardAnchors = items.where((item) => !movable.contains(item)).toList();
+    final facilityById = {for (final facility in facilities) facility.id: facility};
+    final templateByKey = <String, ScheduleItem>{for (final item in movable) item.id: item};
+    final allKeys = templateByKey.keys.toSet();
+
+    // Keep a reasonably wide frontier. Unlike the previous pair search, no
+    // per-facility "best 18 slots" pre-filter is used; every legal 10-minute
+    // start can reach the frontier before dominance pruning.
+    const beamWidth = 320;
+    var frontier = <_UnifiedDaySearchState>[
+      _UnifiedDaySearchState(items: List<ScheduleItem>.from(hardAnchors), remaining: allKeys),
+    ];
+
+    for (var depth = 0; depth < movable.length; depth++) {
+      final expanded = <_UnifiedDaySearchState>[];
+      for (final state in frontier) {
+        for (final key in state.remaining) {
+          final template = templateByKey[key]!;
+          final facilityId = template.facilityId;
+          final facility = facilityId == null ? null : facilityById[facilityId];
+          final isRegular = facilityId != null && regularIds.contains(facilityId);
+          if (isRegular && facility == null) continue;
+
+          var earliest = entryMinutes;
+          var latest = exitMinutes;
+          if (template.type == ScheduleItemType.breakfast) {
+            latest = _minimum(latest, _toMinutes(10, 0));
+          } else if (template.type == ScheduleItemType.lunch) {
+            earliest = _maximum(earliest, _toMinutes(11, 0));
+            latest = _minimum(latest, _toMinutes(14, 0));
+          } else if (template.type == ScheduleItemType.dinner) {
+            earliest = _maximum(earliest, _toMinutes(17, 0));
+            latest = _minimum(latest, _toMinutes(20, 0));
+          }
+
+          final starts = <int>{_itemStartMinutes(template)};
+          for (var slot = ((earliest + 9) ~/ 10) * 10; slot < latest; slot += 10) {
+            starts.add(slot);
+          }
+
+          for (final requestedStart in starts) {
+            if (requestedStart < earliest || requestedStart >= latest) continue;
+            _WaitEstimate? wait;
+            var duration = _itemEndMinutes(template) - _itemStartMinutes(template);
+            if (isRegular) {
+              final preference = _findPreference(
+                facilityId: facility!.id,
+                preferences: preferences,
+              );
+              wait = _resolveWaitEstimate(
+                facility: facility,
+                preference: preference,
+                waitProfiles: waitProfiles,
+                scheduledStartMinutes: requestedStart,
+                settings: settings,
+                unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+                greetingWaitPlanning: greetingWaitPlanning,
+              );
+              duration = _resolvePlannedFacilityDuration(
+                facility: facility,
+                preference: preference,
+                settings: settings,
+                unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+                waitEstimate: wait,
+              );
+            }
+            if (duration <= 0 || requestedStart + duration > exitMinutes) continue;
+
+            if (!_isTimeRangeAvailable(
+              startMinutes: requestedStart,
+              endMinutes: requestedStart + duration,
+              items: state.items,
+            )) {
+              continue;
+            }
+            if (facility != null && !_fitsOperatingHours(
+              facility: facility,
+              startMinutes: requestedStart,
+              durationMinutes: duration,
+              targetDate: targetDate,
+            )) {
+              continue;
+            }
+            if (facility != null) {
+              final travelChecked = _ensureTravelAroundScheduledFacilities(
+                candidateStartMinutes: requestedStart,
+                durationMinutes: duration,
+                targetEntryAreaId:
+                    facilityLocationById[facility.id]?.areaId ?? facility.areaId,
+                targetExitAreaId:
+                    facilityLocationById[facility.id]?.effectiveExitAreaId ?? facility.areaId,
+                items: state.items,
+                facilityLocationById: facilityLocationById,
+                facilities: facilities,
+                eventImpacts: eventImpacts,
+                areaConnections: areaConnections,
+                exitMinutes: exitMinutes,
+              );
+              // A shifted result belongs to another explicit slot and is not
+              // silently accepted. This keeps the search space observable.
+              if (travelChecked != requestedStart) continue;
+            }
+
+            final placed = ScheduleItem(
+              id: template.id,
+              title: template.title,
+              type: template.type,
+              startHour: requestedStart ~/ 60,
+              startMinute: requestedStart % 60,
+              endHour: (requestedStart + duration) ~/ 60,
+              endMinute: (requestedStart + duration) % 60,
+              facilityId: template.facilityId,
+              reason: isRegular
+                  ? '全希望と固定予定を維持した全日制約探索で、来園日の待ち時間テーブルを10分刻みで比較して配置しました。'
+                  : template.reason,
+              note: template.note,
+              estimatedWaitMinutes: isRegular && wait != null && !wait.isPriorityAccessBuffer
+                  ? wait.waitMinutes
+                  : template.estimatedWaitMinutes,
+              experienceMinutes: isRegular && facility != null
+                  ? _resolveFacilityDuration(facility)
+                  : template.experienceMinutes,
+              waitEstimateSource: isRegular && wait != null ? wait.source : template.waitEstimateSource,
+              accessMethod: template.accessMethod,
+              usesVacationPackageUnlimited: template.usesVacationPackageUnlimited,
+              standbyWaitMinutes: isRegular && wait != null && !wait.isPriorityAccessBuffer
+                  ? wait.waitMinutes
+                  : template.standbyWaitMinutes,
+              priorityAccessBufferMinutes: isRegular && wait != null && wait.isPriorityAccessBuffer
+                  ? wait.waitMinutes
+                  : template.priorityAccessBufferMinutes,
+            );
+            final nextItems = List<ScheduleItem>.from(state.items)..add(placed);
+            final nextRemaining = Set<String>.from(state.remaining)..remove(key);
+            final cost = _coveredWishTimingCost(
+              items: nextItems,
+              regularFacilityIds: regularIds,
+              facilities: facilities,
+              facilityLocationById: facilityLocationById,
+              eventImpacts: eventImpacts,
+              areaConnections: areaConnections,
+            );
+            expanded.add(_UnifiedDaySearchState(
+              items: nextItems,
+              remaining: nextRemaining,
+              standbyWaitMinutes: cost.standbyWaitMinutes,
+              movementMinutes: cost.movementMinutes,
+              fragmentedFreeMinutes: cost.fragmentedFreeMinutes,
+            ));
+          }
+        }
+      }
+      if (expanded.isEmpty) return;
+
+      expanded.sort((a, b) {
+        final aScore = _unifiedOptimizationScore(
+          waitMinutes: a.standbyWaitMinutes,
+          movementMinutes: a.movementMinutes,
+          fragmentedFreeMinutes: a.fragmentedFreeMinutes,
+          mode: settings.scheduleOptimizationMode,
+        );
+        final bScore = _unifiedOptimizationScore(
+          waitMinutes: b.standbyWaitMinutes,
+          movementMinutes: b.movementMinutes,
+          fragmentedFreeMinutes: b.fragmentedFreeMinutes,
+          mode: settings.scheduleOptimizationMode,
+        );
+        final scoreCompare = aScore.compareTo(bScore);
+        if (scoreCompare != 0) return scoreCompare;
+        final waitCompare = a.standbyWaitMinutes.compareTo(b.standbyWaitMinutes);
+        if (waitCompare != 0) return waitCompare;
+        return a.movementMinutes.compareTo(b.movementMinutes);
+      });
+
+      // Dominance pruning by the actual placed schedule fingerprint keeps
+      // equivalent states from consuming the frontier without deleting slots
+      // merely because their individual wait rank is low.
+      final seen = <String>{};
+      final nextFrontier = <_UnifiedDaySearchState>[];
+      for (final state in expanded) {
+        final ordered = state.items.toList()
+          ..sort((a, b) => _itemStartMinutes(a).compareTo(_itemStartMinutes(b)));
+        final fingerprint = ordered
+            .map((item) => '${item.id}@${_itemStartMinutes(item)}')
+            .join('|');
+        if (!seen.add(fingerprint)) continue;
+        nextFrontier.add(state);
+        if (nextFrontier.length >= beamWidth) break;
+      }
+      frontier = nextFrontier;
+    }
+
+    final completed = frontier.where((state) => state.remaining.isEmpty).toList();
+    if (completed.isEmpty) return;
+    completed.sort((a, b) {
+      final aScore = _unifiedOptimizationScore(
+        waitMinutes: a.standbyWaitMinutes,
+        movementMinutes: a.movementMinutes,
+        fragmentedFreeMinutes: a.fragmentedFreeMinutes,
+        mode: settings.scheduleOptimizationMode,
+      );
+      final bScore = _unifiedOptimizationScore(
+        waitMinutes: b.standbyWaitMinutes,
+        movementMinutes: b.movementMinutes,
+        fragmentedFreeMinutes: b.fragmentedFreeMinutes,
+        mode: settings.scheduleOptimizationMode,
+      );
+      final scoreCompare = aScore.compareTo(bScore);
+      if (scoreCompare != 0) return scoreCompare;
+      return a.standbyWaitMinutes.compareTo(b.standbyWaitMinutes);
+    });
+    final best = completed.first;
+    if (!hasFullRegularWishCoverage(best.items)) return;
+
+    final baseline = _coveredWishTimingCost(
+      items: items,
+      regularFacilityIds: regularIds,
+      facilities: facilities,
+      facilityLocationById: facilityLocationById,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+    );
+    final candidate = _coveredWishTimingCost(
+      items: best.items,
+      regularFacilityIds: regularIds,
+      facilities: facilities,
+      facilityLocationById: facilityLocationById,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+    );
+    if (!_isUnifiedOptimizationCostBetter(
+      candidate,
+      baseline,
+      settings.scheduleOptimizationMode,
+    )) {
+      return;
+    }
+
+    items
+      ..clear()
+      ..addAll(best.items);
+  }
+
+
+  String _coveredWishFixedAnchorFingerprint({
+    required List<ScheduleItem> items,
+    required Set<String> regularFacilityIds,
+  }) {
+    final anchors = items.where((item) {
+      final facilityId = item.facilityId;
+      return facilityId == null || !regularFacilityIds.contains(facilityId);
+    }).map((item) =>
+        '${item.id}@${_itemStartMinutes(item)}-${_itemEndMinutes(item)}').toList()
+      ..sort();
+    return anchors.join('|');
+  }
+
+  _CoveredWishTimingCost _coveredWishTimingCost({
+    required List<ScheduleItem> items,
+    required Set<String> regularFacilityIds,
+    required List<Facility> facilities,
+    required Map<String, FacilityLocation> facilityLocationById,
+    required List<EventImpact> eventImpacts,
+    required List<AreaConnection> areaConnections,
+  }) {
+    final facilityById = {for (final facility in facilities) facility.id: facility};
+    final ordered = items.where((item) => item.facilityId != null).toList(growable: false)
+      ..sort((a, b) => _itemStartMinutes(a).compareTo(_itemStartMinutes(b)));
+
+    var standbyWaitMinutes = 0;
+    for (final item in ordered) {
+      if (regularFacilityIds.contains(item.facilityId)) {
+        standbyWaitMinutes += item.standbyWaitMinutes ?? item.estimatedWaitMinutes ?? 0;
+      }
+    }
+
+    var movementMinutes = 0;
+    for (var index = 1; index < ordered.length; index++) {
+      final previousId = ordered[index - 1].facilityId;
+      final currentId = ordered[index].facilityId;
+      if (previousId == null || currentId == null) continue;
+      final previous = facilityById[previousId];
+      final current = facilityById[currentId];
+      if (previous == null || current == null) continue;
+      final fromArea = facilityLocationById[previousId]?.effectiveExitAreaId ?? previous.areaId;
+      final toArea = facilityLocationById[currentId]?.areaId ?? current.areaId;
+      movementMinutes += _calculateMovementMinutes(
+        previousAreaId: fromArea,
+        currentAreaId: toArea,
+        atMinutes: _itemEndMinutes(ordered[index - 1]),
+        eventImpacts: eventImpacts,
+        areaConnections: areaConnections,
+      );
+    }
+
+    var fragmentedFreeMinutes = 0;
+    final timeline = items
+        .where((item) =>
+            item.type != ScheduleItemType.entry &&
+            item.type != ScheduleItemType.exit)
+        .toList(growable: false)
+      ..sort((a, b) => _itemStartMinutes(a).compareTo(_itemStartMinutes(b)));
+    for (var index = 1; index < timeline.length; index++) {
+      final previous = timeline[index - 1];
+      final current = timeline[index];
+      final rawGap = _itemStartMinutes(current) - _itemEndMinutes(previous);
+      if (rawGap <= 0) continue;
+
+      var requiredTravel = 0;
+      final previousId = previous.facilityId;
+      final currentId = current.facilityId;
+      if (previousId != null && currentId != null) {
+        final previousFacility = facilityById[previousId];
+        final currentFacility = facilityById[currentId];
+        if (previousFacility != null && currentFacility != null) {
+          requiredTravel = _calculateMovementMinutes(
+            previousAreaId:
+                facilityLocationById[previousId]?.effectiveExitAreaId ??
+                    previousFacility.areaId,
+            currentAreaId:
+                facilityLocationById[currentId]?.areaId ??
+                    currentFacility.areaId,
+            atMinutes: _itemEndMinutes(previous),
+            eventImpacts: eventImpacts,
+            areaConnections: areaConnections,
+          );
+        }
+      }
+      final usableGap = rawGap - requiredTravel;
+      // A large continuous gap is useful for an extra attraction, shopping or
+      // rest. Penalize only awkward fragments instead of "free time" itself.
+      if (usableGap >= 10 && usableGap < 45) {
+        fragmentedFreeMinutes += usableGap;
+      }
+    }
+
+    return _CoveredWishTimingCost(
+      standbyWaitMinutes: standbyWaitMinutes,
+      movementMinutes: movementMinutes,
+      fragmentedFreeMinutes: fragmentedFreeMinutes,
+    );
+  }
+
+  double _unifiedOptimizationScore({
+    required int waitMinutes,
+    required int movementMinutes,
+    required int fragmentedFreeMinutes,
+    required ScheduleOptimizationMode mode,
+  }) {
+    switch (mode) {
+      case ScheduleOptimizationMode.minimumWait:
+        return waitMinutes +
+            movementMinutes * 0.45 +
+            fragmentedFreeMinutes * 0.35;
+      case ScheduleOptimizationMode.minimumWalking:
+        return waitMinutes * 0.55 +
+            movementMinutes * 2.0 +
+            fragmentedFreeMinutes * 0.70;
+      case ScheduleOptimizationMode.compactSchedule:
+        return waitMinutes * 0.65 +
+            movementMinutes * 0.80 +
+            fragmentedFreeMinutes * 2.0;
+      case ScheduleOptimizationMode.balanced:
+        return waitMinutes +
+            movementMinutes * 1.40 +
+            fragmentedFreeMinutes * 1.20;
+    }
+  }
+
+  bool _isUnifiedOptimizationCostBetter(
+    _CoveredWishTimingCost candidate,
+    _CoveredWishTimingCost baseline,
+    ScheduleOptimizationMode mode,
+  ) {
+    final candidateScore = _unifiedOptimizationScore(
+      waitMinutes: candidate.standbyWaitMinutes,
+      movementMinutes: candidate.movementMinutes,
+      fragmentedFreeMinutes: candidate.fragmentedFreeMinutes,
+      mode: mode,
+    );
+    final baselineScore = _unifiedOptimizationScore(
+      waitMinutes: baseline.standbyWaitMinutes,
+      movementMinutes: baseline.movementMinutes,
+      fragmentedFreeMinutes: baseline.fragmentedFreeMinutes,
+      mode: mode,
+    );
+    if (candidateScore != baselineScore) return candidateScore < baselineScore;
+    if (candidate.standbyWaitMinutes != baseline.standbyWaitMinutes) {
+      return candidate.standbyWaitMinutes < baseline.standbyWaitMinutes;
+    }
+    if (candidate.movementMinutes != baseline.movementMinutes) {
+      return candidate.movementMinutes < baseline.movementMinutes;
+    }
+    return candidate.fragmentedFreeMinutes < baseline.fragmentedFreeMinutes;
+  }
+
+  bool _isCoveredWishTimingCostBetter(
+    _CoveredWishTimingCost candidate,
+    _CoveredWishTimingCost baseline,
+  ) {
+    if (candidate.standbyWaitMinutes != baseline.standbyWaitMinutes) {
+      return candidate.standbyWaitMinutes < baseline.standbyWaitMinutes;
+    }
+    return candidate.movementMinutes < baseline.movementMinutes;
+  }
+
   int _addFlexibleOpenTimeBlocks({
     required List<ScheduleItem> items,
     required int entryMinutes,
@@ -1326,7 +2840,15 @@ class ScheduleEngine {
         id: 'lunch',
         title: '昼食',
         type: ScheduleItemType.lunch,
-        requestedStartMinutes: _toMinutes(12, 0),
+        requestedStartMinutes: _selectFlexibleMealStart(
+              slot: MealSlot.lunch,
+              preferredStartMinutes: _toMinutes(12, 0),
+              durationMinutes: _fallbackMealDurationMinutes,
+              items: items,
+              entryMinutes: entryMinutes,
+              exitMinutes: exitMinutes,
+            ) ??
+            _toMinutes(12, 0),
         entryMinutes: entryMinutes,
         exitMinutes: exitMinutes,
         reason:
@@ -1343,7 +2865,15 @@ class ScheduleEngine {
         id: 'dinner',
         title: '夕食',
         type: ScheduleItemType.dinner,
-        requestedStartMinutes: _toMinutes(18, 0),
+        requestedStartMinutes: _selectFlexibleMealStart(
+              slot: MealSlot.dinner,
+              preferredStartMinutes: _toMinutes(18, 0),
+              durationMinutes: _fallbackMealDurationMinutes,
+              items: items,
+              entryMinutes: entryMinutes,
+              exitMinutes: exitMinutes,
+            ) ??
+            _toMinutes(18, 0),
         entryMinutes: entryMinutes,
         exitMinutes: exitMinutes,
         reason:
@@ -1352,6 +2882,72 @@ class ScheduleEngine {
             '通常の夕食予定を追加しました。',
       );
     }
+  }
+
+  int? _selectFlexibleMealStart({
+    required MealSlot slot,
+    required int preferredStartMinutes,
+    required int durationMinutes,
+    required List<ScheduleItem> items,
+    required int entryMinutes,
+    required int exitMinutes,
+    Facility? facility,
+    DateTime? targetDate,
+  }) {
+    // Non-reserved meals are soft constraints. Search 10-minute starts inside
+    // a broad meal window instead of pinning lunch/dinner to 12:00/18:00.
+    // The peak penalty is deliberately a planning heuristic, not observed wait
+    // data; real restaurant observations can replace it later.
+    final (windowStart, windowEnd, peakCenter) = switch (slot) {
+      MealSlot.breakfast => (entryMinutes, _toMinutes(10, 0), _toMinutes(8, 30)),
+      MealSlot.lunch => (_toMinutes(11, 0), _toMinutes(14, 0), _toMinutes(12, 0)),
+      MealSlot.dinner => (_toMinutes(17, 0), _toMinutes(20, 0), _toMinutes(18, 0)),
+    };
+    final start = _maximum(windowStart, entryMinutes);
+    final latest = _minimum(windowEnd, exitMinutes - durationMinutes);
+    if (latest < start) return null;
+
+    int? bestStart;
+    double? bestScore;
+    for (var candidate = ((start + 9) ~/ 10) * 10;
+        candidate <= latest;
+        candidate += 10) {
+      final end = candidate + durationMinutes;
+      if (!_isTimeRangeAvailable(
+        startMinutes: candidate,
+        endMinutes: end,
+        items: items,
+      )) {
+        continue;
+      }
+      if (facility != null && targetDate != null &&
+          !_fitsOperatingHours(
+            facility: facility,
+            startMinutes: candidate,
+            durationMinutes: durationMinutes,
+            targetDate: targetDate,
+          )) {
+        continue;
+      }
+
+      final peakDistance = (candidate - peakCenter).abs();
+      final peakPenalty = peakDistance < 40
+          ? 120.0
+          : peakDistance < 60
+              ? 45.0
+              : 0.0;
+      final preferencePenalty =
+          (candidate - preferredStartMinutes).abs() * 0.15;
+      final edgePenalty = slot == MealSlot.breakfast ? 0.0 :
+          (candidate == start || candidate == latest ? 2.0 : 0.0);
+      final score = peakPenalty + preferencePenalty + edgePenalty;
+      if (bestScore == null || score < bestScore ||
+          (score == bestScore && candidate < bestStart!)) {
+        bestScore = score;
+        bestStart = candidate;
+      }
+    }
+    return bestStart;
   }
 
   void _addRestaurantMeal({
@@ -1386,11 +2982,23 @@ class ScheduleEngine {
         preference?.fixedTimeStatus == FixedTimeStatus.confirmed &&
         reservationMinutes != null;
 
+    final durationMinutes = _resolveFacilityDuration(facility);
+    final flexibleMealStartMinutes = hasReservation
+        ? null
+        : _selectFlexibleMealStart(
+            slot: assignment.slot,
+            preferredStartMinutes: assignment.startMinutes,
+            durationMinutes: durationMinutes,
+            items: items,
+            entryMinutes: entryMinutes,
+            exitMinutes: exitMinutes,
+            facility: facility,
+            targetDate: targetDate,
+          );
     final requestedStartMinutes = hasReservation
         ? reservationMinutes
-        : _maximum(assignment.startMinutes, entryMinutes);
-
-    final durationMinutes = _resolveFacilityDuration(facility);
+        : flexibleMealStartMinutes ??
+            _maximum(assignment.startMinutes, entryMinutes);
 
     if (hasReservation) {
       final reservationEndMinutes = requestedStartMinutes + durationMinutes;
@@ -1433,6 +3041,7 @@ class ScheduleEngine {
             durationMinutes: durationMinutes,
             waitDecision: waitDecision,
             usedReservationTime: true,
+            flexibleMealTimeOptimized: false,
           ),
           note: _buildScheduleNote(facility: facility, preference: preference),
         ),
@@ -1494,6 +3103,8 @@ class ScheduleEngine {
           durationMinutes: durationMinutes,
           waitDecision: waitDecision,
           usedReservationTime: false,
+          flexibleMealTimeOptimized:
+              requestedStartMinutes != assignment.startMinutes,
         ),
         note: _buildScheduleNote(facility: facility, preference: preference),
       ),
@@ -1768,7 +3379,22 @@ class ScheduleEngine {
     required DateTime targetDate,
     required Map<String, int> unlimitedRideBufferMinutes,
     required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
+    required List<String> committedOpeningFacilityIds,
   }) {
+    if (committedOpeningFacilityIds.isNotEmpty) {
+      final committedId = committedOpeningFacilityIds.first;
+      for (final facility in remainingFacilities) {
+        if (facility.id == committedId) {
+          return _NextFacilityDecision(
+            facility: facility,
+            reason: '朝一ルート比較で選んだ後続施設として配置しました。',
+            isOpeningStrategy: true,
+          );
+        }
+      }
+      committedOpeningFacilityIds.clear();
+    }
+
     if (remainingFacilities.length == 1) {
       return _NextFacilityDecision(facility: remainingFacilities.single);
     }
@@ -1795,6 +3421,7 @@ class ScheduleEngine {
           facility: openingDecision.facility,
           reason: openingDecision.reason,
           isOpeningStrategy: true,
+          openingSequenceFacilityIds: openingDecision.sequenceFacilityIds,
         );
       }
     }
@@ -1891,6 +3518,21 @@ class ScheduleEngine {
       }
       score += preferenceValue * 2.0;
       score += expert.score * 0.16;
+
+      // Coverage rescue: a wish that is expensive to fit later must not lose
+      // merely because a shorter/easier facility is locally cheaper now.
+      // This is intentionally data-driven (daily standby difficulty), not a
+      // facility-name special case. It helps the forward pass reserve enough
+      // room for high-demand wishes before fixed meals/shows fragment the day.
+      final dayDifficultyMinutes = _openingDayDifficultyMinutes(
+        facility: facility,
+        waitProfiles: waitProfiles,
+        greetingWaitPlanning: greetingWaitPlanning,
+      );
+      final coverageDifficultyBonus =
+          dayDifficultyMinutes.clamp(0, 150).toDouble() * 0.55;
+      score += coverageDifficultyBonus;
+
       score -= (routeIndex < 0 ? routeOrder.length : routeIndex) * 0.5;
 
       final openingScore = morningScores[facility.id];
@@ -1902,6 +3544,12 @@ class ScheduleEngine {
 
 
 
+      final spreadOpportunity = _waitProfileSpreadOpportunity(
+        facility: facility,
+        waitProfiles: waitProfiles,
+        scheduledStartMinutes: candidateStart,
+      );
+
       scored.add(
         _WaitAwareCandidate(
           facility: facility,
@@ -1909,11 +3557,23 @@ class ScheduleEngine {
           timing: timing,
           expertScore: expert.score,
           expertReason: expert.reason,
+          waitSpreadMinutes: spreadOpportunity.spreadMinutes,
+          cheapWindowCaptureMinutes:
+              spreadOpportunity.cheapWindowCaptureMinutes,
         ),
       );
     }
 
     scored.sort((a, b) {
+      // Protect the most valuable cheap window first. A facility with a large
+      // reliable day-wide wait spread wins only while the current band is
+      // actually cheap; once its queue is already near the daily high, the
+      // existing total-time/anchor evaluation decides instead.
+      final captureCompare =
+          b.cheapWindowCaptureMinutes.compareTo(a.cheapWindowCaptureMinutes);
+      if (captureCompare != 0) return captureCompare;
+      final spreadCompare = b.waitSpreadMinutes.compareTo(a.waitSpreadMinutes);
+      if (spreadCompare != 0) return spreadCompare;
       final scoreCompare = b.score.compareTo(a.score);
       if (scoreCompare != 0) return scoreCompare;
       return routeOrder.indexOf(a.facility).compareTo(
@@ -2005,7 +3665,7 @@ class ScheduleEngine {
     final detail = best.firstStep;
     final route = best.facilities.map((facility) => facility.name).join(' → ');
     final alternative = detail.alternativeAccessPenalty > 0
-        ? ' DPA/PP/シングルライダー等で後から短縮できる可能性を'
+        ? ' DPA/シングルライダー等で後から短縮できる可能性を'
             '${detail.alternativeAccessPenalty.round()}分相当減点しました。'
         : '';
     final hasReliableOpeningProfile = _hasReliableWaitProfile(
@@ -2058,13 +3718,17 @@ class ScheduleEngine {
         : unlimitedRideBufferMinutes.isNotEmpty
             ? '乗り放題対象外のため、後から短縮しにくい通常待ち時間と'
                 '後回し損失を乗り放題対象施設より重視しています。'
-            : '朝は単なる短待ち施設ではなく、一日を通して攻略困難で'
-                '後回し損失が大きい施設を優先しています。';
+            : detail.deferLossMinutes >= 15
+                ? '朝は単なる短待ち施設ではなく、一日を通して攻略困難で'
+                    '後回し損失が大きい施設を優先しています。'
+                : '朝は後回し損失だけでなく、一日を通した通常待機難易度・'
+                    '移動・体験時間・後続ルートを合わせて比較しています。';
 
     return _OpeningSequenceDecision(
       facility: first,
+      sequenceFacilityIds: best.facilities.map((facility) => facility.id).toList(growable: false),
       reason:
-          '朝一は1施設だけでなく最初の${best.facilities.length}手を比較しました。'
+          '${best.facilities.length >= 2 ? '朝一は最初の${best.facilities.length}手をルートとして比較しました。' : '朝一候補を比較しました。'}'
           '候補ルート「$route」を総合評価し、'
           '候補評価時点では$openingWaitLabel、'
           '後回し損失${detail.deferLossMinutes >= 0 ? '+' : ''}${detail.deferLossMinutes}分、'
@@ -2206,8 +3870,8 @@ class ScheduleEngine {
       scheduledStartMinutes: candidateStart,
       settings: settings,
       unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      openingOpportunity: true,
     );
-    final deferLoss = timing?.delayPenaltyMinutes ?? 0;
     final priority = preference?.priority.value ?? facility.priority.value;
     final morningSignal = morningScores[facility.id] ?? 0.0;
     final alternativeAccessPenalty = _openingAlternativeAccessPenalty(
@@ -2224,6 +3888,20 @@ class ScheduleEngine {
             waitProfiles: waitProfiles,
             greetingWaitPlanning: greetingWaitPlanning,
           );
+    // Some historical profiles do not have a reliable adjacent time-band
+    // comparison, which used to collapse the opening defer-loss to zero.
+    // For opening strategy only, fall back to the gap between the day's
+    // normal standby difficulty and the current opening estimate. This keeps
+    // high-demand attractions from being incorrectly treated as safe to defer.
+    final profileDeferLoss = timing?.delayPenaltyMinutes;
+    final difficultyFallback =
+        (dayDifficultyMinutes - waitEstimate.waitMinutes).clamp(-120, 120);
+    final deferLoss = profileDeferLoss == null
+        ? difficultyFallback
+        : profileDeferLoss >= difficultyFallback
+            ? profileDeferLoss
+            : difficultyFallback;
+
     final transportPenalty = _openingTransportPenalty(
       facility: facility,
       preference: preference,
@@ -2246,7 +3924,7 @@ class ScheduleEngine {
     score += deferLoss * 2.2;
     score += priority * 8.0;
     score += expert.score * 0.45;
-    score += dayDifficultyMinutes * 0.35;
+    score += dayDifficultyMinutes * 1.25;
     score += morningSignal.clamp(-60.0, 120.0).toDouble() * 0.35;
 
     // In an unlimited-ride plan, covered attractions remain cheap to access
@@ -2276,7 +3954,13 @@ class ScheduleEngine {
       }
     }
 
-    score -= waitEstimate.waitMinutes * 0.8;
+    score -= waitEstimate.waitMinutes * 0.70;
+    // Spending most of the opening window in a queue has a large opportunity
+    // cost even for a popular attraction. Apply a data-driven congestion-trap
+    // penalty above 60 minutes instead of hard-coding any facility name.
+    final openingCongestionTrapMinutes =
+        (waitEstimate.waitMinutes - 60).clamp(0, 120);
+    score -= openingCongestionTrapMinutes * 1.25;
     score -= movementMinutes * 1.25;
     score -= _resolveFacilityDuration(facility) * 0.15;
     score -= alternativeAccessPenalty;
@@ -2373,6 +4057,59 @@ class ScheduleEngine {
   double _maximumDouble(double first, double second) =>
       first >= second ? first : second;
 
+  ({int spreadMinutes, int cheapWindowCaptureMinutes})
+      _waitProfileSpreadOpportunity({
+    required Facility facility,
+    required List<TimeBandWaitProfile> waitProfiles,
+    required int scheduledStartMinutes,
+  }) {
+    TimeBandWaitProfile? profile;
+    for (final item in waitProfiles) {
+      if (item.facilityId == facility.id && item.parkId == facility.parkId) {
+        profile = item;
+        break;
+      }
+    }
+    if (profile == null) {
+      return (spreadMinutes: 0, cheapWindowCaptureMinutes: 0);
+    }
+
+    const bands = <WaitTimeBand>[
+      WaitTimeBand.afterOpening,
+      WaitTimeBand.beforeLunch,
+      WaitTimeBand.afterLunch,
+      WaitTimeBand.aroundShows,
+      WaitTimeBand.beforeDinner,
+      WaitTimeBand.afterDinner,
+      WaitTimeBand.beforeClosing,
+    ];
+    final reliable = <int>[];
+    for (final band in bands) {
+      final range = profile.rangeFor(band);
+      if (_isReliableTimingRange(range)) reliable.add(range!.typicalMinutes);
+    }
+    if (reliable.length < 2) {
+      return (spreadMinutes: 0, cheapWindowCaptureMinutes: 0);
+    }
+    reliable.sort();
+    final minWait = reliable.first;
+    final maxWait = reliable.last;
+    final currentRange = profile.rangeFor(_waitTimeBandForMinutes(scheduledStartMinutes));
+    if (!_isReliableTimingRange(currentRange)) {
+      return (spreadMinutes: maxWait - minWait, cheapWindowCaptureMinutes: 0);
+    }
+
+    // The spread tells us how costly it can be to miss this attraction's good
+    // window. Capture is high only while the current band is still cheap. This
+    // avoids blindly prioritising a volatile attraction while it is already at
+    // its expensive part of the day.
+    final currentWait = currentRange!.typicalMinutes;
+    return (
+      spreadMinutes: maxWait - minWait,
+      cheapWindowCaptureMinutes: (maxWait - currentWait).clamp(0, 240),
+    );
+  }
+
   _WaitTimingOpportunity? _waitTimingOpportunity({
     required Facility facility,
     required PlanPreference? preference,
@@ -2380,6 +4117,7 @@ class ScheduleEngine {
     required int scheduledStartMinutes,
     required TripSettings settings,
     required Map<String, int> unlimitedRideBufferMinutes,
+    bool openingOpportunity = false,
   }) {
     if (!_usesQueueWaitPlanning(facility) ||
         facility.waitTime != null ||
@@ -2419,19 +4157,16 @@ class ScheduleEngine {
       return null;
     }
 
-    // Compare against the *near-term* bands rather than the cheapest band
-    // anywhere later in the day.  Looking at the whole remaining day could
-    // hide an important morning opportunity when (for example) an attraction
-    // becomes very busy at lunch but gets shorter again near closing.
-    //
-    // The next two reliable bands represent the practical cost of postponing
-    // this attraction while the planner schedules other wishes first.
-    const lookAheadReliableBands = 2;
+    // Opening and the rest of the day intentionally answer different
+    // questions. At opening, compare the next two reliable bands and protect
+    // the attraction whose cheap opening window is easiest to lose. After the
+    // opening decision, use rolling opportunity cost: scan every reliable
+    // remaining band and ask whether the attraction can be recovered more
+    // cheaply later. This avoids spending the current slot on a facility that
+    // becomes busy at lunch but reliably drops again in the evening.
+    const openingLookAheadReliableBands = 2;
     final futureCandidates = <({WaitTimeBand band, int waitMinutes})>[];
-    for (var index = currentIndex + 1;
-        index < orderedBands.length &&
-            futureCandidates.length < lookAheadReliableBands;
-        index++) {
+    for (var index = currentIndex + 1; index < orderedBands.length; index++) {
       final band = orderedBands[index];
       final range = profile.rangeFor(band);
       if (!_isReliableTimingRange(range)) continue;
@@ -2439,19 +4174,22 @@ class ScheduleEngine {
         band: band,
         waitMinutes: range!.typicalMinutes,
       ));
+      if (openingOpportunity &&
+          futureCandidates.length >= openingLookAheadReliableBands) {
+        break;
+      }
     }
 
     if (futureCandidates.isEmpty) {
       return null;
     }
 
-    // For "use it now" urgency, the relevant risk is the largest wait that
-    // is likely to be encountered after postponing.  This lets multiple
-    // morning-sensitive attractions compete by how costly it is to miss their
-    // current low-wait window.
     var representativeFuture = futureCandidates.first;
     for (final candidate in futureCandidates.skip(1)) {
-      if (candidate.waitMinutes > representativeFuture.waitMinutes) {
+      final shouldReplace = openingOpportunity
+          ? candidate.waitMinutes > representativeFuture.waitMinutes
+          : candidate.waitMinutes < representativeFuture.waitMinutes;
+      if (shouldReplace) {
         representativeFuture = candidate;
       }
     }
@@ -2582,7 +4320,7 @@ class ScheduleEngine {
       return experienceMinutes + bufferMinutes;
     }
 
-    // DPA/PP等でも入場から乗車までの時間は0分ではないため、
+    // DPA等でも入場から乗車までの時間は0分ではないため、
     // 最低限のキュー・乗降バッファを確保する。
     final priorityAccessBuffer = _priorityAccessBufferMinutes(
       facility: facility,
@@ -3243,6 +4981,7 @@ class ScheduleEngine {
     required int durationMinutes,
     required _WaitToleranceDecision waitDecision,
     required bool usedReservationTime,
+    required bool flexibleMealTimeOptimized,
   }) {
     final facility = assignment.facility;
 
@@ -3256,6 +4995,13 @@ class ScheduleEngine {
       );
     } else {
       reasons.add(assignment.reason);
+      if (flexibleMealTimeOptimized) {
+        reasons.add(
+          '予約で固定されていない食事のため、昼食・夕食の標準的な混雑中心時刻を避ける'
+          '10分刻みの可動食事枠として再探索しました。これは実測待ち時間ではなく、'
+          '混雑ピークを固定時刻にしないための計画上の安全側ヒューリスティックです。',
+        );
+      }
     }
 
     if (facility.isRestaurant) {
@@ -3728,6 +5474,22 @@ class ScheduleEngine {
   }
 }
 
+class _UnifiedDaySearchState {
+  const _UnifiedDaySearchState({
+    required this.items,
+    required this.remaining,
+    this.standbyWaitMinutes = 0,
+    this.movementMinutes = 0,
+    this.fragmentedFreeMinutes = 0,
+  });
+
+  final List<ScheduleItem> items;
+  final Set<String> remaining;
+  final int standbyWaitMinutes;
+  final int movementMinutes;
+  final int fragmentedFreeMinutes;
+}
+
 class _FixedPerformanceCandidate {
   const _FixedPerformanceCandidate({
     required this.facility,
@@ -3765,10 +5527,12 @@ class _OpeningSequenceDecision {
   const _OpeningSequenceDecision({
     required this.facility,
     required this.reason,
+    required this.sequenceFacilityIds,
   });
 
   final Facility facility;
   final String reason;
+  final List<String> sequenceFacilityIds;
 }
 
 class _OpeningSequence {
@@ -3837,11 +5601,13 @@ class _NextFacilityDecision {
     required this.facility,
     this.reason,
     this.isOpeningStrategy = false,
+    this.openingSequenceFacilityIds = const [],
   });
 
   final Facility facility;
   final String? reason;
   final bool isOpeningStrategy;
+  final List<String> openingSequenceFacilityIds;
 }
 
 class _WaitAwareCandidate {
@@ -3851,6 +5617,8 @@ class _WaitAwareCandidate {
     required this.timing,
     required this.expertScore,
     required this.expertReason,
+    required this.waitSpreadMinutes,
+    required this.cheapWindowCaptureMinutes,
   });
 
   final Facility facility;
@@ -3858,6 +5626,8 @@ class _WaitAwareCandidate {
   final _WaitTimingOpportunity? timing;
   final double expertScore;
   final String expertReason;
+  final int waitSpreadMinutes;
+  final int cheapWindowCaptureMinutes;
 }
 
 class _WaitTimingOpportunity {
@@ -3901,6 +5671,18 @@ class _WaitToleranceDecision {
   final String? reason;
 }
 
+
+class _CoveredWishTimingCost {
+  const _CoveredWishTimingCost({
+    required this.standbyWaitMinutes,
+    required this.movementMinutes,
+    this.fragmentedFreeMinutes = 0,
+  });
+
+  final int standbyWaitMinutes;
+  final int movementMinutes;
+  final int fragmentedFreeMinutes;
+}
 
 class _NearestWaitRange {
   const _NearestWaitRange({required this.band, required this.range});

@@ -1,3 +1,10 @@
+enum ScheduleOptimizationMode {
+  balanced,
+  minimumWait,
+  minimumWalking,
+  compactSchedule,
+}
+
 class TripSettings {
   const TripSettings({
     required this.parkId,
@@ -10,6 +17,8 @@ class TripSettings {
     this.happyEntryTimeMinute = 45,
     required this.exitTimeHour,
     required this.exitTimeMinute,
+    this.officialClosingTimeHour = 21,
+    this.officialClosingTimeMinute = 0,
     required this.numberOfPeople,
     required this.hasHappyEntry,
     required this.canUseDpa,
@@ -27,6 +36,7 @@ class TripSettings {
     required this.wantsDinner,
     required this.isRainy,
     required this.hasChildren,
+    this.scheduleOptimizationMode = ScheduleOptimizationMode.balanced,
   });
 
   factory TripSettings.initial() => const TripSettings(
@@ -40,6 +50,8 @@ class TripSettings {
     happyEntryTimeMinute: 45,
     exitTimeHour: 21,
     exitTimeMinute: 0,
+    officialClosingTimeHour: 21,
+    officialClosingTimeMinute: 0,
     numberOfPeople: 1,
     hasHappyEntry: false,
     canUseDpa: true,
@@ -56,6 +68,7 @@ class TripSettings {
     wantsDinner: true,
     isRainy: false,
     hasChildren: false,
+    scheduleOptimizationMode: ScheduleOptimizationMode.balanced,
   );
 
   factory TripSettings.fromJson(Map<String, dynamic> json) => TripSettings(
@@ -69,6 +82,8 @@ class TripSettings {
     happyEntryTimeMinute: json['happyEntryTimeMinute'] as int? ?? 45,
     exitTimeHour: json['exitTimeHour'] as int? ?? 21,
     exitTimeMinute: json['exitTimeMinute'] as int? ?? 0,
+    officialClosingTimeHour: json['officialClosingTimeHour'] as int? ?? 21,
+    officialClosingTimeMinute: json['officialClosingTimeMinute'] as int? ?? 0,
     numberOfPeople: json['numberOfPeople'] as int? ?? 1,
     hasHappyEntry: json['hasHappyEntry'] as bool? ?? false,
     canUseDpa: json['canUseDpa'] as bool? ?? true,
@@ -89,6 +104,10 @@ class TripSettings {
     wantsDinner: json['wantsDinner'] as bool? ?? true,
     isRainy: json['isRainy'] as bool? ?? false,
     hasChildren: json['hasChildren'] as bool? ?? false,
+    scheduleOptimizationMode: ScheduleOptimizationMode.values.firstWhere(
+      (mode) => mode.name == (json['scheduleOptimizationMode'] as String? ?? 'balanced'),
+      orElse: () => ScheduleOptimizationMode.balanced,
+    ),
   );
 
   final String parkId;
@@ -101,6 +120,8 @@ class TripSettings {
   final int happyEntryTimeMinute;
   final int exitTimeHour;
   final int exitTimeMinute;
+  final int officialClosingTimeHour;
+  final int officialClosingTimeMinute;
   final int numberOfPeople;
   final bool hasHappyEntry;
   final bool canUseDpa;
@@ -120,6 +141,7 @@ class TripSettings {
   final bool wantsDinner;
   final bool isRainy;
   final bool hasChildren;
+  final ScheduleOptimizationMode scheduleOptimizationMode;
 
   DateTime? get visitDate {
     if (visitDateIso.isEmpty) return null;
@@ -145,6 +167,9 @@ class TripSettings {
   String get exitTimeLabel =>
       '${exitTimeHour.toString().padLeft(2, '0')}:'
       '${exitTimeMinute.toString().padLeft(2, '0')}';
+  String get officialClosingTimeLabel =>
+      '${officialClosingTimeHour.toString().padLeft(2, '0')}:'
+      '${officialClosingTimeMinute.toString().padLeft(2, '0')}';
 
   Map<String, dynamic> toJson() => {
     'parkId': parkId,
@@ -157,6 +182,8 @@ class TripSettings {
     'happyEntryTimeMinute': happyEntryTimeMinute,
     'exitTimeHour': exitTimeHour,
     'exitTimeMinute': exitTimeMinute,
+    'officialClosingTimeHour': officialClosingTimeHour,
+    'officialClosingTimeMinute': officialClosingTimeMinute,
     'numberOfPeople': numberOfPeople,
     'hasHappyEntry': hasHappyEntry,
     'canUseDpa': canUseDpa,
@@ -174,6 +201,7 @@ class TripSettings {
     'wantsDinner': wantsDinner,
     'isRainy': isRainy,
     'hasChildren': hasChildren,
+    'scheduleOptimizationMode': scheduleOptimizationMode.name,
   };
 
   TripSettings copyWith({
@@ -187,6 +215,8 @@ class TripSettings {
     int? happyEntryTimeMinute,
     int? exitTimeHour,
     int? exitTimeMinute,
+    int? officialClosingTimeHour,
+    int? officialClosingTimeMinute,
     int? numberOfPeople,
     bool? hasHappyEntry,
     bool? canUseDpa,
@@ -204,6 +234,7 @@ class TripSettings {
     bool? wantsDinner,
     bool? isRainy,
     bool? hasChildren,
+    ScheduleOptimizationMode? scheduleOptimizationMode,
   }) {
     final resolvedMaxUses = attractionDpaMaxUses ??
         (canUseDpa == false
@@ -229,6 +260,10 @@ class TripSettings {
           happyEntryTimeMinute ?? this.happyEntryTimeMinute,
       exitTimeHour: exitTimeHour ?? this.exitTimeHour,
       exitTimeMinute: exitTimeMinute ?? this.exitTimeMinute,
+      officialClosingTimeHour:
+          officialClosingTimeHour ?? this.officialClosingTimeHour,
+      officialClosingTimeMinute:
+          officialClosingTimeMinute ?? this.officialClosingTimeMinute,
       numberOfPeople: numberOfPeople ?? this.numberOfPeople,
       hasHappyEntry: hasHappyEntry ?? this.hasHappyEntry,
       canUseDpa: resolvedCanUseDpa,
@@ -250,6 +285,7 @@ class TripSettings {
       wantsDinner: wantsDinner ?? this.wantsDinner,
       isRainy: isRainy ?? this.isRainy,
       hasChildren: hasChildren ?? this.hasChildren,
+      scheduleOptimizationMode: scheduleOptimizationMode ?? this.scheduleOptimizationMode,
     );
   }
 }

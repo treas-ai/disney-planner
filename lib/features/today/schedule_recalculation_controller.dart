@@ -93,7 +93,7 @@ class ScheduleRecalculationController extends ChangeNotifier {
           currentSchedule: schedule,
           settings: _appState.tripSettings,
           facilities: _appState.selectedFacilitiesForPark(schedule.parkId),
-          preferences: _appState.planPreferences,
+          preferences: _appState.effectivePlanPreferencesForToday,
           waitTimes: waitTimes.cast(),
           operatingStatuses: operating.cast(),
           weather: _appState.tripSettings.isRainy
@@ -104,6 +104,8 @@ class ScheduleRecalculationController extends ChangeNotifier {
               : null,
           passStatuses: _liveController.liveDataController.passStatuses,
           waitProfiles: waitProfiles,
+          releasedFacilityIds: _appState.releasedFacilityIdsForToday,
+          todayAccessResults: _appState.todayAccessResults,
         ),
         simulatedWaitMinutesByFacilityId:
             _liveController.simulationWaitMinutesByFacilityId,

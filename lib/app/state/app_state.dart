@@ -7,6 +7,7 @@ import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/entities/today_access_result.dart';
 import '../../domain/entities/wish_item_state.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/fixed_time_status.dart';
@@ -15,6 +16,8 @@ import '../../domain/enums/meal_preference.dart';
 import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wait_tolerance.dart';
+import '../../domain/enums/today_access_kind.dart';
+import '../../domain/enums/today_access_status.dart';
 import '../../domain/repositories/facility_repository.dart';
 import '../dependency/service_locator.dart';
 
@@ -52,6 +55,8 @@ class AppState extends ChangeNotifier {
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
   final Map<String, WishItemState> _wishStatesByItemId = {};
   final Set<String> _liveSuspendedFacilityIds = <String>{};
+  final Map<String, TodayAccessResult> _todayAccessResultsByKey =
+      <String, TodayAccessResult>{};
 
   DaySchedule? daySchedule;
   final List<DaySchedule> _scheduleUndoHistory = [];
@@ -92,6 +97,200 @@ class AppState extends ChangeNotifier {
 
   Set<String> get liveSuspendedFacilityIds =>
       Set<String>.unmodifiable(_liveSuspendedFacilityIds);
+
+  List<TodayAccessResult> get todayAccessResults =>
+      List<TodayAccessResult>.unmodifiable(_todayAccessResultsByKey.values);
+
+  TodayAccessResult? todayAccessResultFor(
+    String facilityId,
+    TodayAccessKind kind,
+  ) {
+    return _todayAccessResultsByKey['${facilityId}_${kind.name}'];
+  }
+
+  void upsertTodayAccessResult(TodayAccessResult result) {
+    if (result.facilityId.trim().isEmpty) return;
+    _todayAccessResultsByKey[result.key] = result;
+    _saveAndNotify();
+  }
+
+  void removeTodayAccessResult(String facilityId, TodayAccessKind kind) {
+    if (_todayAccessResultsByKey.remove('${facilityId}_${kind.name}') != null) {
+      _saveAndNotify();
+    }
+  }
+
+  void clearTodayAccessResults() {
+    if (_todayAccessResultsByKey.isEmpty) return;
+    _todayAccessResultsByKey.clear();
+    _saveAndNotify();
+  }
+
+  Set<String> get releasedFacilityIdsForToday {
+    final byFacility = <String, List<TodayAccessResult>>{};
+    for (final result in _todayAccessResultsByKey.values) {
+      byFacility.putIfAbsent(result.facilityId, () => []).add(result);
+    }
+    return byFacility.entries
+        .where((entry) {
+          final hasSuccess = entry.value.any(
+            (result) => result.status == TodayAccessStatus.acquired ||
+                result.status == TodayAccessStatus.won,
+          );
+          final hasRelease = entry.value.any(
+            (result) => result.status == TodayAccessStatus.lost ||
+                result.status == TodayAccessStatus.unavailable ||
+                result.status == TodayAccessStatus.skipped,
+          );
+          return hasRelease && !hasSuccess;
+        })
+        .map((entry) => entry.key)
+        .toSet();
+  }
+
+  List<PlanPreference> get effectivePlanPreferencesForToday {
+    final resultsByFacility = <String, List<TodayAccessResult>>{};
+    for (final result in _todayAccessResultsByKey.values) {
+      resultsByFacility.putIfAbsent(result.facilityId, () => []).add(result);
+    }
+
+    return _preferencesByFacilityId.values.map((preference) {
+      var effective = preference;
+      final results = resultsByFacility[preference.facilityId] ??
+          const <TodayAccessResult>[];
+      Facility? facility;
+      for (final value in _selectedFacilities) {
+        if (value.id == preference.facilityId) {
+          facility = value;
+          break;
+        }
+      }
+
+      for (final result in results) {
+        if (result.status == TodayAccessStatus.acquired ||
+            result.status == TodayAccessStatus.won) {
+          switch (result.kind) {
+            case TodayAccessKind.attractionDpa:
+              effective = effective.copyWith(
+                accessMethod: FacilityAccessMethod.dpa,
+                useDpa: true,
+                usePriorityPass: false,
+                useStandbyPass: false,
+                scheduledAccessTime: result.time,
+                fixedTimeStatus: result.hasTime
+                    ? FixedTimeStatus.confirmed
+                    : effective.fixedTimeStatus,
+              );
+              break;
+            case TodayAccessKind.showDpa:
+              effective = effective.copyWith(
+                accessMethod: FacilityAccessMethod.dpa,
+                useDpa: true,
+                usePriorityPass: false,
+                useStandbyPass: false,
+                preferredPerformanceTime: result.time,
+                fixedTimeStatus: result.hasTime
+                    ? FixedTimeStatus.confirmed
+                    : effective.fixedTimeStatus,
+              );
+              break;
+            case TodayAccessKind.priorityPass:
+              effective = effective.copyWith(
+                accessMethod: FacilityAccessMethod.priorityPass,
+                useDpa: false,
+                usePriorityPass: true,
+                useStandbyPass: false,
+                scheduledAccessTime: result.time,
+                fixedTimeStatus: result.hasTime
+                    ? FixedTimeStatus.confirmed
+                    : effective.fixedTimeStatus,
+              );
+              break;
+            case TodayAccessKind.standbyPass:
+              effective = effective.copyWith(
+                accessMethod: FacilityAccessMethod.standbyPass,
+                useDpa: false,
+                usePriorityPass: false,
+                useStandbyPass: true,
+                scheduledAccessTime: result.time,
+                fixedTimeStatus: result.hasTime
+                    ? FixedTimeStatus.confirmed
+                    : effective.fixedTimeStatus,
+              );
+              break;
+            case TodayAccessKind.entryRequest:
+              effective = effective.copyWith(
+                accessMethod: FacilityAccessMethod.entryRequest,
+                preferredPerformanceTime: result.time,
+                fixedTimeStatus: result.hasTime
+                    ? FixedTimeStatus.confirmed
+                    : effective.fixedTimeStatus,
+              );
+              break;
+            case TodayAccessKind.mobileOrder:
+              effective = effective.copyWith(
+                reservationTime: result.time,
+                fixedTimeStatus: result.hasTime
+                    ? FixedTimeStatus.confirmed
+                    : effective.fixedTimeStatus,
+              );
+              break;
+          }
+          continue;
+        }
+
+        final failed = result.status == TodayAccessStatus.lost ||
+            result.status == TodayAccessStatus.unavailable ||
+            result.status == TodayAccessStatus.skipped;
+        if (!failed) continue;
+
+        if (result.kind == TodayAccessKind.entryRequest &&
+            result.status == TodayAccessStatus.lost &&
+            preference.lotteryFallbackAction ==
+                LotteryFallbackAction.dpaIfAvailable &&
+            facility?.supportsDpa == true) {
+          effective = effective.copyWith(
+            accessMethod: FacilityAccessMethod.dpa,
+            useDpa: true,
+            usePriorityPass: false,
+            useStandbyPass: false,
+            fixedTimeStatus: FixedTimeStatus.none,
+            preferredPerformanceTime: '',
+          );
+          continue;
+        }
+
+        FacilityAccessMethod? failedMethod;
+        if (result.kind == TodayAccessKind.attractionDpa ||
+            result.kind == TodayAccessKind.showDpa) {
+          failedMethod = FacilityAccessMethod.dpa;
+        } else if (result.kind == TodayAccessKind.priorityPass) {
+          failedMethod = FacilityAccessMethod.priorityPass;
+        } else if (result.kind == TodayAccessKind.standbyPass) {
+          failedMethod = FacilityAccessMethod.standbyPass;
+        } else if (result.kind == TodayAccessKind.entryRequest) {
+          failedMethod = FacilityAccessMethod.entryRequest;
+        }
+        if (failedMethod != null && effective.accessMethod == failedMethod) {
+          effective = effective.copyWith(
+            accessMethod: FacilityAccessMethod.standby,
+            useDpa: false,
+            usePriorityPass: false,
+            useStandbyPass: false,
+            fixedTimeStatus: FixedTimeStatus.none,
+            scheduledAccessTime: '',
+            preferredPerformanceTime: '',
+          );
+        } else if (result.kind == TodayAccessKind.mobileOrder) {
+          effective = effective.copyWith(
+            fixedTimeStatus: FixedTimeStatus.none,
+            reservationTime: '',
+          );
+        }
+      }
+      return effective;
+    }).toList(growable: false);
+  }
 
   bool isFacilitySuspendedForToday(String facilityId) {
     return _liveSuspendedFacilityIds.contains(facilityId);
@@ -220,6 +419,7 @@ class AppState extends ChangeNotifier {
       _liveSuspendedFacilityIds
         ..clear()
         ..addAll(_readStringList(json['liveSuspendedFacilityIds']));
+      _restoreTodayAccessResults(json['todayAccessResults']);
       final rawWishStates = json['wishItemStates'];
       if (rawWishStates is List) {
         for (final item in rawWishStates) {
@@ -267,6 +467,7 @@ class AppState extends ChangeNotifier {
       _preferencesByFacilityId.clear();
       _wishStatesByItemId.clear();
       _liveSuspendedFacilityIds.clear();
+      _todayAccessResultsByKey.clear();
       daySchedule = null;
       _scheduleUndoHistory.clear();
       _scheduleRedoHistory.clear();
@@ -304,6 +505,7 @@ class AppState extends ChangeNotifier {
     _preferencesByFacilityId.clear();
     _wishStatesByItemId.clear();
     _liveSuspendedFacilityIds.clear();
+    _todayAccessResultsByKey.clear();
     daySchedule = null;
     _scheduleUndoHistory.clear();
     _scheduleRedoHistory.clear();
@@ -330,6 +532,9 @@ class AppState extends ChangeNotifier {
           .map((state) => state.toJson())
           .toList(),
       'liveSuspendedFacilityIds': _liveSuspendedFacilityIds.toList(),
+      'todayAccessResults': _todayAccessResultsByKey.values
+          .map((value) => value.toJson())
+          .toList(),
       'daySchedule': daySchedule?.toJson(),
       'scheduleUndoHistory': _scheduleUndoHistory
           .map((schedule) => schedule.toJson())
@@ -395,6 +600,7 @@ class AppState extends ChangeNotifier {
     tripSettings = tripSettings.copyWith(visitDateIso: normalized.toIso8601String());
     if (dateChanged) {
       _liveSuspendedFacilityIds.clear();
+      _todayAccessResultsByKey.clear();
     }
     daySchedule = null;
     _saveAndNotify();
@@ -407,6 +613,7 @@ class AppState extends ChangeNotifier {
     tripSettings = settings;
     if (visitContextChanged) {
       _liveSuspendedFacilityIds.clear();
+      _todayAccessResultsByKey.clear();
     }
     daySchedule = null;
     _saveAndNotify();
@@ -448,6 +655,9 @@ class AppState extends ChangeNotifier {
     for (final facilityId in facilityIds) {
       _preferencesByFacilityId.remove(facilityId);
     }
+    _todayAccessResultsByKey.removeWhere(
+      (_, value) => facilityIds.contains(value.facilityId),
+    );
 
     daySchedule = null;
     _saveAndNotify();
@@ -463,6 +673,9 @@ class AppState extends ChangeNotifier {
     }
 
     _preferencesByFacilityId.remove(facilityId);
+    _todayAccessResultsByKey.removeWhere(
+      (_, value) => value.facilityId == facilityId,
+    );
 
     daySchedule = null;
 
@@ -1072,6 +1285,9 @@ class AppState extends ChangeNotifier {
       'planPreferences': _preferencesByFacilityId.values.map((value) => value.toJson()).toList(),
       'wishItemStates': _wishStatesByItemId.values.map((value) => value.toJson()).toList(),
       'liveSuspendedFacilityIds': _liveSuspendedFacilityIds.toList(),
+      'todayAccessResults': _todayAccessResultsByKey.values
+          .map((value) => value.toJson())
+          .toList(),
       'daySchedule': daySchedule?.toJson(),
       'scheduleUndoHistory': _scheduleUndoHistory.map((value) => value.toJson()).toList(),
       'scheduleRedoHistory': _scheduleRedoHistory.map((value) => value.toJson()).toList(),
@@ -1085,6 +1301,7 @@ class AppState extends ChangeNotifier {
       'planPreferences': <dynamic>[],
       'wishItemStates': <dynamic>[],
       'liveSuspendedFacilityIds': <String>[],
+      'todayAccessResults': <dynamic>[],
       'daySchedule': null,
       'scheduleUndoHistory': <dynamic>[],
       'scheduleRedoHistory': <dynamic>[],
@@ -1116,6 +1333,7 @@ class AppState extends ChangeNotifier {
     _liveSuspendedFacilityIds
       ..clear()
       ..addAll(_readStringList(state['liveSuspendedFacilityIds']));
+    _restoreTodayAccessResults(state['todayAccessResults']);
     final rawWishStates = state['wishItemStates'];
     if (rawWishStates is List) {
       for (final item in rawWishStates.whereType<Map>()) {
@@ -1135,6 +1353,19 @@ class AppState extends ChangeNotifier {
     _scheduleRedoHistory
       ..clear()
       ..addAll(_readScheduleList(state['scheduleRedoHistory']));
+  }
+
+  void _restoreTodayAccessResults(dynamic raw) {
+    _todayAccessResultsByKey.clear();
+    if (raw is! List) return;
+    for (final item in raw.whereType<Map>()) {
+      final result = TodayAccessResult.fromJson({
+        for (final entry in item.entries) entry.key.toString(): entry.value,
+      });
+      if (result.facilityId.isNotEmpty) {
+        _todayAccessResultsByKey[result.key] = result;
+      }
+    }
   }
 
   void _invalidateScheduleAndSave() {

@@ -45,6 +45,12 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateScheduleOptimizationMode(ScheduleOptimizationMode mode) {
+    _appState.updateTripSettings(
+      settings.copyWith(scheduleOptimizationMode: mode),
+    );
+  }
+
   void updatePark(String parkId) {
     _appState.updateTripSettings(settings.copyWith(parkId: parkId));
   }
@@ -76,6 +82,24 @@ class SettingsController extends ChangeNotifier {
   void updateExitTime(TimeOfDay time) {
     _appState.updateTripSettings(
       settings.copyWith(exitTimeHour: time.hour, exitTimeMinute: time.minute),
+    );
+  }
+
+  void updateOfficialClosingTime(TimeOfDay time) {
+    final closingMinutes = time.hour * 60 + time.minute;
+    final exitMinutes = settings.exitTimeHour * 60 + settings.exitTimeMinute;
+
+    _appState.updateTripSettings(
+      settings.copyWith(
+        officialClosingTimeHour: time.hour,
+        officialClosingTimeMinute: time.minute,
+        exitTimeHour: exitMinutes > closingMinutes
+            ? time.hour
+            : settings.exitTimeHour,
+        exitTimeMinute: exitMinutes > closingMinutes
+            ? time.minute
+            : settings.exitTimeMinute,
+      ),
     );
   }
 

@@ -1,9 +1,13 @@
 import '../entities/day_schedule.dart';
 import '../entities/plan_preference.dart';
+import '../entities/plan_coverage_advice.dart';
 import '../entities/schedule_item.dart';
 import '../entities/schedule_validation_issue.dart';
 import '../entities/trip_settings.dart';
+import '../entities/today_access_result.dart';
 import '../enums/facility_access_method.dart';
+import '../enums/today_access_kind.dart';
+import '../enums/today_access_status.dart';
 import 'entry_prediction_service.dart';
 
 enum PlanTextExportFormat {
@@ -21,6 +25,8 @@ class PlanTextExporter {
     required List<PlanPreference> preferences,
     required List<ScheduleValidationIssue> validationIssues,
     required PlanTextExportFormat format,
+    List<TodayAccessResult> todayAccessResults = const <TodayAccessResult>[],
+    PlanCoverageAdvice? coverageAdvice,
   }) {
     return switch (format) {
       PlanTextExportFormat.simple => _simple(
@@ -34,6 +40,8 @@ class PlanTextExporter {
           parkName: parkName,
           preferences: preferences,
           validationIssues: validationIssues,
+          todayAccessResults: todayAccessResults,
+          coverageAdvice: coverageAdvice,
         ),
     };
   }
@@ -72,6 +80,8 @@ class PlanTextExporter {
     required String parkName,
     required List<PlanPreference> preferences,
     required List<ScheduleValidationIssue> validationIssues,
+    required List<TodayAccessResult> todayAccessResults,
+    PlanCoverageAdvice? coverageAdvice,
   }) {
     final entryPrediction = const EntryPredictionService().predict(settings);
     final buffer = StringBuffer()
@@ -120,7 +130,18 @@ class PlanTextExporter {
       ..writeln(
         'フリードリンク特典：'
         '${_enabled(settings.usesVacationPackage && settings.usesFreeDrinkBenefit)}',
-      )
+      );
+    final acquiredDpaCount = todayAccessResults.where((result) =>
+        (result.kind == TodayAccessKind.attractionDpa ||
+            result.kind == TodayAccessKind.showDpa) &&
+        (result.status == TodayAccessStatus.acquired ||
+            result.status == TodayAccessStatus.won)).length;
+    if (acquiredDpaCount > 0) {
+      buffer.writeln(
+        '当日実績：事前設定にかかわらず、実際に取得したDPA $acquiredDpaCount件を固定条件として優先',
+      );
+    }
+    buffer
       ..writeln()
       ..writeln('【スケジュール】');
 
@@ -161,7 +182,7 @@ class PlanTextExporter {
         }
       }
       if ((item.reason ?? '').trim().isNotEmpty) {
-        buffer.writeln('  AI理由：${item.reason!.trim()}');
+        buffer.writeln('  AI理由：${_sanitizeLegacyReason(item.reason!.trim())}');
       }
       if ((item.note ?? '').trim().isNotEmpty) {
         buffer.writeln('  注意・メモ：${item.note!.trim()}');
@@ -174,6 +195,47 @@ class PlanTextExporter {
       ..writeln('予定数：${schedule.items.length}件')
       ..writeln('固定・時間指定候補：${_fixedPreferenceCount(preferences)}件')
       ..writeln('DPA予定候補：${_accessCount(preferences, FacilityAccessMethod.dpa)}件')
+      ..writeln('当日DPA取得済み：$acquiredDpaCount件');
+
+    if (coverageAdvice != null) {
+      buffer
+        ..writeln()
+        ..writeln('【やりたいこと達成 / DPA分析】')
+        ..writeln(
+          '現在の達成数：${coverageAdvice.currentScheduledCount}/${coverageAdvice.totalDesiredCount}件',
+        );
+      if (coverageAdvice.unmetFacilities.isEmpty) {
+        buffer.writeln('未採用の希望：なし');
+      } else {
+        buffer.writeln('未採用の希望：');
+        for (final item in coverageAdvice.unmetFacilities) {
+          final rescue = item.firstRescuedAtDpaCount == null
+              ? ''
+              : '（DPA ${item.firstRescuedAtDpaCount}個シミュレーションで採用）';
+          buffer.writeln('・${item.name}$rescue：${item.reason}');
+        }
+      }
+      if (coverageAdvice.minimumDpaCountForAll != null) {
+        buffer.writeln(
+          '全希望を組み込む推定最少DPA数：${coverageAdvice.minimumDpaCountForAll}個',
+        );
+      } else {
+        buffer.writeln(
+          '全希望を組み込む推定最少DPA数：未達（最大${coverageAdvice.simulatedMaxDpaCount}個までシミュレーション）',
+        );
+      }
+      if (coverageAdvice.dpaAcquisitionOrder.isNotEmpty) {
+        buffer.writeln('Planner推奨DPA取得優先順：');
+        final visibleCount = coverageAdvice.minimumDpaCountForAll ??
+            coverageAdvice.dpaAcquisitionOrder.length;
+        for (final item in coverageAdvice.dpaAcquisitionOrder.take(visibleCount)) {
+          buffer.writeln('・${item.order}. ${item.name}：${item.reason}');
+        }
+      }
+      buffer.writeln('※ DPA順はリアルタイム在庫予測ではなく、希望優先度・通常待機負担・時間短縮を基準にしたPlanner推奨です。');
+    }
+
+    buffer
       ..writeln()
       ..writeln('【検証結果】');
 
@@ -193,9 +255,16 @@ class PlanTextExporter {
       ..writeln('・同じエリアを往復する無駄な移動が多くないか')
       ..writeln('・待ち時間と予定数が現実的か')
       ..writeln('・休憩や食事の間隔が適切か')
-      ..writeln('・DPA、PPなどの利用効果が高い施設へ割り当てられているか');
+      ..writeln('・DPAなどの利用効果が高い施設へ割り当てられているか');
 
     return buffer.toString().trimRight();
+  }
+
+  String _sanitizeLegacyReason(String value) {
+    return value
+        .replaceAll('PP代替', 'DPA対象状況')
+        .replaceAll('PP利用可能時', 'DPA対象時')
+        .replaceAll('PPと待ち時間', 'DPA対象状況と待ち時間');
   }
 
   String _enabled(bool value) => value ? '利用する' : '利用しない';

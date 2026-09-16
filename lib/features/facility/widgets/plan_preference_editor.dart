@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/local/local_performance_schedule_repository.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/scroll_time_picker.dart';
 import '../../../domain/entities/facility.dart';
 import '../../../domain/entities/plan_preference.dart';
 import '../../../domain/enums/facility_access_method.dart';
@@ -67,6 +68,17 @@ class PlanPreferenceEditor extends StatelessWidget {
 
   bool get _isRestaurant {
     return facility.isRestaurant;
+  }
+
+  FacilityAccessMethod get _effectiveAccessMethod {
+    if (preference.accessMethod == FacilityAccessMethod.priorityPass) {
+      return FacilityAccessMethod.standby;
+    }
+    if (preference.accessMethod == FacilityAccessMethod.reservation &&
+        !facility.supportsReservationAccess) {
+      return FacilityAccessMethod.standby;
+    }
+    return preference.accessMethod;
   }
 
   @override
@@ -188,9 +200,9 @@ class PlanPreferenceEditor extends StatelessWidget {
           ],
           DropdownButtonFormField<FacilityAccessMethod>(
             key: ValueKey(
-              '${facility.id}_access_${preference.accessMethod.name}',
+              '${facility.id}_access_${_effectiveAccessMethod.name}',
             ),
-            initialValue: preference.accessMethod,
+            initialValue: _effectiveAccessMethod,
             decoration: const InputDecoration(
               labelText: '利用方法',
               helperText: '取得・予約済みの利用方法を選択してください。',
@@ -221,7 +233,7 @@ class PlanPreferenceEditor extends StatelessWidget {
               visitDate: visitDate,
             ),
           ],
-          if (preference.accessMethod == FacilityAccessMethod.reservation) ...[
+          if (_effectiveAccessMethod == FacilityAccessMethod.reservation) ...[
             const SizedBox(height: AppSpacing.md),
             _TenMinuteTimeField(
               key: ValueKey(
@@ -235,17 +247,13 @@ class PlanPreferenceEditor extends StatelessWidget {
               onChanged: onReservationTimeChanged,
             ),
           ],
-          if (preference.accessMethod == FacilityAccessMethod.dpa ||
-              preference.accessMethod ==
-                  FacilityAccessMethod.priorityPass) ...[
+          if (preference.accessMethod == FacilityAccessMethod.dpa) ...[
             const SizedBox(height: AppSpacing.md),
             _TimeSettingField(
               key: ValueKey(
                 '${facility.id}_scheduled_${preference.scheduledAccessTime}',
               ),
-              label: preference.accessMethod == FacilityAccessMethod.dpa
-                  ? 'DPA利用時刻'
-                  : 'プライオリティパス利用時刻',
+              label: 'DPA利用時刻',
               helperText: '公式アプリで取得済みの利用時刻を設定します。',
               value: preference.scheduledAccessTime,
               onChanged: onScheduledAccessTimeChanged,
@@ -311,10 +319,6 @@ class PlanPreferenceEditor extends StatelessWidget {
       methods.add(FacilityAccessMethod.dpa);
     }
 
-    if (facility.supportsPriorityPass) {
-      methods.add(FacilityAccessMethod.priorityPass);
-    }
-
     if (facility.supportsStandbyPass) {
       methods.add(FacilityAccessMethod.standbyPass);
     }
@@ -323,10 +327,7 @@ class PlanPreferenceEditor extends StatelessWidget {
       methods.add(FacilityAccessMethod.entryRequest);
     }
 
-    if (_isRestaurant ||
-        facility.requiresReservation ||
-        facility.reservationRequired ||
-        facility.supportsPrioritySeating) {
+    if (facility.supportsReservationAccess) {
       methods.add(FacilityAccessMethod.reservation);
     }
 
@@ -334,8 +335,8 @@ class PlanPreferenceEditor extends StatelessWidget {
       methods.add(FacilityAccessMethod.freeSeating);
     }
 
-    if (!methods.contains(preference.accessMethod)) {
-      methods.add(preference.accessMethod);
+    if (!methods.contains(_effectiveAccessMethod)) {
+      methods.add(_effectiveAccessMethod);
     }
 
     return methods;
@@ -505,12 +506,14 @@ class _TimeSettingField extends StatelessWidget {
 
   Future<void> _selectTime(BuildContext context) async {
     final initialTime = _parseTime(value) ?? const TimeOfDay(hour: 12, minute: 0);
-    final selected = await showTimePicker(
+    final selected = await showScrollTimePicker(
       context: context,
       initialTime: initialTime,
-      helpText: label,
-      cancelText: 'キャンセル',
-      confirmText: '設定',
+      minTime: const TimeOfDay(hour: 9, minute: 0),
+      maxTime: const TimeOfDay(hour: 21, minute: 0),
+      minuteStep: 10,
+      title: label,
+      helperText: helperText,
     );
 
     if (selected == null || !context.mounted) {
@@ -545,7 +548,7 @@ String _accessMethodLabel(FacilityAccessMethod method) {
   return switch (method) {
     FacilityAccessMethod.standby => '通常待機・通常利用',
     FacilityAccessMethod.dpa => 'ディズニー・プレミアアクセス',
-    FacilityAccessMethod.priorityPass => 'プライオリティパス',
+    FacilityAccessMethod.priorityPass => '終了済みサービス',
     FacilityAccessMethod.standbyPass => 'スタンバイパス',
     FacilityAccessMethod.entryRequest => 'エントリー受付',
     FacilityAccessMethod.reservation => '予約・プライオリティ・シーティング',

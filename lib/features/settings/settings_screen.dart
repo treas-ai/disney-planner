@@ -8,11 +8,11 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/loading_view.dart';
+import '../../core/widgets/scroll_time_picker.dart';
 import '../../data/local/data_freshness_service.dart';
 import '../../domain/entities/data_freshness_info.dart';
 import '../../domain/entities/trip_settings.dart';
 import '../../domain/services/entry_prediction_service.dart';
-import '../../domain/enums/live_data_source_type.dart';
 import '../share/share_center_screen.dart';
 import 'settings_controller.dart';
 
@@ -65,15 +65,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final selected = await showTimePicker(
+    final selected = await showScrollTimePicker(
       context: context,
       initialTime: TimeOfDay(
         hour: controller.settings.queueArrivalTimeHour,
         minute: controller.settings.queueArrivalTimeMinute,
       ),
-      helpText: '並び開始時刻を選択',
-      cancelText: 'キャンセル',
-      confirmText: '決定',
+      minTime: const TimeOfDay(hour: 4, minute: 0),
+      maxTime: const TimeOfDay(hour: 10, minute: 0),
+      minuteStep: 5,
+      title: '並び開始時刻',
+      helperText: '早朝の開園待ちも選べるよう、4:00〜10:00を表示します。',
     );
 
     if (selected != null) {
@@ -85,15 +87,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final controller = _controller;
     if (controller == null) return;
 
-    final selected = await showTimePicker(
+    final selected = await showScrollTimePicker(
       context: context,
       initialTime: TimeOfDay(
         hour: controller.settings.happyEntryTimeHour,
         minute: controller.settings.happyEntryTimeMinute,
       ),
-      helpText: '通行証記載の先行入園時刻を選択',
-      cancelText: 'キャンセル',
-      confirmText: '決定',
+      minTime: const TimeOfDay(hour: 6, minute: 0),
+      maxTime: const TimeOfDay(hour: 10, minute: 0),
+      minuteStep: 5,
+      title: 'ハッピーエントリー時刻',
+      helperText: '通行証などに記載された時刻を選択してください。',
     );
 
     if (selected != null) {
@@ -108,19 +112,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final selected = await showTimePicker(
+    final selected = await showScrollTimePicker(
       context: context,
       initialTime: TimeOfDay(
         hour: controller.settings.entryTimeHour,
         minute: controller.settings.entryTimeMinute,
       ),
-      helpText: '公式開園予定時刻を選択',
-      cancelText: 'キャンセル',
-      confirmText: '決定',
+      minTime: const TimeOfDay(hour: 6, minute: 0),
+      maxTime: const TimeOfDay(hour: 12, minute: 0),
+      minuteStep: 5,
+      title: '公式開園予定時刻',
     );
 
     if (selected != null) {
       controller.updateEntryTime(selected);
+    }
+  }
+
+  Future<void> _selectOfficialClosingTime() async {
+    final controller = _controller;
+
+    if (controller == null) {
+      return;
+    }
+
+    final settings = controller.settings;
+    final selected = await showScrollTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: settings.officialClosingTimeHour,
+        minute: settings.officialClosingTimeMinute,
+      ),
+      minTime: TimeOfDay(
+        hour: settings.entryTimeHour,
+        minute: settings.entryTimeMinute,
+      ),
+      maxTime: const TimeOfDay(hour: 23, minute: 50),
+      minuteStep: 10,
+      title: '公式閉園時刻',
+      helperText: '来園日の公式営業時間に合わせて設定します。退園時刻の上限として使います。',
+    );
+
+    if (selected != null) {
+      controller.updateOfficialClosingTime(selected);
     }
   }
 
@@ -131,15 +165,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final selected = await showTimePicker(
+    final settings = controller.settings;
+    final earliestExit = settings.hasHappyEntry
+        ? TimeOfDay(
+            hour: settings.happyEntryTimeHour,
+            minute: settings.happyEntryTimeMinute,
+          )
+        : TimeOfDay(
+            hour: settings.entryTimeHour,
+            minute: settings.entryTimeMinute,
+          );
+    final officialClosing = TimeOfDay(
+      hour: settings.officialClosingTimeHour,
+      minute: settings.officialClosingTimeMinute,
+    );
+
+    final selected = await showScrollTimePicker(
       context: context,
       initialTime: TimeOfDay(
-        hour: controller.settings.exitTimeHour,
-        minute: controller.settings.exitTimeMinute,
+        hour: settings.exitTimeHour,
+        minute: settings.exitTimeMinute,
       ),
-      helpText: '退園時刻を選択',
-      cancelText: 'キャンセル',
-      confirmText: '決定',
+      minTime: earliestExit,
+      maxTime: officialClosing,
+      minuteStep: 10,
+      title: '退園時刻',
+      helperText:
+          '入園可能時刻から公式閉園 ${settings.officialClosingTimeLabel} まで選べます。',
     );
 
     if (selected != null) {
@@ -169,6 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onQueueArrivalTimePressed: _selectQueueArrivalTime,
               onHappyEntryTimePressed: _selectHappyEntryTime,
               onEntryTimePressed: _selectEntryTime,
+              onOfficialClosingTimePressed: _selectOfficialClosingTime,
               onExitTimePressed: _selectExitTime,
             );
           }
@@ -179,6 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onQueueArrivalTimePressed: _selectQueueArrivalTime,
             onHappyEntryTimePressed: _selectHappyEntryTime,
             onEntryTimePressed: _selectEntryTime,
+            onOfficialClosingTimePressed: _selectOfficialClosingTime,
             onExitTimePressed: _selectExitTime,
           );
         },
@@ -194,6 +248,7 @@ class _MobileSettingsLayout extends StatelessWidget {
     required this.onQueueArrivalTimePressed,
     required this.onHappyEntryTimePressed,
     required this.onEntryTimePressed,
+    required this.onOfficialClosingTimePressed,
     required this.onExitTimePressed,
   });
 
@@ -202,6 +257,7 @@ class _MobileSettingsLayout extends StatelessWidget {
   final VoidCallback onQueueArrivalTimePressed;
   final VoidCallback onHappyEntryTimePressed;
   final VoidCallback onEntryTimePressed;
+  final VoidCallback onOfficialClosingTimePressed;
   final VoidCallback onExitTimePressed;
 
   @override
@@ -226,6 +282,7 @@ class _MobileSettingsLayout extends StatelessWidget {
             onQueueArrivalTimePressed: onQueueArrivalTimePressed,
             onHappyEntryTimePressed: onHappyEntryTimePressed,
             onEntryTimePressed: onEntryTimePressed,
+            onOfficialClosingTimePressed: onOfficialClosingTimePressed,
             onExitTimePressed: onExitTimePressed,
             onDecreasePeople: controller.decreasePeople,
             onIncreasePeople: controller.increasePeople,
@@ -263,12 +320,6 @@ class _MobileSettingsLayout extends StatelessWidget {
                 onRainyChanged: controller.updateRainy,
                 onChildrenChanged: controller.updateChildren,
               ),
-              const SizedBox(height: AppSpacing.sm),
-              _LiveDataSourceSettingsCard(
-                value: controller.liveDataSource,
-                isLoading: controller.isLoadingLiveDataSource,
-                onChanged: controller.updateLiveDataSource,
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -297,6 +348,7 @@ class _DesktopSettingsLayout extends StatelessWidget {
     required this.onQueueArrivalTimePressed,
     required this.onHappyEntryTimePressed,
     required this.onEntryTimePressed,
+    required this.onOfficialClosingTimePressed,
     required this.onExitTimePressed,
   });
 
@@ -305,6 +357,7 @@ class _DesktopSettingsLayout extends StatelessWidget {
   final VoidCallback onQueueArrivalTimePressed;
   final VoidCallback onHappyEntryTimePressed;
   final VoidCallback onEntryTimePressed;
+  final VoidCallback onOfficialClosingTimePressed;
   final VoidCallback onExitTimePressed;
 
   @override
@@ -336,6 +389,7 @@ class _DesktopSettingsLayout extends StatelessWidget {
                         onQueueArrivalTimePressed: onQueueArrivalTimePressed,
                         onHappyEntryTimePressed: onHappyEntryTimePressed,
                         onEntryTimePressed: onEntryTimePressed,
+                        onOfficialClosingTimePressed: onOfficialClosingTimePressed,
                         onExitTimePressed: onExitTimePressed,
                         onDecreasePeople: controller.decreasePeople,
                         onIncreasePeople: controller.increasePeople,
@@ -381,12 +435,6 @@ class _DesktopSettingsLayout extends StatelessWidget {
                             settings: settings,
                             onRainyChanged: controller.updateRainy,
                             onChildrenChanged: controller.updateChildren,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _LiveDataSourceSettingsCard(
-                            value: controller.liveDataSource,
-                            isLoading: controller.isLoadingLiveDataSource,
-                            onChanged: controller.updateLiveDataSource,
                           ),
                         ],
                       ),
@@ -968,84 +1016,13 @@ class _ParkChoiceButton extends StatelessWidget {
   }
 }
 
-class _LiveDataSourceSettingsCard extends StatelessWidget {
-  const _LiveDataSourceSettingsCard({
-    required this.value,
-    required this.isLoading,
-    required this.onChanged,
-  });
-
-  final LiveDataSourceType value;
-  final bool isLoading;
-  final ValueChanged<LiveDataSourceType> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SettingsCardHeader(
-            title: 'ライブデータ取得元',
-            subtitle: '運営情報の取得方法を選択',
-            icon: Icons.cloud_sync_outlined,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (isLoading)
-            const LinearProgressIndicator()
-          else
-            DropdownButtonFormField<LiveDataSourceType>(
-              initialValue: value,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: '取得方法',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.cloud_sync_outlined),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: LiveDataSourceType.mock,
-                  child: Text('サンプルデータ'),
-                ),
-                DropdownMenuItem(
-                  value: LiveDataSourceType.manual,
-                  child: Text('手動入力'),
-                ),
-                DropdownMenuItem(
-                  value: LiveDataSourceType.official,
-                  child: Text('自動取得'),
-                ),
-              ],
-              onChanged: (selection) {
-                if (selection != null) onChanged(selection);
-              },
-            ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(switch (value) {
-            LiveDataSourceType.mock => '動作確認用のサンプルデータを使用します。',
-            LiveDataSourceType.manual => '公式アプリを見ながら手動入力した待ち時間を使用します。',
-            LiveDataSourceType.official =>
-              'ThemeParks.wikiから現在の待ち時間・運営状況を取得します。取得できない場合はサンプルデータへ切り替えます。',
-          }, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Powered by ThemeParks.wiki',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _VisitSummaryCard extends StatelessWidget {
   const _VisitSummaryCard({
     required this.settings,
     required this.onQueueArrivalTimePressed,
     required this.onHappyEntryTimePressed,
     required this.onEntryTimePressed,
+    required this.onOfficialClosingTimePressed,
     required this.onExitTimePressed,
     required this.onDecreasePeople,
     required this.onIncreasePeople,
@@ -1055,6 +1032,7 @@ class _VisitSummaryCard extends StatelessWidget {
   final VoidCallback onQueueArrivalTimePressed;
   final VoidCallback onHappyEntryTimePressed;
   final VoidCallback onEntryTimePressed;
+  final VoidCallback onOfficialClosingTimePressed;
   final VoidCallback onExitTimePressed;
   final VoidCallback onDecreasePeople;
   final VoidCallback onIncreasePeople;
@@ -1091,10 +1069,16 @@ class _VisitSummaryCard extends StatelessWidget {
                     onPressed: onHappyEntryTimePressed,
                   ),
                 _TimeSettingButton(
-                  label: '一般開園', 
+                  label: '一般開園',
                   time: settings.officialOpeningTimeLabel,
                   icon: Icons.door_front_door_outlined,
                   onPressed: onEntryTimePressed,
+                ),
+                _TimeSettingButton(
+                  label: '公式閉園',
+                  time: settings.officialClosingTimeLabel,
+                  icon: Icons.nights_stay_outlined,
+                  onPressed: onOfficialClosingTimePressed,
                 ),
                 _TimeSettingButton(
                   label: '退園',
@@ -1475,6 +1459,7 @@ class _MealSettingsCard extends StatelessWidget {
     );
   }
 }
+
 
 class _ConditionSettingsCard extends StatelessWidget {
   const _ConditionSettingsCard({

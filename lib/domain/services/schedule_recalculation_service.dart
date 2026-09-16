@@ -6,11 +6,13 @@ import '../entities/schedule_change.dart';
 import '../entities/schedule_item.dart';
 import '../entities/schedule_recalculation_request.dart';
 import '../entities/schedule_recalculation_result.dart';
+import '../entities/today_access_result.dart';
 import '../entities/replanning_context.dart';
 import '../enums/facility_category.dart';
 import '../enums/fixed_time_status.dart';
 import '../enums/schedule_change_type.dart';
 import '../enums/schedule_item_type.dart';
+import '../enums/today_access_kind.dart';
 import 'schedule_engine.dart';
 import 'realtime_replanning_service.dart';
 
@@ -36,8 +38,26 @@ class ScheduleRecalculationService {
     final facilityById = {
       for (final facility in request.facilities) facility.id: facility,
     };
+    final successfulTodayResultByFacility = <String, TodayAccessResult>{};
+    for (final result in request.todayAccessResults) {
+      if (!result.fixesTime) continue;
+      final previous = successfulTodayResultByFacility[result.facilityId];
+      if (previous == null || result.updatedAt.isAfter(previous.updatedAt)) {
+        successfulTodayResultByFacility[result.facilityId] = result;
+      }
+    }
+    final alignedCurrentItems = request.currentSchedule.items
+        .map((item) => _alignConfirmedItem(
+              item: item,
+              facility: item.facilityId == null ? null : facilityById[item.facilityId],
+              preference: item.facilityId == null ? null : preferenceById[item.facilityId],
+              todayResult: item.facilityId == null
+                  ? null
+                  : successfulTodayResultByFacility[item.facilityId],
+            ))
+        .toList(growable: false);
 
-    final preserved = request.currentSchedule.items
+    final preserved = alignedCurrentItems
         .where((item) {
           final start = _start(item);
           final end = _end(item);
@@ -78,6 +98,8 @@ class ScheduleRecalculationService {
             item: item,
             facility: facility,
             preference: preference,
+            released: facilityId != null &&
+                request.releasedFacilityIds.contains(facilityId),
           );
         })
         .toList(growable: false);
@@ -87,6 +109,11 @@ class ScheduleRecalculationService {
         .whereType<String>()
         .toSet();
     final warnings = <String>[];
+    _appendConfirmedAccessConflictWarnings(
+      alignedItems: alignedCurrentItems,
+      confirmedTodayResultByFacility: successfulTodayResultByFacility,
+      warnings: warnings,
+    );
 
     final eligibleFacilities = request.facilities
         .where((facility) {
@@ -146,6 +173,7 @@ class ScheduleRecalculationService {
     );
     final nextFixed = _nextProtectedFuture(
       request: request,
+      items: alignedCurrentItems,
       nowMinutes: nowMinutes,
     );
     final nextDestination = nextFixed == null
@@ -287,7 +315,7 @@ class ScheduleRecalculationService {
       cursor = end;
     }
 
-    final exitItem = request.currentSchedule.items
+    final exitItem = alignedCurrentItems
         .where((item) => item.type == ScheduleItemType.exit)
         .cast<ScheduleItem?>()
         .firstOrNull;
@@ -317,6 +345,114 @@ class ScheduleRecalculationService {
     );
   }
 
+
+  ScheduleItem _alignConfirmedItem({
+    required ScheduleItem item,
+    required Facility? facility,
+    required PlanPreference? preference,
+    required TodayAccessResult? todayResult,
+  }) {
+    if (facility == null || preference == null) {
+      return item;
+    }
+    final hasTodayResult = todayResult?.fixesTime == true;
+    if (!hasTodayResult &&
+        preference.fixedTimeStatus != FixedTimeStatus.confirmed) {
+      return item;
+    }
+    final timeText = hasTodayResult
+        ? todayResult!.time
+        : facility.isRestaurant
+            ? preference.reservationTime
+            : (facility.category == FacilityCategory.show ||
+                    facility.category == FacilityCategory.parade)
+                ? preference.preferredPerformanceTime
+                : preference.scheduledAccessTime;
+    final start = _parseClockMinutes(timeText);
+    if (start == null) return item;
+
+    var duration = (_end(item) - _start(item)).clamp(1, 24 * 60).toInt();
+    if (facility.isRestaurant) {
+      duration = facility.totalPlannedDurationMinutes.clamp(1, 24 * 60).toInt();
+    } else if (facility.category == FacilityCategory.show ||
+        facility.category == FacilityCategory.parade) {
+      duration = facility.durationMinutes.clamp(1, 24 * 60).toInt();
+    } else if (preference.accessMethod.name != 'standby') {
+      duration = (facility.durationMinutes +
+              (item.priorityAccessBufferMinutes ?? 10))
+          .clamp(1, 24 * 60)
+          .toInt();
+    }
+    final adjustedStart = facility.isRestaurant
+        ? start - facility.outboundTravelMinutes
+        : start;
+    final end = adjustedStart + duration;
+    return ScheduleItem(
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      startHour: adjustedStart ~/ 60,
+      startMinute: adjustedStart % 60,
+      endHour: end ~/ 60,
+      endMinute: end % 60,
+      facilityId: item.facilityId,
+      reason: hasTodayResult
+          ? '当日に実際に取得・当選した${todayResult!.kind.label}の時刻を固定して再最適化します。'
+          : _sanitizeLegacyReason(item.reason),
+      note: item.note,
+      estimatedWaitMinutes: item.estimatedWaitMinutes,
+      experienceMinutes: item.experienceMinutes,
+      waitEstimateSource: item.waitEstimateSource,
+      accessMethod: preference.accessMethod,
+      usesVacationPackageUnlimited: item.usesVacationPackageUnlimited,
+      standbyWaitMinutes: item.standbyWaitMinutes,
+      priorityAccessBufferMinutes: item.priorityAccessBufferMinutes,
+    );
+  }
+
+  int? _parseClockMinutes(String value) {
+    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value.trim());
+    if (match == null) return null;
+    final hour = int.tryParse(match.group(1)!);
+    final minute = int.tryParse(match.group(2)!);
+    if (hour == null || minute == null || hour > 23 || minute > 59) return null;
+    return hour * 60 + minute;
+  }
+
+  void _appendConfirmedAccessConflictWarnings({
+    required List<ScheduleItem> alignedItems,
+    required Map<String, TodayAccessResult> confirmedTodayResultByFacility,
+    required List<String> warnings,
+  }) {
+    final fixedTodayItems = alignedItems
+        .where((item) => item.facilityId != null &&
+            confirmedTodayResultByFacility.containsKey(item.facilityId))
+        .toList(growable: false);
+    for (final acquired in fixedTodayItems) {
+      for (final other in alignedItems) {
+        if (identical(acquired, other) || acquired.id == other.id) continue;
+        if (other.type == ScheduleItemType.entry ||
+            other.type == ScheduleItemType.exit ||
+            other.type == ScheduleItemType.breakTime) {
+          continue;
+        }
+        if (!_rangesOverlap(
+          _start(acquired),
+          _end(acquired),
+          _start(other),
+          _end(other),
+        )) {
+          continue;
+        }
+        final result = confirmedTodayResultByFacility[acquired.facilityId]!;
+        warnings.add(
+          '${acquired.title}の${result.kind.label}実績 ${result.time} は、'
+          '${other.title}（${other.timeRangeLabel}）と競合します。取得実績の時刻は動かさず、どちらを優先するか確認してください。',
+        );
+        break;
+      }
+    }
+  }
 
   void _appendLiveWaitDecisionWarnings({
     required ScheduleRecalculationRequest request,
@@ -401,7 +537,9 @@ class ScheduleRecalculationService {
     required ScheduleItem item,
     required Facility? facility,
     required PlanPreference? preference,
+    bool released = false,
   }) {
+    if (released) return false;
     if (item.type == ScheduleItemType.breakfast ||
         item.type == ScheduleItemType.lunch ||
         item.type == ScheduleItemType.dinner) {
@@ -439,7 +577,7 @@ class ScheduleRecalculationService {
       facilityId: item.facilityId,
       reason: item.reason == null
           ? '当日の状況を反映し、残り時間へ再配置しました。'
-          : '${item.reason} 当日の状況を反映し、残り時間へ再配置しました。',
+          : '${_sanitizeLegacyReason(item.reason)} 当日の状況を反映し、残り時間へ再配置しました。',
       note: item.note,
       estimatedWaitMinutes: liveWaitMinutes ?? item.estimatedWaitMinutes,
       experienceMinutes: item.experienceMinutes,
@@ -451,6 +589,14 @@ class ScheduleRecalculationService {
       standbyWaitMinutes: liveWaitMinutes ?? item.standbyWaitMinutes,
       priorityAccessBufferMinutes: item.priorityAccessBufferMinutes,
     );
+  }
+
+  String? _sanitizeLegacyReason(String? reason) {
+    if (reason == null) return null;
+    return reason
+        .replaceAll('PP代替', 'DPA対象状況')
+        .replaceAll('PP利用可能時', 'DPA対象時')
+        .replaceAll('PPと待ち時間', 'DPA対象状況と待ち時間');
   }
 
   bool _usesPriorityAccessPlanning(ScheduleItem item) {
@@ -474,6 +620,7 @@ class ScheduleRecalculationService {
 
   ScheduleItem? _nextProtectedFuture({
     required ScheduleRecalculationRequest request,
+    required List<ScheduleItem> items,
     required int nowMinutes,
   }) {
     final preferenceById = {
@@ -483,7 +630,7 @@ class ScheduleRecalculationService {
     final facilityById = {
       for (final facility in request.facilities) facility.id: facility,
     };
-    final candidates = request.currentSchedule.items.where((item) {
+    final candidates = items.where((item) {
       if (_start(item) <= nowMinutes) return false;
       final facilityId = item.facilityId;
       if (facilityId != null &&
@@ -494,6 +641,8 @@ class ScheduleRecalculationService {
         item: item,
         facility: facilityId == null ? null : facilityById[facilityId],
         preference: facilityId == null ? null : preferenceById[facilityId],
+        released: facilityId != null &&
+            request.releasedFacilityIds.contains(facilityId),
       );
     }).toList(growable: false)
       ..sort((a, b) => _start(a).compareTo(_start(b)));

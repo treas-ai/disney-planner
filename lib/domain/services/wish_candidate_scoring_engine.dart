@@ -191,7 +191,6 @@ class WishCandidateScoringEngine {
             facility.supportsDpa &&
             waitScore.usedFallback)
           '待ち時間DB不足のためDPA減点は保留',
-        'Priority Passは評価対象外',
         '入口からの距離は朝一スコアに不使用',
       ];
       return WishCandidateScore(

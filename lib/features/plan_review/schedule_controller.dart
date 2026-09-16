@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:isolate';
+
 import '../../data/repositories/crowd_factor_repository_impl.dart';
 import '../../data/repositories/local_greeting_wait_planning_repository.dart';
 import '../../data/repositories/local_vacation_package_unlimited_ride_repository.dart';
@@ -7,12 +10,16 @@ import 'package:flutter/material.dart';
 import '../../app/dependency/service_locator.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
+import '../../domain/entities/trip_settings.dart';
+import '../../domain/entities/event_impact.dart';
+import '../../domain/entities/expert_recommendation_profile.dart';
 import '../../domain/entities/area_connection.dart';
 import '../../domain/entities/facility_location.dart';
 import '../../domain/entities/greeting_wait_planning_value.dart';
 import '../../domain/entities/dpa_strategy.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
+import '../../domain/entities/plan_coverage_advice.dart';
 import '../../domain/entities/official_performance_opportunity.dart';
 import '../../domain/entities/performance_time_option.dart';
 import '../../domain/entities/schedule_item.dart';
@@ -33,6 +40,127 @@ import '../../domain/services/free_time_improvement_scoring_service.dart';
 import '../../domain/services/disney_expert_recommendation_service.dart';
 import '../../domain/services/schedule_engine.dart';
 import '../../domain/services/schedule_validator.dart';
+import '../../domain/services/plan_coverage_advice_service.dart';
+
+
+class _ScheduleGenerationRequest {
+  const _ScheduleGenerationRequest({
+    required this.settings,
+    required this.facilities,
+    required this.preferences,
+    required this.eventImpacts,
+    required this.waitProfiles,
+    required this.morningScores,
+    required this.officialPerformanceOpportunities,
+    required this.areaConnections,
+    required this.facilityLocations,
+    required this.expertProfiles,
+    required this.unlimitedRideBufferMinutes,
+    required this.greetingWaitPlanning,
+    required this.manualFixedItems,
+  });
+
+  final TripSettings settings;
+  final List<Facility> facilities;
+  final List<PlanPreference> preferences;
+  final List<EventImpact> eventImpacts;
+  final List<TimeBandWaitProfile> waitProfiles;
+  final Map<String, double> morningScores;
+  final List<OfficialPerformanceOpportunity> officialPerformanceOpportunities;
+  final List<AreaConnection> areaConnections;
+  final List<FacilityLocation> facilityLocations;
+  final List<ExpertRecommendationProfile> expertProfiles;
+  final Map<String, int> unlimitedRideBufferMinutes;
+  final Map<String, GreetingWaitPlanningValue> greetingWaitPlanning;
+  final List<ScheduleItem> manualFixedItems;
+}
+
+void _scheduleGenerationIsolateEntry(List<Object?> message) {
+  final sendPort = message[0] as SendPort;
+  final request = message[1] as _ScheduleGenerationRequest;
+  try {
+    final result = const ScheduleEngine().generate(
+      settings: request.settings,
+      facilities: request.facilities,
+      preferences: request.preferences,
+      eventImpacts: request.eventImpacts,
+      waitProfiles: request.waitProfiles,
+      morningScores: request.morningScores,
+      officialPerformanceOpportunities:
+          request.officialPerformanceOpportunities,
+      areaConnections: request.areaConnections,
+      facilityLocations: request.facilityLocations,
+      expertProfiles: request.expertProfiles,
+      unlimitedRideBufferMinutes: request.unlimitedRideBufferMinutes,
+      greetingWaitPlanning: request.greetingWaitPlanning,
+      manualFixedItems: request.manualFixedItems,
+    );
+    sendPort.send(result);
+  } catch (error, stackTrace) {
+    sendPort.send(<Object?>['error', error.toString(), stackTrace.toString()]);
+  }
+}
+
+Future<DaySchedule> _generateScheduleOffUi(
+  _ScheduleGenerationRequest request,
+) async {
+  final receivePort = ReceivePort();
+  final errorPort = ReceivePort();
+  final exitPort = ReceivePort();
+  final completer = Completer<DaySchedule>();
+
+  final isolate = await Isolate.spawn<List<Object?>>(
+    _scheduleGenerationIsolateEntry,
+    <Object?>[receivePort.sendPort, request],
+    onError: errorPort.sendPort,
+    onExit: exitPort.sendPort,
+  );
+
+  late final StreamSubscription<Object?> resultSubscription;
+  late final StreamSubscription<Object?> errorSubscription;
+  late final StreamSubscription<Object?> exitSubscription;
+
+  void finish() {
+    resultSubscription.cancel();
+    errorSubscription.cancel();
+    exitSubscription.cancel();
+    receivePort.close();
+    errorPort.close();
+    exitPort.close();
+    isolate.kill(priority: Isolate.immediate);
+  }
+
+  resultSubscription = receivePort.listen((message) {
+    if (completer.isCompleted) return;
+    if (message is DaySchedule) {
+      completer.complete(message);
+    } else if (message is List && message.isNotEmpty && message.first == 'error') {
+      completer.completeError(
+        StateError(message.length > 1 ? message[1].toString() : '生成処理に失敗しました。'),
+      );
+    } else {
+      completer.completeError(StateError('生成結果を受信できませんでした。'));
+    }
+  });
+
+  errorSubscription = errorPort.listen((message) {
+    if (!completer.isCompleted) {
+      completer.completeError(StateError('生成用isolateでエラーが発生しました: $message'));
+    }
+  });
+
+  exitSubscription = exitPort.listen((_) {
+    if (!completer.isCompleted) {
+      completer.completeError(StateError('生成用isolateが結果を返さず終了しました。'));
+    }
+  });
+
+  try {
+    return await completer.future;
+  } finally {
+    finish();
+  }
+}
 
 class ScheduleController extends ChangeNotifier {
   ScheduleController(this._appState) {
@@ -40,11 +168,12 @@ class ScheduleController extends ChangeNotifier {
   }
 
   final AppState _appState;
-  final ScheduleEngine _scheduleEngine = const ScheduleEngine();
   final DpaAutoAllocator _dpaAutoAllocator = const DpaAutoAllocator();
   final ScheduleValidator _scheduleValidator = const ScheduleValidator();
   final FreeTimeImprovementScoringService _freeTimeScoringService =
       const FreeTimeImprovementScoringService();
+  final PlanCoverageAdviceService _coverageAdviceService =
+      const PlanCoverageAdviceService();
   List<PlanPreference>? _generatedPreferences;
   final LocalPerformanceScheduleRepository _performanceScheduleRepository =
       LocalPerformanceScheduleRepository();
@@ -54,7 +183,16 @@ class ScheduleController extends ChangeNotifier {
       );
 
   bool isLoading = false;
+  String generationStatus = '準備しています…';
+
+  void _setGenerationStatus(String value) {
+    generationStatus = value;
+    notifyListeners();
+  }
+  bool isAnalyzingCoverage = false;
   String? errorMessage;
+  String? coverageAnalysisError;
+  PlanCoverageAdvice? coverageAdvice;
 
   DaySchedule? get schedule {
     return _appState.daySchedule;
@@ -199,6 +337,247 @@ class ScheduleController extends ChangeNotifier {
     ];
   }
 
+  Future<void> analyzePlanCoverage() async {
+    final currentSchedule = schedule;
+    if (currentSchedule == null || selectedFacilitiesForCurrentPark.isEmpty) {
+      coverageAdvice = null;
+      coverageAnalysisError = null;
+      notifyListeners();
+      return;
+    }
+
+    isAnalyzingCoverage = true;
+    coverageAnalysisError = null;
+    notifyListeners();
+
+    try {
+      final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
+      final desiredFacilities = selectedFacilitiesForCurrentPark.where((facility) {
+        final preference = _appState.getPreference(facility.id);
+        return facility.canAddToPlanAt(targetDate) && !(preference?.isExcluded ?? false);
+      }).toList(growable: false);
+
+      if (desiredFacilities.isEmpty) {
+        coverageAdvice = null;
+        return;
+      }
+
+      final desiredIds = desiredFacilities.map((facility) => facility.id).toSet();
+      final selectedPreferences = _appState.planPreferences
+          .where((preference) => desiredIds.contains(preference.facilityId))
+          .toList(growable: false);
+      final settings = _appState.tripSettings;
+      final preferences = await _performanceResolver.resolve(
+        parkId: selectedParkId,
+        date: targetDate,
+        entryMinutes: settings.entryTimeHour * 60 + settings.entryTimeMinute,
+        exitMinutes: settings.exitTimeHour * 60 + settings.exitTimeMinute,
+        facilities: desiredFacilities,
+        preferences: selectedPreferences,
+      );
+
+      final eventImpacts = await ServiceLocator.eventImpactRepository
+          .loadEventImpacts(parkId: selectedParkId);
+      final waitProfiles = await const CrowdFactorRepositoryImpl()
+          .loadWaitProfilesForDate(parkId: selectedParkId, targetDate: targetDate);
+      final crowdFactors = await const CrowdFactorRepositoryImpl()
+          .loadCrowdFactors(parkId: selectedParkId);
+      final greetingWaitPlanning =
+          await const LocalGreetingWaitPlanningRepository().load(
+            parkId: selectedParkId,
+            targetDate: targetDate,
+            facilities: desiredFacilities,
+            crowdFactors: crowdFactors,
+          );
+      final expertProfiles = await ServiceLocator.expertRecommendationRepository
+          .loadProfiles(parkId: selectedParkId);
+      final unlimitedRideBufferMinutes = settings.usesVacationPackage &&
+              settings.hasUnlimitedAttractionRides
+          ? await const LocalVacationPackageUnlimitedRideRepository()
+              .loadPriorityAccessBufferMinutes(parkId: selectedParkId)
+          : <String, int>{};
+      final availableMinutes =
+          (settings.exitTimeHour * 60 + settings.exitTimeMinute) -
+          (settings.entryTimeHour * 60 + settings.entryTimeMinute);
+      final morningRanking = const WishCandidateScoringEngine().score(
+        facilities: desiredFacilities,
+        preferences: preferences,
+        waitProfiles: waitProfiles,
+        availableMinutes: availableMinutes,
+        targetDate: targetDate,
+        hasHappyEntry: settings.hasHappyEntry,
+        expertProfiles: expertProfiles,
+        unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        greetingWaitPlanning: greetingWaitPlanning,
+      );
+
+      final dpaEligibleRanking = morningRanking
+          .where((candidate) =>
+              candidate.facility.category == FacilityCategory.attraction &&
+              candidate.facility.supportsDpa &&
+              !unlimitedRideBufferMinutes.containsKey(candidate.facility.id))
+          .toList(growable: false);
+      final fullAllocation = _dpaAutoAllocator.allocate(
+        strategy: DpaStrategy(
+          type: DpaStrategyType.attractions,
+          maxUses: dpaEligibleRanking.length,
+        ),
+        candidates: dpaEligibleRanking,
+        preferences: preferences,
+      );
+      final orderedDpaIds = fullAllocation.selectedFacilityIds;
+
+      final allParkFacilities = await ServiceLocator.facilityRepository
+          .getFacilitiesByParkId(selectedParkId);
+      final allParkFacilityById = {
+        for (final facility in allParkFacilities) facility.id: facility,
+      };
+      final officialOptions = await _performanceScheduleRepository.findParkOptions(
+        parkId: selectedParkId,
+        date: targetDate,
+      );
+      final officialPerformanceOpportunities = <OfficialPerformanceOpportunity>[];
+      for (final option in officialOptions) {
+        final facility = allParkFacilityById[option.facilityId];
+        if (facility == null ||
+            (facility.category != FacilityCategory.show &&
+                facility.category != FacilityCategory.parade)) {
+          continue;
+        }
+        final startMinutes = _parseTimeMinutes(option.startTime);
+        if (startMinutes == null) continue;
+        officialPerformanceOpportunities.add(
+          OfficialPerformanceOpportunity(
+            facilityId: facility.id,
+            name: facility.name,
+            startMinutes: startMinutes,
+            endMinutes: startMinutes + facility.durationMinutes,
+            requiresEntryRequest: facility.requiresEntryRequest,
+            supportsDpa: facility.supportsDpa,
+            isSelected: desiredIds.contains(facility.id),
+          ),
+        );
+      }
+      final areaConnections = await ServiceLocator.movementRepository
+          .loadAreaConnections(parkId: selectedParkId);
+      final facilityLocations = await ServiceLocator.movementRepository
+          .loadFacilityLocations(parkId: selectedParkId);
+
+      final basePreferences = preferences.map((preference) {
+        final facility = allParkFacilityById[preference.facilityId];
+        if (facility?.category == FacilityCategory.attraction &&
+            preference.accessMethod == FacilityAccessMethod.dpa) {
+          return preference.copyWith(
+            useDpa: false,
+            accessMethod: FacilityAccessMethod.standby,
+          );
+        }
+        return preference;
+      }).toList(growable: false);
+
+      final scenarios = <PlanCoverageScenario>[];
+      final maxDpaCount = orderedDpaIds.length;
+      for (var count = 0; count <= maxDpaCount; count++) {
+        final chosenIds = orderedDpaIds.take(count).toSet();
+        final scenarioPreferences = basePreferences.map((preference) {
+          final facility = allParkFacilityById[preference.facilityId];
+          if (facility == null ||
+              facility.category != FacilityCategory.attraction ||
+              !facility.supportsDpa) {
+            return preference;
+          }
+          final useDpa = chosenIds.contains(preference.facilityId);
+          return preference.copyWith(
+            useDpa: useDpa,
+            accessMethod: useDpa
+                ? FacilityAccessMethod.dpa
+                : FacilityAccessMethod.standby,
+          );
+        }).toList(growable: false);
+
+        // Coverage/DPA simulation can invoke the same full-day Beam Search many
+        // times after the visible plan has already been generated. Keep those
+        // simulations off the UI isolate as well; otherwise the completed-plan
+        // screen becomes unresponsive while coverage analysis is running.
+        final simulated = await _generateScheduleOffUi(
+          _ScheduleGenerationRequest(
+            settings: settings.copyWith(
+              canUseDpa: count > 0,
+              attractionDpaMaxUses: count,
+            ),
+            facilities: List<Facility>.of(desiredFacilities),
+            preferences: List<PlanPreference>.of(scenarioPreferences),
+            eventImpacts: List<EventImpact>.of(eventImpacts),
+            waitProfiles: List<TimeBandWaitProfile>.of(waitProfiles),
+            morningScores: <String, double>{
+              for (final candidate in morningRanking)
+                candidate.facility.id:
+                    candidate.firstMoveScore ?? candidate.score,
+            },
+            officialPerformanceOpportunities:
+                List<OfficialPerformanceOpportunity>.of(
+              officialPerformanceOpportunities,
+            ),
+            areaConnections: List<AreaConnection>.of(areaConnections),
+            facilityLocations: List<FacilityLocation>.of(facilityLocations),
+            expertProfiles:
+                List<ExpertRecommendationProfile>.of(expertProfiles),
+            unlimitedRideBufferMinutes:
+                Map<String, int>.of(unlimitedRideBufferMinutes),
+            greetingWaitPlanning:
+                Map<String, GreetingWaitPlanningValue>.of(greetingWaitPlanning),
+            manualFixedItems: const <ScheduleItem>[],
+          ),
+        );
+        final simulatedFacilityIds = simulated.items
+            .map((item) => item.facilityId)
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        scenarios.add(
+          PlanCoverageScenario(
+            dpaCount: count,
+            scheduledFacilityIds: simulatedFacilityIds,
+            scheduledDesiredCount:
+                desiredIds.intersection(simulatedFacilityIds).length,
+            selectedDpaFacilityIds:
+                orderedDpaIds.take(count).toList(growable: false),
+          ),
+        );
+      }
+
+      final waitByFacilityId = {
+        for (final candidate in morningRanking)
+          candidate.facility.id: candidate.predictedWaitMinutes,
+      };
+      coverageAdvice = _coverageAdviceService.build(
+        desiredFacilities: desiredFacilities,
+        currentScheduledFacilityIds: currentSchedule.items
+            .map((item) => item.facilityId)
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toSet(),
+        scenarios: scenarios,
+        orderedDpaMetrics: [
+          for (final id in orderedDpaIds)
+            DpaOrderMetric(
+              facilityId: id,
+              estimatedSavedMinutes: waitByFacilityId[id] == null
+                  ? null
+                  : (waitByFacilityId[id]! - 15).clamp(0, 240).toInt(),
+            ),
+        ],
+      );
+    } catch (error, stackTrace) {
+      debugPrint('希望達成/DPA分析に失敗しました: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      coverageAnalysisError = '希望達成状況を分析できませんでした。プランを再生成してからもう一度お試しください。';
+    } finally {
+      isAnalyzingCoverage = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> generateSchedule({
     List<ScheduleItem> additionalManualFixedItems = const <ScheduleItem>[],
     bool preserveManualFixedItems = true,
@@ -222,8 +601,10 @@ class ScheduleController extends ChangeNotifier {
 
     isLoading = true;
     errorMessage = null;
+    generationStatus = '必要なデータを読み込んでいます…';
 
     notifyListeners();
+    await Future<void>.delayed(Duration.zero);
 
     try {
       final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
@@ -376,43 +757,59 @@ class ScheduleController extends ChangeNotifier {
         );
       }
 
+      _setGenerationStatus('移動と固定予定を確認しています…');
       final areaConnections = await ServiceLocator.movementRepository
           .loadAreaConnections(parkId: selectedParkId);
       final facilityLocations = await ServiceLocator.movementRepository
           .loadFacilityLocations(parkId: selectedParkId);
 
-      final generatedSchedule = _scheduleEngine.generate(
+      _setGenerationStatus('選択した組み方で全日プランを探索しています…');
+
+      final request = _ScheduleGenerationRequest(
         settings: _appState.tripSettings,
-        facilities: availableFacilities,
-        preferences: generatedPreferences,
-        eventImpacts: eventImpacts,
-        waitProfiles: waitProfiles,
-        morningScores: {
+        facilities: List<Facility>.of(availableFacilities),
+        preferences: List<PlanPreference>.of(generatedPreferences),
+        eventImpacts: List<EventImpact>.of(eventImpacts),
+        waitProfiles: List<TimeBandWaitProfile>.of(waitProfiles),
+        morningScores: <String, double>{
           for (final candidate in morningRanking)
             candidate.facility.id:
                 candidate.firstMoveScore ?? candidate.score,
         },
         officialPerformanceOpportunities:
-            officialPerformanceOpportunities,
-        areaConnections: areaConnections,
-        facilityLocations: facilityLocations,
-        expertProfiles: expertProfiles,
-        unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
-        greetingWaitPlanning: greetingWaitPlanning,
-        manualFixedItems: manualFixedItems,
+            List<OfficialPerformanceOpportunity>.of(
+              officialPerformanceOpportunities,
+            ),
+        areaConnections: List<AreaConnection>.of(areaConnections),
+        facilityLocations: List<FacilityLocation>.of(facilityLocations),
+        expertProfiles:
+            List<ExpertRecommendationProfile>.of(expertProfiles),
+        unlimitedRideBufferMinutes:
+            Map<String, int>.of(unlimitedRideBufferMinutes),
+        greetingWaitPlanning:
+            Map<String, GreetingWaitPlanningValue>.of(greetingWaitPlanning),
+        manualFixedItems: List<ScheduleItem>.of(manualFixedItems),
       );
 
+      final generatedSchedule = await _generateScheduleOffUi(request);
+
+      _setGenerationStatus('完成したプランを表示しています…');
       _appState.updateDaySchedule(generatedSchedule);
+
+      isLoading = false;
+      notifyListeners();
+      Future<void>(() => analyzePlanCoverage());
     } catch (error, stackTrace) {
       debugPrint('スケジュール生成に失敗しました: $error');
 
       debugPrintStack(stackTrace: stackTrace);
 
       errorMessage =
-          'スケジュール生成に失敗しました。'
-          '設定と選択施設を確認して、もう一度お試しください。';
+          'スケジュール生成に失敗しました。\n'
+          '${error.runtimeType}: $error';
     } finally {
       isLoading = false;
+      generationStatus = '準備しています…';
 
       notifyListeners();
     }
@@ -567,14 +964,15 @@ class ScheduleController extends ChangeNotifier {
           (scheduledCount > 0 && !isManualRepeatCandidate) ||
           facility.category == FacilityCategory.show ||
           facility.category == FacilityCategory.parade ||
-          facility.category == FacilityCategory.restaurant ||
           facility.category == FacilityCategory.service ||
           facility.requiresEntryRequest ||
           facility.requiresReservation) {
         continue;
       }
       if (facility.category != FacilityCategory.attraction &&
-          facility.category != FacilityCategory.greeting) {
+          facility.category != FacilityCategory.greeting &&
+          facility.category != FacilityCategory.restaurant &&
+          facility.category != FacilityCategory.shop) {
         continue;
       }
 
@@ -784,6 +1182,155 @@ class ScheduleController extends ChangeNotifier {
     return List<FreeTimeImprovementChoice>.unmodifiable(choices);
   }
 
+  Future<List<PlanRebuildCandidate>> loadPlanRebuildCandidates() async {
+    final currentSchedule = schedule;
+    if (currentSchedule == null) return const <PlanRebuildCandidate>[];
+
+    final totalFreeMinutes = currentSchedule.items
+        .where((item) => item.type == ScheduleItemType.breakTime)
+        .fold<int>(0, (sum, item) {
+          final start = item.startHour * 60 + item.startMinute;
+          final end = item.endHour * 60 + item.endMinute;
+          return sum + (end - start).clamp(0, 24 * 60).toInt();
+        });
+    if (totalFreeMinutes < 20) return const <PlanRebuildCandidate>[];
+
+    final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
+    final settings = _appState.tripSettings;
+    final allFacilities = await ServiceLocator.facilityRepository
+        .getFacilitiesByParkId(selectedParkId);
+    final waitProfiles = await const CrowdFactorRepositoryImpl()
+        .loadWaitProfilesForDate(parkId: selectedParkId, targetDate: targetDate);
+    final waitProfileById = {
+      for (final profile in waitProfiles) profile.facilityId: profile,
+    };
+    final crowdFactors = await const CrowdFactorRepositoryImpl()
+        .loadCrowdFactors(parkId: selectedParkId);
+    final greetingWaitPlanning =
+        await const LocalGreetingWaitPlanningRepository().load(
+      parkId: selectedParkId,
+      targetDate: targetDate,
+      facilities: allFacilities,
+      crowdFactors: crowdFactors,
+    );
+    final unlimitedRideBufferMinutes = settings.usesVacationPackage &&
+            settings.hasUnlimitedAttractionRides
+        ? await const LocalVacationPackageUnlimitedRideRepository()
+            .loadPriorityAccessBufferMinutes(parkId: selectedParkId)
+        : <String, int>{};
+    final expertProfiles = await ServiceLocator.expertRecommendationRepository
+        .loadProfiles(parkId: selectedParkId);
+    final scheduledIds = currentSchedule.items
+        .map((item) => item.facilityId)
+        .whereType<String>()
+        .toSet();
+
+    final midpoint = (settings.entryTimeHour * 60 + settings.entryTimeMinute +
+            settings.exitTimeHour * 60 + settings.exitTimeMinute) ~/
+        2;
+    final candidates = <PlanRebuildCandidate>[];
+    for (final facility in allFacilities) {
+      if (!facility.canAddToPlanAt(targetDate) ||
+          scheduledIds.contains(facility.id) ||
+          facility.category == FacilityCategory.service ||
+          facility.requiresReservation) {
+        continue;
+      }
+      if (facility.category != FacilityCategory.attraction &&
+          facility.category != FacilityCategory.greeting &&
+          facility.category != FacilityCategory.restaurant &&
+          facility.category != FacilityCategory.shop &&
+          facility.category != FacilityCategory.show &&
+          facility.category != FacilityCategory.parade) {
+        continue;
+      }
+
+      var waitMinutes = 0;
+      if (facility.category == FacilityCategory.attraction ||
+          facility.category == FacilityCategory.greeting) {
+        waitMinutes = _freeTimeWaitEstimate(
+          facility: facility,
+          scheduledStartMinutes: midpoint,
+          profile: waitProfileById[facility.id],
+          greetingWaitPlanning: greetingWaitPlanning[facility.id],
+          unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        ).minutes;
+      }
+      final preparationMinutes =
+          facility.category == FacilityCategory.show ||
+                  facility.category == FacilityCategory.parade
+              ? 15
+              : 0;
+      final requiredMinutes =
+          facility.durationMinutes + waitMinutes + preparationMinutes;
+      if (requiredMinutes > totalFreeMinutes) continue;
+
+      final existingPreference = _appState.getPreference(facility.id);
+      final expert = const DisneyExpertRecommendationService().evaluate(
+        facility: facility,
+        targetDate: targetDate,
+        profiles: expertProfiles,
+        preference: existingPreference,
+        waitProfiles: waitProfiles,
+      );
+      final fitRatio = requiredMinutes / totalFreeMinutes;
+      final score = facility.priority.value * 24.0 +
+          expert.score * 0.65 +
+          fitRatio.clamp(0.0, 1.0) * 18.0 -
+          waitMinutes * 0.12;
+      candidates.add(PlanRebuildCandidate(
+        facility: facility,
+        estimatedRequiredMinutes: requiredMinutes,
+        totalFreeMinutes: totalFreeMinutes,
+        estimatedWaitMinutes: waitMinutes,
+        score: score,
+      ));
+    }
+    candidates.sort((a, b) => b.score.compareTo(a.score));
+    return List<PlanRebuildCandidate>.unmodifiable(candidates);
+  }
+
+  Future<void> applyPlanRebuildCandidate(PlanRebuildCandidate candidate) async {
+    if (!_appState.isFacilitySelected(candidate.facility.id)) {
+      _appState.addFacility(candidate.facility);
+    }
+    // Do not pin the new facility to one existing gap. Re-run the whole day so
+    // fragmented free time can be consolidated by moving non-fixed items while
+    // fixed performances/reservations remain protected by their preferences.
+    await generateSchedule();
+  }
+
+  Future<List<FreeTimeImprovementChoice>> loadAllFreeTimeImprovementChoices() async {
+    final currentSchedule = schedule;
+    if (currentSchedule == null) {
+      return const <FreeTimeImprovementChoice>[];
+    }
+    final gaps = currentSchedule.items
+        .where((item) => item.type == ScheduleItemType.breakTime)
+        .where((item) {
+          final start = item.startHour * 60 + item.startMinute;
+          final end = item.endHour * 60 + item.endMinute;
+          return end - start >= 20;
+        })
+        .toList(growable: false)
+      ..sort((left, right) {
+        final leftStart = left.startHour * 60 + left.startMinute;
+        final rightStart = right.startHour * 60 + right.startMinute;
+        return leftStart.compareTo(rightStart);
+      });
+
+    final choices = <FreeTimeImprovementChoice>[];
+    for (final gap in gaps) {
+      choices.addAll(await loadFreeTimeImprovementChoices(gap));
+    }
+    choices.sort((left, right) {
+      final scoreCompare = right.score.compareTo(left.score);
+      if (scoreCompare != 0) return scoreCompare;
+      return left.plannedStartMinutes.compareTo(right.plannedStartMinutes);
+    });
+    return List<FreeTimeImprovementChoice>.unmodifiable(choices);
+  }
+
   Future<List<FreeTimeImprovementChoice>> loadRepeatRideChoicesForFacility(
     String facilityId, {
     int? minimumStartMinutes,
@@ -979,6 +1526,19 @@ class ScheduleController extends ChangeNotifier {
     required GreetingWaitPlanningValue? greetingWaitPlanning,
     required Map<String, int> unlimitedRideBufferMinutes,
   }) {
+    if (facility.category == FacilityCategory.restaurant) {
+      return const _FreeTimeWaitEstimate(
+        minutes: 0,
+        source: 'レストラン利用時間（待ち時間は当日状況により変動）',
+      );
+    }
+    if (facility.category == FacilityCategory.shop) {
+      return const _FreeTimeWaitEstimate(
+        minutes: 0,
+        source: 'ショップ滞在時間（待ち時間は計上しません）',
+      );
+    }
+
     if (unlimitedRideBufferMinutes.containsKey(facility.id) &&
         facility.category == FacilityCategory.attraction) {
       final minutes = unlimitedRideBufferMinutes[facility.id] ?? 15;
@@ -1377,6 +1937,8 @@ class ScheduleController extends ChangeNotifier {
   void clearSchedule() {
     errorMessage = null;
     _generatedPreferences = null;
+    coverageAdvice = null;
+    coverageAnalysisError = null;
 
     _appState.clearDaySchedule();
   }
@@ -1412,6 +1974,22 @@ class ScheduleController extends ChangeNotifier {
   }
 }
 
+
+class PlanRebuildCandidate {
+  const PlanRebuildCandidate({
+    required this.facility,
+    required this.estimatedRequiredMinutes,
+    required this.totalFreeMinutes,
+    required this.estimatedWaitMinutes,
+    required this.score,
+  });
+
+  final Facility facility;
+  final int estimatedRequiredMinutes;
+  final int totalFreeMinutes;
+  final int estimatedWaitMinutes;
+  final double score;
+}
 
 class PerformancePlanChoice {
   const PerformancePlanChoice({

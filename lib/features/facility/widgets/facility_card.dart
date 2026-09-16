@@ -383,15 +383,6 @@ class _FacilityBadgeList extends StatelessWidget {
             backgroundColor: const Color(0xFFE3F2FD),
             borderColor: const Color(0xFF90CAF9),
           ),
-        if (facility.supportsPriorityPass)
-          _CompactBadge(
-            icon: Icons.confirmation_number_outlined,
-            label: compact ? 'PP' : 'プライオリティパス',
-            compact: compact,
-            foregroundColor: const Color(0xFF6750A4),
-            backgroundColor: const Color(0xFFEDE7F6),
-            borderColor: const Color(0xFFB39DDB),
-          ),
         if (facility.supportsSingleRider)
           _CompactBadge(
             icon: Icons.person_outline,

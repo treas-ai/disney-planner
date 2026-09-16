@@ -56,14 +56,13 @@ class _FixedScheduleEditorSheetState extends State<_FixedScheduleEditorSheet> {
 
   bool get _usesAccessTime => switch (preference.accessMethod) {
     FacilityAccessMethod.dpa ||
-    FacilityAccessMethod.priorityPass ||
     FacilityAccessMethod.standbyPass ||
     FacilityAccessMethod.entryRequest => true,
     _ => false,
   };
 
   bool get _usesReservationTime =>
-      widget.facility.isRestaurant ||
+      widget.facility.supportsReservationAccess &&
       preference.accessMethod == FacilityAccessMethod.reservation;
 
   @override
@@ -114,14 +113,17 @@ class _FixedScheduleEditorSheetState extends State<_FixedScheduleEditorSheet> {
     }
   }
 
-  String _statusLabel(FixedTimeStatus status) {
-    if (preference.accessMethod == FacilityAccessMethod.entryRequest) {
-      return switch (status) {
-        FixedTimeStatus.none => '外れ・利用なし',
-        FixedTimeStatus.planned => '抽選予定',
-        FixedTimeStatus.confirmed => '当選',
-      };
+  List<FixedTimeStatus> get _availableStatuses {
+    if (_usesReservationTime) {
+      return FixedTimeStatus.values;
     }
+    return const <FixedTimeStatus>[
+      FixedTimeStatus.none,
+      FixedTimeStatus.planned,
+    ];
+  }
+
+  String _statusLabel(FixedTimeStatus status) {
     if (_usesReservationTime) {
       return switch (status) {
         FixedTimeStatus.none => '予約なし',
@@ -129,10 +131,17 @@ class _FixedScheduleEditorSheetState extends State<_FixedScheduleEditorSheet> {
         FixedTimeStatus.confirmed => '事前予約済み',
       };
     }
+    if (preference.accessMethod == FacilityAccessMethod.entryRequest) {
+      return switch (status) {
+        FixedTimeStatus.none => '応募しない',
+        FixedTimeStatus.planned => 'エントリー受付を狙う',
+        FixedTimeStatus.confirmed => '当日入力で管理',
+      };
+    }
     return switch (status) {
-      FixedTimeStatus.none => '取得なし',
-      FixedTimeStatus.planned => '取得予定',
-      FixedTimeStatus.confirmed => '取得済み',
+      FixedTimeStatus.none => '利用予定なし',
+      FixedTimeStatus.planned => '取得・利用を予定',
+      FixedTimeStatus.confirmed => '当日入力で管理',
     };
   }
 
@@ -167,12 +176,17 @@ class _FixedScheduleEditorSheetState extends State<_FixedScheduleEditorSheet> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<FixedTimeStatus>(
-                initialValue: p.fixedTimeStatus,
-                decoration: const InputDecoration(
-                  labelText: '取得・予約状態',
+                initialValue: _availableStatuses.contains(p.fixedTimeStatus)
+                    ? p.fixedTimeStatus
+                    : FixedTimeStatus.planned,
+                decoration: InputDecoration(
+                  labelText: _usesReservationTime ? '予約状態' : '来園前の利用方針',
                   border: OutlineInputBorder(),
+                  helperText: _usesReservationTime
+                      ? '事前予約の確定状態を設定できます。'
+                      : '取得済み・当選・落選などの実績は「当日の取得状況」で入力します。',
                 ),
-                items: FixedTimeStatus.values
+                items: _availableStatuses
                     .map(
                       (v) => DropdownMenuItem(
                         value: v,
@@ -224,7 +238,7 @@ class _FixedScheduleEditorSheetState extends State<_FixedScheduleEditorSheet> {
                   ),
               ],
               if (!_isPerformance &&
-                  p.fixedTimeStatus == FixedTimeStatus.confirmed &&
+                  p.fixedTimeStatus != FixedTimeStatus.none &&
                   (_usesAccessTime || _usesReservationTime)) ...[
                 const SizedBox(height: 14),
                 _TenMinuteTimeField(

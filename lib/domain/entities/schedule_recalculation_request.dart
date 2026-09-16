@@ -6,6 +6,7 @@ import 'plan_preference.dart';
 import 'trip_settings.dart';
 import 'time_band_wait_profile.dart';
 import 'weather_snapshot.dart';
+import 'today_access_result.dart';
 import 'live_pass_status.dart';
 import '../enums/fatigue_level.dart';
 
@@ -24,6 +25,8 @@ class ScheduleRecalculationRequest {
     this.hasBaggage = false,
     this.hotelBreakAvailable = false,
     this.waitProfiles = const <TimeBandWaitProfile>[],
+    this.releasedFacilityIds = const <String>{},
+    this.todayAccessResults = const <TodayAccessResult>[],
   });
 
   final DateTime now;
@@ -39,4 +42,8 @@ class ScheduleRecalculationRequest {
   final bool hasBaggage;
   final bool hotelBreakAvailable;
   final List<TimeBandWaitProfile> waitProfiles;
+  final Set<String> releasedFacilityIds;
+
+  /// 当日に実際に取得・当選した結果。事前の固定予定と区別して再計算する。
+  final List<TodayAccessResult> todayAccessResults;
 }

@@ -197,6 +197,14 @@ class Facility {
     return category == FacilityCategory.restaurant;
   }
 
+  /// 施設マスタ上で予約・事前受付の時刻を扱える施設か。
+  /// カテゴリがレストランというだけでは予約対応とみなさない。
+  bool get supportsReservationAccess {
+    return requiresReservation ||
+        reservationRequired ||
+        supportsPrioritySeating;
+  }
+
   bool get isShop {
     return category == FacilityCategory.shop;
   }

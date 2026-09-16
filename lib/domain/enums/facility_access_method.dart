@@ -1,7 +1,7 @@
 enum FacilityAccessMethod {
   standby(label: '通常待機・通常利用', description: '通常列や通常の利用方法で予定を作成します。'),
   dpa(label: 'DPA', description: 'ディズニー・プレミアアクセスを利用します。'),
-  priorityPass(label: 'プライオリティパス', description: 'プライオリティパスを利用します。'),
+  priorityPass(label: '旧プライオリティパス（終了）', description: '2026年8月31日に終了した旧サービスです。'),
   standbyPass(label: 'スタンバイパス', description: 'スタンバイパスを利用します。'),
   entryRequest(label: 'エントリー受付', description: 'エントリー受付へ申し込む前提で予定を作成します。'),
   reservation(label: '予約', description: '予約済みの時刻を優先して予定を作成します。'),
