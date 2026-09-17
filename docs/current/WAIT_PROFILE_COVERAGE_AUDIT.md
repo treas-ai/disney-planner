@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-14T02:37:04+09:00
+Generated: 2026-09-17T03:24:03+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -8,12 +8,11 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - Active master attractions: 33
 - Mapped active attractions: 33
-- Generated profiles: 31
-- Profile source observations: 16808
+- Generated profiles: 33
+- Profile source observations: 19041
 
 ### 1. Profile missing facilities
 
-- `tdl_fantasyland_haunted_mansion` — ホーンテッドマンション; raw observations=0
 - `tdl_toontown_toon_park` — トゥーンパーク; raw observations=0
 - `tdl_world_bazaar_penny_arcade` — ペニーアーケード; raw observations=0
 
@@ -40,7 +39,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 夕食前 = 2 samples
-- `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 1 samples
+- `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: ショー前後 = 1 samples
@@ -56,7 +55,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 22154
+- Profile source observations: 25683
 
 ### 1. Profile missing facilities
 
@@ -67,11 +66,12 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - `tds_ac_a_004` — マジックランプシアター: no usable samples in 閉園前
 - `tds_aw_a_005` — ビッグシティ・ヴィークル: no usable samples in 開園直後, 昼前, 昼過ぎ
-- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: no usable samples in 開園直後, 昼前, 昼過ぎ
+- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: no usable samples in 昼前
 
 ### 2b. Low-confidence time bands (<3 samples)
 
 - `tds_ac_a_004` — マジックランプシアター: 夕食前 = 2 samples
+- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 開園直後 = 2 samples
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
 - `tds_pd_a_002` — ニモ＆フレンズ・シーライダー: 閉園前 = 1 samples
 
