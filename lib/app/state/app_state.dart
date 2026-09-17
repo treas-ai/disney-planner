@@ -52,6 +52,7 @@ class AppState extends ChangeNotifier {
   }
 
   final List<Facility> _selectedFacilities = [];
+  final Set<String> _optionalAdditionFacilityIds = <String>{};
   final Map<String, PlanPreference> _preferencesByFacilityId = {};
   final Map<String, WishItemState> _wishStatesByItemId = {};
   final Set<String> _liveSuspendedFacilityIds = <String>{};
@@ -72,6 +73,12 @@ class AppState extends ChangeNotifier {
   List<Facility> get selectedFacilities {
     return List<Facility>.unmodifiable(_selectedFacilities);
   }
+
+  Set<String> get optionalAdditionFacilityIds =>
+      Set<String>.unmodifiable(_optionalAdditionFacilityIds);
+
+  bool isOptionalAddition(String facilityId) =>
+      _optionalAdditionFacilityIds.contains(facilityId);
 
   List<PlanPreference> get planPreferences {
     return List<PlanPreference>.unmodifiable(_preferencesByFacilityId.values);
@@ -331,6 +338,38 @@ class AppState extends ChangeNotifier {
         .length;
   }
 
+  List<Facility> requiredSelectedFacilitiesForPark(String parkId) {
+    return List<Facility>.unmodifiable(
+      _selectedFacilities.where(
+        (facility) =>
+            facility.parkId == parkId &&
+            !_optionalAdditionFacilityIds.contains(facility.id),
+      ).toList(growable: false),
+    );
+  }
+
+  int requiredSelectedFacilityCountForPark(String parkId) {
+    return requiredSelectedFacilitiesForPark(parkId).length;
+  }
+
+  void clearRequiredSelectedFacilitiesForPark(String parkId) {
+    final facilityIds = requiredSelectedFacilitiesForPark(parkId)
+        .map((facility) => facility.id)
+        .toSet();
+    if (facilityIds.isEmpty) return;
+    _selectedFacilities.removeWhere(
+      (facility) => facilityIds.contains(facility.id),
+    );
+    for (final facilityId in facilityIds) {
+      _preferencesByFacilityId.remove(facilityId);
+    }
+    _todayAccessResultsByKey.removeWhere(
+      (_, value) => facilityIds.contains(value.facilityId),
+    );
+    daySchedule = null;
+    _saveAndNotify();
+  }
+
   Future<void> restore() async {
     try {
       final json = await _storage.load();
@@ -382,6 +421,9 @@ class AppState extends ChangeNotifier {
       final facilityIds = _readStringList(json['selectedFacilityIds']);
 
       await _restoreSelectedFacilities(facilityIds);
+      _optionalAdditionFacilityIds
+        ..clear()
+        ..addAll(_readStringList(json['optionalAdditionFacilityIds']));
 
       final rawPreferences = json['planPreferences'];
 
@@ -525,6 +567,7 @@ class AppState extends ChangeNotifier {
       'selectedFacilityIds': _selectedFacilities
           .map((facility) => facility.id)
           .toList(),
+      'optionalAdditionFacilityIds': _optionalAdditionFacilityIds.toList(),
       'planPreferences': _preferencesByFacilityId.values
           .map((preference) => preference.toJson())
           .toList(),
@@ -625,6 +668,7 @@ class AppState extends ChangeNotifier {
     }
 
     _selectedFacilities.add(facility);
+    _optionalAdditionFacilityIds.remove(facility.id);
 
     final initialPreference = PlanPreference.initial(facilityId: facility.id);
     _preferencesByFacilityId[facility.id] = facility.requiresEntryRequest
@@ -640,6 +684,63 @@ class AppState extends ChangeNotifier {
     _saveAndNotify();
   }
 
+  void addOptionalFacility(Facility facility) {
+    if (!isFacilitySelected(facility.id)) {
+      _selectedFacilities.add(facility);
+      final initialPreference = PlanPreference.initial(facilityId: facility.id);
+      _preferencesByFacilityId[facility.id] = facility.requiresEntryRequest
+          ? initialPreference.copyWith(
+              accessMethod: FacilityAccessMethod.entryRequest,
+              fixedTimeStatus: FixedTimeStatus.planned,
+              lotteryFallbackAction: LotteryFallbackAction.dpaIfAvailable,
+            )
+          : initialPreference;
+    }
+    _optionalAdditionFacilityIds.add(facility.id);
+    daySchedule = null;
+    _saveAndNotify();
+  }
+
+  void addFacilityRepeat(Facility facility) {
+    // A repeated experience is intentionally represented by another occurrence
+    // of the same facility. Preferences remain shared by facility ID.
+    _selectedFacilities.add(facility);
+    _preferencesByFacilityId.putIfAbsent(
+      facility.id,
+      () {
+        final initialPreference = PlanPreference.initial(facilityId: facility.id);
+        return facility.requiresEntryRequest
+            ? initialPreference.copyWith(
+                accessMethod: FacilityAccessMethod.entryRequest,
+                fixedTimeStatus: FixedTimeStatus.planned,
+                lotteryFallbackAction: LotteryFallbackAction.dpaIfAvailable,
+              )
+            : initialPreference;
+      },
+    );
+    daySchedule = null;
+    _saveAndNotify();
+  }
+
+  void removeOneFacilityOccurrence(String facilityId) {
+    final index = _selectedFacilities.lastIndexWhere(
+      (facility) => facility.id == facilityId,
+    );
+    if (index < 0) return;
+    _selectedFacilities.removeAt(index);
+    final stillSelected =
+        _selectedFacilities.any((facility) => facility.id == facilityId);
+    if (!stillSelected) {
+      _optionalAdditionFacilityIds.remove(facilityId);
+      _preferencesByFacilityId.remove(facilityId);
+      _todayAccessResultsByKey.removeWhere(
+        (_, value) => value.facilityId == facilityId,
+      );
+    }
+    daySchedule = null;
+    _saveAndNotify();
+  }
+
   void clearSelectedFacilitiesForPark(String parkId) {
     final facilityIds = _selectedFacilities
         .where((facility) => facility.parkId == parkId)
@@ -651,6 +752,7 @@ class AppState extends ChangeNotifier {
     }
 
     _selectedFacilities.removeWhere((facility) => facilityIds.contains(facility.id));
+    _optionalAdditionFacilityIds.removeAll(facilityIds);
 
     for (final facilityId in facilityIds) {
       _preferencesByFacilityId.remove(facilityId);
@@ -667,6 +769,7 @@ class AppState extends ChangeNotifier {
     final beforeCount = _selectedFacilities.length;
 
     _selectedFacilities.removeWhere((facility) => facility.id == facilityId);
+    _optionalAdditionFacilityIds.remove(facilityId);
 
     if (beforeCount == _selectedFacilities.length) {
       return;
@@ -1282,6 +1385,7 @@ class AppState extends ChangeNotifier {
     return {
       'tripSettings': tripSettings.toJson(),
       'selectedFacilityIds': _selectedFacilities.map((facility) => facility.id).toList(),
+      'optionalAdditionFacilityIds': _optionalAdditionFacilityIds.toList(),
       'planPreferences': _preferencesByFacilityId.values.map((value) => value.toJson()).toList(),
       'wishItemStates': _wishStatesByItemId.values.map((value) => value.toJson()).toList(),
       'liveSuspendedFacilityIds': _liveSuspendedFacilityIds.toList(),
@@ -1298,6 +1402,7 @@ class AppState extends ChangeNotifier {
     return {
       'tripSettings': settings.toJson(),
       'selectedFacilityIds': <String>[],
+      'optionalAdditionFacilityIds': <String>[],
       'planPreferences': <dynamic>[],
       'wishItemStates': <dynamic>[],
       'liveSuspendedFacilityIds': <String>[],
@@ -1316,7 +1421,9 @@ class AppState extends ChangeNotifier {
       });
     }
     await _restoreSelectedFacilities(_readStringList(state['selectedFacilityIds']));
-    _preferencesByFacilityId.clear();
+    _optionalAdditionFacilityIds
+      ..clear()
+      ..addAll(_readStringList(state['optionalAdditionFacilityIds']));    _preferencesByFacilityId.clear();
     final rawPreferences = state['planPreferences'];
     if (rawPreferences is List) {
       for (final item in rawPreferences.whereType<Map>()) {

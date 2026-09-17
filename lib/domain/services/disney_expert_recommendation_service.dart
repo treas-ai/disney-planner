@@ -53,6 +53,9 @@ class DisneyExpertRecommendationService {
     score += priority * 3.0;
 
     if (facility.isSeasonal) score += 8;
+    final spotlightActive = profile?.spotlightAppliesOn(targetDate) ?? false;
+    final spotlightScore = spotlightActive ? profile!.spotlightScore : 0;
+    score += spotlightScore;
     if (facility.isShowRestaurant) score += 10;
     if (facility.requiresEntryRequest) score += 4;
     if (facility.requiresReservation || facility.reservationRequired) {
@@ -72,6 +75,10 @@ class DisneyExpertRecommendationService {
       '希少性$scarcity/100',
       if (difficulty > 0) '通常待機難易度 最大約$difficulty分',
       if (facility.isSeasonal) '期間限定',
+      if (spotlightActive)
+        (profile!.spotlightReason?.trim().isNotEmpty ?? false)
+            ? profile.spotlightReason!.trim()
+            : '今の時期の注目度が高い',
       if (facility.isShowRestaurant) '食事＋ショー体験',
       if (note != null && note.isNotEmpty) note,
     ];

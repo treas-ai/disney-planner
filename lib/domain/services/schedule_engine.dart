@@ -66,6 +66,7 @@ class ScheduleEngine {
     Map<String, GreetingWaitPlanningValue> greetingWaitPlanning =
         const <String, GreetingWaitPlanningValue>{},
     List<ScheduleItem> manualFixedItems = const <ScheduleItem>[],
+    Set<String> optionalFacilityIds = const <String>{},
   }) {
     final items = <ScheduleItem>[];
     final visitDate = settings.visitDate ?? DateTime.now();
@@ -130,7 +131,9 @@ class ScheduleEngine {
 
     final fixedPerformanceFacilityIds = _addFixedPerformanceFacilities(
       items: items,
-      facilities: operationalFacilities,
+      facilities: operationalFacilities
+          .where((facility) => !optionalFacilityIds.contains(facility.id))
+          .toList(growable: false),
       preferences: preferences,
       entryMinutes: entryEndMinutes,
       exitMinutes: exitMinutes,
@@ -473,9 +476,15 @@ class ScheduleEngine {
         finalStartMinutes: finalStartMinutes,
       );
 
+      final sameFacilityOccurrence = items
+              .where((item) => item.facilityId == facility.id)
+              .length +
+          1;
       items.add(
         _createScheduleItem(
-          id: 'schedule_${facility.id}',
+          id: sameFacilityOccurrence == 1
+              ? 'schedule_${facility.id}'
+              : 'schedule_${facility.id}_repeat_$sameFacilityOccurrence',
           title: facility.name,
           type: ScheduleItemType.facility,
           startMinutes: finalStartMinutes,
@@ -2015,16 +2024,16 @@ class ScheduleEngine {
   }) {
     final regularIds = regularFacilities.map((facility) => facility.id).toSet();
 
+    // Do not require the greedy/backfill phase to have already achieved full
+    // coverage. A fixed show can make that phase drop one attraction even when
+    // a different full-day ordering is feasible. The unified search is the
+    // component that should prove or disprove full coverage.
     bool hasFullRegularWishCoverage(List<ScheduleItem> candidate) {
       final scheduledIds = candidate
           .map((item) => item.facilityId)
           .whereType<String>()
           .toSet();
       return regularIds.every(scheduledIds.contains);
-    }
-
-    if (!hasFullRegularWishCoverage(items)) {
-      return;
     }
 
     bool isFlexibleMeal(ScheduleItem item) {
@@ -2063,7 +2072,42 @@ class ScheduleEngine {
       final facilityId = item.facilityId;
       return (facilityId != null && regularIds.contains(facilityId)) ||
           isFlexibleMeal(item);
-    }).toList(growable: false);
+    }).toList(growable: true);
+
+    // If the greedy/backfill phase missed a regular wish, synthesize a search
+    // template for it instead of returning before Beam Search. The Beam Search
+    // recalculates wait, duration, operating hours and movement for every slot,
+    // so these placeholder times are never committed as-is.
+    final alreadyRepresentedRegularIds = <String>{
+      if (openingCommittedItem?.facilityId != null)
+        openingCommittedItem!.facilityId!,
+      for (final item in movable)
+        if (item.facilityId != null && regularIds.contains(item.facilityId))
+          item.facilityId!,
+    };
+    for (final facility in regularFacilities) {
+      if (alreadyRepresentedRegularIds.contains(facility.id)) continue;
+      final preference = _findPreference(
+        facilityId: facility.id,
+        preferences: preferences,
+      );
+      movable.add(
+        ScheduleItem(
+          id: 'schedule_${facility.id}',
+          title: facility.name,
+          type: ScheduleItemType.facility,
+          startHour: entryMinutes ~/ 60,
+          startMinute: entryMinutes % 60,
+          endHour: entryMinutes ~/ 60,
+          endMinute: entryMinutes % 60,
+          facilityId: facility.id,
+          reason: '',
+          accessMethod:
+              preference?.accessMethod ?? FacilityAccessMethod.standby,
+        ),
+      );
+      alreadyRepresentedRegularIds.add(facility.id);
+    }
     if (movable.isEmpty) return;
 
     // Genuine anchors plus the opening-strategy commitment. Flexible meals are
@@ -2073,10 +2117,84 @@ class ScheduleEngine {
     final templateByKey = <String, ScheduleItem>{for (final item in movable) item.id: item};
     final allKeys = templateByKey.keys.toSet();
 
+    // Lower-bound wait for each remaining regular wish. Comparing only the
+    // wait already accumulated by a partial state unfairly favors states that
+    // simply postpone an expensive attraction. Add an optimistic remaining
+    // wait estimate so Beam pruning compares states on the same full-day basis.
+    final minimumWaitByKey = <String, int>{};
+    if (settings.scheduleOptimizationMode == ScheduleOptimizationMode.minimumWait) {
+      for (final key in allKeys) {
+        final template = templateByKey[key]!;
+        final facilityId = template.facilityId;
+        if (facilityId == null || !regularIds.contains(facilityId)) {
+          minimumWaitByKey[key] = 0;
+          continue;
+        }
+        final facility = facilityById[facilityId];
+        if (facility == null) {
+          minimumWaitByKey[key] = 0;
+          continue;
+        }
+        final preference = _findPreference(
+          facilityId: facility.id,
+          preferences: preferences,
+        );
+        int? bestWait;
+        for (var slot = ((entryMinutes + 9) ~/ 10) * 10;
+            slot < exitMinutes;
+            slot += 10) {
+          final wait = _resolveWaitEstimate(
+            facility: facility,
+            preference: preference,
+            waitProfiles: waitProfiles,
+            scheduledStartMinutes: slot,
+            settings: settings,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+            greetingWaitPlanning: greetingWaitPlanning,
+          );
+          final duration = _resolvePlannedFacilityDuration(
+            facility: facility,
+            preference: preference,
+            settings: settings,
+            unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+            waitEstimate: wait,
+          );
+          if (duration <= 0 || slot + duration > exitMinutes) continue;
+          if (!_fitsOperatingHours(
+            facility: facility,
+            startMinutes: slot,
+            durationMinutes: duration,
+            targetDate: targetDate,
+          )) {
+            continue;
+          }
+          final standby = wait.isPriorityAccessBuffer ? 0 : wait.waitMinutes;
+          if (bestWait == null || standby < bestWait) bestWait = standby;
+        }
+        minimumWaitByKey[key] = bestWait ?? 0;
+      }
+    }
+
+    int optimisticWaitFor(_UnifiedDaySearchState state) {
+      if (settings.scheduleOptimizationMode != ScheduleOptimizationMode.minimumWait) {
+        return state.standbyWaitMinutes;
+      }
+      var total = state.standbyWaitMinutes;
+      for (final key in state.remaining) {
+        total += minimumWaitByKey[key] ?? 0;
+      }
+      return total;
+    }
+
     // Keep a reasonably wide frontier. Unlike the previous pair search, no
     // per-facility "best 18 slots" pre-filter is used; every legal 10-minute
     // start can reach the frontier before dominance pruning.
-    const beamWidth = 320;
+    // Fixed performances split the day into narrow feasible windows. With two
+    // optional shows plus the user's existing fixed anchors, a width of 320 can
+    // prune the only full-coverage route before Baymax is placed. Keep a wider
+    // frontier here; subset-level optional search already limits how many full
+    // day generations are attempted.
+    const beamWidth = 720;
     var frontier = <_UnifiedDaySearchState>[
       _UnifiedDaySearchState(items: List<ScheduleItem>.from(hardAnchors), remaining: allKeys),
     ];
@@ -2224,12 +2342,12 @@ class ScheduleEngine {
 
       expanded.sort((a, b) => _compareUnifiedOptimizationCost(
             _CoveredWishTimingCost(
-              standbyWaitMinutes: a.standbyWaitMinutes,
+              standbyWaitMinutes: optimisticWaitFor(a),
               movementMinutes: a.movementMinutes,
               fragmentedFreeMinutes: a.fragmentedFreeMinutes,
             ),
             _CoveredWishTimingCost(
-              standbyWaitMinutes: b.standbyWaitMinutes,
+              standbyWaitMinutes: optimisticWaitFor(b),
               movementMinutes: b.movementMinutes,
               fragmentedFreeMinutes: b.fragmentedFreeMinutes,
             ),
@@ -2241,6 +2359,11 @@ class ScheduleEngine {
       // merely because their individual wait rank is low.
       final seen = <String>{};
       final nextFrontier = <_UnifiedDaySearchState>[];
+      final remainingGroupCounts = <String, int>{};
+      // Do not over-collapse states that have the same remaining facilities.
+      // Their already-placed times can sit on different sides of fixed show
+      // anchors and therefore have very different completion feasibility.
+      const minimumWaitPerRemainingGroupLimit = 72;
       for (final state in expanded) {
         final ordered = state.items.toList()
           ..sort((a, b) => _itemStartMinutes(a).compareTo(_itemStartMinutes(b)));
@@ -2248,6 +2371,15 @@ class ScheduleEngine {
             .map((item) => '${item.id}@${_itemStartMinutes(item)}')
             .join('|');
         if (!seen.add(fingerprint)) continue;
+
+        if (settings.scheduleOptimizationMode == ScheduleOptimizationMode.minimumWait) {
+          final remainingKey = state.remaining.toList()..sort();
+          final groupFingerprint = remainingKey.join('|');
+          final groupCount = remainingGroupCounts[groupFingerprint] ?? 0;
+          if (groupCount >= minimumWaitPerRemainingGroupLimit) continue;
+          remainingGroupCounts[groupFingerprint] = groupCount + 1;
+        }
+
         nextFrontier.add(state);
         if (nextFrontier.length >= beamWidth) break;
       }
@@ -2270,6 +2402,8 @@ class ScheduleEngine {
           settings.scheduleOptimizationMode,
         ));
     final best = completed.first;
+    // Product invariant: original hard wishes are absolute. Never commit a
+    // Beam Search result that drops even one requested regular facility.
     if (!hasFullRegularWishCoverage(best.items)) return;
 
     final baseline = _coveredWishTimingCost(
@@ -2288,11 +2422,20 @@ class ScheduleEngine {
       eventImpacts: eventImpacts,
       areaConnections: areaConnections,
     );
-    if (!_isUnifiedOptimizationCostBetter(
-      candidate,
-      baseline,
-      settings.scheduleOptimizationMode,
-    )) {
+    // Coverage is lexicographically more important than wait/movement cost.
+    // When the provisional baseline has already dropped a requested facility
+    // (for example Baymax after adding a fixed Forest Theatre performance),
+    // comparing raw wait cost makes the incomplete baseline look artificially
+    // cheaper and rejects the complete Beam Search result. Accept any complete
+    // candidate over an incomplete baseline; compare optimization cost only
+    // when both schedules already have full regular-wish coverage.
+    final baselineHasFullCoverage = hasFullRegularWishCoverage(items);
+    if (baselineHasFullCoverage &&
+        !_isUnifiedOptimizationCostBetter(
+          candidate,
+          baseline,
+          settings.scheduleOptimizationMode,
+        )) {
       return;
     }
 

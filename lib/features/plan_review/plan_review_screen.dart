@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -89,21 +90,10 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     }
 
     final appState = AppStateScope.of(context);
-    final hasExistingPlan = controller.schedule != null;
-
-    // First generation establishes a wait-time-first baseline.
-    // The four modes remain available as adjustment tools after that.
-    var selectedMode = ScheduleOptimizationMode.minimumWait;
-    if (hasExistingPlan) {
-      final adjustedMode = await _showOptimizationModeDialog(
-        appState.tripSettings.scheduleOptimizationMode,
-      );
-      if (!mounted || adjustedMode == null) {
-        return;
-      }
-      selectedMode = adjustedMode;
-    }
-
+    // Generation before wish finalization is always a provisional
+    // wait-time-first whole-day rebuild. The four final optimization modes are
+    // shown only from "やりたいことはこれで決定".
+    const selectedMode = ScheduleOptimizationMode.minimumWait;
     if (selectedMode != appState.tripSettings.scheduleOptimizationMode) {
       appState.updateTripSettings(
         appState.tripSettings.copyWith(scheduleOptimizationMode: selectedMode),
@@ -133,15 +123,33 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     );
   }
 
+  Future<void> _finalizeWishesAndOptimize() async {
+    final controller = _controller;
+    if (controller == null || controller.schedule == null) return;
+    final appState = AppStateScope.of(context);
+    final selectedMode = await _showOptimizationModeDialog(
+      appState.tripSettings.scheduleOptimizationMode,
+      finalizingWishes: true,
+    );
+    if (!mounted || selectedMode == null) return;
+    if (selectedMode != appState.tripSettings.scheduleOptimizationMode) {
+      appState.updateTripSettings(
+        appState.tripSettings.copyWith(scheduleOptimizationMode: selectedMode),
+      );
+    }
+    await controller.generateSchedule(preserveManualFixedItems: false);
+  }
+
   Future<ScheduleOptimizationMode?> _showOptimizationModeDialog(
-    ScheduleOptimizationMode initialMode,
-  ) {
+    ScheduleOptimizationMode initialMode, {
+    bool finalizingWishes = false,
+  }) {
     var selectedMode = initialMode;
     return showDialog<ScheduleOptimizationMode>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('プランを調整'),
+          title: Text(finalizingWishes ? '最終プランの組み方を選ぶ' : 'プランの組み方を選ぶ'),
           content: SizedBox(
             width: 520,
             child: Column(
@@ -170,7 +178,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
             FilledButton.icon(
               onPressed: () => Navigator.of(dialogContext).pop(selectedMode),
               icon: const Icon(Icons.auto_awesome, size: 18),
-              label: const Text('この組み方で再生成'),
+              label: Text(finalizingWishes ? 'この組み方で最終プランを作る' : 'この組み方で作る'),
             ),
           ],
         ),
@@ -196,55 +204,67 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
           '短い空白を減らし、追加予定を入れやすいまとまった自由時間を残します。',
       };
 
-  Future<void> _showAddScheduleItem() async {
+  Future<void> _removeOptionalAddition(Facility facility) async {
     final controller = _controller;
-    if (controller == null || controller.schedule == null) {
-      return;
-    }
-
-    final choices = await controller.loadPerformancePlanChoices();
+    if (controller == null) return;
+    await controller.removeOptionalAddition(facility.id);
     if (!mounted) return;
-
-    if (choices.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('この日の追加可能なショー・パレードがありません。')),
-      );
-      return;
-    }
-
-    final selected = await showModalBottomSheet<PerformancePlanChoice>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (sheetContext) {
-        return FractionallySizedBox(
-          heightFactor: 0.88,
-          child: _AddPerformanceSheet(
-            choices: choices,
-            schedule: controller.schedule!,
-          ),
-        );
-      },
-    );
-
-    if (selected == null || !mounted) return;
-    await controller.addPerformanceToPlan(selected);
-
-    if (!mounted) return;
-    if (controller.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(controller.errorMessage!)),
-      );
-      return;
-    }
-
+    setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${selected.option.startTime} ${selected.facility.name}を固定予定として追加し、プランを再生成しました。',
-        ),
-      ),
+      SnackBar(content: Text('${facility.name}を追加候補から削除し、残りの候補でプランを組み直しました。')),
     );
+  }
+
+  String _buildDebugOptimizationTrace(ScheduleController controller) {
+    final required = controller.requiredFacilitiesForCurrentPark;
+    final optional = controller.optionalAdditionsForCurrentPark;
+    final adopted = controller.scheduledOptionalAdditions;
+    final rejected = controller.unscheduledOptionalAdditions;
+    final scheduledIds = controller.schedule?.items
+            .map((item) => item.facilityId)
+            .whereType<String>()
+            .toList(growable: false) ??
+        const <String>[];
+    final requiredScheduled = required
+        .where((facility) => scheduledIds.contains(facility.id))
+        .length;
+    final buffer = StringBuffer();
+    buffer.writeln();
+    buffer.writeln('【DEBUG: 追加候補・全日再最適化の内部判定】');
+    buffer.writeln('DEBUG実装識別：v7.5.21 slack-guidance-r13');
+    buffer.writeln('この節はデバッグビルド専用です。通常利用者向けの説明ではありません。');
+    buffer.writeln('主軸（やりたいこと）：$requiredScheduled/${required.length}件をスケジュール内で確認');
+    buffer.writeln('追加候補：${adopted.length}/${optional.length}件採用、${rejected.length}件見送り');
+    buffer.writeln('探索ルール：主軸10/10維持を絶対条件にし、追加候補は採用数が最大になる組み合わせを大きい組み合わせから探索します。各試行では主軸と選択中の追加候補を同列にして全日再最適化します。');
+    buffer.writeln('採用ガード：主軸が1件でも外れる、または試した追加候補が実際のスケジュールに入らない結果は不採用です。成立した最大件数の組み合わせを採用します。');
+    buffer.writeln('注意：画面上に2時間などの自由時間があっても、その2時間の好きな位置にショーを置けるわけではありません。ショーは実際の公演開始時刻へ固定され、その前後の移動も必要です。');
+    buffer.writeln('そのため自由時間が十分に見えても、公演時刻へ合わせて一日全体を並べ替えた結果、元のやりたいことが1件でも外れる場合は見送ります。以下の探索履歴で、実際に外れた主軸と追加候補の配置時刻を確認できます。');
+    if (optional.isEmpty) {
+      buffer.writeln('追加候補はありません。');
+    } else {
+      buffer.writeln('追加候補の個別結果：');
+      for (final facility in optional) {
+        final isAdopted = adopted.any((item) => item.id == facility.id);
+        buffer.writeln('・${facility.name}');
+        buffer.writeln('  状態：${isAdopted ? '採用・スケジュール内' : '今回は見送り・候補として保持'}');
+        buffer.writeln('  主軸扱い：いいえ（削除しても元の「やりたいこと」には影響しません）');
+        buffer.writeln('  削除可能：はい（追加候補カードから個別削除）');
+        if (!isAdopted) {
+          buffer.writeln('  現在確認できる理由：主軸を100%維持する採用結果として確定できなかったため。');
+          buffer.writeln('  切り分け対象：公演時刻/固定予定との競合、待ち時間、移動余白、施設運営時間、アクセス条件。');
+        }
+      }
+    }
+    buffer.writeln('組み合わせ探索試行数：${controller.optionalOptimizationTrialCount}回');
+    buffer.writeln('最大採用探索結果：${controller.optionalOptimizationAdoptedCount}/${optional.length}件');
+    if (controller.optionalOptimizationTrace.isNotEmpty) {
+      buffer.writeln('探索履歴：');
+      for (final line in controller.optionalOptimizationTrace) {
+        buffer.writeln('  ・$line');
+      }
+    }
+    buffer.writeln('現在の判定単位：各組み合わせごとに全日再生成し、主軸の施設ID/必要回数と、その試行で選んだ追加候補がすべて実スケジュールへ入ったかを検査します。');
+    return buffer.toString();
   }
 
   Future<void> _showPlanTextExport() async {
@@ -267,7 +287,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
       format: PlanTextExportFormat.simple,
       todayAccessResults: appState.todayAccessResults,
     );
-    final evaluationText = exporter.export(
+    var evaluationText = exporter.export(
       schedule: schedule,
       settings: appState.tripSettings,
       parkName: controller.selectedParkName,
@@ -277,6 +297,9 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
       todayAccessResults: appState.todayAccessResults,
       coverageAdvice: controller.coverageAdvice,
     );
+    if (kDebugMode) {
+      evaluationText += _buildDebugOptimizationTrace(controller);
+    }
 
     await showDialog<void>(
       context: context,
@@ -357,7 +380,8 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
               onGeneratePressed: _generateSchedule,
               onClearPressed: _confirmClearSchedule,
               onExportPressed: _showPlanTextExport,
-              onAddScheduleItemPressed: _showAddScheduleItem,
+              onFinalizeWishes: _finalizeWishesAndOptimize,
+              onRemoveOptionalAddition: _removeOptionalAddition,
             );
           }
 
@@ -367,7 +391,8 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
             onGeneratePressed: _generateSchedule,
             onClearPressed: _confirmClearSchedule,
             onExportPressed: _showPlanTextExport,
-            onAddScheduleItemPressed: _showAddScheduleItem,
+            onFinalizeWishes: _finalizeWishesAndOptimize,
+            onRemoveOptionalAddition: _removeOptionalAddition,
           );
         },
       ),
@@ -382,7 +407,8 @@ class _MobilePlanReviewLayout extends StatelessWidget {
     required this.onGeneratePressed,
     required this.onClearPressed,
     required this.onExportPressed,
-    required this.onAddScheduleItemPressed,
+    required this.onFinalizeWishes,
+    required this.onRemoveOptionalAddition,
   });
 
   final ScheduleController controller;
@@ -390,7 +416,8 @@ class _MobilePlanReviewLayout extends StatelessWidget {
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
   final VoidCallback onExportPressed;
-  final VoidCallback onAddScheduleItemPressed;
+  final Future<void> Function() onFinalizeWishes;
+  final Future<void> Function(Facility) onRemoveOptionalAddition;
 
   @override
   Widget build(BuildContext context) {
@@ -409,11 +436,21 @@ class _MobilePlanReviewLayout extends StatelessWidget {
             onGeneratePressed: onGeneratePressed,
             onClearPressed: onClearPressed,
             onExportPressed: onExportPressed,
-            onAddScheduleItemPressed: onAddScheduleItemPressed,
           ),
           if (controller.schedule != null) ...[
             const SizedBox(height: AppSpacing.sm),
             _PlanCoverageAdviceCard(controller: controller),
+          ],
+          if (controller.lastAdditionImpact != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _PlanAdditionImpactCard(impact: controller.lastAdditionImpact!),
+          ],
+          if (controller.optionalAdditionsForCurrentPark.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _OptionalAdditionsCard(
+              controller: controller,
+              onRemove: onRemoveOptionalAddition,
+            ),
           ],
           if (controller.errorMessage != null) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -433,7 +470,10 @@ class _MobilePlanReviewLayout extends StatelessWidget {
             _ScheduleValidationCard(issues: controller.validationIssues),
           ],
           const SizedBox(height: AppSpacing.sm),
-          _ScheduleContent(controller: controller),
+          _ScheduleContent(
+            controller: controller,
+            onFinalizeWishes: onFinalizeWishes,
+          ),
         ],
       ),
     );
@@ -447,7 +487,8 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
     required this.onGeneratePressed,
     required this.onClearPressed,
     required this.onExportPressed,
-    required this.onAddScheduleItemPressed,
+    required this.onFinalizeWishes,
+    required this.onRemoveOptionalAddition,
   });
 
   final ScheduleController controller;
@@ -455,7 +496,8 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
   final VoidCallback onExportPressed;
-  final VoidCallback onAddScheduleItemPressed;
+  final Future<void> Function() onFinalizeWishes;
+  final Future<void> Function(Facility) onRemoveOptionalAddition;
 
   @override
   Widget build(BuildContext context) {
@@ -473,11 +515,21 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                   onGeneratePressed: onGeneratePressed,
                   onClearPressed: onClearPressed,
                         onExportPressed: onExportPressed,
-                  onAddScheduleItemPressed: onAddScheduleItemPressed,
-                            ),
+                                  ),
                 if (controller.schedule != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _PlanCoverageAdviceCard(controller: controller),
+                ],
+                if (controller.lastAdditionImpact != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _PlanAdditionImpactCard(impact: controller.lastAdditionImpact!),
+                ],
+                if (controller.optionalAdditionsForCurrentPark.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _OptionalAdditionsCard(
+                    controller: controller,
+                    onRemove: onRemoveOptionalAddition,
+                  ),
                 ],
                 if (controller.errorMessage != null) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -511,7 +563,12 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
             child: ListView(
               controller: timelineScrollController,
               padding: const EdgeInsets.only(right: 14, bottom: 48),
-              children: [_ScheduleContent(controller: controller)],
+              children: [
+                _ScheduleContent(
+                  controller: controller,
+                  onFinalizeWishes: onFinalizeWishes,
+                ),
+              ],
             ),
           ),
         ),
@@ -529,6 +586,13 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final advice = controller.coverageAdvice;
     final colorScheme = Theme.of(context).colorScheme;
+    final required = controller.requiredFacilitiesForCurrentPark;
+    final scheduledIds = controller.schedule?.items
+            .map((item) => item.facilityId)
+            .whereType<String>()
+            .toSet() ??
+        const <String>{};
+    final achieved = required.where((facility) => scheduledIds.contains(facility.id)).length;
 
     return AppCard(
       child: Column(
@@ -540,7 +604,7 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'やりたいこと達成 / DPAアドバイス',
+                  'やりたいこと達成状況 / DPAアドバイス',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -556,7 +620,16 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'プランに入らなかった「やりたいこと」を検出し、アトラクションDPAを0個から増やした場合の達成数をシミュレーションします。',
+            'やりたいこと：$achieved/${required.length}件達成',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            achieved == required.length
+                ? '元の「やりたいこと」はすべてプランに入っています。DPAによる達成数改善は不要です。'
+                : 'ここでは元の「やりたいこと」だけを確認します。追加候補は達成数に含めません。未達成がある場合はDPA利用による改善を分析できます。',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -570,12 +643,14 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
               ),
             ),
           ],
-          if (advice == null && !controller.isAnalyzingCoverage) ...[
+          if (advice == null &&
+              !controller.isAnalyzingCoverage &&
+              achieved < required.length) ...[
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: controller.analyzePlanCoverage,
               icon: const Icon(Icons.analytics_outlined),
-              label: const Text('現在のプランを分析'),
+              label: const Text('DPA利用で改善できるか分析'),
             ),
           ],
           if (advice != null) ...[
@@ -730,6 +805,191 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
   }
 }
 
+class _OptionalAdditionsCard extends StatelessWidget {
+  const _OptionalAdditionsCard({
+    required this.controller,
+    required this.onRemove,
+  });
+
+  final ScheduleController controller;
+  final Future<void> Function(Facility facility) onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final adopted = controller.scheduledOptionalAdditions;
+    final notAdopted = controller.unscheduledOptionalAdditions;
+    final total = adopted.length + notAdopted.length;
+    String? scheduledTimeFor(Facility facility) {
+      final items = controller.schedule?.items ?? const <ScheduleItem>[];
+      for (final item in items) {
+        if (item.facilityId == facility.id) {
+          final hour = item.startHour.toString().padLeft(2, '0');
+          final minute = item.startMinute.toString().padLeft(2, '0');
+          return '$hour:$minute';
+        }
+      }
+      return null;
+    }
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.playlist_add_check_circle_outlined,
+                  size: 20, color: colors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '追加候補（行けたら行く）',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '追加結果：${adopted.length}/$total件がプランに入りました',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'やりたいことは100%維持したまま判定しています。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '「やりたいこと」で保存した希望を優先します。追加候補は、その希望を崩さず入る場合だけプランへ採用します。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          if (adopted.isNotEmpty) ...[
+            const SizedBox(height: 9),
+            for (final facility in adopted)
+              _OptionalAdditionRow(
+                facility: facility,
+                status: scheduledTimeFor(facility) != null
+                    ? '✓ プランに入りました（${scheduledTimeFor(facility)}）'
+                    : '✓ プランに入りました',
+                onRemove: onRemove,
+              ),
+          ],
+          if (notAdopted.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            for (final facility in notAdopted)
+              _OptionalAdditionRow(
+                facility: facility,
+                status: '今回は入りませんでした（候補として保持）',
+                onRemove: onRemove,
+              ),
+            const SizedBox(height: 3),
+            Text(
+              '見送り候補も削除できます。削除後は残りの追加候補で一日全体を組み直します。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _OptionalAdditionRow extends StatelessWidget {
+  const _OptionalAdditionRow({
+    required this.facility,
+    required this.status,
+    required this.onRemove,
+  });
+
+  final Facility facility;
+  final String status;
+  final Future<void> Function(Facility facility) onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Expanded(child: Text('${facility.name}：$status')),
+          IconButton(
+            tooltip: '追加候補から削除',
+            icon: const Icon(Icons.delete_outline, size: 20),
+            onPressed: () => onRemove(facility),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanAdditionImpactCard extends StatelessWidget {
+  const _PlanAdditionImpactCard({required this.impact});
+
+  final PlanAdditionImpact impact;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                impact.hasTradeOff
+                    ? Icons.compare_arrows_outlined
+                    : Icons.check_circle_outline,
+                size: 20,
+                color: impact.hasTradeOff ? colors.error : colors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  impact.hasTradeOff ? '追加によるプランへの影響' : '追加後も希望を維持できました',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(impact.explanation),
+          if (impact.hasTradeOff) ...[
+            const SizedBox(height: 8),
+            Text(
+              '入らなくなった希望：${impact.lostFacilityNames.join('、')}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              '追加した希望を残すか、入らなくなった希望を優先するかを確認してください。'
+              'DPA分析に短縮案が出ている場合は、その案も比較できます。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _CoverageHeadline extends StatelessWidget {
   const _CoverageHeadline({required this.advice});
 
@@ -804,14 +1064,12 @@ class _PlanOverviewCard extends StatelessWidget {
     required this.onGeneratePressed,
     required this.onClearPressed,
     required this.onExportPressed,
-    required this.onAddScheduleItemPressed,
   });
 
   final ScheduleController controller;
   final VoidCallback onGeneratePressed;
   final VoidCallback onClearPressed;
   final VoidCallback onExportPressed;
-  final VoidCallback onAddScheduleItemPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -919,19 +1177,10 @@ class _PlanOverviewCard extends StatelessWidget {
                 schedule == null ? Icons.auto_awesome : Icons.refresh,
                 size: 19,
               ),
-              label: Text(schedule == null ? 'プランを生成' : 'プランを再生成'),
+              label: Text(schedule == null ? '仮プランを作る' : '追加した希望から効率よく組み直す'),
             ),
           ),
           if (schedule != null) ...[
-            const SizedBox(height: 7),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onAddScheduleItemPressed,
-                icon: const Icon(Icons.add_circle_outline, size: 19),
-                label: const Text('ショー・パレードを追加'),
-              ),
-            ),
             const SizedBox(height: 7),
             SizedBox(
               width: double.infinity,
@@ -1182,9 +1431,13 @@ class _UnavailableFacilityWarning extends StatelessWidget {
 }
 
 class _ScheduleContent extends StatelessWidget {
-  const _ScheduleContent({required this.controller});
+  const _ScheduleContent({
+    required this.controller,
+    required this.onFinalizeWishes,
+  });
 
   final ScheduleController controller;
+  final Future<void> Function() onFinalizeWishes;
 
   @override
   Widget build(BuildContext context) {
@@ -1218,15 +1471,24 @@ class _ScheduleContent extends StatelessWidget {
       );
     }
 
-    return _ScheduleTimeline(schedule: schedule, controller: controller);
+    return _ScheduleTimeline(
+      schedule: schedule,
+      controller: controller,
+      onFinalizeWishes: onFinalizeWishes,
+    );
   }
 }
 
 class _ScheduleTimeline extends StatelessWidget {
-  const _ScheduleTimeline({required this.schedule, required this.controller});
+  const _ScheduleTimeline({
+    required this.schedule,
+    required this.controller,
+    required this.onFinalizeWishes,
+  });
 
   final DaySchedule schedule;
   final ScheduleController controller;
+  final Future<void> Function() onFinalizeWishes;
 
   @override
   Widget build(BuildContext context) {
@@ -1255,7 +1517,11 @@ class _ScheduleTimeline extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _PlanFreeTimeSummary(schedule: schedule, controller: controller),
+          _PlanFreeTimeSummary(
+            schedule: schedule,
+            controller: controller,
+            onFinalizeWishes: onFinalizeWishes,
+          ),
           const SizedBox(height: AppSpacing.md),
           if (schedule.items.isEmpty)
             const EmptyState(
@@ -1412,10 +1678,15 @@ String _planDurationLabel(int minutes) {
 }
 
 class _PlanFreeTimeSummary extends StatefulWidget {
-  const _PlanFreeTimeSummary({required this.schedule, required this.controller});
+  const _PlanFreeTimeSummary({
+    required this.schedule,
+    required this.controller,
+    required this.onFinalizeWishes,
+  });
 
   final DaySchedule schedule;
   final ScheduleController controller;
+  final Future<void> Function() onFinalizeWishes;
 
   @override
   State<_PlanFreeTimeSummary> createState() => _PlanFreeTimeSummaryState();
@@ -1425,59 +1696,42 @@ class _PlanFreeTimeSummaryState extends State<_PlanFreeTimeSummary> {
   String? _loadingGapId;
   bool _isLoadingAll = false;
 
-  Future<void> _improveGap(ScheduleItem item) async {
-    if (_loadingGapId != null || _isLoadingAll) return;
-    setState(() => _loadingGapId = item.id);
-    final choices = await widget.controller.loadFreeTimeImprovementChoices(item);
-    if (!mounted) return;
-    setState(() => _loadingGapId = null);
-    if (choices.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('この空き時間に安全に入る候補がありません。'),
-      ));
-      return;
-    }
-    final selected = await showModalBottomSheet<FreeTimeImprovementChoice>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: 0.90,
-        child: _FreeTimeImprovementSheet(
-          freeTimeItem: item,
-          choices: choices,
-          previousTitle: null,
-          nextTitle: null,
-        ),
-      ),
-    );
-    if (selected == null || !mounted) return;
-    await widget.controller.applyFreeTimeImprovement(selected);
-  }
-
   Future<void> _rebuildWholePlan() async {
     if (_loadingGapId != null || _isLoadingAll) return;
     setState(() => _isLoadingAll = true);
-    final candidates = await widget.controller.loadPlanRebuildCandidates();
+    final choices = await widget.controller.loadPlanAdditionChoices();
     if (!mounted) return;
     setState(() => _isLoadingAll = false);
-    if (candidates.isEmpty) {
+    if (choices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('現在の余白を使って追加できる再構成候補がありません。'),
+        content: Text('追加できる施設データがありません。'),
       ));
       return;
     }
-    final selected = await showModalBottomSheet<PlanRebuildCandidate>(
+    final selected = await showModalBottomSheet<PlanAdditionChoice>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => FractionallySizedBox(
         heightFactor: 0.90,
-        child: _PlanRebuildCandidateSheet(candidates: candidates),
+        child: _PlanAdditionPickerSheet(choices: choices),
       ),
     );
     if (selected == null || !mounted) return;
-    await widget.controller.applyPlanRebuildCandidate(selected);
+
+    setState(() => _isLoadingAll = true);
+    final result = await widget.controller.addPlanAdditionChoice(selected);
+    if (!mounted) return;
+    setState(() => _isLoadingAll = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        result.message.isNotEmpty
+            ? result.message
+            : (result.added
+                ? '${selected.facility.name}を追加候補として保存しました。残り余力は約${_planDurationLabel(result.remainingMinutes)}です。'
+                : '${selected.facility.name}を追加候補として保存できませんでした。'),
+      ),
+    ));
   }
 
   @override
@@ -1494,6 +1748,16 @@ class _PlanFreeTimeSummaryState extends State<_PlanFreeTimeSummary> {
       0,
       (sum, item) => sum + (item.standbyWaitMinutes ?? 0),
     );
+    final slackGuidance = switch (totalMinutes) {
+      < 30 =>
+        '空きはかなり少なめです。移動・トイレ・ショップなどの余裕として残すのがおすすめです。',
+      < 60 =>
+        '空きは少なめです。休憩・買い物・短時間で利用できる施設向けです。',
+      < 90 =>
+        'もう1つ予定を追加できる可能性がありますが、待ち時間の変動を考えると、休憩・買い物などの余裕として残すのもおすすめです。',
+      _ =>
+        '追加候補を検討しやすい余裕があります。選んだ候補は一日全体を組み直して入るか確認します。',
+    };
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
@@ -1513,49 +1777,55 @@ class _PlanFreeTimeSummaryState extends State<_PlanFreeTimeSummary> {
         const SizedBox(height: 6),
         Text(
           '通常待機 ${_planDurationLabel(standbyWaitMinutes)} ・ '
-          '使える空き時間 ${_planDurationLabel(totalMinutes)}',
+          '仮プランの空き ${_planDurationLabel(totalMinutes)}',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
         ),
         const SizedBox(height: 4),
         Text(
-          '空き時間は ${freeTimes.length}枠あります。ほかにやりたいことはありますか？ '
-          'レストラン・休憩・追加施設などを、この余白を見ながら決めていけます。',
+          slackGuidance,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'この時間は追加可否の上限ではありません。追加したいものを選ぶと、'
+          '元のやりたいことを維持したまま一日全体を再最適化して判定します。',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
         ),
         const SizedBox(height: 8),
-        for (final item in freeTimes)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Row(children: [
-              const SizedBox(width: 26),
-              Expanded(child: Text('${item.startTimeLabel}〜${item.endTimeLabel}', style: Theme.of(context).textTheme.bodySmall)),
-              Text(_planDurationLabel(_planScheduleEndMinutes(item) - _planScheduleStartMinutes(item)),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(width: 6),
-              TextButton(
-                onPressed: _loadingGapId == null && !_isLoadingAll ? () => _improveGap(item) : null,
-                style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
-                child: Text(_loadingGapId == item.id ? '計算中…' : '改善'),
-              ),
-            ]),
-          ),
-        const SizedBox(height: 6),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: _loadingGapId == null && !_isLoadingAll ? _rebuildWholePlan : null,
             icon: _isLoadingAll
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.add_circle_outline),
-            label: Text(_isLoadingAll ? '再構成候補を計算しています…' : '一日のプランを改善'),
+                : const Icon(Icons.explore_outlined),
+            label: Text(_isLoadingAll ? '施設を読み込んでいます…' : '追加したいものを選ぶ'),
           ),
         ),
-        Text('空き枠を個別に固定せず、一日全体を見て追加候補を提示します。選択後に固定予定を守ってプラン全体を再構成します。',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _loadingGapId == null && !_isLoadingAll
+                ? widget.onFinalizeWishes
+                : null,
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('やりたいことはこれで決定'),
+          ),
+        ),
+        Text(
+          '追加・削除を終えてから組み方を選びます。ここで初めて、バランス・待ち時間・移動・まとまった自由時間の4択で最終最適化します。',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+        ),
       ]),
     );
   }
@@ -2759,46 +3029,45 @@ class _ScheduleDetailRow extends StatelessWidget {
 }
 
 
-class _PlanRebuildCandidateSheet extends StatefulWidget {
-  const _PlanRebuildCandidateSheet({required this.candidates});
-  final List<PlanRebuildCandidate> candidates;
+class _PlanAdditionPickerSheet extends StatefulWidget {
+  const _PlanAdditionPickerSheet({required this.choices});
+  final List<PlanAdditionChoice> choices;
 
   @override
-  State<_PlanRebuildCandidateSheet> createState() =>
-      _PlanRebuildCandidateSheetState();
+  State<_PlanAdditionPickerSheet> createState() =>
+      _PlanAdditionPickerSheetState();
 }
 
-class _PlanRebuildCandidateSheetState
-    extends State<_PlanRebuildCandidateSheet> {
+class _PlanAdditionPickerSheetState extends State<_PlanAdditionPickerSheet> {
   _FreeTimeCategoryFilter _filter = _FreeTimeCategoryFilter.all;
 
-  bool _matches(PlanRebuildCandidate candidate) {
+  bool _matches(PlanAdditionChoice choice) {
     switch (_filter) {
       case _FreeTimeCategoryFilter.all:
         return true;
       case _FreeTimeCategoryFilter.attraction:
-        return candidate.facility.category == FacilityCategory.attraction;
+        return choice.facility.category == FacilityCategory.attraction;
       case _FreeTimeCategoryFilter.performance:
-        return candidate.facility.category == FacilityCategory.show ||
-            candidate.facility.category == FacilityCategory.parade;
+        return choice.facility.category == FacilityCategory.show ||
+            choice.facility.category == FacilityCategory.parade;
       case _FreeTimeCategoryFilter.greeting:
-        return candidate.facility.category == FacilityCategory.greeting;
+        return choice.facility.category == FacilityCategory.greeting;
       case _FreeTimeCategoryFilter.restaurant:
-        return candidate.facility.category == FacilityCategory.restaurant;
+        return choice.facility.category == FacilityCategory.restaurant;
       case _FreeTimeCategoryFilter.shop:
-        return candidate.facility.category == FacilityCategory.shop;
+        return choice.facility.category == FacilityCategory.shop;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final visible = widget.candidates.where(_matches).toList(growable: false);
-    final totalFree = widget.candidates.isEmpty
-        ? 0
-        : widget.candidates.first.totalFreeMinutes;
+    final visible = widget.choices
+        .where(_matches)
+        .where((choice) => choice.inPlanCount == 0 || choice.repeatAllowed)
+        .toList(growable: false);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('一日のプランを改善'),
+        title: const Text('追加したいものを選ぶ'),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -2813,16 +3082,17 @@ class _PlanRebuildCandidateSheetState
           AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.lg),
         children: [
           Text(
-            '現在の空き時間は合計 ${_planDurationLabel(totalFree)} です。'
-            '個々の空き枠に入るかではなく、一日の予定全体を組み直した場合に追加できる候補を表示しています。',
+            'アトラクション、ショー・パレード、グリーティング、レストラン、ショップから選べます。'
+            '選択後に一日全体を再計算し、現在の希望を維持できる場合だけ追加します。',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 6),
           Text(
-            '候補を選ぶまでは現在のプランを変更しません。選択後、固定予定を保護して全体を再生成します。',
+            'すでにプランにある施設でも、もう一度体験できるものは'
+            '「プラン内 ○回・もう1回」と表示します。',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
@@ -2838,53 +3108,27 @@ class _PlanRebuildCandidateSheetState
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          if (visible.isEmpty)
-            const _FreeTimeEmptySection(
-              icon: Icons.search_off_outlined,
-              message: 'このカテゴリでは、全体再構成で追加できる候補がありません。',
-            )
-          else
-            for (var index = 0; index < visible.length; index++)
-              _PlanRebuildCandidateTile(
-                candidate: visible[index],
-                rank: index + 1,
+          for (final choice in visible)
+            Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                onTap: () => Navigator.of(context).pop(choice),
+                title: Text(
+                  choice.facility.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  '${choice.inPlanCount > 0 ? 'プラン内 ${choice.inPlanCount}回 ・ ' : ''}'
+                  '使用目安 ${_planDurationLabel(choice.estimatedMinutes)}'
+                  '${choice.estimatedWaitMinutes > 0 ? '（待ち約${choice.estimatedWaitMinutes}分）' : ''}'
+                  '${choice.spotlightReason == null ? '' : '\n今注目: ${choice.spotlightReason}'}',
+                ),
+                trailing: choice.inPlanCount > 0
+                    ? Chip(label: Text(choice.repeatLabel))
+                    : const Icon(Icons.add_circle_outline),
               ),
+            ),
         ],
-      ),
-    );
-  }
-}
-
-class _PlanRebuildCandidateTile extends StatelessWidget {
-  const _PlanRebuildCandidateTile({required this.candidate, required this.rank});
-  final PlanRebuildCandidate candidate;
-  final int rank;
-
-  @override
-  Widget build(BuildContext context) {
-    final facility = candidate.facility;
-    final category = switch (facility.category) {
-      FacilityCategory.attraction => 'アトラクション',
-      FacilityCategory.show => 'ショー',
-      FacilityCategory.parade => 'パレード',
-      FacilityCategory.greeting => 'グリーティング',
-      FacilityCategory.restaurant => 'レストラン',
-      FacilityCategory.shop => 'ショップ',
-      _ => '施設',
-    };
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: () => Navigator.of(context).pop(candidate),
-        leading: CircleAvatar(child: Text('$rank')),
-        title: Text(facility.name,
-            style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(
-          '$category ・ 必要時間目安 ${_planDurationLabel(candidate.estimatedRequiredMinutes)}'
-          '${candidate.estimatedWaitMinutes > 0 ? '（待ち約${candidate.estimatedWaitMinutes}分を含む）' : ''}\n'
-          '選択すると、この施設を追加して一日のプラン全体を再構成します。',
-        ),
-        trailing: const Icon(Icons.auto_fix_high_outlined),
       ),
     );
   }
@@ -3484,124 +3728,6 @@ class _FreeTimeImprovementChoiceTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AddPerformanceSheet extends StatelessWidget {
-  const _AddPerformanceSheet({
-    required this.choices,
-    required this.schedule,
-  });
-
-  final List<PerformancePlanChoice> choices;
-  final DaySchedule schedule;
-
-  bool _hasExactPerformance(PerformancePlanChoice choice) {
-    return schedule.items.any((item) {
-      return item.facilityId == choice.facility.id &&
-          item.startTimeLabel == choice.option.startTime;
-    });
-  }
-
-  bool _hasOverlap(PerformancePlanChoice choice) {
-    final startParts = choice.option.startTime.split(':');
-    if (startParts.length != 2) return false;
-    final start =
-        (int.tryParse(startParts[0]) ?? 0) * 60 +
-        (int.tryParse(startParts[1]) ?? 0);
-    final end = start + choice.facility.durationMinutes;
-
-    return schedule.items.any((item) {
-      if (item.type.name == 'entry' || item.type.name == 'exit') {
-        return false;
-      }
-      final itemStart = item.startHour * 60 + item.startMinute;
-      final itemEnd = item.endHour * 60 + item.endMinute;
-      return start < itemEnd && end > itemStart;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ショー・パレードを追加'),
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close),
-            tooltip: '閉じる',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-              AppSpacing.sm,
-            ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                '当選・購入したショーやパレードを選ぶと、その公演時刻を固定してプラン全体を再生成します。',
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                0,
-                AppSpacing.md,
-                AppSpacing.lg,
-              ),
-              itemCount: choices.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final choice = choices[index];
-                final alreadyAdded = _hasExactPerformance(choice);
-                final overlaps = _hasOverlap(choice);
-
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xs,
-                    vertical: 4,
-                  ),
-                  leading: CircleAvatar(
-                    child: Icon(
-                      choice.facility.category == FacilityCategory.parade
-                          ? Icons.celebration_outlined
-                          : Icons.theater_comedy_outlined,
-                    ),
-                  ),
-                  title: Text(choice.facility.name),
-                  subtitle: Text(
-                    '${choice.option.startTime} 開演・約${choice.facility.durationMinutes}分'
-                    '${overlaps && !alreadyAdded ? '　現在の予定と重なります（追加後に再調整）' : ''}',
-                  ),
-                  trailing: alreadyAdded
-                      ? const Chip(label: Text('追加済み'))
-                      : const Icon(Icons.add),
-                  enabled: !alreadyAdded,
-                  onTap: alreadyAdded
-                      ? null
-                      : () => Navigator.of(context).pop(choice),
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }

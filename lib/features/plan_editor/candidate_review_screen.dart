@@ -73,7 +73,7 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
   Future<void> _resetCandidates() async {
     final appState = AppStateScope.of(context);
     final parkId = appState.tripSettings.parkId;
-    final count = appState.selectedFacilityCountForPark(parkId);
+    final count = appState.requiredSelectedFacilityCountForPark(parkId);
     if (count == 0) {
       return;
     }
@@ -100,7 +100,7 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
     );
 
     if (confirmed == true && mounted) {
-      appState.clearSelectedFacilitiesForPark(parkId);
+      appState.clearRequiredSelectedFacilitiesForPark(parkId);
     }
   }
 
@@ -108,7 +108,7 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     final parkId = appState.tripSettings.parkId;
-    final allCandidates = appState.selectedFacilitiesForPark(parkId);
+    final allCandidates = appState.requiredSelectedFacilitiesForPark(parkId);
     final preferenceController = _preferenceController;
     final wishListController = _wishListController;
 

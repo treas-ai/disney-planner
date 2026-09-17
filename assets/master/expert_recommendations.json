@@ -331,5 +331,15 @@
       "note": "2026/9/30開始のライブ感が強い新ステージショー。エントリー受付/DPAを加味して候補化。",
       "validFrom": "2026-09-30"
     }
-  ]
+  ],
+  "spotlightPolicy": {
+    "fields": [
+      "spotlightFrom",
+      "spotlightUntil",
+      "spotlightScore",
+      "spotlightReason"
+    ],
+    "purpose": "Optional date-bounded signal for seasonal, new, renewed, or otherwise timely experiences. Omit when not applicable.",
+    "scoreRange": "0-40 recommended; editorial signal only, never a hard scheduling constraint"
+  }
 }

@@ -1452,7 +1452,7 @@ class _PlannerFlowState {
 
     return _PlannerFlowState(
       selectedWishCount: appState.selectedWishCount,
-      selectedFacilityCount: appState.selectedFacilityCountForPark(parkId),
+      selectedFacilityCount: appState.requiredSelectedFacilityCountForPark(parkId),
       hasCurrentSchedule: hasCurrentSchedule,
       scheduleItemCount: hasCurrentSchedule ? schedule.items.length : 0,
     );

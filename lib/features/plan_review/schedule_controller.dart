@@ -33,6 +33,7 @@ import '../../domain/enums/wait_time_band.dart';
 import '../../domain/enums/fixed_time_status.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/dpa_strategy_type.dart';
+import '../../domain/enums/lottery_fallback_action.dart';
 import '../../data/local/local_performance_schedule_repository.dart';
 import '../../domain/services/official_performance_preference_resolver.dart';
 import '../../domain/services/dpa_auto_allocator.dart';
@@ -58,6 +59,7 @@ class _ScheduleGenerationRequest {
     required this.unlimitedRideBufferMinutes,
     required this.greetingWaitPlanning,
     required this.manualFixedItems,
+    this.optionalFacilityIds = const <String>{},
   });
 
   final TripSettings settings;
@@ -73,6 +75,7 @@ class _ScheduleGenerationRequest {
   final Map<String, int> unlimitedRideBufferMinutes;
   final Map<String, GreetingWaitPlanningValue> greetingWaitPlanning;
   final List<ScheduleItem> manualFixedItems;
+  final Set<String> optionalFacilityIds;
 }
 
 void _scheduleGenerationIsolateEntry(List<Object?> message) {
@@ -94,6 +97,7 @@ void _scheduleGenerationIsolateEntry(List<Object?> message) {
       unlimitedRideBufferMinutes: request.unlimitedRideBufferMinutes,
       greetingWaitPlanning: request.greetingWaitPlanning,
       manualFixedItems: request.manualFixedItems,
+      optionalFacilityIds: request.optionalFacilityIds,
     );
     sendPort.send(result);
   } catch (error, stackTrace) {
@@ -193,6 +197,77 @@ class ScheduleController extends ChangeNotifier {
   String? errorMessage;
   String? coverageAnalysisError;
   PlanCoverageAdvice? coverageAdvice;
+  PlanAdditionImpact? lastAdditionImpact;
+  Set<String> _preAdditionScheduledIds = const <String>{};
+  int _preAdditionDesiredCount = 0;
+  String? _lastAddedFacilityName;
+
+  List<String> _optionalOptimizationTrace = const <String>[];
+  int _optionalOptimizationTrialCount = 0;
+  int _optionalOptimizationAdoptedCount = 0;
+
+  List<String> get optionalOptimizationTrace =>
+      List<String>.unmodifiable(_optionalOptimizationTrace);
+  int get optionalOptimizationTrialCount => _optionalOptimizationTrialCount;
+  int get optionalOptimizationAdoptedCount => _optionalOptimizationAdoptedCount;
+
+  void _capturePreAdditionState(String addedFacilityName) {
+    final current = schedule;
+    _preAdditionScheduledIds = current == null
+        ? const <String>{}
+        : current.items
+            .map((item) => item.facilityId)
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toSet();
+    _preAdditionDesiredCount = selectedFacilitiesForCurrentPark.length;
+    _lastAddedFacilityName = addedFacilityName;
+    lastAdditionImpact = null;
+  }
+
+  void _updateAdditionImpact() {
+    final current = schedule;
+    final addedName = _lastAddedFacilityName;
+    if (current == null || addedName == null) return;
+    final currentIds = current.items
+        .map((item) => item.facilityId)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final lostIds = _preAdditionScheduledIds.difference(currentIds);
+    final lostNames = selectedFacilitiesForCurrentPark
+        .where((facility) => lostIds.contains(facility.id))
+        .map((facility) => facility.name)
+        .toList(growable: false);
+    final desiredNow = selectedFacilitiesForCurrentPark.length;
+    if (lostNames.isEmpty) {
+      lastAdditionImpact = PlanAdditionImpact(
+        addedFacilityName: addedName,
+        beforeDesiredCount: _preAdditionDesiredCount,
+        afterDesiredCount: desiredNow,
+        lostFacilityNames: const <String>[],
+        explanation: '追加した希望を含めて一日全体を組み直し、追加前に入っていた希望も維持できました。',
+      );
+    } else {
+      final fixedAdded = selectedFacilitiesForCurrentPark.where((facility) {
+        if (facility.name != addedName) return false;
+        final preference = _appState.getPreference(facility.id);
+        return preference?.fixedTimeStatus == FixedTimeStatus.planned ||
+            (preference?.scheduledAccessTime.trim().isNotEmpty ?? false);
+      }).isNotEmpty;
+      lastAdditionImpact = PlanAdditionImpact(
+        addedFacilityName: addedName,
+        beforeDesiredCount: _preAdditionDesiredCount,
+        afterDesiredCount: desiredNow,
+        lostFacilityNames: lostNames,
+        explanation: fixedAdded
+            ? '追加候補「$addedName」は時刻指定です。行きたいことを優先したうえで空き時間へ入る場合だけ採用します。'
+            : '追加候補「$addedName」は、行きたいことを優先した残り時間で採用可否を判断します。',
+      );
+    }
+    notifyListeners();
+  }
+
 
   DaySchedule? get schedule {
     return _appState.daySchedule;
@@ -233,6 +308,38 @@ class ScheduleController extends ChangeNotifier {
 
   int get selectedFacilityCount {
     return selectedFacilitiesForCurrentPark.length;
+  }
+
+  List<Facility> get requiredFacilitiesForCurrentPark =>
+      List<Facility>.unmodifiable(
+        selectedFacilitiesForCurrentPark
+            .where((facility) => !_appState.isOptionalAddition(facility.id))
+            .toList(growable: false),
+      );
+
+  List<Facility> get optionalAdditionsForCurrentPark =>
+      List<Facility>.unmodifiable(
+        selectedFacilitiesForCurrentPark
+            .where((facility) => _appState.isOptionalAddition(facility.id))
+            .toList(growable: false),
+      );
+
+  List<Facility> get scheduledOptionalAdditions {
+    final ids = schedule?.items
+            .map((item) => item.facilityId)
+            .whereType<String>()
+            .toSet() ??
+        const <String>{};
+    return optionalAdditionsForCurrentPark
+        .where((facility) => ids.contains(facility.id))
+        .toList(growable: false);
+  }
+
+  List<Facility> get unscheduledOptionalAdditions {
+    final scheduledIds = scheduledOptionalAdditions.map((f) => f.id).toSet();
+    return optionalAdditionsForCurrentPark
+        .where((facility) => !scheduledIds.contains(facility.id))
+        .toList(growable: false);
   }
 
   List<Facility> get unavailableSelectedFacilities {
@@ -352,7 +459,7 @@ class ScheduleController extends ChangeNotifier {
 
     try {
       final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
-      final desiredFacilities = selectedFacilitiesForCurrentPark.where((facility) {
+      final desiredFacilities = requiredFacilitiesForCurrentPark.where((facility) {
         final preference = _appState.getPreference(facility.id);
         return facility.canAddToPlanAt(targetDate) && !(preference?.isExcluded ?? false);
       }).toList(growable: false);
@@ -763,7 +870,7 @@ class ScheduleController extends ChangeNotifier {
       final facilityLocations = await ServiceLocator.movementRepository
           .loadFacilityLocations(parkId: selectedParkId);
 
-      _setGenerationStatus('選択した組み方で全日プランを探索しています…');
+      _setGenerationStatus('やりたいことと追加候補を一緒に全体最適化しています…');
 
       final request = _ScheduleGenerationRequest(
         settings: _appState.tripSettings,
@@ -789,16 +896,215 @@ class ScheduleController extends ChangeNotifier {
         greetingWaitPlanning:
             Map<String, GreetingWaitPlanningValue>.of(greetingWaitPlanning),
         manualFixedItems: List<ScheduleItem>.of(manualFixedItems),
+        // First try the optional additions as real schedule candidates.
+        // In particular, shows/parades need their resolved performance time to
+        // participate in the full-day rebuild instead of being excluded before
+        // the optimizer can test them.
+        optionalFacilityIds: const <String>{},
       );
 
-      final generatedSchedule = await _generateScheduleOffUi(request);
+      final optionalIds = _appState.optionalAdditionFacilityIds;
+      final requiredCounts = <String, int>{};
+      for (final facility in _appState.selectedFacilitiesForPark(selectedParkId)) {
+        if (optionalIds.contains(facility.id)) continue;
+        requiredCounts.update(
+          facility.id,
+          (count) => count + 1,
+          ifAbsent: () => 1,
+        );
+      }
+
+      bool containsCounts(DaySchedule candidate, Map<String, int> counts) {
+        final scheduledCounts = <String, int>{};
+        for (final item in candidate.items) {
+          final facilityId = item.facilityId;
+          if (facilityId == null) continue;
+          scheduledCounts.update(
+            facilityId,
+            (count) => count + 1,
+            ifAbsent: () => 1,
+          );
+        }
+        return counts.entries.every(
+          (entry) => (scheduledCounts[entry.key] ?? 0) >= entry.value,
+        );
+      }
+
+      _ScheduleGenerationRequest requestForOptionalSubset(Set<String> included) {
+        final excluded = optionalIds.difference(included);
+        return _ScheduleGenerationRequest(
+          settings: request.settings,
+          facilities: request.facilities
+              .where((facility) => !excluded.contains(facility.id))
+              .toList(growable: false),
+          preferences: request.preferences
+              .where((preference) => !excluded.contains(preference.facilityId))
+              .toList(growable: false),
+          eventImpacts: request.eventImpacts,
+          waitProfiles: request.waitProfiles,
+          morningScores: request.morningScores,
+          officialPerformanceOpportunities: request.officialPerformanceOpportunities
+              .where((opportunity) => !excluded.contains(opportunity.facilityId))
+              .toList(growable: false),
+          areaConnections: request.areaConnections,
+          facilityLocations: request.facilityLocations,
+          expertProfiles: request.expertProfiles,
+          unlimitedRideBufferMinutes: request.unlimitedRideBufferMinutes,
+          greetingWaitPlanning: request.greetingWaitPlanning,
+          manualFixedItems: request.manualFixedItems
+              .where((item) =>
+                  item.facilityId == null ||
+                  !excluded.contains(item.facilityId))
+              .toList(growable: false),
+          optionalFacilityIds: const <String>{},
+        );
+      }
+
+      final optionalNameById = <String, String>{
+        for (final facility in _appState.selectedFacilitiesForPark(selectedParkId))
+          if (optionalIds.contains(facility.id)) facility.id: facility.name,
+      };
+      final trace = <String>[];
+      _optionalOptimizationTrialCount = 0;
+      _optionalOptimizationAdoptedCount = 0;
+
+      DaySchedule? bestSchedule;
+      Set<String> bestOptionalIds = const <String>{};
+
+      if (optionalIds.isEmpty) {
+        bestSchedule = await _generateScheduleOffUi(request);
+      } else {
+        final ids = optionalIds.toList(growable: false);
+        // Search larger optional subsets first. The first feasible cardinality is
+        // therefore the maximum number of optional additions that can coexist
+        // while preserving every required wish.
+        for (var targetCount = ids.length; targetCount >= 0; targetCount--) {
+          var foundAtThisCount = false;
+          final combinations = <Set<String>>[];
+
+          void buildCombination(int index, Set<String> picked) {
+            if (picked.length == targetCount) {
+              combinations.add(Set<String>.of(picked));
+              return;
+            }
+            final remainingNeeded = targetCount - picked.length;
+            if (ids.length - index < remainingNeeded) return;
+            for (var i = index; i < ids.length; i++) {
+              picked.add(ids[i]);
+              buildCombination(i + 1, picked);
+              picked.remove(ids[i]);
+            }
+          }
+
+          buildCombination(0, <String>{});
+          for (final included in combinations) {
+            _optionalOptimizationTrialCount++;
+            final labels = included
+                .map((id) => optionalNameById[id] ?? id)
+                .join(' / ');
+            _setGenerationStatus(
+              '追加候補 ${included.length}/${optionalIds.length}件の組み合わせを全体最適化しています…',
+            );
+            final trial = await _generateScheduleOffUi(
+              requestForOptionalSubset(included),
+            );
+            final requiredOk = containsCounts(trial, requiredCounts);
+            final optionalCounts = <String, int>{
+              for (final id in included) id: 1,
+            };
+            final optionalOk = containsCounts(trial, optionalCounts);
+            final scheduledTrialIds = trial.items
+                .map((item) => item.facilityId)
+                .whereType<String>()
+                .toSet();
+            final scheduledOptionalLabels = included
+                .where(scheduledTrialIds.contains)
+                .map((id) => optionalNameById[id] ?? id)
+                .join(' / ');
+
+            final missingRequiredLabels = <String>[];
+            for (final entry in requiredCounts.entries) {
+              final scheduledCount = trial.items
+                  .where((item) => item.facilityId == entry.key)
+                  .length;
+              if (scheduledCount < entry.value) {
+                final facility = _appState.selectedFacilities
+                    .where((f) => f.id == entry.key)
+                    .firstOrNull;
+                final name = facility?.name ?? entry.key;
+                final missingCount = entry.value - scheduledCount;
+                missingRequiredLabels.add(
+                  missingCount == 1 ? name : '$name x$missingCount',
+                );
+              }
+            }
+
+            final optionalSlots = <String>[];
+            for (final id in included) {
+              final name = optionalNameById[id] ?? id;
+              final slots = trial.items
+                  .where((item) => item.facilityId == id)
+                  .map((item) =>
+                      '${_formatDebugHourMinute(item.startHour, item.startMinute)}-${_formatDebugHourMinute(item.endHour, item.endMinute)}')
+                  .toList(growable: false);
+              optionalSlots.add(
+                '$name=${slots.isEmpty ? '未配置' : slots.join(', ')}',
+              );
+            }
+
+            trace.add(
+              '試行$_optionalOptimizationTrialCount [${included.length}件組]: '
+              '${included.isEmpty ? '追加候補なし' : labels} -> '
+              '主軸${requiredOk ? '維持' : '欠落'} / '
+              '選択追加${optionalOk ? '全採用' : '未採用あり'}'
+              '${included.isEmpty ? '' : ' / 実採用: ${scheduledOptionalLabels.isEmpty ? 'なし' : scheduledOptionalLabels}'}',
+            );
+            if (!requiredOk) {
+              trace.add(
+                '  欠落した主軸: '
+                '${missingRequiredLabels.isEmpty ? '特定不能' : missingRequiredLabels.join(' / ')}',
+              );
+            }
+            if (optionalSlots.isNotEmpty) {
+              trace.add('  追加候補の配置時刻: ${optionalSlots.join(' / ')}');
+            }
+            if (!requiredOk || !optionalOk) continue;
+
+            bestSchedule = trial;
+            bestOptionalIds = Set<String>.of(included);
+            foundAtThisCount = true;
+            break;
+          }
+          if (foundAtThisCount) break;
+        }
+
+        // The empty subset should always be the safe fallback, but retain a
+        // defensive fallback in case future engine changes make it fail too.
+        bestSchedule ??= await _generateScheduleOffUi(
+          requestForOptionalSubset(const <String>{}),
+        );
+        _optionalOptimizationAdoptedCount = bestOptionalIds.length;
+        final rejected = optionalIds.difference(bestOptionalIds);
+        trace.add(
+          '最終採用: ${bestOptionalIds.length}/${optionalIds.length}件'
+          '${rejected.isEmpty ? '（見送りなし）' : ' / 見送り: ${rejected.map((id) => optionalNameById[id] ?? id).join(' / ')}'}',
+        );
+      }
+
+      _optionalOptimizationTrace = List<String>.unmodifiable(trace);
+      final generatedSchedule = bestSchedule;
 
       _setGenerationStatus('完成したプランを表示しています…');
       _appState.updateDaySchedule(generatedSchedule);
 
       isLoading = false;
+      // Coverage/DPA simulation is intentionally user-triggered.
+      // Do not start another heavy full-day analysis automatically after
+      // generation or optional-addition reoptimization.
+      coverageAdvice = null;
+      coverageAnalysisError = null;
+      isAnalyzingCoverage = false;
       notifyListeners();
-      Future<void>(() => analyzePlanCoverage());
     } catch (error, stackTrace) {
       debugPrint('スケジュール生成に失敗しました: $error');
 
@@ -848,8 +1154,9 @@ class ScheduleController extends ChangeNotifier {
   }
 
   Future<void> addPerformanceToPlan(PerformancePlanChoice choice) async {
+    _capturePreAdditionState(choice.facility.name);
     if (!_appState.isFacilitySelected(choice.facility.id)) {
-      _appState.addFacility(choice.facility);
+      _appState.addOptionalFacility(choice.facility);
     }
 
     _appState.updatePreferenceSelectedPerformance(
@@ -859,6 +1166,7 @@ class ScheduleController extends ChangeNotifier {
     );
 
     await generateSchedule();
+    _updateAdditionImpact();
   }
 
 
@@ -1182,18 +1490,9 @@ class ScheduleController extends ChangeNotifier {
     return List<FreeTimeImprovementChoice>.unmodifiable(choices);
   }
 
-  Future<List<PlanRebuildCandidate>> loadPlanRebuildCandidates() async {
+  Future<List<PlanAdditionChoice>> loadPlanAdditionChoices() async {
     final currentSchedule = schedule;
-    if (currentSchedule == null) return const <PlanRebuildCandidate>[];
-
-    final totalFreeMinutes = currentSchedule.items
-        .where((item) => item.type == ScheduleItemType.breakTime)
-        .fold<int>(0, (sum, item) {
-          final start = item.startHour * 60 + item.startMinute;
-          final end = item.endHour * 60 + item.endMinute;
-          return sum + (end - start).clamp(0, 24 * 60).toInt();
-        });
-    if (totalFreeMinutes < 20) return const <PlanRebuildCandidate>[];
+    if (currentSchedule == null) return const <PlanAdditionChoice>[];
 
     final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
     final settings = _appState.tripSettings;
@@ -1220,9 +1519,238 @@ class ScheduleController extends ChangeNotifier {
         : <String, int>{};
     final expertProfiles = await ServiceLocator.expertRecommendationRepository
         .loadProfiles(parkId: selectedParkId);
+    final profileById = {
+      for (final profile in expertProfiles) profile.facilityId: profile,
+    };
+
+    final scheduledCounts = <String, int>{};
+    for (final item in currentSchedule.items) {
+      final id = item.facilityId;
+      if (id == null || id.isEmpty) continue;
+      scheduledCounts.update(id, (value) => value + 1, ifAbsent: () => 1);
+    }
+    final selectedCounts = <String, int>{};
+    for (final facility in selectedFacilitiesForCurrentPark) {
+      selectedCounts.update(
+        facility.id,
+        (value) => value + 1,
+        ifAbsent: () => 1,
+      );
+    }
+
+    final midpoint = (settings.entryTimeHour * 60 + settings.entryTimeMinute +
+            settings.exitTimeHour * 60 + settings.exitTimeMinute) ~/
+        2;
+    final result = <PlanAdditionChoice>[];
+    for (final facility in allFacilities) {
+      if (!facility.canAddToPlanAt(targetDate) ||
+          facility.category == FacilityCategory.service ||
+          facility.requiresReservation) {
+        continue;
+      }
+      if (facility.category != FacilityCategory.attraction &&
+          facility.category != FacilityCategory.greeting &&
+          facility.category != FacilityCategory.restaurant &&
+          facility.category != FacilityCategory.shop &&
+          facility.category != FacilityCategory.show &&
+          facility.category != FacilityCategory.parade) {
+        continue;
+      }
+
+      var waitMinutes = 0;
+      if (facility.category == FacilityCategory.attraction ||
+          facility.category == FacilityCategory.greeting) {
+        waitMinutes = _freeTimeWaitEstimate(
+          facility: facility,
+          scheduledStartMinutes: midpoint,
+          profile: waitProfileById[facility.id],
+          greetingWaitPlanning: greetingWaitPlanning[facility.id],
+          unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        ).minutes;
+      }
+      final expert = const DisneyExpertRecommendationService().evaluate(
+        facility: facility,
+        targetDate: targetDate,
+        profiles: expertProfiles,
+        preference: _appState.getPreference(facility.id),
+        waitProfiles: waitProfiles,
+      );
+      final profile = profileById[facility.id];
+      final spotlightActive = profile?.spotlightAppliesOn(targetDate) ?? false;
+      final spotlightReason = spotlightActive
+          ? (profile!.spotlightReason?.trim().isNotEmpty ?? false)
+              ? profile.spotlightReason!.trim()
+              : '今の時期の注目候補'
+          : facility.isSeasonal
+              ? '期間限定'
+              : null;
+      final inPlanCount =
+          (scheduledCounts[facility.id] ?? selectedCounts[facility.id] ?? 0);
+      final repeatPolicy = _repeatPolicyFor(
+        facility: facility,
+        preference: _appState.getPreference(facility.id),
+        inPlanCount: inPlanCount,
+        settings: settings,
+      );
+      result.add(PlanAdditionChoice(
+        facility: facility,
+        inPlanCount: inPlanCount,
+        estimatedMinutes: facility.durationMinutes + waitMinutes,
+        estimatedWaitMinutes: waitMinutes,
+        spotlightReason: spotlightReason,
+        repeatAllowed: repeatPolicy.allowed,
+        repeatLabel: repeatPolicy.label,
+        repeatReason: repeatPolicy.reason,
+        score: facility.priority.value * 24.0 +
+            expert.score * 0.65 +
+            (spotlightActive ? profile!.spotlightScore * 1.4 : 0) +
+            (facility.isSeasonal ? 12 : 0),
+      ));
+    }
+    result.sort((a, b) {
+      final topical = (b.spotlightReason != null ? 1 : 0)
+          .compareTo(a.spotlightReason != null ? 1 : 0);
+      if (topical != 0) return topical;
+      return b.score.compareTo(a.score);
+    });
+    return List<PlanAdditionChoice>.unmodifiable(result);
+  }
+
+  Future<PlanAdditionResult> addPlanAdditionChoice(
+    PlanAdditionChoice choice,
+  ) async {
+    _capturePreAdditionState(choice.facility.name);
+    final beforeCount = schedule?.items
+            .where((item) => item.facilityId == choice.facility.id)
+            .length ??
+        0;
+    final wasAlreadySelected = _appState.isFacilitySelected(choice.facility.id);
+    if (wasAlreadySelected && !choice.repeatAllowed) {
+      return PlanAdditionResult(
+        added: false,
+        remainingMinutes: 0,
+        message: choice.repeatReason,
+      );
+    }
+    if (wasAlreadySelected) {
+      _appState.addFacilityRepeat(choice.facility);
+    } else {
+      _appState.addOptionalFacility(choice.facility);
+    }
+
+    await generateSchedule();
+    final afterCount = schedule?.items
+            .where((item) => item.facilityId == choice.facility.id)
+            .length ??
+        0;
+    final requiredCount = beforeCount + 1;
+    if (afterCount < requiredCount) {
+      _updateAdditionImpact();
+      return PlanAdditionResult(
+        added: true,
+        remainingMinutes: 0,
+        message:
+            '${choice.facility.name}は追加候補として保存しました。'
+            '一度ほかの希望と同列にして全体最適化しましたが、'
+            '元の「やりたいこと」が外れるため今回の採用だけキャンセルしました。',
+      );
+    }
+
+    final current = schedule;
+    if (current == null) {
+      return const PlanAdditionResult(added: true, remainingMinutes: 0);
+    }
+    final allFacilities = await ServiceLocator.facilityRepository
+        .getFacilitiesByParkId(selectedParkId);
+    final locations = await ServiceLocator.movementRepository
+        .loadFacilityLocations(parkId: selectedParkId);
+    final connections = await ServiceLocator.movementRepository
+        .loadAreaConnections(parkId: selectedParkId);
+    final remaining = _verifiedResidualSlackMinutes(
+      schedule: current,
+      facilities: allFacilities,
+      facilityLocations: locations,
+      areaConnections: connections,
+    );
+    _updateAdditionImpact();
+    return PlanAdditionResult(
+      added: true,
+      remainingMinutes: remaining,
+    );
+  }
+
+  Future<void> removeOptionalAddition(String facilityId) async {
+    if (!_appState.isOptionalAddition(facilityId)) return;
+    _appState.removeFacility(facilityId);
+    await generateSchedule();
+    _updateAdditionImpact();
+  }
+
+  Future<List<PlanRebuildBundle>> loadPlanRebuildCandidates() async {
+    final currentSchedule = schedule;
+    if (currentSchedule == null) return const <PlanRebuildBundle>[];
+
+    final totalFreeMinutes = currentSchedule.items
+        .where((item) => item.type == ScheduleItemType.breakTime)
+        .fold<int>(0, (sum, item) {
+          final start = item.startHour * 60 + item.startMinute;
+          final end = item.endHour * 60 + item.endMinute;
+          return sum + (end - start).clamp(0, 24 * 60).toInt();
+        });
+    if (totalFreeMinutes < 30) return const <PlanRebuildBundle>[];
+
+    // This reserve is deliberately kept AFTER a candidate has passed a real
+    // full-day regeneration. It is not merely subtracted from a visible gap.
+    final reserveMinutes =
+        (totalFreeMinutes * 0.20).ceil().clamp(30, 90).toInt();
+    final safeBudgetMinutes = totalFreeMinutes - reserveMinutes;
+    if (safeBudgetMinutes < 20) return const <PlanRebuildBundle>[];
+
+    final targetDate = _appState.tripSettings.visitDate ?? DateTime.now();
+    final settings = _appState.tripSettings;
+    final allFacilities = await ServiceLocator.facilityRepository
+        .getFacilitiesByParkId(selectedParkId);
+    final waitProfiles = await const CrowdFactorRepositoryImpl()
+        .loadWaitProfilesForDate(parkId: selectedParkId, targetDate: targetDate);
+    final waitProfileById = {
+      for (final profile in waitProfiles) profile.facilityId: profile,
+    };
+    final crowdFactors = await const CrowdFactorRepositoryImpl()
+        .loadCrowdFactors(parkId: selectedParkId);
+    final greetingWaitPlanning =
+        await const LocalGreetingWaitPlanningRepository().load(
+      parkId: selectedParkId,
+      targetDate: targetDate,
+      facilities: allFacilities,
+      crowdFactors: crowdFactors,
+    );
+    final unlimitedRideBufferMinutes = settings.usesVacationPackage &&
+            settings.hasUnlimitedAttractionRides
+        ? await const LocalVacationPackageUnlimitedRideRepository()
+            .loadPriorityAccessBufferMinutes(parkId: selectedParkId)
+        : <String, int>{};
+    final expertProfiles = await ServiceLocator.expertRecommendationRepository
+        .loadProfiles(parkId: selectedParkId);
+    final profileById = {
+      for (final profile in expertProfiles) profile.facilityId: profile,
+    };
+
+    // Exclude both selected wishes and already scheduled facilities. Name
+    // exclusion also protects against duplicated master-data rows with
+    // different IDs for the same experience.
+    final selectedFacilities = selectedFacilitiesForCurrentPark
+        .where((facility) => facility.canAddToPlanAt(targetDate))
+        .toList(growable: false);
+    final selectedIds = selectedFacilities.map((facility) => facility.id).toSet();
+    final selectedNames = selectedFacilities
+        .map((facility) => facility.name.trim().toLowerCase())
+        .toSet();
     final scheduledIds = currentSchedule.items
         .map((item) => item.facilityId)
         .whereType<String>()
+        .toSet();
+    final scheduledNames = currentSchedule.items
+        .map((item) => item.title.trim().toLowerCase())
         .toSet();
 
     final midpoint = (settings.entryTimeHour * 60 + settings.entryTimeMinute +
@@ -1230,8 +1758,12 @@ class ScheduleController extends ChangeNotifier {
         2;
     final candidates = <PlanRebuildCandidate>[];
     for (final facility in allFacilities) {
+      final normalizedName = facility.name.trim().toLowerCase();
       if (!facility.canAddToPlanAt(targetDate) ||
+          selectedIds.contains(facility.id) ||
           scheduledIds.contains(facility.id) ||
+          selectedNames.contains(normalizedName) ||
+          scheduledNames.contains(normalizedName) ||
           facility.category == FacilityCategory.service ||
           facility.requiresReservation) {
         continue;
@@ -1261,22 +1793,38 @@ class ScheduleController extends ChangeNotifier {
                   facility.category == FacilityCategory.parade
               ? 15
               : 0;
-      final requiredMinutes =
-          facility.durationMinutes + waitMinutes + preparationMinutes;
-      if (requiredMinutes > totalFreeMinutes) continue;
+      final safetyMinutes = switch (facility.category) {
+        FacilityCategory.show || FacilityCategory.parade => 20,
+        FacilityCategory.restaurant => 15,
+        FacilityCategory.attraction || FacilityCategory.greeting => 10,
+        _ => 10,
+      };
+      final requiredMinutes = facility.durationMinutes +
+          waitMinutes +
+          preparationMinutes +
+          safetyMinutes;
+      if (requiredMinutes > safeBudgetMinutes) continue;
 
-      final existingPreference = _appState.getPreference(facility.id);
       final expert = const DisneyExpertRecommendationService().evaluate(
         facility: facility,
         targetDate: targetDate,
         profiles: expertProfiles,
-        preference: existingPreference,
+        preference: _appState.getPreference(facility.id),
         waitProfiles: waitProfiles,
       );
-      final fitRatio = requiredMinutes / totalFreeMinutes;
+      final profile = profileById[facility.id];
+      final spotlightActive = profile?.spotlightAppliesOn(targetDate) ?? false;
+      final spotlightReason = spotlightActive
+          ? (profile!.spotlightReason?.trim().isNotEmpty ?? false)
+              ? profile.spotlightReason!.trim()
+              : '今の時期の注目候補'
+          : facility.isSeasonal
+              ? '期間限定'
+              : null;
       final score = facility.priority.value * 24.0 +
           expert.score * 0.65 +
-          fitRatio.clamp(0.0, 1.0) * 18.0 -
+          (spotlightActive ? profile!.spotlightScore * 1.4 : 0) +
+          (facility.isSeasonal ? 12 : 0) -
           waitMinutes * 0.12;
       candidates.add(PlanRebuildCandidate(
         facility: facility,
@@ -1284,19 +1832,246 @@ class ScheduleController extends ChangeNotifier {
         totalFreeMinutes: totalFreeMinutes,
         estimatedWaitMinutes: waitMinutes,
         score: score,
+        spotlightReason: spotlightReason,
       ));
     }
     candidates.sort((a, b) => b.score.compareTo(a.score));
-    return List<PlanRebuildCandidate>.unmodifiable(candidates);
+    final pool = candidates.take(10).toList(growable: false);
+    if (pool.isEmpty) return const <PlanRebuildBundle>[];
+
+    // Shared inputs for the real full-day feasibility runs.
+    final eventImpacts = await ServiceLocator.eventImpactRepository
+        .loadEventImpacts(parkId: selectedParkId);
+    final areaConnections = await ServiceLocator.movementRepository
+        .loadAreaConnections(parkId: selectedParkId);
+    final facilityLocations = await ServiceLocator.movementRepository
+        .loadFacilityLocations(parkId: selectedParkId);
+    final officialOptions = await _performanceScheduleRepository.findParkOptions(
+      parkId: selectedParkId,
+      date: targetDate,
+    );
+    final allParkFacilityById = {
+      for (final facility in allFacilities) facility.id: facility,
+    };
+    final basePreferences = _appState.planPreferences
+        .where((preference) => selectedIds.contains(preference.facilityId))
+        .toList(growable: false);
+
+    Future<PlanRebuildBundle?> verifyBundle(
+      List<PlanRebuildCandidate> choices,
+    ) async {
+      final trialFacilities = <Facility>[
+        ...selectedFacilities,
+        ...choices.map((choice) => choice.facility),
+      ];
+      final trialIds = trialFacilities.map((facility) => facility.id).toSet();
+      final trialPreferences = <PlanPreference>[
+        ...basePreferences,
+        for (final choice in choices)
+          if (!basePreferences.any(
+            (preference) => preference.facilityId == choice.facility.id,
+          ))
+            choice.facility.requiresEntryRequest
+                ? PlanPreference.initial(facilityId: choice.facility.id).copyWith(
+                    accessMethod: FacilityAccessMethod.entryRequest,
+                    fixedTimeStatus: FixedTimeStatus.planned,
+                    lotteryFallbackAction: LotteryFallbackAction.dpaIfAvailable,
+                  )
+                : PlanPreference.initial(facilityId: choice.facility.id),
+      ];
+
+      final resolvedPreferences = await _performanceResolver.resolve(
+        parkId: selectedParkId,
+        date: targetDate,
+        entryMinutes: settings.entryTimeHour * 60 + settings.entryTimeMinute,
+        exitMinutes: settings.exitTimeHour * 60 + settings.exitTimeMinute,
+        facilities: trialFacilities,
+        preferences: trialPreferences,
+      );
+      final availableMinutes =
+          (settings.exitTimeHour * 60 + settings.exitTimeMinute) -
+          (settings.entryTimeHour * 60 + settings.entryTimeMinute);
+      final morningRanking = const WishCandidateScoringEngine().score(
+        facilities: trialFacilities,
+        preferences: resolvedPreferences,
+        waitProfiles: waitProfiles,
+        availableMinutes: availableMinutes,
+        targetDate: targetDate,
+        hasHappyEntry: settings.hasHappyEntry,
+        expertProfiles: expertProfiles,
+        unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+        greetingWaitPlanning: greetingWaitPlanning,
+      );
+
+      var generatedPreferences = resolvedPreferences;
+      if (settings.canUseDpa && settings.attractionDpaMaxUses > 0) {
+        final allocation = _dpaAutoAllocator.allocate(
+          strategy: DpaStrategy(
+            type: DpaStrategyType.highCongestionOnly,
+            maxUses: settings.attractionDpaMaxUses.clamp(0, 3).toInt(),
+          ),
+          candidates: morningRanking
+              .where((candidate) =>
+                  !unlimitedRideBufferMinutes.containsKey(candidate.facility.id))
+              .toList(growable: false),
+          preferences: resolvedPreferences,
+        );
+        generatedPreferences = allocation.preferences;
+      }
+
+      final officialPerformanceOpportunities =
+          <OfficialPerformanceOpportunity>[];
+      for (final option in officialOptions) {
+        final facility = allParkFacilityById[option.facilityId];
+        if (facility == null ||
+            (facility.category != FacilityCategory.show &&
+                facility.category != FacilityCategory.parade)) {
+          continue;
+        }
+        final startMinutes = _parseTimeMinutes(option.startTime);
+        if (startMinutes == null) continue;
+        officialPerformanceOpportunities.add(
+          OfficialPerformanceOpportunity(
+            facilityId: facility.id,
+            name: facility.name,
+            startMinutes: startMinutes,
+            endMinutes: startMinutes + facility.durationMinutes,
+            requiresEntryRequest: facility.requiresEntryRequest,
+            supportsDpa: facility.supportsDpa,
+            isSelected: trialIds.contains(facility.id),
+          ),
+        );
+      }
+
+      final simulated = await _generateScheduleOffUi(
+        _ScheduleGenerationRequest(
+          settings: settings,
+          facilities: List<Facility>.of(trialFacilities),
+          preferences: List<PlanPreference>.of(generatedPreferences),
+          eventImpacts: List<EventImpact>.of(eventImpacts),
+          waitProfiles: List<TimeBandWaitProfile>.of(waitProfiles),
+          morningScores: <String, double>{
+            for (final candidate in morningRanking)
+              candidate.facility.id:
+                  candidate.firstMoveScore ?? candidate.score,
+          },
+          officialPerformanceOpportunities:
+              List<OfficialPerformanceOpportunity>.of(
+            officialPerformanceOpportunities,
+          ),
+          areaConnections: List<AreaConnection>.of(areaConnections),
+          facilityLocations: List<FacilityLocation>.of(facilityLocations),
+          expertProfiles: List<ExpertRecommendationProfile>.of(expertProfiles),
+          unlimitedRideBufferMinutes:
+              Map<String, int>.of(unlimitedRideBufferMinutes),
+          greetingWaitPlanning:
+              Map<String, GreetingWaitPlanningValue>.of(greetingWaitPlanning),
+          manualFixedItems: const <ScheduleItem>[],
+        ),
+      );
+
+      final simulatedIds = simulated.items
+          .map((item) => item.facilityId)
+          .whereType<String>()
+          .toSet();
+      // A candidate is shown only when the actual regenerated day contains
+      // every original wish AND every proposed addition.
+      if (!trialIds.every(simulatedIds.contains)) return null;
+
+      final remainingSlackMinutes = _verifiedResidualSlackMinutes(
+        schedule: simulated,
+        facilities: allFacilities,
+        facilityLocations: facilityLocations,
+        areaConnections: areaConnections,
+      );
+      if (remainingSlackMinutes < reserveMinutes) return null;
+
+      final required = choices.fold<int>(
+        0,
+        (sum, item) => sum + item.estimatedRequiredMinutes,
+      );
+      final categoryCount =
+          choices.map((item) => item.facility.category).toSet().length;
+      final topicalCount =
+          choices.where((item) => item.spotlightReason != null).length;
+      final score = choices.fold<double>(0, (sum, item) => sum + item.score) +
+          categoryCount * 12.0 +
+          topicalCount * 18.0 +
+          choices.length * 18.0;
+      return PlanRebuildBundle(
+        candidates: List<PlanRebuildCandidate>.unmodifiable(choices),
+        totalFreeMinutes: totalFreeMinutes,
+        safeBudgetMinutes: safeBudgetMinutes,
+        reserveMinutes: reserveMinutes,
+        estimatedRequiredMinutes: required,
+        verifiedRemainingMinutes: remainingSlackMinutes,
+        score: score,
+      );
+    }
+
+    // Full-day Beam Search is intentionally expensive. Build a small,
+    // diverse shortlist first, then verify at most six proposals. Run two at a
+    // time so the UI wait does not scale linearly with every theoretical pair.
+    final proposals = <List<PlanRebuildCandidate>>[];
+    final top = pool.take(6).toList(growable: false);
+
+    if (top.length >= 3) {
+      proposals.add(<PlanRebuildCandidate>[top[0], top[1], top[2]]);
+    }
+    if (top.length >= 2) {
+      proposals.add(<PlanRebuildCandidate>[top[0], top[1]]);
+    }
+    if (top.length >= 4) {
+      proposals.add(<PlanRebuildCandidate>[top[2], top[3]]);
+    }
+    proposals.add(<PlanRebuildCandidate>[top[0]]);
+    if (top.length >= 2) {
+      proposals.add(<PlanRebuildCandidate>[top[1]]);
+    }
+    if (top.length >= 3) {
+      proposals.add(<PlanRebuildCandidate>[top[2]]);
+    }
+
+    final verified = <PlanRebuildBundle>[];
+    for (var offset = 0; offset < proposals.length && verified.length < 3; offset += 2) {
+      final batch = proposals
+          .skip(offset)
+          .take(2)
+          .where((choices) {
+            final required = choices.fold<int>(
+              0,
+              (sum, item) => sum + item.estimatedRequiredMinutes,
+            );
+            return required <= safeBudgetMinutes;
+          })
+          .toList(growable: false);
+      if (batch.isEmpty) continue;
+      final results = await Future.wait(batch.map(verifyBundle));
+      verified.addAll(results.whereType<PlanRebuildBundle>());
+    }
+
+    verified.sort((a, b) {
+      final countCompare = b.candidates.length.compareTo(a.candidates.length);
+      if (countCompare != 0) return countCompare;
+      return b.score.compareTo(a.score);
+    });
+    final seen = <String>{};
+    final result = <PlanRebuildBundle>[];
+    for (final bundle in verified) {
+      final ids = bundle.candidates.map((e) => e.facility.id).toList()..sort();
+      if (!seen.add(ids.join('|'))) continue;
+      result.add(bundle);
+      if (result.length >= 10) break;
+    }
+    return List<PlanRebuildBundle>.unmodifiable(result);
   }
 
-  Future<void> applyPlanRebuildCandidate(PlanRebuildCandidate candidate) async {
-    if (!_appState.isFacilitySelected(candidate.facility.id)) {
-      _appState.addFacility(candidate.facility);
+  Future<void> applyPlanRebuildCandidate(PlanRebuildBundle bundle) async {
+    for (final candidate in bundle.candidates) {
+      if (!_appState.isFacilitySelected(candidate.facility.id)) {
+        _appState.addFacility(candidate.facility);
+      }
     }
-    // Do not pin the new facility to one existing gap. Re-run the whole day so
-    // fragmented free time can be consolidated by moving non-fixed items while
-    // fixed performances/reservations remain protected by their preferences.
     await generateSchedule();
   }
 
@@ -1646,6 +2421,149 @@ class ScheduleController extends ChangeNotifier {
     return null;
   }
 
+  _RepeatPolicy _repeatPolicyFor({
+    required Facility facility,
+    required PlanPreference? preference,
+    required int inPlanCount,
+    required TripSettings settings,
+  }) {
+    if (inPlanCount <= 0) {
+      return const _RepeatPolicy(
+        allowed: true,
+        label: '追加',
+        reason: '',
+      );
+    }
+
+    final method = preference?.accessMethod ?? FacilityAccessMethod.standby;
+
+    // Rights obtained for one timed use must never be silently reused.
+    if (method == FacilityAccessMethod.entryRequest ||
+        facility.requiresEntryRequest) {
+      return const _RepeatPolicy(
+        allowed: false,
+        label: '再追加不可',
+        reason: 'エントリー受付の同じ当選枠を2回利用することはできません。',
+      );
+    }
+    if (method == FacilityAccessMethod.standbyPass ||
+        (preference?.useStandbyPass ?? false)) {
+      return const _RepeatPolicy(
+        allowed: false,
+        label: '追加パスが必要',
+        reason: 'スタンバイパス利用は追加の取得条件を確認できないため、自動で2回目には追加しません。',
+      );
+    }
+    if (method == FacilityAccessMethod.dpa ||
+        (preference?.useDpa ?? false)) {
+      final unlimited = settings.usesVacationPackage &&
+          settings.hasUnlimitedAttractionRides &&
+          facility.category == FacilityCategory.attraction;
+      if (!unlimited) {
+        return const _RepeatPolicy(
+          allowed: false,
+          label: '追加権利が必要',
+          reason: '取得済みDPAを2回目へ使い回さないため、追加の利用権を確認できるまでは再追加しません。',
+        );
+      }
+    }
+    if (method == FacilityAccessMethod.reservation ||
+        facility.requiresReservation ||
+        facility.reservationRequired) {
+      return const _RepeatPolicy(
+        allowed: false,
+        label: '別予約が必要',
+        reason: '同じ予約枠を2回利用できないため、別の予約が確認できるまでは再追加しません。',
+      );
+    }
+
+    // A performance is an occurrence, not merely a facility. Until another
+    // distinct performance time is explicitly known, never duplicate it.
+    if (facility.category == FacilityCategory.show ||
+        facility.category == FacilityCategory.parade) {
+      return const _RepeatPolicy(
+        allowed: false,
+        label: '別公演が必要',
+        reason: '同じ公演回は重複できません。別の公演時刻が確認できる場合にのみ追加できます。',
+      );
+    }
+
+    if (facility.category == FacilityCategory.attraction ||
+        facility.category == FacilityCategory.greeting ||
+        facility.category == FacilityCategory.restaurant ||
+        facility.category == FacilityCategory.shop) {
+      return const _RepeatPolicy(
+        allowed: true,
+        label: 'もう1回',
+        reason: '',
+      );
+    }
+
+    return const _RepeatPolicy(
+      allowed: false,
+      label: '再追加不可',
+      reason: '現在の利用条件では2回目の成立を確認できません。',
+    );
+  }
+
+  int _verifiedResidualSlackMinutes({
+    required DaySchedule schedule,
+    required List<Facility> facilities,
+    required List<FacilityLocation> facilityLocations,
+    required List<AreaConnection> areaConnections,
+  }) {
+    final facilityById = {
+      for (final facility in facilities) facility.id: facility,
+    };
+    final locationById = {
+      for (final location in facilityLocations) location.facilityId: location,
+    };
+
+    // breakTime is only materialized for large gaps (currently 60+ minutes),
+    // so summing breakTime alone incorrectly reports zero reserve when useful
+    // slack is split into several smaller gaps. Measure the actual regenerated
+    // timeline instead and subtract the movement that must be preserved.
+    final items = schedule.items
+        .where((item) => item.type != ScheduleItemType.breakTime)
+        .toList(growable: false)
+      ..sort((a, b) {
+        final aStart = a.startHour * 60 + a.startMinute;
+        final bStart = b.startHour * 60 + b.startMinute;
+        return aStart.compareTo(bStart);
+      });
+
+    var slack = 0;
+    for (var i = 0; i + 1 < items.length; i++) {
+      final current = items[i];
+      final next = items[i + 1];
+      final currentEnd = current.endHour * 60 + current.endMinute;
+      final nextStart = next.startHour * 60 + next.startMinute;
+      final gap = nextStart - currentEnd;
+      if (gap <= 0) continue;
+
+      var protectedMinutes = 15;
+      final fromArea = _scheduleItemExitAreaId(
+        current,
+        facilityById: facilityById,
+        locationById: locationById,
+      );
+      final toArea = _scheduleItemEntryAreaId(
+        next,
+        facilityById: facilityById,
+        locationById: locationById,
+      );
+      if (fromArea != null && toArea != null) {
+        protectedMinutes = _movementMinutes(
+          fromAreaId: fromArea,
+          toAreaId: toArea,
+          connections: areaConnections,
+        );
+      }
+      slack += (gap - protectedMinutes).clamp(0, 24 * 60).toInt();
+    }
+    return slack;
+  }
+
   int _movementMinutes({
     required String fromAreaId,
     required String toAreaId,
@@ -1965,8 +2883,14 @@ class ScheduleController extends ChangeNotifier {
     if (hour == null || minute == null) return null;
     return hour * 60 + minute;
   }
+  static String _formatDebugHourMinute(int hour, int minute) {
+    final h = hour.toString().padLeft(2, '0');
+    final m = minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
 
   @override
+
   void dispose() {
     _appState.removeListener(_onAppStateChanged);
 
@@ -1975,6 +2899,92 @@ class ScheduleController extends ChangeNotifier {
 }
 
 
+class _RepeatPolicy {
+  const _RepeatPolicy({
+    required this.allowed,
+    required this.label,
+    required this.reason,
+  });
+
+  final bool allowed;
+  final String label;
+  final String reason;
+}
+
+class PlanAdditionImpact {
+  const PlanAdditionImpact({
+    required this.addedFacilityName,
+    required this.beforeDesiredCount,
+    required this.afterDesiredCount,
+    required this.lostFacilityNames,
+    required this.explanation,
+  });
+
+  final String addedFacilityName;
+  final int beforeDesiredCount;
+  final int afterDesiredCount;
+  final List<String> lostFacilityNames;
+  final String explanation;
+
+  bool get hasTradeOff => lostFacilityNames.isNotEmpty;
+}
+
+class PlanAdditionChoice {
+  const PlanAdditionChoice({
+    required this.facility,
+    required this.inPlanCount,
+    required this.estimatedMinutes,
+    required this.estimatedWaitMinutes,
+    required this.score,
+    required this.repeatAllowed,
+    required this.repeatLabel,
+    required this.repeatReason,
+    this.spotlightReason,
+  });
+
+  final Facility facility;
+  final int inPlanCount;
+  final int estimatedMinutes;
+  final int estimatedWaitMinutes;
+  final double score;
+  final bool repeatAllowed;
+  final String repeatLabel;
+  final String repeatReason;
+  final String? spotlightReason;
+}
+
+class PlanAdditionResult {
+  const PlanAdditionResult({
+    required this.added,
+    required this.remainingMinutes,
+    this.message = '',
+  });
+
+  final bool added;
+  final int remainingMinutes;
+  final String message;
+}
+
+class PlanRebuildBundle {
+  const PlanRebuildBundle({
+    required this.candidates,
+    required this.totalFreeMinutes,
+    required this.safeBudgetMinutes,
+    required this.reserveMinutes,
+    required this.estimatedRequiredMinutes,
+    required this.verifiedRemainingMinutes,
+    required this.score,
+  });
+
+  final List<PlanRebuildCandidate> candidates;
+  final int totalFreeMinutes;
+  final int safeBudgetMinutes;
+  final int reserveMinutes;
+  final int estimatedRequiredMinutes;
+  final int verifiedRemainingMinutes;
+  final double score;
+}
+
 class PlanRebuildCandidate {
   const PlanRebuildCandidate({
     required this.facility,
@@ -1982,6 +2992,7 @@ class PlanRebuildCandidate {
     required this.totalFreeMinutes,
     required this.estimatedWaitMinutes,
     required this.score,
+    this.spotlightReason,
   });
 
   final Facility facility;
@@ -1989,6 +3000,7 @@ class PlanRebuildCandidate {
   final int totalFreeMinutes;
   final int estimatedWaitMinutes;
   final double score;
+  final String? spotlightReason;
 }
 
 class PerformancePlanChoice {
