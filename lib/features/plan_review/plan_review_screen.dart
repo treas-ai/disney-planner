@@ -231,7 +231,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     final buffer = StringBuffer();
     buffer.writeln();
     buffer.writeln('【DEBUG: 追加候補・全日再最適化の内部判定】');
-    buffer.writeln('DEBUG実装識別：v7.5.21 slack-guidance-r13');
+    buffer.writeln('DEBUG実装識別：v7.5.22 quality-gate-r3');
     buffer.writeln('この節はデバッグビルド専用です。通常利用者向けの説明ではありません。');
     buffer.writeln('主軸（やりたいこと）：$requiredScheduled/${required.length}件をスケジュール内で確認');
     buffer.writeln('追加候補：${adopted.length}/${optional.length}件採用、${rejected.length}件見送り');
@@ -250,8 +250,8 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
         buffer.writeln('  主軸扱い：いいえ（削除しても元の「やりたいこと」には影響しません）');
         buffer.writeln('  削除可能：はい（追加候補カードから個別削除）');
         if (!isAdopted) {
-          buffer.writeln('  現在確認できる理由：主軸を100%維持する採用結果として確定できなかったため。');
-          buffer.writeln('  切り分け対象：公演時刻/固定予定との競合、待ち時間、移動余白、施設運営時間、アクセス条件。');
+          final reason = controller.optionalRejectionReason(facility.id);
+          buffer.writeln('  現在確認できる理由：${reason ?? '主軸を100%維持する採用結果として確定できなかったため。'}');
         }
       }
     }
@@ -297,6 +297,27 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
       todayAccessResults: appState.todayAccessResults,
       coverageAdvice: controller.coverageAdvice,
     );
+    final audit = controller.planQualityAudit;
+    if (audit != null) {
+      evaluationText += '\n【プラン品質Gate】\n';
+      evaluationText += '最適化モード：${_optimizationModeLabel(appState.tripSettings.scheduleOptimizationMode)}\n';
+      evaluationText += '総待ち時間：${audit.totalWaitMinutes}分\n';
+      evaluationText += '総自由時間：${audit.totalFreeMinutes}分\n';
+      evaluationText += '自由時間ブロック数：${audit.freeBlockCount}個\n';
+      evaluationText += '最大連続自由時間：${audit.largestFreeBlockMinutes}分\n';
+      evaluationText += '30分未満の自由時間：${audit.smallFreeBlockCount}個\n';
+      evaluationText += '総推定移動時間：${audit.totalMovementMinutes}分\n';
+      evaluationText += 'エリア跨ぎ回数：${audit.areaCrossingCount}回\n';
+      evaluationText += '同一エリア再訪回数：${audit.areaRevisitCount}回\n';
+      evaluationText += '主要予定間の最小余裕：${audit.minimumGapMinutes}分\n';
+      evaluationText += '時間重複：${audit.overlapCount}件\n';
+      evaluationText += '遅延ストレス +5分：${audit.delay5Safe ? '維持' : '影響あり'}\n';
+      evaluationText += '遅延ストレス +10分：${audit.delay10Safe ? '維持' : '影響あり'}\n';
+      evaluationText += '遅延ストレス +20分：${audit.delay20Safe ? '維持' : '影響あり'}\n';
+      evaluationText += '遅延耐性：${audit.robustnessLevel} — ${audit.robustnessMessage}\n';
+      evaluationText += '注記：自由時間は追加可否の上限ではありません。追加候補は全日再最適化で判定します。\n';
+      evaluationText += '4モードGate：各モードで生成したAI評価用出力の同項目を比較し、目的どおりの差が出ることを確認します。\n';
+    }
     if (kDebugMode) {
       evaluationText += _buildDebugOptimizationTrace(controller);
     }
@@ -440,6 +461,8 @@ class _MobilePlanReviewLayout extends StatelessWidget {
           if (controller.schedule != null) ...[
             const SizedBox(height: AppSpacing.sm),
             _PlanCoverageAdviceCard(controller: controller),
+            const SizedBox(height: AppSpacing.sm),
+            _PlanQualityCard(controller: controller),
           ],
           if (controller.lastAdditionImpact != null) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -519,6 +542,8 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                 if (controller.schedule != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _PlanCoverageAdviceCard(controller: controller),
+                  const SizedBox(height: AppSpacing.sm),
+                  _PlanQualityCard(controller: controller),
                 ],
                 if (controller.lastAdditionImpact != null) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -573,6 +598,55 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+class _PlanQualityCard extends StatelessWidget {
+  const _PlanQualityCard({required this.controller});
+
+  final ScheduleController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final audit = controller.planQualityAudit;
+    if (audit == null) return const SizedBox.shrink();
+    final colors = Theme.of(context).colorScheme;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.health_and_safety_outlined, size: 20, color: colors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'プラン品質チェック',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('待ち時間 ${audit.totalWaitMinutes}分 ・ 自由時間 ${audit.totalFreeMinutes}分 ・ 最大連続 ${audit.largestFreeBlockMinutes}分'),
+          const SizedBox(height: 4),
+          Text('移動 ${audit.totalMovementMinutes}分 ・ エリア跨ぎ ${audit.areaCrossingCount}回 ・ 再訪 ${audit.areaRevisitCount}回'),
+          const SizedBox(height: 4),
+          Text('自由枠 ${audit.freeBlockCount}個 ・ 最小予定間余裕 ${audit.minimumGapMinutes}分 ・ 細切れ ${audit.smallFreeBlockCount}個 ・ 重なり ${audit.overlapCount}件'),
+          const SizedBox(height: 6),
+          Text(
+            '遅延ストレス +5/+10/+20分：${audit.delay5Safe ? '維持' : '影響'} / ${audit.delay10Safe ? '維持' : '影響'} / ${audit.delay20Safe ? '維持' : '影響'}\n遅延耐性：${audit.robustnessLevel} — ${audit.robustnessMessage}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'この表示は品質評価です。追加候補の可否は空き時間の単純差し引きではなく、引き続き一日全体の再最適化で判定します。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -888,6 +962,7 @@ class _OptionalAdditionsCard extends StatelessWidget {
               _OptionalAdditionRow(
                 facility: facility,
                 status: '今回は入りませんでした（候補として保持）',
+                detail: controller.optionalRejectionReason(facility.id),
                 onRemove: onRemove,
               ),
             const SizedBox(height: 3),
@@ -909,10 +984,12 @@ class _OptionalAdditionRow extends StatelessWidget {
     required this.facility,
     required this.status,
     required this.onRemove,
+    this.detail,
   });
 
   final Facility facility;
   final String status;
+  final String? detail;
   final Future<void> Function(Facility facility) onRemove;
 
   @override
@@ -921,7 +998,23 @@ class _OptionalAdditionRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: 4),
       child: Row(
         children: [
-          Expanded(child: Text('${facility.name}：$status')),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${facility.name}：$status'),
+                if (detail != null && detail!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    detail!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
           IconButton(
             tooltip: '追加候補から削除',
             icon: const Icon(Icons.delete_outline, size: 20),

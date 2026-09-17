@@ -2334,6 +2334,7 @@ class ScheduleEngine {
               standbyWaitMinutes: cost.standbyWaitMinutes,
               movementMinutes: cost.movementMinutes,
               fragmentedFreeMinutes: cost.fragmentedFreeMinutes,
+              compactFragmentationMinutes: cost.compactFragmentationMinutes,
             ));
           }
         }
@@ -2345,11 +2346,13 @@ class ScheduleEngine {
               standbyWaitMinutes: optimisticWaitFor(a),
               movementMinutes: a.movementMinutes,
               fragmentedFreeMinutes: a.fragmentedFreeMinutes,
+              compactFragmentationMinutes: a.compactFragmentationMinutes,
             ),
             _CoveredWishTimingCost(
               standbyWaitMinutes: optimisticWaitFor(b),
               movementMinutes: b.movementMinutes,
               fragmentedFreeMinutes: b.fragmentedFreeMinutes,
+              compactFragmentationMinutes: b.compactFragmentationMinutes,
             ),
             settings.scheduleOptimizationMode,
           ));
@@ -2393,11 +2396,13 @@ class ScheduleEngine {
             standbyWaitMinutes: a.standbyWaitMinutes,
             movementMinutes: a.movementMinutes,
             fragmentedFreeMinutes: a.fragmentedFreeMinutes,
+            compactFragmentationMinutes: a.compactFragmentationMinutes,
           ),
           _CoveredWishTimingCost(
             standbyWaitMinutes: b.standbyWaitMinutes,
             movementMinutes: b.movementMinutes,
             fragmentedFreeMinutes: b.fragmentedFreeMinutes,
+            compactFragmentationMinutes: b.compactFragmentationMinutes,
           ),
           settings.scheduleOptimizationMode,
         ));
@@ -2497,6 +2502,7 @@ class ScheduleEngine {
     }
 
     var fragmentedFreeMinutes = 0;
+    final usableFreeGaps = <int>[];
     final timeline = items
         .where((item) =>
             item.type != ScheduleItemType.entry &&
@@ -2530,6 +2536,9 @@ class ScheduleEngine {
         }
       }
       final usableGap = rawGap - requiredTravel;
+      if (usableGap > 0) {
+        usableFreeGaps.add(usableGap);
+      }
       // A large continuous gap is useful for an extra attraction, shopping or
       // rest. Penalize only awkward fragments instead of "free time" itself.
       if (usableGap >= 10 && usableGap < 45) {
@@ -2537,10 +2546,22 @@ class ScheduleEngine {
       }
     }
 
+    // compactSchedule should consolidate usable slack, not merely avoid small
+    // gaps. Minimize all usable internal slack outside the single largest gap.
+    // This distinguishes one long free block from several medium blocks while
+    // leaving the other optimization modes' scoring unchanged.
+    final totalUsableFreeMinutes = usableFreeGaps.fold<int>(0, (sum, gap) => sum + gap);
+    final largestUsableFreeMinutes = usableFreeGaps.isEmpty
+        ? 0
+        : usableFreeGaps.reduce((a, b) => a >= b ? a : b);
+    final compactFragmentationMinutes =
+        totalUsableFreeMinutes - largestUsableFreeMinutes;
+
     return _CoveredWishTimingCost(
       standbyWaitMinutes: standbyWaitMinutes,
       movementMinutes: movementMinutes,
       fragmentedFreeMinutes: fragmentedFreeMinutes,
+      compactFragmentationMinutes: compactFragmentationMinutes,
     );
   }
 
@@ -2548,6 +2569,7 @@ class ScheduleEngine {
     required int waitMinutes,
     required int movementMinutes,
     required int fragmentedFreeMinutes,
+    required int compactFragmentationMinutes,
     required ScheduleOptimizationMode mode,
   }) {
     switch (mode) {
@@ -2562,7 +2584,8 @@ class ScheduleEngine {
       case ScheduleOptimizationMode.compactSchedule:
         return waitMinutes * 0.65 +
             movementMinutes * 0.80 +
-            fragmentedFreeMinutes * 2.0;
+            fragmentedFreeMinutes * 0.50 +
+            compactFragmentationMinutes * 2.0;
       case ScheduleOptimizationMode.balanced:
         return waitMinutes +
             movementMinutes * 1.40 +
@@ -2592,12 +2615,14 @@ class ScheduleEngine {
       waitMinutes: a.standbyWaitMinutes,
       movementMinutes: a.movementMinutes,
       fragmentedFreeMinutes: a.fragmentedFreeMinutes,
+      compactFragmentationMinutes: a.compactFragmentationMinutes,
       mode: mode,
     );
     final bScore = _unifiedOptimizationScore(
       waitMinutes: b.standbyWaitMinutes,
       movementMinutes: b.movementMinutes,
       fragmentedFreeMinutes: b.fragmentedFreeMinutes,
+      compactFragmentationMinutes: b.compactFragmentationMinutes,
       mode: mode,
     );
     final scoreCompare = aScore.compareTo(bScore);
@@ -5634,6 +5659,7 @@ class _UnifiedDaySearchState {
     this.standbyWaitMinutes = 0,
     this.movementMinutes = 0,
     this.fragmentedFreeMinutes = 0,
+    this.compactFragmentationMinutes = 0,
   });
 
   final List<ScheduleItem> items;
@@ -5641,6 +5667,7 @@ class _UnifiedDaySearchState {
   final int standbyWaitMinutes;
   final int movementMinutes;
   final int fragmentedFreeMinutes;
+  final int compactFragmentationMinutes;
 }
 
 class _FixedPerformanceCandidate {
@@ -5830,11 +5857,13 @@ class _CoveredWishTimingCost {
     required this.standbyWaitMinutes,
     required this.movementMinutes,
     this.fragmentedFreeMinutes = 0,
+    this.compactFragmentationMinutes = 0,
   });
 
   final int standbyWaitMinutes;
   final int movementMinutes;
   final int fragmentedFreeMinutes;
+  final int compactFragmentationMinutes;
 }
 
 class _NearestWaitRange {

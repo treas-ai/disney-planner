@@ -42,6 +42,7 @@ import '../../domain/services/disney_expert_recommendation_service.dart';
 import '../../domain/services/schedule_engine.dart';
 import '../../domain/services/schedule_validator.dart';
 import '../../domain/services/plan_coverage_advice_service.dart';
+import '../../domain/services/plan_quality_audit_service.dart';
 
 
 class _ScheduleGenerationRequest {
@@ -205,11 +206,28 @@ class ScheduleController extends ChangeNotifier {
   List<String> _optionalOptimizationTrace = const <String>[];
   int _optionalOptimizationTrialCount = 0;
   int _optionalOptimizationAdoptedCount = 0;
+  Map<String, String> _optionalRejectionReasons = const <String, String>{};
+  List<Facility> _qualityAuditFacilities = const <Facility>[];
+  List<FacilityLocation> _qualityAuditLocations = const <FacilityLocation>[];
+  List<AreaConnection> _qualityAuditConnections = const <AreaConnection>[];
 
   List<String> get optionalOptimizationTrace =>
       List<String>.unmodifiable(_optionalOptimizationTrace);
   int get optionalOptimizationTrialCount => _optionalOptimizationTrialCount;
   int get optionalOptimizationAdoptedCount => _optionalOptimizationAdoptedCount;
+  String? optionalRejectionReason(String facilityId) => _optionalRejectionReasons[facilityId];
+
+  PlanQualityAudit? get planQualityAudit {
+    final current = schedule;
+    return current == null
+        ? null
+        : const PlanQualityAuditService().evaluate(
+            current,
+            facilities: _qualityAuditFacilities,
+            facilityLocations: _qualityAuditLocations,
+            areaConnections: _qualityAuditConnections,
+          );
+  }
 
   void _capturePreAdditionState(String addedFacilityName) {
     final current = schedule;
@@ -869,6 +887,9 @@ class ScheduleController extends ChangeNotifier {
           .loadAreaConnections(parkId: selectedParkId);
       final facilityLocations = await ServiceLocator.movementRepository
           .loadFacilityLocations(parkId: selectedParkId);
+      _qualityAuditFacilities = List<Facility>.unmodifiable(allParkFacilities);
+      _qualityAuditLocations = List<FacilityLocation>.unmodifiable(facilityLocations);
+      _qualityAuditConnections = List<AreaConnection>.unmodifiable(areaConnections);
 
       _setGenerationStatus('やりたいことと追加候補を一緒に全体最適化しています…');
 
@@ -965,6 +986,7 @@ class ScheduleController extends ChangeNotifier {
           if (optionalIds.contains(facility.id)) facility.id: facility.name,
       };
       final trace = <String>[];
+      final rejectionEvidence = <String, List<String>>{};
       _optionalOptimizationTrialCount = 0;
       _optionalOptimizationAdoptedCount = 0;
 
@@ -1065,6 +1087,21 @@ class ScheduleController extends ChangeNotifier {
                 '${missingRequiredLabels.isEmpty ? '特定不能' : missingRequiredLabels.join(' / ')}',
               );
             }
+            if (!requiredOk) {
+              for (final id in included) {
+                rejectionEvidence.putIfAbsent(id, () => <String>[]).add(
+                  missingRequiredLabels.isEmpty
+                      ? '元のやりたいことを100%維持できませんでした'
+                      : '元のやりたいこと「${missingRequiredLabels.join(' / ')}」が外れる結果になりました',
+                );
+              }
+            } else if (!optionalOk) {
+              for (final id in included.where((id) => !scheduledTrialIds.contains(id))) {
+                rejectionEvidence.putIfAbsent(id, () => <String>[]).add(
+                  '選択した公演時刻・営業時間・移動条件を含む全日配置で候補自体を配置できませんでした',
+                );
+              }
+            }
             if (optionalSlots.isNotEmpty) {
               trace.add('  追加候補の配置時刻: ${optionalSlots.join(' / ')}');
             }
@@ -1085,12 +1122,20 @@ class ScheduleController extends ChangeNotifier {
         );
         _optionalOptimizationAdoptedCount = bestOptionalIds.length;
         final rejected = optionalIds.difference(bestOptionalIds);
+        final exitLabel = '${request.settings.exitTimeHour.toString().padLeft(2, '0')}:${request.settings.exitTimeMinute.toString().padLeft(2, '0')}';
+        _optionalRejectionReasons = <String, String>{
+          for (final id in rejected)
+            id: rejectionEvidence[id]?.isNotEmpty == true
+                ? '${rejectionEvidence[id]!.first}。退園希望$exitLabelまでの全日再最適化で判定しています。候補は削除せず保持します。'
+                : '退園希望$exitLabelまでに、元のやりたいことを100%維持した採用結果を確認できませんでした。候補は削除せず保持します。',
+        };
         trace.add(
           '最終採用: ${bestOptionalIds.length}/${optionalIds.length}件'
           '${rejected.isEmpty ? '（見送りなし）' : ' / 見送り: ${rejected.map((id) => optionalNameById[id] ?? id).join(' / ')}'}',
         );
       }
 
+      if (optionalIds.isEmpty) _optionalRejectionReasons = const <String, String>{};
       _optionalOptimizationTrace = List<String>.unmodifiable(trace);
       final generatedSchedule = bestSchedule;
 

@@ -1,3 +1,35 @@
+## v7.5.22 compact-schedule-r5 (development)
+
+- 4-mode probeで `compactSchedule` が balanced より自由時間を分断する逆最適化を確認。
+- compactSchedule専用に、主要予定間の利用可能な空き時間のうち最大1ブロックを除いた「分散空き時間」を評価へ追加。
+- まとまった自由時間モードは分散空き時間を強く抑え、1つの長い自由枠へ集約する方向を評価する。
+- minimumWait / minimumWalking / balanced のスコア式は変更なし。Beam幅・主軸10/10ガード・追加候補探索も変更なし。
+- 同じ `verify_modes.ps1` で4モードを再測定し、compactScheduleの逆最適化解消を確認してから正式化する。
+
+
+## v7.5.22 quality-gate-r4
+- Added a non-blocking four-mode differentiation probe (`verify_modes.ps1`).
+- The probe uses a synthetic route/wait trade-off day and prints wait, movement, crossings, revisits, free-time metrics, and facility order for all four optimization modes.
+- The normal `verify.ps1` regression suite is unchanged; mode equality is reported as diagnostic evidence rather than made a blocking test.
+- No ScheduleEngine scoring, Beam Search width/pruning, or optional-addition behavior was changed.
+## v7.5.22 quality-gate-r3 (development)
+
+- Added measurable movement quality: estimated movement minutes, area crossings, and area revisits.
+- Added free-time block count to distinguish contiguous-free-time outcomes.
+- Replaced the single minimum-gap robustness label with +5/+10/+20 minute timeline stress checks while keeping generation behavior unchanged.
+- AI evaluation export now exposes the metrics needed to compare all four optimization modes.
+
+# Disney Planner CHANGELOG
+
+## v7.5.22 - plan creation completion gates
+
+- Added concrete optional-addition rejection evidence. Rejected candidates now explain which original wishes were lost in the attempted full-day optimization, or that the candidate itself could not be placed under performance/operating/movement constraints, and state the desired exit-time boundary used for the decision.
+- Added an always-cheap plan quality audit card: total planned wait, total/maximum contiguous free time, short free-block count, minimum inter-item margin, overlap count, and a conservative delay-tolerance assessment.
+- Kept optional-addition feasibility independent from visible free-time arithmetic: adoption still uses full-day reoptimization and the hard-wish 100% guard.
+- Updated the debug implementation marker to v7.5.22.
+- Retained the v7.5.21 wait-prediction backtest/audit as the accuracy gate; accuracy measurements remain audit-only until sufficient history exists.
+- Added a focused unit test for the plan-quality audit service.
+
 - 追加候補も一日全体の再最適化へ参加させるよう修正。ショー・パレードを追加した場合も解決済み公演時刻を使って既存の「やりたいこと」を含む全日プランを組み替え、元の希望を維持できる場合は実際のスケジュールへ採用する。維持できない場合だけ追加候補として保持して元の希望を優先する。空き時間表示は従来どおり残す。
 # Disney Planner CHANGELOG
 
@@ -1786,3 +1818,9 @@ dart run tool/audit_wish_data.dart
 - Removed the revived dedicated "追加候補：ショー・パレード" button from Plan Review.
 - Show/parade additions now use the unified "追加したいものを選ぶ" flow only.
 - Kept the generic optional-additions storage/card ("行けたら行く") intact.
+
+### v7.5.22 - plan quality gate export / rejection explanation r2
+- AI evaluation export includes current optimization mode and plan-quality Gate metrics.
+- Optional-addition debug output uses concrete rejection evidence from combination search.
+- Robustness minimum-gap evaluation excludes entry/exit boundaries to avoid false zero-minute warnings.
+- Four-mode verification compares exported Gate metrics after each explicitly generated mode; opening export does not trigger extra Beam Searches.
