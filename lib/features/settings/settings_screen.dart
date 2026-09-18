@@ -266,6 +266,7 @@ class _MobileSettingsLayout extends StatelessWidget {
       thumbVisibility: true,
       interactive: true,
       child: ListView(
+        primary: true,
         padding: const EdgeInsets.only(right: 12, bottom: 96),
         children: [
           const _SettingsIntroCard(),
@@ -366,6 +367,7 @@ class _DesktopSettingsLayout extends StatelessWidget {
       thumbVisibility: true,
       interactive: true,
       child: SingleChildScrollView(
+        primary: true,
         padding: const EdgeInsets.only(right: 14, bottom: 48),
         child: Column(
           children: [
@@ -707,6 +709,33 @@ class _VisitDaysCard extends StatelessWidget {
     if (selected != null) controller.updateVisitDate(selected);
   }
 
+  Future<void> _confirmRemoveDay(BuildContext context, String dayId) async {
+    final settings = controller.appState.settingsForVisitDay(dayId);
+    final label = settings.visitDate == null ? '未設定の旅行' : settings.visitDateLabel;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('$label の予定を削除しますか？'),
+        content: const Text(
+          'この日に登録したやりたいこと・候補・予約設定・作成済みプランなどを削除します。この操作は元に戻せません。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('削除する'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await controller.removeVisitDay(dayId);
+    }
+  }
+
   Future<void> _addDay(BuildContext context) async {
     final base = controller.settings.visitDate ?? DateTime.now();
     final selected = await _showJapaneseDatePicker(
@@ -717,7 +746,13 @@ class _VisitDaysCard extends StatelessWidget {
       title: '追加する来園日を選択',
       confirmText: '追加',
     );
-    if (selected != null) await controller.addVisitDay(selected);
+    if (selected != null) {
+      if (controller.settings.visitDate == null) {
+        controller.updateVisitDate(selected);
+      } else {
+        await controller.addVisitDay(selected);
+      }
+    }
   }
 
   @override
@@ -738,28 +773,42 @@ class _VisitDaysCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.xs),
-            Text('各日を独立した1日プランとして保存します。日付を切り替えると、やりたいこと・候補・予約・作成済みプランも切り替わります。', style: theme.textTheme.bodySmall),
+            Text('各日を独立した1日プランとして保存します。日付を切り替えると内容も切り替わります。日付の右側の×から、その日の旅行計画を削除できます。', style: theme.textTheme.bodySmall),
             const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                for (final dayId in controller.visitDayIds)
-                  InputChip(
-                    selected: dayId == controller.activeVisitDayId,
-                    avatar: const Icon(Icons.event_outlined, size: 18),
-                    label: Text(controller.appState.settingsForVisitDay(dayId).visitDateLabel),
-                    onPressed: () => controller.switchVisitDay(dayId),
-                    onDeleted: controller.visitDayIds.length > 1 ? () => controller.removeVisitDay(dayId) : null,
-                  ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            OutlinedButton.icon(
-              onPressed: () => _selectDate(context),
-              icon: const Icon(Icons.edit_calendar_outlined),
-              label: Text(controller.settings.visitDate == null ? '現在の来園日を設定' : '現在の来園日を変更（${controller.settings.visitDateLabel}）'),
-            ),
+            if (controller.settings.visitDate == null) ...[
+              Text(
+                '来園日はまだ設定されていません。ディズニーへ行く日を追加してください。',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              FilledButton.icon(
+                onPressed: () => _selectDate(context),
+                icon: const Icon(Icons.add),
+                label: const Text('来園日を追加'),
+              ),
+            ] else ...[
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  for (final dayId in controller.visitDayIds)
+                    if (controller.appState.settingsForVisitDay(dayId).visitDate != null)
+                      InputChip(
+                        selected: dayId == controller.activeVisitDayId,
+                        avatar: const Icon(Icons.event_outlined, size: 18),
+                        label: Text(controller.appState.settingsForVisitDay(dayId).visitDateLabel),
+                        onPressed: () => controller.switchVisitDay(dayId),
+                        onDeleted: () => _confirmRemoveDay(context, dayId),
+                      ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: () => _selectDate(context),
+                icon: const Icon(Icons.edit_calendar_outlined),
+                label: Text('現在の来園日を変更（${controller.settings.visitDateLabel}）'),
+              ),
+            ],
           ],
         ),
       ),

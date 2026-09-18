@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/local/onboarding_preferences.dart';
+import '../data/local/planner_experience_preferences.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import 'app_theme.dart';
 import 'main_shell.dart';
@@ -39,7 +40,8 @@ class _DisneyPlannerAppState extends State<DisneyPlannerApp> {
     });
   }
 
-  Future<void> _completeOnboarding() async {
+  Future<void> _completeOnboarding(PlannerExperienceMode mode) async {
+    await const PlannerExperiencePreferences().saveMode(mode);
     await _onboardingPreferences.complete();
     if (!mounted) {
       return;

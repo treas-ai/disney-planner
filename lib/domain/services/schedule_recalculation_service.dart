@@ -57,6 +57,7 @@ class ScheduleRecalculationService {
             ))
         .toList(growable: false);
 
+    final warnings = <String>[];
     final preserved = alignedCurrentItems
         .where((item) {
           final start = _start(item);
@@ -102,13 +103,53 @@ class ScheduleRecalculationService {
                 request.releasedFacilityIds.contains(facilityId),
           );
         })
-        .toList(growable: false);
+        .toList(growable: true);
+
+    final requestedBreakMinutes = request.breakDurationMinutes;
+    if (requestedBreakMinutes != null && requestedBreakMinutes > 0) {
+      var breakStart = nowMinutes;
+      for (final item in preserved) {
+        final start = _start(item);
+        final end = _end(item);
+        if (start <= nowMinutes && nowMinutes < end &&
+            item.type != ScheduleItemType.entry &&
+            item.type != ScheduleItemType.exit) {
+          breakStart = end > breakStart ? end : breakStart;
+        }
+      }
+      final breakEnd = breakStart + requestedBreakMinutes;
+      final exitMinutes =
+          request.settings.exitTimeHour * 60 + request.settings.exitTimeMinute;
+      if (breakEnd <= exitMinutes) {
+        preserved.add(
+          ScheduleItem(
+            id: 'today_break_${request.now.millisecondsSinceEpoch}',
+            title: 'ひと休み',
+            type: ScheduleItemType.breakTime,
+            startHour: breakStart ~/ 60,
+            startMinute: breakStart % 60,
+            endHour: breakEnd ~/ 60,
+            endMinute: breakEnd % 60,
+            reason: '当日に追加した休憩',
+            note: '$requestedBreakMinutes分休憩',
+          ),
+        );
+        if (breakStart > nowMinutes) {
+          warnings.add(
+            '進行中の予定を優先し、休憩開始を'
+            '${(breakStart ~/ 60).toString().padLeft(2, '0')}:'
+            '${(breakStart % 60).toString().padLeft(2, '0')}へ調整しました。',
+          );
+        }
+      } else {
+        warnings.add('指定した休憩は退園希望時刻を超えるため追加できませんでした。');
+      }
+    }
 
     final preservedFacilityIds = preserved
         .map((item) => item.facilityId)
         .whereType<String>()
         .toSet();
-    final warnings = <String>[];
     _appendConfirmedAccessConflictWarnings(
       alignedItems: alignedCurrentItems,
       confirmedTodayResultByFacility: successfulTodayResultByFacility,
@@ -239,7 +280,7 @@ class ScheduleRecalculationService {
               item.type != ScheduleItemType.entry &&
               item.type != ScheduleItemType.exit &&
               item.type != ScheduleItemType.breakTime &&
-              _start(item) > nowMinutes &&
+              _start(item) >= nowMinutes &&
               !preservedKeys.contains(_key(item)),
         )
         .toList(growable: false)
@@ -528,7 +569,9 @@ class ScheduleRecalculationService {
   }
 
   bool _isUnavailable(LiveOperatingStatus? status) {
-    if (status == null) return false;
+    if (status == null) {
+      return false;
+    }
     return status.state != LiveOperatingState.operating &&
         status.state != LiveOperatingState.unknown;
   }

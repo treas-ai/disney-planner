@@ -235,7 +235,7 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     buffer.writeln('この節はデバッグビルド専用です。通常利用者向けの説明ではありません。');
     buffer.writeln('主軸（やりたいこと）：$requiredScheduled/${required.length}件をスケジュール内で確認');
     buffer.writeln('追加候補：${adopted.length}/${optional.length}件採用、${rejected.length}件見送り');
-    buffer.writeln('探索ルール：主軸10/10維持を絶対条件にし、追加候補は採用数が最大になる組み合わせを大きい組み合わせから探索します。各試行では主軸と選択中の追加候補を同列にして全日再最適化します。');
+    buffer.writeln('探索ルール：現在の主軸${required.length}件の維持を優先し、追加候補は採用数が最大になる組み合わせを大きい組み合わせから探索します。各試行では主軸と選択中の追加候補を同列にして全日再最適化します。');
     buffer.writeln('採用ガード：主軸が1件でも外れる、または試した追加候補が実際のスケジュールに入らない結果は不採用です。成立した最大件数の組み合わせを採用します。');
     buffer.writeln('注意：画面上に2時間などの自由時間があっても、その2時間の好きな位置にショーを置けるわけではありません。ショーは実際の公演開始時刻へ固定され、その前後の移動も必要です。');
     buffer.writeln('そのため自由時間が十分に見えても、公演時刻へ合わせて一日全体を並べ替えた結果、元のやりたいことが1件でも外れる場合は見送ります。以下の探索履歴で、実際に外れた主軸と追加候補の配置時刻を確認できます。');
@@ -461,8 +461,10 @@ class _MobilePlanReviewLayout extends StatelessWidget {
           if (controller.schedule != null) ...[
             const SizedBox(height: AppSpacing.sm),
             _PlanCoverageAdviceCard(controller: controller),
-            const SizedBox(height: AppSpacing.sm),
-            _PlanQualityCard(controller: controller),
+            if (kDebugMode) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _PlanQualityCard(controller: controller),
+            ],
           ],
           if (controller.lastAdditionImpact != null) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -542,8 +544,10 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                 if (controller.schedule != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _PlanCoverageAdviceCard(controller: controller),
-                  const SizedBox(height: AppSpacing.sm),
-                  _PlanQualityCard(controller: controller),
+                  if (kDebugMode) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    _PlanQualityCard(controller: controller),
+                  ],
                 ],
                 if (controller.lastAdditionImpact != null) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -608,6 +612,39 @@ class _PlanQualityCard extends StatelessWidget {
 
   final ScheduleController controller;
 
+  List<Widget> _buildOutsideParkDebugRows(BuildContext context) {
+    final schedule = controller.schedule;
+    if (schedule == null) return const <Widget>[];
+    final facilityById = {
+      for (final facility in controller.selectedFacilitiesForCurrentPark)
+        facility.id: facility,
+    };
+    final outsideItems = schedule.items.where((item) {
+      final facilityId = item.facilityId;
+      if (facilityId == null) return false;
+      return facilityById[facilityId]?.requiresParkExit ?? false;
+    }).toList(growable: false);
+    if (outsideItems.isEmpty) return const <Widget>[];
+
+    final colors = Theme.of(context).colorScheme;
+    return <Widget>[
+      const SizedBox(height: 8),
+      Text(
+        'DEBUG パーク外予定検証',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      for (final item in outsideItems)
+        Text(
+          '${item.title}: ${item.timeRangeLabel} / 退出・移動・予約・再入園を固定確保 = PASS',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final audit = controller.planQualityAudit;
@@ -640,6 +677,7 @@ class _PlanQualityCard extends StatelessWidget {
             '遅延ストレス +5/+10/+20分：${audit.delay5Safe ? '維持' : '影響'} / ${audit.delay10Safe ? '維持' : '影響'} / ${audit.delay20Safe ? '維持' : '影響'}\n遅延耐性：${audit.robustnessLevel} — ${audit.robustnessMessage}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
+          ..._buildOutsideParkDebugRows(context),
           const SizedBox(height: 4),
           Text(
             'この表示は品質評価です。追加候補の可否は空き時間の単純差し引きではなく、引き続き一日全体の再最適化で判定します。',
@@ -1221,7 +1259,7 @@ class _PlanOverviewCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           const _OverviewInformationRow(
             icon: Icons.edit_calendar_outlined,
-            label: '事前プラン：来園前の追加・再生成・空き時間調整はこの画面で行います。',
+            label: 'プランの内容を確認し、必要なら予定を追加・変更できます。',
           ),
           const SizedBox(height: 7),
           _OverviewInformationRow(
@@ -1237,7 +1275,7 @@ class _PlanOverviewCard extends StatelessWidget {
             const SizedBox(height: 7),
             _OverviewInformationRow(
               icon: Icons.update_outlined,
-              label: '生成日時：${_formatDateTime(schedule.createdAt)}',
+              label: '更新：${_formatDateTime(schedule.createdAt)}',
             ),
           ],
           if (controller.hasStaleSchedule) ...[
@@ -1263,65 +1301,72 @@ class _PlanOverviewCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: controller.canGenerateSchedule
-                  ? onGeneratePressed
-                  : null,
+              onPressed: controller.canGenerateSchedule ? onGeneratePressed : null,
               icon: Icon(
                 schedule == null ? Icons.auto_awesome : Icons.refresh,
                 size: 19,
               ),
-              label: Text(schedule == null ? '仮プランを作る' : '追加した希望から効率よく組み直す'),
+              label: Text(schedule == null ? '仮プランを作る' : '予定を追加・変更して組み直す'),
             ),
           ),
           if (schedule != null) ...[
-            const SizedBox(height: 7),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onExportPressed,
-                icon: const Icon(Icons.text_snippet_outlined, size: 19),
-                label: const Text('プランを文章で出力'),
-              ),
-            ),
-            const SizedBox(height: 7),
-            Row(
+            const SizedBox(height: 6),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.more_horiz, size: 20),
+              title: const Text('その他の操作'),
+              subtitle: const Text('出力・履歴・クリア'),
               children: [
-                Expanded(
+                SizedBox(
+                  width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: controller.canUndo
-                        ? controller.undoScheduleChange
-                        : null,
-                    icon: const Icon(Icons.undo, size: 18),
-                    label: const Text('元に戻す'),
+                    onPressed: onExportPressed,
+                    icon: const Icon(Icons.text_snippet_outlined, size: 19),
+                    label: const Text('プランを文章で出力'),
                   ),
                 ),
-                const SizedBox(width: 7),
-                Expanded(
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: controller.canUndo
+                            ? controller.undoScheduleChange
+                            : null,
+                        icon: const Icon(Icons.undo, size: 18),
+                        label: const Text('元に戻す'),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: controller.canRedo
+                            ? controller.redoScheduleChange
+                            : null,
+                        icon: const Icon(Icons.redo, size: 18),
+                        label: const Text('やり直す'),
+                      ),
+                    ),
+                  ],
+                ),
+                if (controller.historyCount > 0) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    '履歴 ${controller.historyCount}件（最大10件）',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                const SizedBox(height: 7),
+                SizedBox(
+                  width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: controller.canRedo
-                        ? controller.redoScheduleChange
-                        : null,
-                    icon: const Icon(Icons.redo, size: 18),
-                    label: const Text('やり直す'),
+                    onPressed: onClearPressed,
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('生成結果をクリア'),
                   ),
                 ),
               ],
-            ),
-            if (controller.historyCount > 0) ...[
-              const SizedBox(height: 5),
-              Text(
-                '履歴 ${controller.historyCount}件（最大10件）',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-            const SizedBox(height: 7),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onClearPressed,
-                icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text('生成結果をクリア'),
-              ),
             ),
           ],
           if (!controller.canGenerateSchedule) ...[
@@ -1862,15 +1907,15 @@ class _PlanFreeTimeSummaryState extends State<_PlanFreeTimeSummary> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
-          'まず、やりたいことを待ち時間重視で組みました',
+          'このプランの内容を確認してください',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
         ),
         const SizedBox(height: 6),
         Text(
-          '通常待機 ${_planDurationLabel(standbyWaitMinutes)} ・ '
-          '仮プランの空き ${_planDurationLabel(totalMinutes)}',
+          '待ち時間 ${_planDurationLabel(standbyWaitMinutes)} ・ '
+          '自由時間 ${_planDurationLabel(totalMinutes)}',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -1885,8 +1930,8 @@ class _PlanFreeTimeSummaryState extends State<_PlanFreeTimeSummary> {
         ),
         const SizedBox(height: 3),
         Text(
-          'この時間は追加可否の上限ではありません。追加したいものを選ぶと、'
-          '元のやりたいことを維持したまま一日全体を再最適化して判定します。',
+          '内容を変えたい場合は予定を追加・変更できます。'
+          '元のやりたいことは維持したまま一日全体を組み直します。',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -1899,7 +1944,7 @@ class _PlanFreeTimeSummaryState extends State<_PlanFreeTimeSummary> {
             icon: _isLoadingAll
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.explore_outlined),
-            label: Text(_isLoadingAll ? '施設を読み込んでいます…' : '追加したいものを選ぶ'),
+            label: Text(_isLoadingAll ? '施設を読み込んでいます…' : '予定を追加・変更する'),
           ),
         ),
         const SizedBox(height: 6),
@@ -1910,11 +1955,11 @@ class _PlanFreeTimeSummaryState extends State<_PlanFreeTimeSummary> {
                 ? widget.onFinalizeWishes
                 : null,
             icon: const Icon(Icons.check_circle_outline),
-            label: const Text('やりたいことはこれで決定'),
+            label: const Text('この内容で最終プランを作る'),
           ),
         ),
         Text(
-          '追加・削除を終えてから組み方を選びます。ここで初めて、バランス・待ち時間・移動・まとまった自由時間の4択で最終最適化します。',
+          '次に、バランス・待ち時間・移動・まとまった自由時間から組み方を選びます。',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -2675,6 +2720,20 @@ class _ScheduleTimelineItemState extends State<_ScheduleTimelineItem> {
           foregroundColor: const Color(0xFF287A4B),
           backgroundColor: const Color(0xFFE8F5ED),
           borderColor: const Color(0xFFA5D6B7),
+        ),
+      );
+    }
+
+    if (facility.requiresParkExit) {
+      badges.add(
+        _PreferenceBadge(
+          icon: Icons.directions_walk_outlined,
+          label: facility.returnTravelMinutes > 0
+              ? 'パーク外・再入園（往復移動 約${facility.outboundTravelMinutes + facility.returnTravelMinutes}分）'
+              : 'パーク外・再入園',
+          foregroundColor: const Color(0xFF6A3DA1),
+          backgroundColor: const Color(0xFFF2EAFE),
+          borderColor: const Color(0xFFC9AEEF),
         ),
       );
     }

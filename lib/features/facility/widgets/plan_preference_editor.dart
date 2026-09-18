@@ -235,7 +235,7 @@ class PlanPreferenceEditor extends StatelessWidget {
           ],
           if (_effectiveAccessMethod == FacilityAccessMethod.reservation) ...[
             const SizedBox(height: AppSpacing.md),
-            _TenMinuteTimeField(
+            _TimeSettingField(
               key: ValueKey(
                 '${facility.id}_reservation_${preference.reservationTime}',
               ),
@@ -245,6 +245,8 @@ class PlanPreferenceEditor extends StatelessWidget {
               helperText: '予約・プライオリティ・シーティングの確定時刻を10分刻みで設定します。',
               value: preference.reservationTime,
               onChanged: onReservationTimeChanged,
+              minTime: const TimeOfDay(hour: 6, minute: 0),
+              maxTime: const TimeOfDay(hour: 22, minute: 0),
             ),
           ],
           if (preference.accessMethod == FacilityAccessMethod.dpa) ...[
@@ -423,49 +425,6 @@ List<String> _tenMinuteTimes() {
   return values;
 }
 
-class _TenMinuteTimeField extends StatelessWidget {
-  const _TenMinuteTimeField({
-    super.key,
-    required this.label,
-    required this.helperText,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String helperText;
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final values = _tenMinuteTimes();
-    if (value.isNotEmpty && !values.contains(value)) {
-      values.add(value);
-      values.sort();
-    }
-
-    return DropdownButtonFormField<String>(
-      initialValue: values.contains(value) ? value : '',
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: helperText,
-        border: const OutlineInputBorder(),
-        prefixIcon: const Icon(Icons.schedule),
-      ),
-      items: values
-          .map(
-            (time) => DropdownMenuItem(
-              value: time,
-              child: Text(time.isEmpty ? '未設定' : time),
-            ),
-          )
-          .toList(growable: false),
-      onChanged: (selected) => onChanged(selected ?? ''),
-    );
-  }
-}
-
 class _TimeSettingField extends StatelessWidget {
   const _TimeSettingField({
     super.key,
@@ -473,12 +432,16 @@ class _TimeSettingField extends StatelessWidget {
     required this.helperText,
     required this.value,
     required this.onChanged,
+    this.minTime = const TimeOfDay(hour: 9, minute: 0),
+    this.maxTime = const TimeOfDay(hour: 21, minute: 0),
   });
 
   final String label;
   final String helperText;
   final String value;
   final ValueChanged<String> onChanged;
+  final TimeOfDay minTime;
+  final TimeOfDay maxTime;
 
   @override
   Widget build(BuildContext context) {
@@ -509,8 +472,8 @@ class _TimeSettingField extends StatelessWidget {
     final selected = await showScrollTimePicker(
       context: context,
       initialTime: initialTime,
-      minTime: const TimeOfDay(hour: 9, minute: 0),
-      maxTime: const TimeOfDay(hour: 21, minute: 0),
+      minTime: minTime,
+      maxTime: maxTime,
       minuteStep: 10,
       title: label,
       helperText: helperText,

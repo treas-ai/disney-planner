@@ -38,6 +38,7 @@ import '../../data/local/local_performance_schedule_repository.dart';
 import '../../domain/services/official_performance_preference_resolver.dart';
 import '../../domain/services/dpa_auto_allocator.dart';
 import '../../domain/services/free_time_improvement_scoring_service.dart';
+import '../../domain/services/fixed_schedule_conflict_service.dart';
 import '../../domain/services/disney_expert_recommendation_service.dart';
 import '../../domain/services/schedule_engine.dart';
 import '../../domain/services/schedule_validator.dart';
@@ -175,6 +176,8 @@ class ScheduleController extends ChangeNotifier {
   final AppState _appState;
   final DpaAutoAllocator _dpaAutoAllocator = const DpaAutoAllocator();
   final ScheduleValidator _scheduleValidator = const ScheduleValidator();
+  final FixedScheduleConflictService _fixedConflictService =
+      const FixedScheduleConflictService();
   final FreeTimeImprovementScoringService _freeTimeScoringService =
       const FreeTimeImprovementScoringService();
   final PlanCoverageAdviceService _coverageAdviceService =
@@ -223,7 +226,14 @@ class ScheduleController extends ChangeNotifier {
         ? null
         : const PlanQualityAuditService().evaluate(
             current,
-            facilities: _qualityAuditFacilities,
+            facilities: <Facility>[
+              ..._qualityAuditFacilities,
+              ...selectedFacilitiesForCurrentPark.where(
+                (facility) => !_qualityAuditFacilities.any(
+                  (cached) => cached.id == facility.id,
+                ),
+              ),
+            ],
             facilityLocations: _qualityAuditLocations,
             areaConnections: _qualityAuditConnections,
           );
@@ -398,6 +408,7 @@ class ScheduleController extends ChangeNotifier {
       schedule: current,
       settings: _appState.tripSettings,
       preferences: _appState.planPreferences,
+      facilities: requiredFacilitiesForCurrentPark,
     );
   }
 
@@ -441,25 +452,10 @@ class ScheduleController extends ChangeNotifier {
   }
 
   List<String> get fixedTimeConflicts {
-    final byTime = <String, List<String>>{};
-    for (final facility in selectedFacilitiesForCurrentPark) {
-      final preference = _appState.getPreference(facility.id);
-      if (preference == null ||
-          preference.fixedTimeStatus != FixedTimeStatus.confirmed) {
-        continue;
-      }
-      final time = preference.preferredPerformanceTime.trim().isNotEmpty
-          ? preference.preferredPerformanceTime.trim()
-          : preference.reservationTime.trim().isNotEmpty
-          ? preference.reservationTime.trim()
-          : preference.scheduledAccessTime.trim();
-      if (time.isEmpty) continue;
-      byTime.putIfAbsent(time, () => <String>[]).add(facility.name);
-    }
-    return [
-      for (final entry in byTime.entries)
-        if (entry.value.length > 1) '${entry.key}：${entry.value.join('、')}',
-    ];
+    return _fixedConflictService.findConflicts(
+      facilities: selectedFacilitiesForCurrentPark,
+      preferences: _appState.planPreferences,
+    );
   }
 
   Future<void> analyzePlanCoverage() async {
@@ -778,6 +774,17 @@ class ScheduleController extends ChangeNotifier {
         facilities: availableFacilities,
         preferences: selectedPreferences,
       );
+
+      final resolvedFixedConflicts = _fixedConflictService.findConflicts(
+        facilities: availableFacilities,
+        preferences: preferences,
+      );
+      if (resolvedFixedConflicts.isNotEmpty) {
+        errorMessage =
+            '固定予定が競合しています。両方を同時には実行できません。\n'
+            '${resolvedFixedConflicts.join('\n')}';
+        return;
+      }
 
       for (final preference in preferences) {
         final current = _appState.getPreference(preference.facilityId);
@@ -1138,6 +1145,25 @@ class ScheduleController extends ChangeNotifier {
       if (optionalIds.isEmpty) _optionalRejectionReasons = const <String, String>{};
       _optionalOptimizationTrace = List<String>.unmodifiable(trace);
       final generatedSchedule = bestSchedule;
+
+      final missingRequiredNames = <String>[];
+      for (final entry in requiredCounts.entries) {
+        final scheduledCount = generatedSchedule.items
+            .where((item) => item.facilityId == entry.key)
+            .length;
+        if (scheduledCount >= entry.value) continue;
+        final facility = _appState.selectedFacilities
+            .where((candidate) => candidate.id == entry.key)
+            .firstOrNull;
+        final missingCount = entry.value - scheduledCount;
+        final name = facility?.name ?? entry.key;
+        missingRequiredNames.add(
+          missingCount == 1 ? name : '$name x$missingCount',
+        );
+      }
+      // Missing flexible wishes are not a physical contradiction. Keep the
+      // best feasible schedule and let ScheduleValidator surface them as
+      // warnings. Fixed-vs-fixed conflicts are rejected earlier.
 
       _setGenerationStatus('完成したプランを表示しています…');
       _appState.updateDaySchedule(generatedSchedule);

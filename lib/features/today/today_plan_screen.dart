@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/state/app_state.dart';
 import '../../app/state/app_state_scope.dart';
@@ -289,7 +291,10 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
           action: SnackBarAction(
             label: '残りを再最適化',
             onPressed: () {
-              _createRecalculationProposal();
+              _createRecalculationProposal(
+                verificationAction: 'wait_update',
+                verificationDetail: '${facility.name}: $updatedWaitMinutes min',
+              );
             },
           ),
         ),
@@ -298,10 +303,17 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
 
   Future<bool> _previewAndApplyRecalculation({
     String successMessage = '再計算した予定を反映しました。',
+    int? breakDurationMinutes,
+    String verificationAction = 'recalculate',
+    String? verificationDetail,
   }) async {
     final controller = _recalculationController;
     if (controller == null) return false;
-    final result = await controller.createProposal();
+    final result = await controller.createProposal(
+      breakDurationMinutes: breakDurationMinutes,
+      verificationAction: verificationAction,
+      verificationDetail: verificationDetail,
+    );
     if (!mounted || result == null) return false;
     final apply = await showScheduleRecalculationPreviewSheet(
       context: context,
@@ -311,7 +323,15 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     if (apply) {
       controller.applyProposal();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
+        SnackBar(
+          content: Text(successMessage),
+          action: !kDebugMode || controller.verificationReport == null
+              ? null
+              : SnackBarAction(
+                  label: '検証レポートをコピー',
+                  onPressed: () => _copyVerificationReport(controller),
+                ),
+        ),
       );
       return true;
     }
@@ -319,9 +339,35 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     return false;
   }
 
-  Future<void> _createRecalculationProposal() async {
+  Future<void> _takeBreak() async {
+    final liveController = _liveController;
+    if (liveController == null || !liveController.scheduleMatchesCurrentPark) {
+      return;
+    }
+
+    final duration = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheetContext) => const _TodayBreakDurationSheet(),
+    );
+    if (!mounted || duration == null) return;
+
+    await _previewAndApplyRecalculation(
+      breakDurationMinutes: duration,
+      verificationAction: 'break',
+      verificationDetail: '$duration min rest',
+      successMessage: '$duration分の休憩を追加し、残り予定を再最適化しました。',
+    );
+  }
+
+  Future<void> _createRecalculationProposal({
+    String verificationAction = 'recalculate',
+    String? verificationDetail,
+  }) async {
     await _previewAndApplyRecalculation(
       successMessage: '残り予定を再最適化しました。',
+      verificationAction: verificationAction,
+      verificationDetail: verificationDetail,
     );
   }
 
@@ -363,6 +409,8 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     controller.suspendFacility(facility.id);
     final applied = await _previewAndApplyRecalculation(
       successMessage: '${facility.name}を保留し、残り予定を再最適化しました。',
+      verificationAction: 'facility_suspend',
+      verificationDetail: facility.name,
     );
     if (!applied) {
       controller.resumeFacility(facility.id);
@@ -394,6 +442,8 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
     controller.resumeFacility(facility.id);
     final applied = await _previewAndApplyRecalculation(
       successMessage: '${facility.name}を再開扱いに戻し、残り予定を再最適化しました。',
+      verificationAction: 'facility_resume',
+      verificationDetail: facility.name,
     );
     if (!applied) {
       controller.suspendFacility(facility.id);
@@ -421,9 +471,30 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
       }
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('直前のスケジュールへ戻しました。')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('直前のスケジュールへ戻しました。'),
+        action: !kDebugMode || controller.verificationReport == null
+            ? null
+            : SnackBarAction(
+                label: '検証レポートをコピー',
+                onPressed: () => _copyVerificationReport(controller),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _copyVerificationReport(
+    ScheduleRecalculationController controller,
+  ) async {
+    if (!kDebugMode) return;
+    final report = controller.verificationReport;
+    if (report == null || report.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: report));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('検証レポートをコピーしました。ChatGPTへ貼り付けてください。')),
+    );
   }
 
   Future<void> _showAddPerformance() async {
@@ -783,6 +854,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
               onCurrentSchedulePressed: _scrollToCurrentSchedule,
               onWaitTimeEditPressed: _openWaitTimeEditor,
               onRecalculatePressed: _createRecalculationProposal,
+              onTakeBreakPressed: _takeBreak,
               onAddPerformancePressed: _showAddPerformance,
               onUndoPressed: _undoRecalculation,
               onSuspendFacilityPressed: _suspendFacilityForToday,
@@ -803,6 +875,7 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
             onCurrentSchedulePressed: _scrollToCurrentSchedule,
             onWaitTimeEditPressed: _openWaitTimeEditor,
             onRecalculatePressed: _createRecalculationProposal,
+            onTakeBreakPressed: _takeBreak,
             onAddPerformancePressed: _showAddPerformance,
             onUndoPressed: _undoRecalculation,
             onSuspendFacilityPressed: _suspendFacilityForToday,
@@ -828,6 +901,7 @@ class _MobileTodayLayout extends StatelessWidget {
     required this.onCurrentSchedulePressed,
     required this.onWaitTimeEditPressed,
     required this.onRecalculatePressed,
+    required this.onTakeBreakPressed,
     required this.onAddPerformancePressed,
     required this.onUndoPressed,
     required this.onSuspendFacilityPressed,
@@ -847,6 +921,7 @@ class _MobileTodayLayout extends StatelessWidget {
   final VoidCallback onCurrentSchedulePressed;
   final ValueChanged<Facility> onWaitTimeEditPressed;
   final VoidCallback onRecalculatePressed;
+  final VoidCallback onTakeBreakPressed;
   final VoidCallback onAddPerformancePressed;
   final VoidCallback onUndoPressed;
   final Future<void> Function(Facility) onSuspendFacilityPressed;
@@ -855,6 +930,7 @@ class _MobileTodayLayout extends StatelessWidget {
   final VoidCallback onAccessResultsPressed;
   final bool isCalculating;
   final bool canUndo;
+
 
   @override
   Widget build(BuildContext context) {
@@ -874,6 +950,7 @@ class _MobileTodayLayout extends StatelessWidget {
             onCurrentSchedulePressed: onCurrentSchedulePressed,
             onWaitTimeEditPressed: onWaitTimeEditPressed,
             onRecalculatePressed: onRecalculatePressed,
+            onTakeBreakPressed: onTakeBreakPressed,
             onAddPerformancePressed: onAddPerformancePressed,
             onUndoPressed: onUndoPressed,
             onSimulationPressed: onSimulationPressed,
@@ -1017,6 +1094,7 @@ class _DesktopTodayLayout extends StatelessWidget {
     required this.onCurrentSchedulePressed,
     required this.onWaitTimeEditPressed,
     required this.onRecalculatePressed,
+    required this.onTakeBreakPressed,
     required this.onAddPerformancePressed,
     required this.onUndoPressed,
     required this.onSuspendFacilityPressed,
@@ -1036,6 +1114,7 @@ class _DesktopTodayLayout extends StatelessWidget {
   final VoidCallback onCurrentSchedulePressed;
   final ValueChanged<Facility> onWaitTimeEditPressed;
   final VoidCallback onRecalculatePressed;
+  final VoidCallback onTakeBreakPressed;
   final VoidCallback onAddPerformancePressed;
   final VoidCallback onUndoPressed;
   final Future<void> Function(Facility) onSuspendFacilityPressed;
@@ -1062,6 +1141,7 @@ class _DesktopTodayLayout extends StatelessWidget {
                   onCurrentSchedulePressed: onCurrentSchedulePressed,
                   onWaitTimeEditPressed: onWaitTimeEditPressed,
                   onRecalculatePressed: onRecalculatePressed,
+                  onTakeBreakPressed: onTakeBreakPressed,
                   onAddPerformancePressed: onAddPerformancePressed,
                   onUndoPressed: onUndoPressed,
                   onSimulationPressed: onSimulationPressed,
@@ -1286,6 +1366,7 @@ class _LiveDashboardCard extends StatelessWidget {
     required this.onCurrentSchedulePressed,
     required this.onWaitTimeEditPressed,
     required this.onRecalculatePressed,
+    required this.onTakeBreakPressed,
     required this.onAddPerformancePressed,
     required this.onUndoPressed,
     required this.onSimulationPressed,
@@ -1299,6 +1380,7 @@ class _LiveDashboardCard extends StatelessWidget {
   final VoidCallback onCurrentSchedulePressed;
   final ValueChanged<Facility> onWaitTimeEditPressed;
   final VoidCallback onRecalculatePressed;
+  final VoidCallback onTakeBreakPressed;
   final VoidCallback onAddPerformancePressed;
   final VoidCallback onUndoPressed;
   final VoidCallback onSimulationPressed;
@@ -1306,6 +1388,72 @@ class _LiveDashboardCard extends StatelessWidget {
   final bool isCalculating;
   final bool canUndo;
 
+  Future<void> _showPlanChangeSheet(BuildContext context) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            AppSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '予定を変更',
+                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '今の状況に合うものを選んでください。これからの予定だけを組み直します。',
+                style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ListTile(
+                leading: const Icon(Icons.chair_alt_outlined),
+                title: const Text('ちょっと一休み'),
+                subtitle: const Text('休憩時間を確保して、その後の予定を組み直す'),
+                onTap: () => Navigator.of(sheetContext).pop('break'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.auto_fix_high_outlined),
+                title: const Text('今の状況で予定を組み直す'),
+                subtitle: const Text('待ち時間や運営状況を反映して、残りの予定を見直す'),
+                onTap: () => Navigator.of(sheetContext).pop('recalculate'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_circle_outline),
+                title: const Text('ショー・パレードを追加'),
+                subtitle: const Text('今日の予定に公演を追加して全体を調整する'),
+                enabled: !simulationEnabled,
+                onTap: simulationEnabled
+                    ? null
+                    : () => Navigator.of(sheetContext).pop('performance'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!context.mounted || action == null) return;
+    if (action == 'break') {
+      onTakeBreakPressed();
+    } else if (action == 'recalculate') {
+      onRecalculatePressed();
+    } else if (action == 'performance') {
+      onAddPerformancePressed();
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -1384,58 +1532,67 @@ class _LiveDashboardCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          InkWell(
-            onTap: onSimulationPressed,
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: simulationEnabled
-                    ? const Color(0xFFFFF3E0)
-                    : colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
+          if (kDebugMode) ...[
+            const SizedBox(height: AppSpacing.sm),
+            InkWell(
+              onTap: onSimulationPressed,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
                   color: simulationEnabled
-                      ? const Color(0xFFFFB74D)
-                      : colorScheme.outlineVariant,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.science_outlined,
-                    size: 18,
+                      ? const Color(0xFFFFF3E0)
+                      : colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
                     color: simulationEnabled
-                        ? const Color(0xFF8A4B08)
-                        : colorScheme.primary,
+                        ? const Color(0xFFFFB74D)
+                        : colorScheme.outlineVariant,
                   ),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: Text(
-                      simulationEnabled
-                          ? 'シミュレーション中 ${_formatTime(snapshot.now)}'
-                          : '当日シミュレーション',
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.science_outlined,
+                      size: 18,
+                      color: simulationEnabled
+                          ? const Color(0xFF8A4B08)
+                          : colorScheme.primary,
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        simulationEnabled
+                            ? '開発用シミュレーション中 ${_formatTime(snapshot.now)}'
+                            : '開発用シミュレーション',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                    ),
+                    Text(
+                      simulationEnabled ? '設定' : '試す',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w800,
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w700,
                           ),
                     ),
-                  ),
-                  Text(
-                    simulationEnabled ? '設定' : '試す',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(width: 2),
-                  const Icon(Icons.chevron_right, size: 18),
-                ],
+                    const SizedBox(width: 2),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: AppSpacing.md),
+          Text(
+            snapshot.isLiveMode ? 'いまやること' : '予定の確認',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           _LiveMainStatusPanel(
             snapshot: snapshot,
             onWaitTimeEditPressed: onWaitTimeEditPressed,
@@ -1444,43 +1601,45 @@ class _LiveDashboardCard extends StatelessWidget {
               snapshot.status != LiveScheduleStatus.parkMismatch) ...[
             const SizedBox(height: AppSpacing.md),
             if (snapshot.isLiveMode) ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
                 children: [
-                  FilledButton.icon(
-                    onPressed: isCalculating ? null : onRecalculatePressed,
-                    icon: isCalculating
-                        ? const SizedBox(
-                            width: 17,
-                            height: 17,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.auto_fix_high_outlined, size: 18),
-                    label: Text(isCalculating ? '再最適化中...' : '残りを再最適化'),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: isCalculating
+                          ? null
+                          : () => _showPlanChangeSheet(context),
+                      icon: isCalculating
+                          ? const SizedBox(
+                              width: 17,
+                              height: 17,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.edit_calendar_outlined, size: 18),
+                      label: Text(isCalculating ? '予定を調整中...' : '予定を変更'),
+                    ),
                   ),
-                  OutlinedButton.icon(
-                    onPressed:
-                        simulationEnabled ? null : onAddPerformancePressed,
-                    icon: const Icon(Icons.add_circle_outline, size: 18),
-                    label: const Text('ショー・パレードを追加'),
-                  ),
+                  const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: onCurrentSchedulePressed,
-                    icon: const Icon(Icons.my_location_outlined, size: 18),
-                    label: const Text('今の予定へ'),
+                    icon: const Icon(Icons.view_timeline_outlined, size: 18),
+                    label: const Text('予定を見る'),
                   ),
-                  if (canUndo)
-                    TextButton.icon(
-                      onPressed: onUndoPressed,
-                      icon: const Icon(Icons.undo, size: 18),
-                      label: const Text('元に戻す'),
-                    ),
                 ],
               ),
-              const SizedBox(height: 6),
+              if (canUndo) ...[
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: onUndoPressed,
+                    icon: const Icon(Icons.undo, size: 18),
+                    label: const Text('直前の変更を元に戻す'),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 4),
               Text(
-                '予定の遅れ・待ち時間変化・一時運営中止を反映し、終了済みや固定予定を維持したまま未来部分だけ見直します。',
+                '予定が変わったら「予定を変更」から選べます。完了済みや時間固定の予定は守ります。',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -1489,24 +1648,28 @@ class _LiveDashboardCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: _TodayMetricTile(
-                      label: '終了',
-                      value: '${snapshot.completedItemCount}件',
-                      icon: Icons.check_circle_outline,
+                    child: Text(
+                      '今日の進み具合',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _TodayMetricTile(
-                      label: '残り',
-                      value: '$remaining件',
-                      icon: Icons.route_outlined,
-                    ),
+                  Text(
+                    '終了 ${snapshot.completedItemCount}件・残り $remaining件',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                 ],
               ),
-              const SizedBox(height: 9),
-              _TodayProgressSummary(snapshot: snapshot),
+              const SizedBox(height: 7),
+              LinearProgressIndicator(
+                value: snapshot.progress,
+                minHeight: 7,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ] else if (snapshot.isPostVisit) ...[
               const _LiveMessagePanel(
                 icon: Icons.history_outlined,
@@ -1515,6 +1678,94 @@ class _LiveDashboardCard extends StatelessWidget {
               ),
             ],
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayBreakDurationSheet extends StatefulWidget {
+  const _TodayBreakDurationSheet();
+
+  @override
+  State<_TodayBreakDurationSheet> createState() =>
+      _TodayBreakDurationSheetState();
+}
+
+class _TodayBreakDurationSheetState extends State<_TodayBreakDurationSheet> {
+  final TextEditingController _customController = TextEditingController();
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16,
+          16 + MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('ちょっと一休み',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  )),
+          const SizedBox(height: 6),
+          const Text('休憩を固定して、終了済み・進行中・取得済みの予定を守りながら残りを組み直します。'),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final minutes in const [10, 20, 30])
+                FilledButton.tonal(
+                  onPressed: () => Navigator.pop(context, minutes),
+                  child: Text('$minutes分'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _customController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: '時間を指定',
+                    hintText: '例: 45',
+                    suffixText: '分',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () {
+                  final minutes = int.tryParse(_customController.text.trim());
+                  if (minutes == null || minutes < 1 || minutes > 180) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('1〜180分で入力してください。')),
+                    );
+                    return;
+                  }
+                  Navigator.pop(context, minutes);
+                },
+                child: const Text('決定'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('キャンセル'),
+            ),
+          ),
         ],
       ),
     );
@@ -1641,49 +1892,6 @@ class _TodayAddPerformanceSheet extends StatelessWidget {
                       : () => Navigator.of(context).pop(choice),
                 );
               },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TodayMetricTile extends StatelessWidget {
-  const _TodayMetricTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 17, color: colorScheme.primary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -2263,44 +2471,6 @@ class _WaitTimeInformationRow extends StatelessWidget {
     }
 
     return waitTime.label;
-  }
-}
-
-class _TodayProgressSummary extends StatelessWidget {
-  const _TodayProgressSummary({required this.snapshot});
-
-  final LiveScheduleSnapshot snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '進行状況',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            Text(
-              '${snapshot.completedItemCount}'
-              ' / ${snapshot.totalItemCount}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        const SizedBox(height: 7),
-        LinearProgressIndicator(
-          value: snapshot.progress,
-          minHeight: 7,
-          borderRadius: BorderRadius.circular(4),
-        ),
-      ],
-    );
   }
 }
 

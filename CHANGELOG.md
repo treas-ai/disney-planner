@@ -1,3 +1,52 @@
+
+## v7.6.0 - flexible wish warning after park-exit hard gate (r15)
+
+- Keep fixed-vs-fixed physical conflicts as generation-stopping errors.
+- Treat flexible desired facilities that do not fit as warnings instead of blocking the best feasible plan.
+- Keep omitted wishes in the user's wish list and report them as "今回は入りませんでした".
+- Make the debug required-wish count dynamic instead of the stale fixed `10/10` wording.
+- Add a validator regression test proving a missing desired facility is a warning, not an error.
+
+## v7.6.0 r14a - analyze hotfix
+
+- Remove an unreachable null guard after r14 final schedule selection; behavior is unchanged.
+
+## v7.6.0 r14 - park-exit final hard gate
+
+- Re-check fixed-time conflicts after official performance times are resolved.
+- Do not publish a generated schedule when required wishes are missing.
+- Keep plan-quality movement audit facility metadata available via selected-facility fallback.
+- Chef Mickey park-exit reservation remains anchored to reservation time while its full outbound/meal/return interval is protected.
+
+## v7.6.0 - Park exit/re-entry conflict guard r13
+
+- パーク外予約の予約時刻と、往路移動を含む外出ブロック開始時刻を検証上も分離。
+- 16:00シェフ・ミッキーは予約16:00を維持しつつ、15:25〜18:05をパーク内予定禁止の外出区間として扱う。
+- 固定予定の競合判定を「同じ開始時刻」だけでなく、移動・体験時間を含む時間区間の重なり判定へ拡張。
+- 外出区間と固定パレード等が重なる場合、プラン生成前に「両立できません」と停止する。
+- プラン検証で未配置の主軸（やりたいこと）を具体名付きエラーとして表示する。
+- シェフ・ミッキー16:00と16:15固定公演の競合を代表回帰テスト化。
+
+## v7.6.0 - Common time wheel r12
+
+- 時刻入力を「時」「分」の独立スクロール式共通Time Wheel Pickerへ変更。
+- 通常UIの時は06〜22、分は00/10/20/30/40/50。内部時刻モデルは制限しない。
+
+## v7.6.0 - Chef Mickey park exit/re-entry r11
+
+- シェフ・ミッキー等のホテルレストラン予約を、パーク退出・往路移動・食事・復路移動・再入園まで含む固定ブロックとして回帰検証。
+- パーク外施設に「パーク外・再入園」バッジと往復移動時間を表示。
+- Debugのプラン品質チェックにパーク外予定Gateを追加。
+- 16:00シェフ・ミッキー予約を現行マスタ値（往路35分 + 食事90分 + 復路35分）で15:25〜18:05固定、区間内のパーク内予定0件を検証するテストを追加。
+- 最適化重み、10/10主軸ガード、4モード、Todayロジックは変更なし。
+
+## v7.6.0 - Plan review UX hierarchy cleanup r10
+
+- プラン確認画面の主導線を「内容確認 → 予定を追加・変更 → 最終プラン作成」に整理。
+- 左側の出力・Undo/Redo・クリアを「その他の操作」に収納し、タイムラインを主役にした。
+- プラン品質チェックは開発時だけ表示し、通常画面の情報量を削減。
+- 生成ロジック、10/10主軸ガード、4モード、追加候補探索、Today機能は変更なし。
+
 ## v7.5.22 compact-schedule-r5 (development)
 
 - 4-mode probeで `compactSchedule` が balanced より自由時間を分断する逆最適化を確認。
@@ -1824,3 +1873,65 @@ dart run tool/audit_wish_data.dart
 - Optional-addition debug output uses concrete rejection evidence from combination search.
 - Robustness minimum-gap evaluation excludes entry/exit boundaries to avoid false zero-minute warnings.
 - Four-mode verification compares exported Gate metrics after each explicitly generated mode; opening export does not trigger extra Beam Searches.
+
+### v7.6.0 - live break replanning foundation
+- Added a Today action for a 10/20/30-minute or custom rest.
+- Treats the requested rest as a fixed live replanning anchor.
+- Preserves completed/current/protected items and previews changes before apply.
+- Reuses the existing one-step schedule undo after applying a break replan.
+- Added regression coverage for break insertion.
+
+### v7.6.0 development follow-up
+- Cleared analyzer style findings introduced by the Today break patch.
+- Attached Settings scrollbars to the PrimaryScrollController on Windows.
+- Updated verify.ps1 to remove project-root ZIP archives after tests and before Windows launch.
+
+### v7.6.0 - Today replan verification report
+- Added a copyable verification report after applying a Today replan and after Undo.
+- The report records action type, current time, before/after item counts, exit time, break block, overlap count, Undo availability, and Undo restoration result.
+- The post-Undo report is intended to be pasted directly into ChatGPT for manual acceptance checks without multiple screenshots.
+
+### v7.6.0 - shared debug verification foundation
+- Added a reusable debug verification report/gate model for runtime feature checks.
+- Today replanning now records action-specific debug context for rest, wait updates, facility suspension/resume, and general recalculation.
+- Verification copy actions are exposed only in debug builds; release builds do not show the development reporting UI.
+- Critical gates remain CHECK until Undo is actually run and restoration is confirmed.
+
+### v7.6.0 - Today UX hierarchy cleanup
+- Simplified the live Today dashboard around two primary actions: current schedule and plan changes.
+- Grouped rest, remaining-plan rebuild, and show/parade addition under a single user-facing plan-change sheet.
+- Reworded replanning guidance in user-facing language while preserving the existing scheduling logic.
+- Moved the live simulation entry point behind `kDebugMode` and labeled it as a development tool.
+- Kept Undo visible as a clear recovery action after a schedule change.
+
+### v7.6.0 - Today UX focus pass
+- Added an explicit "what to do now" heading above the live status card so the primary guidance is visually dominant.
+- Renamed the timeline jump action to the simpler user-facing "view schedule" wording.
+- Reduced duplicate dashboard counters into one compact progress summary while keeping the detailed timeline below.
+- Added export_source.ps1 so the current working source can be packaged for development review without build, Git, ephemeral, or patch ZIP files.
+
+### v7.6.0 - two-wheel time picker UX
+- Replaced the long combined time list with independent hour and minute scroll wheels in the shared time picker.
+- Reservation time selection now uses the shared wheel picker with a normal UI range of 06:00-22:00 and 10-minute increments.
+- Kept each caller's internal min/max constraints intact so non-reservation time settings continue to enforce their existing valid ranges.
+
+## v7.6.0 - beginner/tutorial mode foundation (r16)
+- Added a first-run tutorial that explains the planner in user-facing terms instead of implementation terminology.
+- Added a final choice between `はじめてでもおまかせ` and `細かく自分で設定` and persisted that choice.
+- Beginner mode now adds a Home guide card that surfaces only the next action needed to progress through trip settings, wishes, candidates, plan generation, and Today guidance.
+- Existing users remain on the current detailed experience unless they rerun the initial guide and explicitly choose beginner mode.
+- Scheduling, optimization, fixed-event, park-exit/re-entry, and Today replanning logic are unchanged.
+## v7.6.0 r17 - visit-day reset and beginner home cleanup
+- Allow the final registered visit day to be deleted after confirmation; the app returns to a clean "visit date unset" state while keeping one internal blank day slot.
+- Deleting a visit day clears that day's wishes, candidates, reservation/access state, generated schedule, and schedule history.
+- Beginner home now uses one guide card instead of duplicating the normal progress card, starts from visit-date setup when no date is configured, and shows a 1/5-5/5 step label.
+- Home hero shows a preparation message before a visit date is configured.
+- Added regression coverage for resetting the last visit day.
+
+
+## v7.6.0 beginner setup r18
+- Treat the post-delete blank slot as an unconfigured trip in the UI instead of a visible "unset visit day" chip.
+- Reset park selection after deleting the last visit day so Disneyland/DisneySea must be chosen explicitly.
+- Reset attraction DPA default to "do not use" for a fresh/unconfigured trip.
+- Hide fabricated park/time/party badges on Home until visit date and park are configured.
+- Reuse the internal blank day when adding the first new visit date instead of creating a second day.

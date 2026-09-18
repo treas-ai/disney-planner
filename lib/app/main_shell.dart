@@ -14,7 +14,9 @@ import 'state/app_state.dart';
 import 'state/app_state_scope.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  const MainShell({super.key, this.beginnerMode = false});
+
+  final bool beginnerMode;
 
   @override
   State<MainShell> createState() {
@@ -344,6 +346,7 @@ class _MainShellState extends State<MainShell> {
       index: _currentIndex,
       children: [
         HomeScreen(
+          beginnerMode: widget.beginnerMode,
           onWishListPressed: _goToWishList,
           onEditPlanPressed: _goToEditor,
           onReviewPlanPressed: _goToReview,

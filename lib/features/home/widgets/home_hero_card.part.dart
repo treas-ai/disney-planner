@@ -15,8 +15,11 @@ class _HomeHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    final hasVisitDate = settings.visitDate != null;
+    final hasPark = settings.parkId == 'tokyo_disneyland' ||
+        settings.parkId == 'tokyo_disneysea';
     final scheduleMatchesPark =
-        schedule != null && schedule!.parkId == settings.parkId;
+        hasVisitDate && hasPark && schedule != null && schedule!.parkId == settings.parkId;
 
     return Material(
       color: Colors.transparent,
@@ -65,7 +68,9 @@ class _HomeHeroCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'AIと一緒に計画中',
+                                settings.visitDate == null
+                                    ? '旅行の準備をはじめましょう'
+                                    : 'AIと一緒に計画中',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: colorScheme.onPrimaryContainer,
@@ -73,7 +78,11 @@ class _HomeHeroCard extends StatelessWidget {
                                     ),
                               ),
                               Text(
-                                _parkName(settings.parkId),
+                                !hasVisitDate
+                                    ? '来園日未設定'
+                                    : !hasPark
+                                        ? 'パーク未選択'
+                                        : _parkName(settings.parkId),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.titleLarge
@@ -94,7 +103,8 @@ class _HomeHeroCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    Wrap(
+                    if (hasVisitDate && hasPark)
+                      Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [

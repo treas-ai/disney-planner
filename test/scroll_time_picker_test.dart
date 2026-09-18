@@ -27,4 +27,33 @@ void main() {
     expect(values[1], const TimeOfDay(hour: 4, minute: 5));
     expect(values.last, const TimeOfDay(hour: 10, minute: 0));
   });
+
+  test('予約時刻向けに6時から22時の時ホイールを生成する', () {
+    final hours = buildScrollHourOptions(
+      minTime: const TimeOfDay(hour: 6, minute: 0),
+      maxTime: const TimeOfDay(hour: 22, minute: 0),
+    );
+
+    expect(hours.first, 6);
+    expect(hours.last, 22);
+    expect(hours.length, 17);
+  });
+
+  test('10分刻みの分ホイールを生成し上限時刻を守る', () {
+    final normalMinutes = buildScrollMinuteOptionsForHour(
+      hour: 16,
+      minTime: const TimeOfDay(hour: 6, minute: 0),
+      maxTime: const TimeOfDay(hour: 22, minute: 0),
+      minuteStep: 10,
+    );
+    final closingMinutes = buildScrollMinuteOptionsForHour(
+      hour: 22,
+      minTime: const TimeOfDay(hour: 6, minute: 0),
+      maxTime: const TimeOfDay(hour: 22, minute: 0),
+      minuteStep: 10,
+    );
+
+    expect(normalMinutes, [0, 10, 20, 30, 40, 50]);
+    expect(closingMinutes, [0]);
+  });
 }

@@ -27,6 +27,7 @@ class ScheduleRecalculationRequest {
     this.waitProfiles = const <TimeBandWaitProfile>[],
     this.releasedFacilityIds = const <String>{},
     this.todayAccessResults = const <TodayAccessResult>[],
+    this.breakDurationMinutes,
   });
 
   final DateTime now;
@@ -46,4 +47,8 @@ class ScheduleRecalculationRequest {
 
   /// 当日に実際に取得・当選した結果。事前の固定予定と区別して再計算する。
   final List<TodayAccessResult> todayAccessResults;
+
+  /// Optional user-requested rest inserted into the live plan.
+  /// The service treats it as a fixed anchor and replans only around it.
+  final int? breakDurationMinutes;
 }

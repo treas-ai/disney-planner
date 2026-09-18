@@ -504,7 +504,10 @@ class AppState extends ChangeNotifier {
 
       debugPrintStack(stackTrace: stackTrace);
 
-      tripSettings = TripSettings.initial();
+      tripSettings = TripSettings.initial().copyWith(
+        parkId: '',
+        attractionDpaMaxUses: 0,
+      );
       _selectedFacilities.clear();
       _preferencesByFacilityId.clear();
       _wishStatesByItemId.clear();
@@ -622,12 +625,39 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> removeVisitDay(String dayId) async {
-    if (_visitDayOrder.length <= 1 || !_visitDayStates.containsKey(dayId)) return;
+    if (!_visitDayStates.containsKey(dayId) && dayId != _activeVisitDayId) return;
+
+    if (_visitDayOrder.length <= 1) {
+      // Keep one internal blank slot so the rest of the app can continue to use
+      // an active day id. User-facing state is a genuinely unconfigured trip.
+      tripSettings = TripSettings.initial().copyWith(
+        parkId: '',
+        attractionDpaMaxUses: 0,
+      );
+      _selectedFacilities.clear();
+      _optionalAdditionFacilityIds.clear();
+      _preferencesByFacilityId.clear();
+      _wishStatesByItemId.clear();
+      _liveSuspendedFacilityIds.clear();
+      _todayAccessResultsByKey.clear();
+      daySchedule = null;
+      _scheduleUndoHistory.clear();
+      _scheduleRedoHistory.clear();
+      _visitDayOrder
+        ..clear()
+        ..add('day-1');
+      _visitDayStates.clear();
+      _activeVisitDayId = 'day-1';
+      _saveAndNotify();
+      return;
+    }
+
     final index = _visitDayOrder.indexOf(dayId);
     _visitDayOrder.remove(dayId);
     _visitDayStates.remove(dayId);
     if (_activeVisitDayId == dayId) {
-      _activeVisitDayId = _visitDayOrder[index.clamp(0, _visitDayOrder.length - 1).toInt()];
+      _activeVisitDayId =
+          _visitDayOrder[index.clamp(0, _visitDayOrder.length - 1).toInt()];
       await _restoreDayState(_visitDayStates[_activeVisitDayId]!);
     }
     _saveAndNotify();
