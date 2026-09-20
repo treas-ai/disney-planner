@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-20T02:26:11+09:00
+Generated: 2026-09-21T02:39:01+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 33
-- Profile source observations: 21437
+- Profile source observations: 22181
 
 ### 1. Profile missing facilities
 
@@ -19,7 +19,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 2. Time-band coverage
 
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: no usable samples in 夕食前
-- `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: no usable samples in 昼前, 閉園前
+- `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: no usable samples in 閉園前
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
 - `tdl_toontown_donalds_boat` — ドナルドのボート: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
 - `tdl_toontown_goofys_paint_and_play_house` — グーフィーのペイント＆プレイハウス: no usable samples in 閉園前
@@ -34,7 +34,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 昼過ぎ = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: ショー前後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
-- `tdl_fantasyland_cinderella_fairy_tale_hall` — シンデレラのフェアリーテイル・ホール: 閉園前 = 2 samples
+- `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 昼前 = 1 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 2 samples
@@ -54,7 +54,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 29173
+- Profile source observations: 30170
 
 ### 1. Profile missing facilities
 
@@ -69,7 +69,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 2b. Low-confidence time bands (<3 samples)
 
 - `tds_ac_a_004` — マジックランプシアター: 夕食前 = 2 samples
-- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 昼前 = 1 samples
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
 - `tds_pd_a_002` — ニモ＆フレンズ・シーライダー: 閉園前 = 1 samples
 
