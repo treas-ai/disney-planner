@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-09-21T02:39:01+09:00
+Generated: 2026-09-22T04:43:04+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 33
-- Profile source observations: 22181
+- Profile source observations: 22759
 
 ### 1. Profile missing facilities
 
@@ -31,7 +31,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 2b. Low-confidence time bands (<3 samples)
 
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 昼前 = 2 samples
-- `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 昼過ぎ = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: ショー前後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: 昼前 = 1 samples
@@ -54,7 +53,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 30170
+- Profile source observations: 31047
 
 ### 1. Profile missing facilities
 
