@@ -205,4 +205,45 @@ void main() {
     );
   });
 
+  test('must-do selected public performance is reserved as a hard anchor', () {
+    final settings = TripSettings.initial().copyWith(
+      parkId: 'tokyo_disneyland',
+      visitDateIso: '2026-09-26T00:00:00.000',
+      entryTimeHour: 9,
+      entryTimeMinute: 0,
+      exitTimeHour: 21,
+      exitTimeMinute: 0,
+      wantsBreakfast: false,
+      wantsLunch: false,
+      wantsDinner: false,
+    );
+
+    final schedule = const ScheduleEngine().generate(
+      settings: settings,
+      facilities: const [],
+      preferences: const [],
+      officialPerformanceOpportunities: const [
+        OfficialPerformanceOpportunity(
+          facilityId: 'villains',
+          name: 'ザ・ヴィランズ・ハロウィーン',
+          startMinutes: 16 * 60 + 35,
+          endMinutes: 17 * 60 + 20,
+          isSelected: true,
+          isMustDo: true,
+        ),
+      ],
+    );
+
+    final performance = schedule.items.singleWhere(
+      (item) => item.facilityId == 'villains',
+    );
+    expect(performance.startHour, 16);
+    expect(performance.startMinute, 35);
+    expect(performance.endHour, 17);
+    expect(performance.endMinute, 20);
+    expect(performance.reason, contains('絶対行きたい'));
+  });
+
 }
+
+// r28 regression coverage is kept in the main group above in production runs.

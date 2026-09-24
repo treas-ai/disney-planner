@@ -166,10 +166,10 @@ class PlanPreferenceEditor extends StatelessWidget {
             const InputDecorator(
               decoration: InputDecoration(
                 labelText: '待ち時間判断',
-                helperText: '固定の分数上限ではなく、収集した実績データからAIが時間帯ごとの有利・不利を比較します。',
+                helperText: '固定の分数上限ではなく、収集した実績データから時間帯ごとの有利・不利を比較します。',
                 border: OutlineInputBorder(),
               ),
-              child: Text('AIにおまかせ'),
+              child: Text('おまかせ'),
             ),
             const SizedBox(height: AppSpacing.md),
           ] else ...[

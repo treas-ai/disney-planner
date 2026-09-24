@@ -82,4 +82,46 @@ void main() {
     expect(missing.message, contains('今回は'));
   });
 
+  test('repeat wish reports partial occurrence achievement', () {
+    const desired = Facility(
+      id: 'repeat',
+      parkId: 'tdl',
+      areaId: 'area',
+      name: 'Repeat attraction',
+      category: FacilityCategory.attraction,
+      coordinate: Coordinate(latitude: 0, longitude: 0),
+    );
+    final schedule = DaySchedule(
+      id: 'test-repeat-partial',
+      parkId: 'tdl',
+      createdAt: DateTime(2026),
+      items: const [
+        ScheduleItem(
+          id: 'repeat-1',
+          facilityId: 'repeat',
+          title: 'Repeat attraction',
+          type: ScheduleItemType.facility,
+          startHour: 10,
+          startMinute: 0,
+          endHour: 10,
+          endMinute: 30,
+        ),
+      ],
+    );
+
+    final issues = validator.validate(
+      schedule: schedule,
+      settings: TripSettings.initial(),
+      preferences: [PlanPreference.initial(facilityId: desired.id)],
+      facilities: const [desired, desired],
+    );
+
+    final partial = issues.singleWhere(
+      (issue) => issue.code == 'desired_facility_occurrence_partial',
+    );
+    expect(partial.severity, ScheduleValidationSeverity.warning);
+    expect(partial.message, contains('2回希望のうち1回達成'));
+    expect(partial.message, contains('あと1回'));
+  });
+
 }

@@ -81,7 +81,7 @@ class _CandidateReviewScreenState extends State<CandidateReviewScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('AI候補をリセットしますか？'),
+        title: const Text('プラン候補をリセットしますか？'),
         content: Text(
           '$count件の候補と施設ごとの詳細設定を削除します。\n'
           '「やりたいこと」の回答は残るため、戻って再抽出できます。',
@@ -305,7 +305,7 @@ class _ReviewIntroduction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = Text(
-      'AI候補を最終調整',
+      'プラン候補を最終調整',
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -371,7 +371,7 @@ class _ReviewIntroduction extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '候補枠はAIが比較できる選択肢です。対象施設が候補枠より少ないのは、'
+                        '候補枠はプラン作成時に比較する選択肢です。対象施設が候補枠より少ないのは、'
                         '同じ店舗が複数の商品候補に含まれているためです。'
                         '実際のプランでは、前後の予定と移動に合わせて最適な店舗だけを採用します。'
                         ' 最優先にしたい体験は優先度を高くし、不要な候補だけ削除してください。'
@@ -928,7 +928,7 @@ class _NoCandidatesPageState extends State<_NoCandidatesPage> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
-                      'AI候補がありません',
+                      'プラン候補がありません',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
@@ -936,7 +936,7 @@ class _NoCandidatesPageState extends State<_NoCandidatesPage> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     const Text(
-                      '「やりたいこと」で希望を選び、AI候補を作成してください。',
+                      '「やりたいこと」で行きたいものを選び、プラン候補を作成してください。',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSpacing.lg),
@@ -975,7 +975,7 @@ class _EmptyCandidates extends StatelessWidget {
             const Icon(Icons.auto_awesome_outlined, size: 48),
             const SizedBox(height: 12),
             Text(
-              hasAnyCandidate ? 'この条件の候補はありません' : 'AI候補がまだありません',
+              hasAnyCandidate ? 'この条件の候補はありません' : 'プラン候補がまだありません',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 6),
@@ -1031,7 +1031,7 @@ String _reasonFor(Facility facility, PriorityLevel priority) {
     if (priority == PriorityLevel.highest || priority == PriorityLevel.high)
       '最優先の体験としてスケジュールを優先します。',
     if (facility.supportsDpa)
-      'アトラクションDPAは旅行設定の上限からAIが自動配分します。取得済み時刻だけ詳細設定できます。',
+      'アトラクションDPAは旅行設定の上限から自動配分します。取得済み時刻だけ詳細設定できます。',
   ];
   return parts.join('\n');
 }

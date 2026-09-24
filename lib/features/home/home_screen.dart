@@ -139,6 +139,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 nextAction: nextAction,
                 onNextPressed: _beginnerActionCallback(nextAction),
                 onSettingsPressed: widget.onSettingsPressed,
+                onWishListPressed: widget.onWishListPressed,
+                onEditPlanPressed: widget.onEditPlanPressed,
+                onReviewPlanPressed: widget.onReviewPlanPressed,
+                onTodayPlanPressed: widget.onTodayPlanPressed,
+                selectedWishCount: appState.selectedWishCount,
+                selectedFacilityCount: selectedFacilities.length,
+                hasCurrentSchedule: hasCurrentSchedule,
               ),
             ],
             const SizedBox(height: AppSpacing.sm),
@@ -246,10 +253,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required DaySchedule? schedule,
     required TripSettings settings,
   }) {
-    if (settings.visitDate == null) {
+    if (settings.visitDate == null || settings.parkId.isEmpty) {
       return _HomeAction(
         title: '旅行の基本を設定',
-        description: 'まず来園日とパークを設定します。迷う項目は初期値のままでも大丈夫です。',
+        description: '来園日とパークは必須です。その他は初期値のままでも進められます。',
         buttonLabel: '旅行設定を開く',
         icon: Icons.calendar_month_outlined,
         foregroundColor: const Color(0xFF2457A6),
@@ -330,11 +337,25 @@ class _BeginnerGuideCard extends StatelessWidget {
     required this.nextAction,
     required this.onNextPressed,
     required this.onSettingsPressed,
+    required this.onWishListPressed,
+    required this.onEditPlanPressed,
+    required this.onReviewPlanPressed,
+    required this.onTodayPlanPressed,
+    required this.selectedWishCount,
+    required this.selectedFacilityCount,
+    required this.hasCurrentSchedule,
   });
 
   final _HomeAction nextAction;
   final VoidCallback onNextPressed;
   final VoidCallback onSettingsPressed;
+  final VoidCallback onWishListPressed;
+  final VoidCallback onEditPlanPressed;
+  final VoidCallback onReviewPlanPressed;
+  final VoidCallback onTodayPlanPressed;
+  final int selectedWishCount;
+  final int selectedFacilityCount;
+  final bool hasCurrentSchedule;
 
   static String _stepLabel(_HomeAction action) {
     return switch (action.title) {
@@ -371,6 +392,18 @@ class _BeginnerGuideCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xs),
             const Text('この案内だけ順番に進めればプランを作れます。細かな設定はあとから変更できます。'),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                ActionChip(label: const Text('1 旅行設定'), avatar: const Icon(Icons.check_circle, size: 16), onPressed: onSettingsPressed),
+                ActionChip(label: Text('2 やりたいこと${selectedWishCount > 0 ? ' ✓' : ''}'), onPressed: onWishListPressed),
+                ActionChip(label: Text('3 候補確認${selectedFacilityCount > 0 ? ' ✓' : ''}'), onPressed: selectedWishCount > 0 ? onEditPlanPressed : null),
+                ActionChip(label: Text('4 プラン${hasCurrentSchedule ? ' ✓' : ''}'), onPressed: selectedFacilityCount > 0 ? onReviewPlanPressed : null),
+                ActionChip(label: Text('5 当日${hasCurrentSchedule ? ' ✓' : ''}'), onPressed: hasCurrentSchedule ? onTodayPlanPressed : null),
+              ],
+            ),
             const SizedBox(height: AppSpacing.md),
             Text(_stepLabel(nextAction), style: theme.textTheme.labelLarge),
             const SizedBox(height: 4),

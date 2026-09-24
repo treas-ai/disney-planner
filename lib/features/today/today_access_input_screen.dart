@@ -33,6 +33,7 @@ class _TodayAccessInputScreenState extends State<TodayAccessInputScreen> {
   List<Facility> _parkFacilities = const [];
   Set<String> _scheduledEntertainmentIds = const <String>{};
   String? _loadedOperationKey;
+  bool _hasChanges = false;
 
   @override
   void didChangeDependencies() {
@@ -92,8 +93,10 @@ class _TodayAccessInputScreenState extends State<TodayAccessInputScreen> {
     if (result == null || !mounted) return;
     if (result.remove) {
       appState.removeTodayAccessResult(facility.id, kind);
+      _hasChanges = true;
     } else if (result.value != null) {
       appState.upsertTodayAccessResult(result.value!);
+      _hasChanges = true;
     }
     setState(() {});
   }
@@ -227,7 +230,7 @@ class _TodayAccessInputScreenState extends State<TodayAccessInputScreen> {
         minimum: const EdgeInsets.fromLTRB(14, 8, 14, 12),
         child: FilledButton.icon(
           onPressed: () {
-            Navigator.of(context).pop();
+            Navigator.of(context).pop(_hasChanges);
             widget.onContinueToToday?.call();
           },
           icon: const Icon(Icons.event_available_outlined),

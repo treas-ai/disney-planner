@@ -8,6 +8,7 @@ import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/trip_settings.dart';
 import '../../domain/entities/today_access_result.dart';
+import '../../domain/entities/today_execution_record.dart';
 import '../../domain/entities/wish_item_state.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/fixed_time_status.dart';
@@ -16,6 +17,7 @@ import '../../domain/enums/meal_preference.dart';
 import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wait_tolerance.dart';
+import '../../domain/enums/wish_importance.dart';
 import '../../domain/enums/today_access_kind.dart';
 import '../../domain/enums/today_access_status.dart';
 import '../../domain/repositories/facility_repository.dart';
@@ -31,6 +33,16 @@ class AppState extends ChangeNotifier {
   final FacilityRepository _facilityRepository;
 
   TripSettings tripSettings = TripSettings.initial();
+
+  TripSettings newVisitDayDefaults = TripSettings.initial().copyWith(
+    parkId: '',
+    visitDateIso: '',
+    canUseDpa: false,
+    attractionDpaMaxUses: 0,
+    hasHappyEntry: false,
+    canUseSingleRider: false,
+    usesVacationPackage: false,
+  );
 
   final List<String> _visitDayOrder = <String>['day-1'];
   final Map<String, Map<String, dynamic>> _visitDayStates = {};
@@ -58,6 +70,8 @@ class AppState extends ChangeNotifier {
   final Set<String> _liveSuspendedFacilityIds = <String>{};
   final Map<String, TodayAccessResult> _todayAccessResultsByKey =
       <String, TodayAccessResult>{};
+  final Map<String, TodayExecutionRecord> _todayExecutionRecordsByItemId =
+      <String, TodayExecutionRecord>{};
 
   DaySchedule? daySchedule;
   final List<DaySchedule> _scheduleUndoHistory = [];
@@ -107,6 +121,30 @@ class AppState extends ChangeNotifier {
 
   List<TodayAccessResult> get todayAccessResults =>
       List<TodayAccessResult>.unmodifiable(_todayAccessResultsByKey.values);
+
+  List<TodayExecutionRecord> get todayExecutionRecords =>
+      List<TodayExecutionRecord>.unmodifiable(_todayExecutionRecordsByItemId.values);
+
+  TodayExecutionRecord? todayExecutionRecordFor(String scheduleItemId) =>
+      _todayExecutionRecordsByItemId[scheduleItemId];
+
+  Set<String> get todayExecutionExcludedFacilityIds =>
+      _todayExecutionRecordsByItemId.values
+          .map((record) => record.facilityId)
+          .whereType<String>()
+          .toSet();
+
+  void recordTodayExecution(TodayExecutionRecord record) {
+    if (record.scheduleItemId.trim().isEmpty) return;
+    _todayExecutionRecordsByItemId[record.scheduleItemId] = record;
+    _saveAndNotify();
+  }
+
+  void removeTodayExecutionRecord(String scheduleItemId) {
+    if (_todayExecutionRecordsByItemId.remove(scheduleItemId) != null) {
+      _saveAndNotify();
+    }
+  }
 
   TodayAccessResult? todayAccessResultFor(
     String facilityId,
@@ -378,6 +416,13 @@ class AppState extends ChangeNotifier {
         return;
       }
 
+      final rawDefaults = json['newVisitDayDefaults'];
+      if (rawDefaults is Map) {
+        newVisitDayDefaults = TripSettings.fromJson({
+          for (final entry in rawDefaults.entries) entry.key.toString(): entry.value,
+        }).copyWith(parkId: '', visitDateIso: '');
+      }
+
       final rawVisitDayStates = json['visitDayStates'];
       if (rawVisitDayStates is Map && rawVisitDayStates.isNotEmpty) {
         _visitDayStates.clear();
@@ -462,6 +507,7 @@ class AppState extends ChangeNotifier {
         ..clear()
         ..addAll(_readStringList(json['liveSuspendedFacilityIds']));
       _restoreTodayAccessResults(json['todayAccessResults']);
+      _restoreTodayExecutionRecords(json['todayExecutionRecords']);
       final rawWishStates = json['wishItemStates'];
       if (rawWishStates is List) {
         for (final item in rawWishStates) {
@@ -513,6 +559,7 @@ class AppState extends ChangeNotifier {
       _wishStatesByItemId.clear();
       _liveSuspendedFacilityIds.clear();
       _todayAccessResultsByKey.clear();
+      _todayExecutionRecordsByItemId.clear();
       daySchedule = null;
       _scheduleUndoHistory.clear();
       _scheduleRedoHistory.clear();
@@ -546,11 +593,21 @@ class AppState extends ChangeNotifier {
     await _storage.clear();
 
     tripSettings = TripSettings.initial();
+    newVisitDayDefaults = TripSettings.initial().copyWith(
+      parkId: '',
+      visitDateIso: '',
+      canUseDpa: false,
+      attractionDpaMaxUses: 0,
+      hasHappyEntry: false,
+      canUseSingleRider: false,
+      usesVacationPackage: false,
+    );
     _selectedFacilities.clear();
     _preferencesByFacilityId.clear();
     _wishStatesByItemId.clear();
     _liveSuspendedFacilityIds.clear();
     _todayAccessResultsByKey.clear();
+    _todayExecutionRecordsByItemId.clear();
     daySchedule = null;
     _scheduleUndoHistory.clear();
     _scheduleRedoHistory.clear();
@@ -567,6 +624,7 @@ class AppState extends ChangeNotifier {
     _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
     return {
       'tripSettings': tripSettings.toJson(),
+      'newVisitDayDefaults': newVisitDayDefaults.toJson(),
       'selectedFacilityIds': _selectedFacilities
           .map((facility) => facility.id)
           .toList(),
@@ -579,6 +637,9 @@ class AppState extends ChangeNotifier {
           .toList(),
       'liveSuspendedFacilityIds': _liveSuspendedFacilityIds.toList(),
       'todayAccessResults': _todayAccessResultsByKey.values
+          .map((value) => value.toJson())
+          .toList(),
+      'todayExecutionRecords': _todayExecutionRecordsByItemId.values
           .map((value) => value.toJson())
           .toList(),
       'daySchedule': daySchedule?.toJson(),
@@ -594,24 +655,46 @@ class AppState extends ChangeNotifier {
     };
   }
 
-  Future<void> addVisitDay({required DateTime date, required String parkId}) async {
-    _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
+  Future<void> addVisitDay({required DateTime date, String parkId = ''}) async {
     final normalized = DateTime(date.year, date.month, date.day);
+    final settings = newVisitDayDefaults.copyWith(
+      visitDateIso: normalized.toIso8601String(),
+      parkId: parkId,
+    );
+
+    if (tripSettings.visitDate == null && _visitDayOrder.length == 1) {
+      tripSettings = settings;
+      _selectedFacilities.clear();
+      _optionalAdditionFacilityIds.clear();
+      _preferencesByFacilityId.clear();
+      _wishStatesByItemId.clear();
+      _liveSuspendedFacilityIds.clear();
+      _todayAccessResultsByKey.clear();
+      _todayExecutionRecordsByItemId.clear();
+      daySchedule = null;
+      _scheduleUndoHistory.clear();
+      _scheduleRedoHistory.clear();
+      _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
+      _saveAndNotify();
+      return;
+    }
+
+    _visitDayStates[_activeVisitDayId] = _currentDayStateJson();
     var dayId = normalized.toIso8601String().split('T').first;
     var suffix = 2;
     while (_visitDayStates.containsKey(dayId)) {
       dayId = '${normalized.toIso8601String().split('T').first}-$suffix';
       suffix++;
     }
-    final settings = TripSettings.initial().copyWith(
-      visitDateIso: normalized.toIso8601String(),
-      parkId: parkId,
-      numberOfPeople: tripSettings.numberOfPeople,
-    );
     _visitDayStates[dayId] = _emptyDayState(settings);
     _visitDayOrder.add(dayId);
     _activeVisitDayId = dayId;
     await _restoreDayState(_visitDayStates[dayId]!);
+    _saveAndNotify();
+  }
+
+  void updateNewVisitDayDefaults(TripSettings settings) {
+    newVisitDayDefaults = settings.copyWith(parkId: '', visitDateIso: '');
     _saveAndNotify();
   }
 
@@ -640,6 +723,7 @@ class AppState extends ChangeNotifier {
       _wishStatesByItemId.clear();
       _liveSuspendedFacilityIds.clear();
       _todayAccessResultsByKey.clear();
+      _todayExecutionRecordsByItemId.clear();
       daySchedule = null;
       _scheduleUndoHistory.clear();
       _scheduleRedoHistory.clear();
@@ -674,6 +758,7 @@ class AppState extends ChangeNotifier {
     if (dateChanged) {
       _liveSuspendedFacilityIds.clear();
       _todayAccessResultsByKey.clear();
+      _todayExecutionRecordsByItemId.clear();
     }
     daySchedule = null;
     _saveAndNotify();
@@ -687,6 +772,7 @@ class AppState extends ChangeNotifier {
     if (visitContextChanged) {
       _liveSuspendedFacilityIds.clear();
       _todayAccessResultsByKey.clear();
+      _todayExecutionRecordsByItemId.clear();
     }
     daySchedule = null;
     _saveAndNotify();
@@ -1183,6 +1269,36 @@ class AppState extends ChangeNotifier {
     _saveAndNotify();
   }
 
+  void updateWishImportance(String itemId, WishImportance importance) {
+    final priority = switch (importance) {
+      WishImportance.optional => 2,
+      WishImportance.normal => 3,
+      WishImportance.mustDo => 5,
+    };
+    updateWishPriority(itemId, priority);
+  }
+
+  void updateWishPreferredTime(String itemId, PreferredTime preferredTime) {
+    final current = wishStateFor(itemId);
+    _wishStatesByItemId[itemId] = current.copyWith(preferredTime: preferredTime);
+    _saveAndNotify();
+  }
+
+  void updateWishWaitTolerance(String itemId, WaitTolerance waitTolerance) {
+    final current = wishStateFor(itemId);
+    _wishStatesByItemId[itemId] = current.copyWith(waitTolerance: waitTolerance);
+    _saveAndNotify();
+  }
+
+  void updateWishTargetCount(String itemId, int targetCount) {
+    final current = wishStateFor(itemId);
+    _wishStatesByItemId[itemId] = current.copyWith(
+      targetCount: targetCount.clamp(1, 5),
+      repeatAllowed: targetCount > 1,
+    );
+    _saveAndNotify();
+  }
+
   void selectWishItems(Iterable<String> itemIds) {
     for (final itemId in itemIds) {
       final current = wishStateFor(itemId);
@@ -1204,6 +1320,17 @@ class AppState extends ChangeNotifier {
     _recordCurrentSchedule();
     daySchedule = schedule;
     _scheduleRedoHistory.clear();
+    _saveAndNotify();
+  }
+
+  /// DEBUG-only schedule swap used by the unified regression console.
+  ///
+  /// This intentionally does not touch undo/redo history. It lets the debug
+  /// console generate a fresh PRE-TRIP reference and then restore the user's
+  /// current TODAY schedule without turning verification into a user action.
+  void debugReplaceDayScheduleWithoutHistory(DaySchedule? schedule) {
+    assert(kDebugMode);
+    daySchedule = schedule;
     _saveAndNotify();
   }
 
@@ -1422,6 +1549,9 @@ class AppState extends ChangeNotifier {
       'todayAccessResults': _todayAccessResultsByKey.values
           .map((value) => value.toJson())
           .toList(),
+      'todayExecutionRecords': _todayExecutionRecordsByItemId.values
+          .map((value) => value.toJson())
+          .toList(),
       'daySchedule': daySchedule?.toJson(),
       'scheduleUndoHistory': _scheduleUndoHistory.map((value) => value.toJson()).toList(),
       'scheduleRedoHistory': _scheduleRedoHistory.map((value) => value.toJson()).toList(),
@@ -1437,6 +1567,7 @@ class AppState extends ChangeNotifier {
       'wishItemStates': <dynamic>[],
       'liveSuspendedFacilityIds': <String>[],
       'todayAccessResults': <dynamic>[],
+      'todayExecutionRecords': <dynamic>[],
       'daySchedule': null,
       'scheduleUndoHistory': <dynamic>[],
       'scheduleRedoHistory': <dynamic>[],
@@ -1471,6 +1602,7 @@ class AppState extends ChangeNotifier {
       ..clear()
       ..addAll(_readStringList(state['liveSuspendedFacilityIds']));
     _restoreTodayAccessResults(state['todayAccessResults']);
+    _restoreTodayExecutionRecords(state['todayExecutionRecords']);
     final rawWishStates = state['wishItemStates'];
     if (rawWishStates is List) {
       for (final item in rawWishStates.whereType<Map>()) {
@@ -1490,6 +1622,20 @@ class AppState extends ChangeNotifier {
     _scheduleRedoHistory
       ..clear()
       ..addAll(_readScheduleList(state['scheduleRedoHistory']));
+  }
+
+  void _restoreTodayExecutionRecords(dynamic raw) {
+    _todayExecutionRecordsByItemId.clear();
+    if (raw is! List) return;
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final record = TodayExecutionRecord.fromJson({
+        for (final entry in item.entries) entry.key.toString(): entry.value,
+      });
+      if (record.scheduleItemId.isNotEmpty) {
+        _todayExecutionRecordsByItemId[record.scheduleItemId] = record;
+      }
+    }
   }
 
   void _restoreTodayAccessResults(dynamic raw) {

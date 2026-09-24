@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_icons.dart';
 import '../core/utils/japanese_search_normalizer.dart';
 import '../domain/entities/facility.dart';
 import '../features/home/home_screen.dart';
+import '../features/debug/debug_console_screen.dart';
 import '../features/plan_editor/plan_editor_screen.dart';
 import '../features/plan_review/plan_review_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -33,6 +35,7 @@ class _MainShellState extends State<MainShell> {
   static const int _editorIndex = 3;
   static const int _reviewIndex = 4;
   static const int _todayIndex = 5;
+  static const int _debugIndex = 6;
 
   int _currentIndex = _homeIndex;
   bool _wishListCanContinue = false;
@@ -88,6 +91,14 @@ class _MainShellState extends State<MainShell> {
       icon: AppIcons.today,
       selectedIcon: AppIcons.todaySelected,
     ),
+    if (kDebugMode)
+      _MainDestination(
+        title: 'デバッグ',
+        navigationLabel: 'デバッグ',
+        subtitle: '開発用の解析・Regression Gateを通常機能から分離して確認します。',
+        icon: Icons.bug_report_outlined,
+        selectedIcon: Icons.bug_report,
+      ),
   ];
 
   @override
@@ -338,7 +349,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   bool get _shouldShowFlowBar {
-    return true;
+    return _currentIndex != _debugIndex;
   }
 
   Widget _buildScreenStack() {
@@ -357,6 +368,7 @@ class _MainShellState extends State<MainShell> {
         WishListScreen(
           key: _wishListKey,
           onCandidateReviewPressed: _goToEditor,
+          onSettingsPressed: _goToSettings,
           onFlowContinueAvailabilityChanged: _setWishListCanContinue,
         ),
         PlanEditorScreen(
@@ -365,6 +377,7 @@ class _MainShellState extends State<MainShell> {
         ),
         PlanReviewScreen(onContinueToToday: _goToToday),
         const TodayPlanScreen(),
+        if (kDebugMode) const DebugConsoleScreen(),
       ],
     );
   }
@@ -759,7 +772,7 @@ class _PlannerFlowActionBar extends StatelessWidget {
   _PlannerFlowAction _resolveHomeAction() {
     if (flowState.selectedWishCount == 0) {
       return _PlannerFlowAction(
-        title: 'AIとプランを作る',
+        title: 'やりたいことを選ぶ',
         description: 'まずは、乗りたい・見たい・食べたい体験を選びます。',
         icon: Icons.auto_awesome_outlined,
         onPressed: onWishListPressed,
@@ -768,7 +781,7 @@ class _PlannerFlowActionBar extends StatelessWidget {
 
     if (flowState.selectedFacilityCount == 0) {
       return _PlannerFlowAction(
-        title: 'AI候補を確認',
+        title: 'プラン候補を確認',
         description: '${flowState.selectedWishCount}件の希望から抽出した候補を調整します。',
         icon: Icons.checklist_outlined,
         onPressed: onEditorPressed,
@@ -811,8 +824,8 @@ class _PlannerFlowActionBar extends StatelessWidget {
               onPressed: onEditorPressed,
             )
           : const _PlannerFlowAction(
-              title: 'AI候補を作成してください',
-              description: '回答確認画面の「この回答でAI候補を作成」を押してください。',
+              title: 'やりたいことを選んでください',
+              description: '一覧から行きたいものを選ぶか、任意の希望整理を利用してください。',
               icon: Icons.auto_awesome_outlined,
               onPressed: null,
             ),
@@ -820,7 +833,7 @@ class _PlannerFlowActionBar extends StatelessWidget {
         flowState.selectedFacilityCount == 0
             ? _PlannerFlowAction(
                 title: 'やりたいことへ戻る',
-                description: '希望を選び、AI候補を作成してください。',
+                description: '希望を選び、やりたいことを選んでください。',
                 icon: Icons.favorite_border,
                 onPressed: onWishListPressed,
               )

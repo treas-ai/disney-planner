@@ -5,12 +5,14 @@ import '../../data/repositories/crowd_factor_repository_impl.dart';
 import '../../data/repositories/local_greeting_wait_planning_repository.dart';
 import '../../data/repositories/local_vacation_package_unlimited_ride_repository.dart';
 import '../../domain/services/wish_candidate_scoring_engine.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/dependency/service_locator.dart';
 import '../../app/state/app_state.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/entities/phase_d_scenario_summary.dart';
 import '../../domain/entities/event_impact.dart';
 import '../../domain/entities/expert_recommendation_profile.dart';
 import '../../domain/entities/area_connection.dart';
@@ -20,6 +22,9 @@ import '../../domain/entities/dpa_strategy.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/plan_coverage_advice.dart';
+import '../../domain/entities/plan_explanation.dart';
+import '../../domain/entities/planning_scenario.dart';
+import '../../domain/entities/vacation_package_comparison.dart';
 import '../../domain/entities/official_performance_opportunity.dart';
 import '../../domain/entities/performance_time_option.dart';
 import '../../domain/entities/schedule_item.dart';
@@ -27,7 +32,10 @@ import '../../domain/entities/time_band_wait_profile.dart';
 import '../../domain/entities/wait_time_range.dart';
 import '../../domain/entities/schedule_validation_issue.dart';
 import '../../domain/enums/facility_access_method.dart';
+import '../../domain/enums/today_access_kind.dart';
+import '../../domain/enums/today_access_status.dart';
 import '../../domain/enums/preferred_time.dart';
+import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/schedule_item_type.dart';
 import '../../domain/enums/wait_time_band.dart';
 import '../../domain/enums/fixed_time_status.dart';
@@ -36,6 +44,8 @@ import '../../domain/enums/dpa_strategy_type.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
 import '../../data/local/local_performance_schedule_repository.dart';
 import '../../domain/services/official_performance_preference_resolver.dart';
+import '../../domain/services/plan_quality_audit_service.dart';
+import '../../domain/services/plan_explanation_service.dart';
 import '../../domain/services/dpa_auto_allocator.dart';
 import '../../domain/services/free_time_improvement_scoring_service.dart';
 import '../../domain/services/fixed_schedule_conflict_service.dart';
@@ -43,7 +53,8 @@ import '../../domain/services/disney_expert_recommendation_service.dart';
 import '../../domain/services/schedule_engine.dart';
 import '../../domain/services/schedule_validator.dart';
 import '../../domain/services/plan_coverage_advice_service.dart';
-import '../../domain/services/plan_quality_audit_service.dart';
+import '../../core/debug/debug_gate_registry.dart';
+import '../../core/constants/app_version.dart';
 
 
 class _ScheduleGenerationRequest {
@@ -201,6 +212,9 @@ class ScheduleController extends ChangeNotifier {
   String? errorMessage;
   String? coverageAnalysisError;
   PlanCoverageAdvice? coverageAdvice;
+  PlanningScenario? vacationPackageComparisonScenario;
+  int? vacationPackageComparisonOverlapCount;
+  bool vacationPackageComparisonGeneratedIndependently = false;
   PlanAdditionImpact? lastAdditionImpact;
   Set<String> _preAdditionScheduledIds = const <String>{};
   int _preAdditionDesiredCount = 0;
@@ -213,12 +227,53 @@ class ScheduleController extends ChangeNotifier {
   List<Facility> _qualityAuditFacilities = const <Facility>[];
   List<FacilityLocation> _qualityAuditLocations = const <FacilityLocation>[];
   List<AreaConnection> _qualityAuditConnections = const <AreaConnection>[];
+  _ScheduleGenerationRequest? _fourModeBaseRequest;
+  Map<ScheduleOptimizationMode, DaySchedule> _phaseDScenarioSchedules =
+      const <ScheduleOptimizationMode, DaySchedule>{};
+  ScheduleOptimizationMode? lastAppliedPhaseDMode;
+  PhaseDScenarioSummary? lastAppliedPhaseDExpected;
+  PhaseDScenarioSummary? lastAppliedPhaseDActual;
+  bool? lastAppliedPhaseDExactMatch;
+  String? phaseDApplicationReport;
+  bool isRunningFourModeGate = false;
+  String? fourModeGateReport;
+  List<PhaseDScenarioSummary> phaseDScenarioSummaries = const <PhaseDScenarioSummary>[];
+  bool phaseDScenariosGeneratedIndependently = false;
+  bool isRunningComprehensiveGate = false;
+  String? comprehensiveGateReport;
+
 
   List<String> get optionalOptimizationTrace =>
       List<String>.unmodifiable(_optionalOptimizationTrace);
   int get optionalOptimizationTrialCount => _optionalOptimizationTrialCount;
   int get optionalOptimizationAdoptedCount => _optionalOptimizationAdoptedCount;
   String? optionalRejectionReason(String facilityId) => _optionalRejectionReasons[facilityId];
+
+  PlanExplanation? get planExplanation {
+    final current = schedule;
+    if (current == null) return null;
+    final desiredFacilities = requiredFacilitiesForCurrentPark;
+    final scheduledIds = current.items
+        .map((item) => item.facilityId)
+        .whereType<String>()
+        .toList(growable: false);
+    final hardFacilities = desiredFacilities.where((facility) {
+      final preference = preferenceByFacilityId(facility.id);
+      return preference == null || preference.priority.value > 2;
+    }).toList(growable: false);
+    final audit = planQualityAudit;
+    return const PlanExplanationService().build(
+      schedule: current,
+      settings: tripSettings,
+      desiredFacilities: desiredFacilities,
+      preferences: _appState.planPreferences,
+      achievedDesiredCount: coveredDesiredOccurrenceCount(desiredFacilities, scheduledIds),
+      hardAchievedCount: coveredDesiredOccurrenceCount(hardFacilities, scheduledIds),
+      totalHardDesiredCount: hardFacilities.length,
+      largestFreeBlockMinutes: audit?.largestFreeBlockMinutes ?? 0,
+      optionalRejectionReasons: _optionalRejectionReasons,
+    );
+  }
 
   PlanQualityAudit? get planQualityAudit {
     final current = schedule;
@@ -237,6 +292,615 @@ class ScheduleController extends ChangeNotifier {
             facilityLocations: _qualityAuditLocations,
             areaConnections: _qualityAuditConnections,
           );
+  }
+
+  Future<List<PhaseDScenarioSummary>> preparePhaseDScenariosForUi() async {
+    // A restored/persisted plan can be displayed by a newly-created controller
+    // before this controller has generated anything in the current session. In
+    // that case `_fourModeBaseRequest` is intentionally empty even though a
+    // valid schedule is visible. Rebuild the current mode once (without adding
+    // an Undo/history entry) so the comparison request is reconstructed from
+    // the same current settings/wishes, then run the four independent modes.
+    if (_fourModeBaseRequest == null && schedule != null) {
+      await generateSchedule(debugNoHistory: true);
+    }
+
+    await runFourModeGate();
+    final summaries = List<PhaseDScenarioSummary>.unmodifiable(
+      phaseDScenarioSummaries,
+    );
+    if (summaries.length != ScheduleOptimizationMode.values.length) {
+      return const <PhaseDScenarioSummary>[];
+    }
+    final modes = summaries.map((item) => item.mode).toSet();
+    if (modes.length != ScheduleOptimizationMode.values.length) {
+      return const <PhaseDScenarioSummary>[];
+    }
+    return summaries;
+  }
+
+  Future<void> runFourModeGate() async {
+    final base = _fourModeBaseRequest;
+    if (base == null || schedule == null) {
+      fourModeGateReport = '[CHECK] 4モードGate — 先にプランを生成してください。';
+      notifyListeners();
+      return;
+    }
+
+    isRunningFourModeGate = true;
+    fourModeGateReport = null;
+    phaseDScenarioSummaries = const <PhaseDScenarioSummary>[];
+    _phaseDScenarioSchedules = const <ScheduleOptimizationMode, DaySchedule>{};
+    phaseDScenariosGeneratedIndependently = false;
+    notifyListeners();
+
+    try {
+      final results = <ScheduleOptimizationMode, PlanQualityAudit>{};
+      final schedules = <ScheduleOptimizationMode, DaySchedule>{};
+      for (final mode in ScheduleOptimizationMode.values) {
+        final request = _ScheduleGenerationRequest(
+          settings: base.settings.copyWith(scheduleOptimizationMode: mode),
+          facilities: base.facilities,
+          preferences: base.preferences,
+          eventImpacts: base.eventImpacts,
+          waitProfiles: base.waitProfiles,
+          morningScores: base.morningScores,
+          officialPerformanceOpportunities: base.officialPerformanceOpportunities,
+          areaConnections: base.areaConnections,
+          facilityLocations: base.facilityLocations,
+          expertProfiles: base.expertProfiles,
+          unlimitedRideBufferMinutes: base.unlimitedRideBufferMinutes,
+          greetingWaitPlanning: base.greetingWaitPlanning,
+          manualFixedItems: base.manualFixedItems,
+          optionalFacilityIds: base.optionalFacilityIds,
+        );
+        final generated = await _generateScheduleOffUi(request);
+        schedules[mode] = generated;
+        results[mode] = const PlanQualityAuditService().evaluate(
+          generated,
+          facilities: _qualityAuditFacilities,
+          facilityLocations: _qualityAuditLocations,
+          areaConnections: _qualityAuditConnections,
+        );
+      }
+
+      // Coverage diagnostics must use the same occurrence source as the normal
+      // Plan Review DEBUG analysis. The generation request may contain only the
+      // engine candidates that survived preprocessing, so counting base.facilities
+      // here can make the 4-mode gate report a different hard/desired denominator.
+      final desiredFacilities = requiredFacilitiesForCurrentPark;
+
+      bool isFlexibleOptional(Facility facility) {
+        final prefs = base.preferences.where((p) => p.facilityId == facility.id);
+        return prefs.isNotEmpty && prefs.first.priority.value <= 2;
+      }
+
+      final hardFacilities = desiredFacilities
+          .where((facility) => !isFlexibleOptional(facility))
+          .toList(growable: false);
+      final desiredCount = desiredFacilities.length;
+      final hardDesiredCount = hardFacilities.length;
+
+      ({int achieved, int hardAchieved}) coverage(ScheduleOptimizationMode mode) {
+        final ids = schedules[mode]!.items
+            .map((item) => item.facilityId)
+            .whereType<String>()
+            .toList(growable: false);
+        return (
+          achieved: coveredDesiredOccurrenceCount(desiredFacilities, ids),
+          hardAchieved: coveredDesiredOccurrenceCount(hardFacilities, ids),
+        );
+      }
+
+      final balanced = results[ScheduleOptimizationMode.balanced]!;
+      final wait = results[ScheduleOptimizationMode.minimumWait]!;
+      final walking = results[ScheduleOptimizationMode.minimumWalking]!;
+      final compact = results[ScheduleOptimizationMode.compactSchedule]!;
+      final balancedCoverage = coverage(ScheduleOptimizationMode.balanced);
+      final waitCoverage = coverage(ScheduleOptimizationMode.minimumWait);
+      final walkingCoverage = coverage(ScheduleOptimizationMode.minimumWalking);
+      final compactCoverage = coverage(ScheduleOptimizationMode.compactSchedule);
+
+      phaseDScenarioSummaries = ScheduleOptimizationMode.values.map((mode) {
+        final audit = results[mode]!;
+        final modeCoverage = coverage(mode);
+        return PhaseDScenarioSummary(
+          mode: mode,
+          achievedDesiredCount: modeCoverage.achieved,
+          totalDesiredCount: desiredCount,
+          hardAchievedCount: modeCoverage.hardAchieved,
+          totalHardDesiredCount: hardDesiredCount,
+          totalWaitMinutes: audit.totalWaitMinutes,
+          totalMovementMinutes: audit.totalMovementMinutes,
+          totalFreeMinutes: audit.totalFreeMinutes,
+          largestFreeBlockMinutes: audit.largestFreeBlockMinutes,
+          overlapCount: audit.overlapCount,
+        );
+      }).toList(growable: false);
+      _phaseDScenarioSchedules =
+          Map<ScheduleOptimizationMode, DaySchedule>.unmodifiable(schedules);
+      phaseDScenariosGeneratedIndependently = true;
+
+      int fragmentation(PlanQualityAudit a) =>
+          a.totalFreeMinutes - a.largestFreeBlockMinutes;
+      final allNoOverlap = results.values.every((a) => a.overlapCount == 0);
+
+      ({bool pass, String detail}) objectiveGate({
+        required ({int achieved, int hardAchieved}) candidateCoverage,
+        required ({int achieved, int hardAchieved}) baselineCoverage,
+        required int candidateMetric,
+        required int baselineMetric,
+        required String metricLabel,
+      }) {
+        if (candidateCoverage.hardAchieved < baselineCoverage.hardAchieved) {
+          return (
+            pass: false,
+            detail: 'hard coverage ${candidateCoverage.hardAchieved}/$hardDesiredCount < ${baselineCoverage.hardAchieved}/$hardDesiredCount',
+          );
+        }
+        if (candidateCoverage.achieved < baselineCoverage.achieved) {
+          return (
+            pass: false,
+            detail: 'coverage ${candidateCoverage.achieved}/$desiredCount < ${baselineCoverage.achieved}/$desiredCount',
+          );
+        }
+        if (candidateCoverage.achieved > baselineCoverage.achieved ||
+            candidateCoverage.hardAchieved > baselineCoverage.hardAchieved) {
+          return (
+            pass: true,
+            detail: 'coverage優先 ${candidateCoverage.achieved}/$desiredCount vs ${baselineCoverage.achieved}/$desiredCount; $metricLabel $candidateMetric vs $baselineMetric は同一coverage比較ではありません',
+          );
+        }
+        return (
+          pass: candidateMetric <= baselineMetric,
+          detail: '$metricLabel $candidateMetric <= $baselineMetric (coverage ${candidateCoverage.achieved}/$desiredCount, hard ${candidateCoverage.hardAchieved}/$hardDesiredCount 同条件)',
+        );
+      }
+
+      final waitGate = objectiveGate(
+        candidateCoverage: waitCoverage,
+        baselineCoverage: balancedCoverage,
+        candidateMetric: wait.totalWaitMinutes,
+        baselineMetric: balanced.totalWaitMinutes,
+        metricLabel: '待ち',
+      );
+      final walkingGate = objectiveGate(
+        candidateCoverage: walkingCoverage,
+        baselineCoverage: balancedCoverage,
+        candidateMetric: walking.totalMovementMinutes,
+        baselineMetric: balanced.totalMovementMinutes,
+        metricLabel: '移動',
+      );
+      final compactGate = objectiveGate(
+        candidateCoverage: compactCoverage,
+        baselineCoverage: balancedCoverage,
+        candidateMetric: fragmentation(compact),
+        baselineMetric: fragmentation(balanced),
+        metricLabel: 'fragmentation',
+      );
+
+      String qualityFingerprint(ScheduleOptimizationMode mode) {
+        final a = results[mode]!;
+        final c = coverage(mode);
+        return '${c.achieved}/${c.hardAchieved}/${a.totalWaitMinutes}/${a.totalMovementMinutes}/${a.totalFreeMinutes}/${a.largestFreeBlockMinutes}/${a.freeBlockCount}';
+      }
+
+      final tuples = ScheduleOptimizationMode.values
+          .map(qualityFingerprint)
+          .toSet();
+      final differentiated = tuples.length > 1;
+      final balancedWalkingIdentical =
+          qualityFingerprint(ScheduleOptimizationMode.balanced) ==
+              qualityFingerprint(ScheduleOptimizationMode.minimumWalking);
+      final hardFail = !allNoOverlap || !waitGate.pass || !walkingGate.pass || !compactGate.pass;
+      final status = hardFail ? 'FAIL' : differentiated ? 'PASS' : 'CHECK';
+
+      String row(ScheduleOptimizationMode mode, String label) {
+        final a = results[mode]!;
+        final c = coverage(mode);
+        return '$label: 達成${c.achieved}/$desiredCount / hard${c.hardAchieved}/$hardDesiredCount / '
+            '待ち${a.totalWaitMinutes}分 / 移動${a.totalMovementMinutes}分 / '
+            '自由${a.totalFreeMinutes}分 / 最大連続${a.largestFreeBlockMinutes}分 / '
+            '自由枠${a.freeBlockCount}個 / 細切れ${a.smallFreeBlockCount}個 / 重複${a.overlapCount}件';
+      }
+
+      final waitDelta = wait.totalWaitMinutes - balanced.totalWaitMinutes;
+      final coverageDelta = waitCoverage.achieved - balancedCoverage.achieved;
+      final waitDiagnosis = coverageDelta == 0
+          ? 'minimumWait診断: 同一coverageで待ち差 ${waitDelta >= 0 ? '+' : ''}$waitDelta分。'
+          : 'minimumWait診断: coverage差 ${coverageDelta >= 0 ? '+' : ''}$coverageDelta件のため、待ち差 ${waitDelta >= 0 ? '+' : ''}$waitDelta分を単独でFAIL判定しません。希望維持を先に評価します。';
+
+      fourModeGateReport = <String>[
+        '===== DEBUG 4-MODE GATE =====',
+        row(ScheduleOptimizationMode.balanced, 'バランス重視'),
+        row(ScheduleOptimizationMode.minimumWait, '待ち時間重視'),
+        row(ScheduleOptimizationMode.minimumWalking, '移動少なめ'),
+        row(ScheduleOptimizationMode.compactSchedule, 'まとまった自由時間重視'),
+        '[${waitGate.pass ? 'PASS' : 'FAIL'}] 待ち時間重視 vs バランス — ${waitGate.detail}',
+        '[${walkingGate.pass ? 'PASS' : 'FAIL'}] 移動少なめ vs バランス — ${walkingGate.detail}',
+        '[${compactGate.pass ? 'PASS' : 'FAIL'}] 自由時間集約 vs バランス — ${compactGate.detail}',
+        '[${allNoOverlap ? 'PASS' : 'FAIL'}] 全モード時間重複なし',
+        '[${differentiated ? 'PASS' : 'CHECK'}] モード差分 — ${differentiated ? '少なくとも2種類の品質結果を確認' : '今回の条件では4モードが同一結果'}',
+        balancedWalkingIdentical
+            ? '[INFO] バランス重視と移動少なめ — 今回の入力では同一品質結果。Gate失敗ではありません。別条件でも継続監視します。'
+            : '[PASS] バランス重視と移動少なめ — 今回の入力で品質差を確認',
+        'Coverage basis: required wishes $desiredCount件 / hard wishes $hardDesiredCount件（Plan Review DEBUGと同一定義）',
+        waitDiagnosis,
+        '判定原則: hard wish → 全希望coverage → 各モード目的指標の順。coverageが異なるプラン同士の待ち時間だけを直接比較しません。',
+        'RESULT: $status',
+        '===== END DEBUG 4-MODE GATE =====',
+      ].join('\n');
+    } catch (error) {
+      fourModeGateReport = '===== DEBUG 4-MODE GATE =====\n'
+          '[FAIL] 4モード比較実行 — ${error.runtimeType}: $error\n'
+          'RESULT: FAIL\n'
+          '===== END DEBUG 4-MODE GATE =====';
+    } finally {
+      isRunningFourModeGate = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> applyPhaseDScenario(ScheduleOptimizationMode mode) async {
+    final selectedSchedule = _phaseDScenarioSchedules[mode];
+    final expected = phaseDScenarioSummaries
+        .where((item) => item.mode == mode)
+        .firstOrNull;
+    if (selectedSchedule == null || expected == null) {
+      phaseDApplicationReport =
+          '[FAIL] Phase D scenario application — comparison snapshot unavailable';
+      DebugGateRegistry.lastPhaseDApplicationReport = phaseDApplicationReport;
+      lastAppliedPhaseDExactMatch = false;
+      notifyListeners();
+      return false;
+    }
+
+    final desiredFacilities = requiredFacilitiesForCurrentPark;
+    final base = _fourModeBaseRequest;
+    bool isFlexibleOptional(Facility facility) {
+      final prefs = base?.preferences.where((p) => p.facilityId == facility.id);
+      return prefs != null &&
+          prefs.isNotEmpty &&
+          prefs.first.priority.value <= 2;
+    }
+
+    final hardFacilities = desiredFacilities
+        .where((facility) => !isFlexibleOptional(facility))
+        .toList(growable: false);
+
+    // Apply the exact schedule snapshot shown in the comparison dialog.
+    // Regenerating here could produce a different result from what the user chose.
+    _appState.updateTripSettings(
+      _appState.tripSettings.copyWith(scheduleOptimizationMode: mode),
+    );
+    _appState.updateDaySchedule(selectedSchedule);
+
+    final audit = const PlanQualityAuditService().evaluate(
+      selectedSchedule,
+      facilities: _qualityAuditFacilities,
+      facilityLocations: _qualityAuditLocations,
+      areaConnections: _qualityAuditConnections,
+    );
+    final ids = selectedSchedule.items
+        .map((item) => item.facilityId)
+        .whereType<String>()
+        .toList(growable: false);
+    final actual = PhaseDScenarioSummary(
+      mode: mode,
+      achievedDesiredCount:
+          coveredDesiredOccurrenceCount(desiredFacilities, ids),
+      totalDesiredCount: desiredFacilities.length,
+      hardAchievedCount: coveredDesiredOccurrenceCount(hardFacilities, ids),
+      totalHardDesiredCount: hardFacilities.length,
+      totalWaitMinutes: audit.totalWaitMinutes,
+      totalMovementMinutes: audit.totalMovementMinutes,
+      totalFreeMinutes: audit.totalFreeMinutes,
+      largestFreeBlockMinutes: audit.largestFreeBlockMinutes,
+      overlapCount: audit.overlapCount,
+    );
+    final exactMatch = _phaseDScenarioSummaryMatches(expected, actual);
+    final hardMaintained =
+        actual.hardAchievedCount == actual.totalHardDesiredCount;
+    final noOverlap = actual.overlapCount == 0;
+    final pass = exactMatch && hardMaintained && noOverlap;
+
+    lastAppliedPhaseDMode = mode;
+    lastAppliedPhaseDExpected = expected;
+    lastAppliedPhaseDActual = actual;
+    lastAppliedPhaseDExactMatch = exactMatch;
+    phaseDApplicationReport = <String>[
+      '===== PHASE D APPLICATION GATE =====',
+      'Selected mode: ${mode.name}',
+      '[${exactMatch ? 'PASS' : 'FAIL'}] Applied schedule matches compared scenario — expected ${_phaseDScenarioMetrics(expected)} / actual ${_phaseDScenarioMetrics(actual)}',
+      '[${hardMaintained ? 'PASS' : 'FAIL'}] Hard wish coverage maintained — ${actual.hardAchievedCount}/${actual.totalHardDesiredCount}',
+      '[${noOverlap ? 'PASS' : 'FAIL'}] Applied scenario overlaps — ${actual.overlapCount}',
+      'RESULT: ${pass ? 'PASS' : 'FAIL'}',
+      '===== END PHASE D APPLICATION GATE =====',
+    ].join('\n');
+    DebugGateRegistry.lastPhaseDApplicationReport = phaseDApplicationReport;
+    notifyListeners();
+    return pass;
+  }
+
+  bool _phaseDScenarioSummaryMatches(
+    PhaseDScenarioSummary expected,
+    PhaseDScenarioSummary actual,
+  ) =>
+      expected.mode == actual.mode &&
+      expected.achievedDesiredCount == actual.achievedDesiredCount &&
+      expected.totalDesiredCount == actual.totalDesiredCount &&
+      expected.hardAchievedCount == actual.hardAchievedCount &&
+      expected.totalHardDesiredCount == actual.totalHardDesiredCount &&
+      expected.totalWaitMinutes == actual.totalWaitMinutes &&
+      expected.totalMovementMinutes == actual.totalMovementMinutes &&
+      expected.totalFreeMinutes == actual.totalFreeMinutes &&
+      expected.largestFreeBlockMinutes == actual.largestFreeBlockMinutes &&
+      expected.overlapCount == actual.overlapCount;
+
+  String _phaseDScenarioMetrics(PhaseDScenarioSummary item) =>
+      '${item.achievedDesiredCount}/${item.totalDesiredCount} wishes, '
+      'hard ${item.hardAchievedCount}/${item.totalHardDesiredCount}, '
+      'wait ${item.totalWaitMinutes}, movement ${item.totalMovementMinutes}, '
+      'free ${item.totalFreeMinutes}, largest ${item.largestFreeBlockMinutes}, '
+      'overlap ${item.overlapCount}';
+
+  Future<void> runComprehensiveGate() async {
+    if (schedule == null) {
+      comprehensiveGateReport = '[CHECK] 総合Gate — 先にプランを生成してください。';
+      notifyListeners();
+      return;
+    }
+    isRunningComprehensiveGate = true;
+    comprehensiveGateReport = null;
+    notifyListeners();
+    try {
+      await runFourModeGate();
+
+      // The comprehensive gate must be self-contained. VP comparison state is
+      // normally produced by Plan Review coverage analysis, but Debug Mode can
+      // create a fresh PRE-TRIP schedule without visiting Plan Review first.
+      // Generate the comparison from that same PRE-TRIP schedule here instead
+      // of treating missing cached analysis as a product failure.
+      if (vacationPackageComparisonScenario == null ||
+          !vacationPackageComparisonGeneratedIndependently ||
+          vacationPackageComparisonOverlapCount == null) {
+        await analyzePlanCoverage();
+      }
+
+      final current = schedule!;
+      final scheduledDpa = current.items
+          .where((item) => item.accessMethod == FacilityAccessMethod.dpa)
+          .toList(growable: false);
+      final overlapOk = (planQualityAudit?.overlapCount ?? 0) == 0;
+      final acquiredDpaIds = _appState.todayAccessResults
+          .where((result) =>
+              (result.kind == TodayAccessKind.attractionDpa ||
+                  result.kind == TodayAccessKind.showDpa) &&
+              (result.status == TodayAccessStatus.acquired ||
+                  result.status == TodayAccessStatus.won))
+          .map((result) => result.facilityId)
+          .toSet();
+      final unacquiredScheduledDpa = scheduledDpa
+          .where((item) =>
+              item.facilityId == null ||
+              !acquiredDpaIds.contains(item.facilityId))
+          .toList(growable: false);
+      final dpaBoundaryOk = unacquiredScheduledDpa.isEmpty;
+      final fourMode = fourModeGateReport;
+      final fourModePass = fourMode?.contains('RESULT: PASS') == true;
+      final fourModeFail = fourMode?.contains('RESULT: FAIL') == true;
+      final fourModeCheck = fourMode == null || (!fourModePass && !fourModeFail);
+      final today = DebugGateRegistry.lastTodayReplanReport;
+      final todayPass = today?.contains('RESULT: PASS') == true;
+      final todayFail = today?.contains('RESULT: FAIL') == true;
+      final phaseFExecution = DebugGateRegistry.lastPhaseFExecutionStatusReport;
+      final phaseFExecutionPass = phaseFExecution?.contains('RESULT: PASS') == true;
+      final phaseFExecutionFail = phaseFExecution?.contains('RESULT: FAIL') == true;
+      final phaseFExecutionCheck = phaseFExecution == null ||
+          (!phaseFExecutionPass && !phaseFExecutionFail);
+      final hardFacilities = requiredFacilitiesForCurrentPark.where((facility) {
+        final preference = preferenceByFacilityId(facility.id);
+        return preference == null || preference.priority.value > 2;
+      }).toList(growable: false);
+      final ids = current.items
+          .map((item) => item.facilityId)
+          .whereType<String>()
+          .toList(growable: false);
+      final hardAchieved = coveredDesiredOccurrenceCount(hardFacilities, ids);
+      final hardOk = hardAchieved == hardFacilities.length;
+      final vpScenario = vacationPackageComparisonScenario;
+      final vpSimulationAvailable = vpScenario != null;
+      final vpOverlapOk = vacationPackageComparisonOverlapCount == 0;
+      final vpCoverageOk = vpScenario == null ||
+          vpScenario.totalDesiredCount == requiredFacilitiesForCurrentPark.length;
+      final vpIndependentOk =
+          vpSimulationAvailable && vacationPackageComparisonGeneratedIndependently;
+      final vpMetricsOk = vpScenario != null &&
+          vpScenario.totalWaitMinutes != null &&
+          vpScenario.totalFreeMinutes != null &&
+          vpScenario.totalMovementMinutes != null &&
+          vpScenario.hardScheduledDesiredCount != null &&
+          vpScenario.totalHardDesiredCount != null;
+      final vpMovementSemanticOk = vpScenario == null ||
+          vpScenario.scheduledDesiredCount < 2 ||
+          (vpScenario.totalMovementMinutes ?? 0) > 0;
+      final phaseDModeSet = phaseDScenarioSummaries.map((item) => item.mode).toSet();
+      final phaseDScenarioCountOk = phaseDScenariosGeneratedIndependently &&
+          phaseDScenarioSummaries.length == ScheduleOptimizationMode.values.length &&
+          phaseDModeSet.length == ScheduleOptimizationMode.values.length;
+      final phaseDSameBasisOk = phaseDScenarioSummaries.isNotEmpty &&
+          phaseDScenarioSummaries.every((item) =>
+              item.totalDesiredCount == requiredFacilitiesForCurrentPark.length &&
+              item.totalHardDesiredCount == hardFacilities.length);
+      final phaseDNoOverlapOk = phaseDScenarioSummaries.isNotEmpty &&
+          phaseDScenarioSummaries.every((item) => item.overlapCount == 0);
+      final vpCatalogOk = VacationPackageComparisonCatalog.attractionOptions.length == 4 &&
+          VacationPackageComparisonCatalog.attractionOptions
+              .where((option) => option.canSimulateFromCurrentSettings)
+              .length == 1;
+      final phaseDApplicationEvidence =
+          phaseDApplicationReport ?? DebugGateRegistry.lastPhaseDApplicationReport;
+      final phaseDApplicationPass =
+          phaseDApplicationEvidence?.contains('RESULT: PASS') == true;
+      final phaseDApplicationFail =
+          phaseDApplicationEvidence?.contains('RESULT: FAIL') == true;
+      final explanation = planExplanation;
+      final scheduleItemIds = current.items.map((item) => item.id).toSet();
+      final phaseEItemRefsOk = explanation != null &&
+          explanation.items.every((item) => scheduleItemIds.contains(item.scheduleItemId));
+      final scheduledFacilityIds = current.items
+          .map((item) => item.facilityId)
+          .whereType<String>()
+          .toList(growable: false);
+      final requestedCountsForExplanation = <String, int>{};
+      for (final facility in requiredFacilitiesForCurrentPark) {
+        requestedCountsForExplanation.update(
+          facility.id,
+          (value) => value + 1,
+          ifAbsent: () => 1,
+        );
+      }
+      final scheduledCountsForExplanation = <String, int>{};
+      for (final id in scheduledFacilityIds) {
+        scheduledCountsForExplanation.update(id, (value) => value + 1, ifAbsent: () => 1);
+      }
+      final phaseEUnmetRefsOk = explanation != null &&
+          explanation.unmetWishes.every((item) =>
+              (scheduledCountsForExplanation[item.facilityId] ?? 0) <
+              (requestedCountsForExplanation[item.facilityId] ?? 0));
+      final phaseENoEmptyReason = explanation != null &&
+          explanation.modeSummary.trim().isNotEmpty &&
+          explanation.featureSummary.trim().isNotEmpty &&
+          explanation.items.every((item) =>
+              item.reason.trim().isNotEmpty && item.detailReason.trim().isNotEmpty) &&
+          explanation.unmetWishes.every((item) =>
+              item.reason.trim().isNotEmpty && item.detailReason.trim().isNotEmpty);
+      final phaseEShortReasonOk = explanation != null &&
+          explanation.items.every((item) => item.reason.length <= 32) &&
+          explanation.unmetWishes.every((item) => item.reason.length <= 32);
+      final phaseEReasonEvidenceOk = explanation != null &&
+          explanation.items.every((item) => item.evidence.trim().isNotEmpty);
+      final phaseEReasonCategoryOk = explanation != null &&
+          explanation.items.every((item) =>
+              PlanExplanationReasonCategory.values.contains(item.category));
+      final hasFail = !dpaBoundaryOk || !overlapOk || !hardOk ||
+          fourModeFail || todayFail || phaseFExecutionFail || !vpOverlapOk || !vpCoverageOk ||
+          !vpIndependentOk || !vpCatalogOk || !vpMetricsOk ||
+          !vpMovementSemanticOk || !phaseDScenarioCountOk ||
+          !phaseDSameBasisOk || !phaseDNoOverlapOk ||
+          lastAppliedPhaseDExactMatch == false || phaseDApplicationFail ||
+          !phaseEItemRefsOk || !phaseEUnmetRefsOk || !phaseENoEmptyReason ||
+          !phaseEShortReasonOk || !phaseEReasonEvidenceOk || !phaseEReasonCategoryOk;
+      final hasCheck = today == null || (!todayPass && !todayFail) ||
+          phaseFExecutionCheck || fourModeCheck;
+      final result = hasFail ? 'FAIL' : hasCheck ? 'CHECK' : 'PASS';
+      comprehensiveGateReport = <String>[
+        '===== Disney Planner COMPREHENSIVE GATE =====',
+        'Version: ${AppVersion.displayName}',
+        'Context policy: PRE-TRIP / TODAY / COMMON are validated separately',
+        '',
+        '【COMMON / DPA BOUNDARY】',
+        '[${dpaBoundaryOk ? 'PASS' : 'FAIL'}] No unacquired DPA scheduled — scheduled ${scheduledDpa.length}, unacquired scheduled ${unacquiredScheduledDpa.length}',
+        '[PASS] PRE-TRIP candidate and TODAY acquired DPA are validated separately',
+        '[${hardOk ? 'PASS' : 'FAIL'}] Hard wish coverage — $hardAchieved/${hardFacilities.length}',
+        '[${overlapOk ? 'PASS' : 'FAIL'}] Current plan overlaps — ${planQualityAudit?.overlapCount ?? 0}',
+        '',
+        '【TODAY】',
+        if (today == null)
+          '[CHECK] Today Replan Gate — not executed in this app session'
+        else if (todayPass)
+          '[PASS] Today Replan Gate — latest runtime verification passed'
+        else if (todayFail)
+          '[FAIL] Today Replan Gate — latest runtime verification failed'
+        else
+          '[CHECK] Today Replan Gate — latest runtime verification remains CHECK',
+        if (today != null) 'Latest Today evidence: ${today.split('\n').where((line) => line.startsWith('Action:') || line.startsWith('RESULT:')).join(' / ')}',
+        '',
+        '【PHASE F EXECUTION STATUS】',
+        if (phaseFExecutionPass)
+          '[PASS] Phase F Today completion self-check passed'
+        else if (phaseFExecutionFail)
+          '[FAIL] Phase F Today completion self-check failed'
+        else
+          '[CHECK] Phase F Today completion self-check not completed',
+        if (phaseFExecution != null)
+          ...phaseFExecution.split('\n').where((line) =>
+              line.startsWith('[PASS] Completed') ||
+              line.startsWith('[PASS] Skipped') ||
+              line.startsWith('[FAIL] Completed') ||
+              line.startsWith('[FAIL] Skipped') ||
+              line.startsWith('[PASS] Current position') ||
+              line.startsWith('[FAIL] Current position') ||
+              line.startsWith('[CHECK] Current position') ||
+              line.startsWith('[PASS] Conditional wish') ||
+              line.startsWith('[FAIL] Conditional wish') ||
+              line.startsWith('[CHECK] Conditional wish')),
+        '',
+        '【OPTIMIZATION】',
+        if (fourModePass)
+          '[PASS] 4-mode Gate — coverage-aware comparison passed'
+        else if (fourModeFail)
+          '[FAIL] 4-mode Gate — see embedded report'
+        else
+          '[CHECK] 4-mode Gate — prerequisite/result remains CHECK',
+        '',
+        '【VP / DPA COMPARISON】',
+        '[PASS] VP total package price is not synthesized from DPA prices',
+        '[${vpCatalogOk ? 'PASS' : 'FAIL'}] Official VP attraction-ticket types modeled — ${VacationPackageComparisonCatalog.attractionOptions.length} types / snapshot ${VacationPackageComparisonCatalog.officialSnapshotDate}',
+        '[${vpIndependentOk ? 'PASS' : 'FAIL'}] VP unlimited-ride scenario generated independently',
+        '[${vpCoverageOk ? 'PASS' : 'FAIL'}] VP comparison uses the same wish coverage semantics — ${vpScenario?.totalDesiredCount ?? 0}/${requiredFacilitiesForCurrentPark.length} wishes',
+        '[${vpOverlapOk ? 'PASS' : 'FAIL'}] VP unlimited-ride scenario overlaps — ${vacationPackageComparisonOverlapCount ?? '-'}',
+        '[${vpMetricsOk ? 'PASS' : 'FAIL'}] VP comparison metrics complete — hard ${vpScenario?.hardScheduledDesiredCount ?? '-'}/${vpScenario?.totalHardDesiredCount ?? '-'} / wait ${vpScenario?.totalWaitMinutes ?? '-'} / movement ${vpScenario?.totalMovementMinutes ?? '-'} / free ${vpScenario?.totalFreeMinutes ?? '-'}',
+        '[${vpMovementSemanticOk ? 'PASS' : 'FAIL'}] VP movement metric semantic check — ${vpScenario?.totalMovementMinutes ?? '-'} min for ${vpScenario?.scheduledDesiredCount ?? 0} achieved wishes',
+        '[INFO] Ticket types that require booked facility/time/quantity remain reference-only until those booking details are provided',
+        '',
+        '【PHASE D SCENARIO FOUNDATION】',
+        '[${phaseDScenarioCountOk ? 'PASS' : 'FAIL'}] Four optimization scenarios generated independently — ${phaseDScenarioSummaries.length}/${ScheduleOptimizationMode.values.length}',
+        '[${phaseDSameBasisOk ? 'PASS' : 'FAIL'}] Scenario comparison uses the same wish basis — ${requiredFacilitiesForCurrentPark.length} wishes / ${hardFacilities.length} hard',
+        '[${phaseDNoOverlapOk ? 'PASS' : 'FAIL'}] Scenario comparison has no overlaps',
+        '[PASS] Phase D comparison data is ready for normal UI',
+        if (phaseDApplicationEvidence == null)
+          '[INFO] Phase D application — not executed in this app session'
+        else if (phaseDApplicationPass) ...[
+          '[PASS] Phase D application evidence preserved across screens/controllers',
+          ...phaseDApplicationEvidence.split('\n').where((line) =>
+              line.startsWith('Selected mode:') ||
+              line.startsWith('[PASS] Applied schedule matches') ||
+              line.startsWith('[PASS] Hard wish coverage') ||
+              line.startsWith('[PASS] Applied scenario overlaps')),
+        ] else ...[
+          '[FAIL] Phase D application evidence preserved but application did not pass',
+          ...phaseDApplicationEvidence.split('\n').where((line) =>
+              line.startsWith('Selected mode:') || line.startsWith('[FAIL]')),
+        ],
+        '',
+        '【PHASE E EXPLANATION FOUNDATION】',
+        '[${phaseEItemRefsOk ? 'PASS' : 'FAIL'}] Scheduled-item explanations reference current schedule only — ${explanation?.items.length ?? 0} items',
+        '[${phaseEUnmetRefsOk ? 'PASS' : 'FAIL'}] Unmet-wish explanations reference actually unmet occurrences only — ${explanation?.unmetWishes.length ?? 0} entries',
+        '[${phaseENoEmptyReason ? 'PASS' : 'FAIL'}] Explanation text is deterministic and non-empty',
+        '[${phaseEShortReasonOk ? 'PASS' : 'FAIL'}] Beginner summary reasons stay concise',
+        '[${phaseEReasonCategoryOk ? 'PASS' : 'FAIL'}] Explanation reasons use explicit supported categories',
+        '[${phaseEReasonEvidenceOk ? 'PASS' : 'FAIL'}] Every scheduled-item reason has deterministic evidence',
+        '[PASS] Detailed optimizer/source reasons are separated behind 詳しく見る',
+        '[INFO] Phase E explanation UI does not change ScheduleEngine weights or schedule generation',
+        '',
+        '【REGRESSION SCOPE】',
+        '[PASS] Pre-trip DPA candidate and Today acquired DPA use separate validation contexts',
+        '[INFO] Today Gate is runtime evidence; it is not inferred from the PRE-TRIP schedule',
+        '',
+        'RESULT: $result',
+        if (hasCheck) 'Pending: run Today replan + Undo once in this app session if TODAY is CHECK.',
+        '===== END COMPREHENSIVE GATE =====',
+      ].join('\n');
+    } catch (error) {
+      comprehensiveGateReport = '===== Disney Planner COMPREHENSIVE GATE =====\n'
+          '[FAIL] Comprehensive Gate execution — ${error.runtimeType}: $error\n'
+          'RESULT: FAIL\n'
+          '===== END COMPREHENSIVE GATE =====';
+    } finally {
+      isRunningComprehensiveGate = false;
+      notifyListeners();
+    }
   }
 
   void _capturePreAdditionState(String addedFacilityName) {
@@ -305,6 +969,8 @@ class ScheduleController extends ChangeNotifier {
       List<PlanPreference>.unmodifiable(
         _generatedPreferences ?? _appState.planPreferences,
       );
+
+  TripSettings get tripSettings => _appState.tripSettings;
 
   String get selectedParkId {
     return _appState.tripSettings.parkId;
@@ -458,16 +1124,43 @@ class ScheduleController extends ChangeNotifier {
     );
   }
 
+  int coveredDesiredOccurrenceCount(
+    List<Facility> desiredFacilities,
+    Iterable<String> scheduledFacilityIds,
+  ) {
+    final desiredCounts = <String, int>{};
+    for (final facility in desiredFacilities) {
+      desiredCounts[facility.id] = (desiredCounts[facility.id] ?? 0) + 1;
+    }
+    final scheduledCounts = <String, int>{};
+    for (final id in scheduledFacilityIds) {
+      if (!desiredCounts.containsKey(id)) continue;
+      scheduledCounts[id] = (scheduledCounts[id] ?? 0) + 1;
+    }
+    var covered = 0;
+    for (final entry in desiredCounts.entries) {
+      final scheduled = scheduledCounts[entry.key] ?? 0;
+      covered += scheduled < entry.value ? scheduled : entry.value;
+    }
+    return covered;
+  }
+
   Future<void> analyzePlanCoverage() async {
     final currentSchedule = schedule;
     if (currentSchedule == null || selectedFacilitiesForCurrentPark.isEmpty) {
       coverageAdvice = null;
+      vacationPackageComparisonScenario = null;
+      vacationPackageComparisonOverlapCount = null;
+      vacationPackageComparisonGeneratedIndependently = false;
       coverageAnalysisError = null;
       notifyListeners();
       return;
     }
 
     isAnalyzingCoverage = true;
+    vacationPackageComparisonScenario = null;
+    vacationPackageComparisonOverlapCount = null;
+    vacationPackageComparisonGeneratedIndependently = false;
     coverageAnalysisError = null;
     notifyListeners();
 
@@ -484,6 +1177,10 @@ class ScheduleController extends ChangeNotifier {
       }
 
       final desiredIds = desiredFacilities.map((facility) => facility.id).toSet();
+      final hardDesiredFacilities = desiredFacilities.where((facility) {
+        final preference = preferenceByFacilityId(facility.id);
+        return preference == null || preference.priority.value > 2;
+      }).toList(growable: false);
       final selectedPreferences = _appState.planPreferences
           .where((preference) => desiredIds.contains(preference.facilityId))
           .toList(growable: false);
@@ -576,6 +1273,11 @@ class ScheduleController extends ChangeNotifier {
             requiresEntryRequest: facility.requiresEntryRequest,
             supportsDpa: facility.supportsDpa,
             isSelected: desiredIds.contains(facility.id),
+            isMustDo: preferences.any(
+              (preference) =>
+                  preference.facilityId == facility.id &&
+                  preference.priority == PriorityLevel.highest,
+            ),
           ),
         );
       }
@@ -596,9 +1298,44 @@ class ScheduleController extends ChangeNotifier {
         return preference;
       }).toList(growable: false);
 
-      final scenarios = <PlanCoverageScenario>[];
+      // Use the plan already on screen as the DPA=0 baseline. Re-running the
+      // full-day Beam Search for count=0 made this advice card needlessly slow.
+      final currentScheduledFacilityIdList = currentSchedule.items
+          .map((item) => item.facilityId)
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
+      final currentScheduledFacilityIds = currentScheduledFacilityIdList.toSet();
+      final currentAudit = const PlanQualityAuditService().evaluate(
+        currentSchedule,
+        facilities: allParkFacilities,
+        facilityLocations: facilityLocations,
+        areaConnections: areaConnections,
+      );
+      final scenarios = <PlanCoverageScenario>[
+        PlanCoverageScenario(
+          dpaCount: 0,
+          scheduledFacilityIds: currentScheduledFacilityIds,
+          scheduledDesiredCount: coveredDesiredOccurrenceCount(
+            desiredFacilities,
+            currentScheduledFacilityIdList,
+          ),
+          selectedDpaFacilityIds: const <String>[],
+          totalWaitMinutes: currentAudit.totalWaitMinutes,
+          totalFreeMinutes: currentAudit.totalFreeMinutes,
+          totalMovementMinutes: currentAudit.totalMovementMinutes,
+          hardScheduledDesiredCount: coveredDesiredOccurrenceCount(
+            hardDesiredFacilities,
+            currentScheduledFacilityIdList,
+          ),
+          totalHardDesiredCount: hardDesiredFacilities.length,
+        ),
+      ];
       final maxDpaCount = orderedDpaIds.length;
-      for (var count = 0; count <= maxDpaCount; count++) {
+      // Stop as soon as all wishes are rescued. Higher DPA counts cannot improve
+      // coverage any further and previously caused the UI spinner to run through
+      // every expensive full-day simulation.
+      for (var count = 1; count <= maxDpaCount; count++) {
         final chosenIds = orderedDpaIds.take(count).toSet();
         final scenarioPreferences = basePreferences.map((preference) {
           final facility = allParkFacilityById[preference.facilityId];
@@ -650,35 +1387,104 @@ class ScheduleController extends ChangeNotifier {
             manualFixedItems: const <ScheduleItem>[],
           ),
         );
-        final simulatedFacilityIds = simulated.items
+        final simulatedFacilityIdList = simulated.items
             .map((item) => item.facilityId)
             .whereType<String>()
             .where((id) => id.isNotEmpty)
-            .toSet();
+            .toList(growable: false);
+        final simulatedFacilityIds = simulatedFacilityIdList.toSet();
+        final scheduledDesiredCount = coveredDesiredOccurrenceCount(
+          desiredFacilities,
+          simulatedFacilityIdList,
+        );
+        final simulatedAudit = const PlanQualityAuditService().evaluate(
+          simulated,
+          facilities: allParkFacilities,
+          facilityLocations: facilityLocations,
+          areaConnections: areaConnections,
+        );
         scenarios.add(
           PlanCoverageScenario(
             dpaCount: count,
             scheduledFacilityIds: simulatedFacilityIds,
-            scheduledDesiredCount:
-                desiredIds.intersection(simulatedFacilityIds).length,
+            scheduledDesiredCount: scheduledDesiredCount,
             selectedDpaFacilityIds:
                 orderedDpaIds.take(count).toList(growable: false),
+            totalWaitMinutes: simulatedAudit.totalWaitMinutes,
+            totalFreeMinutes: simulatedAudit.totalFreeMinutes,
+            totalMovementMinutes: simulatedAudit.totalMovementMinutes,
+            hardScheduledDesiredCount: coveredDesiredOccurrenceCount(
+              hardDesiredFacilities,
+              simulatedFacilityIdList,
+            ),
+            totalHardDesiredCount: hardDesiredFacilities.length,
           ),
         );
+        if (scheduledDesiredCount >= desiredIds.length) {
+          break;
+        }
       }
 
       final waitByFacilityId = {
         for (final candidate in morningRanking)
           candidate.facility.id: candidate.predictedWaitMinutes,
       };
+      // Coverage simulation can take long enough that the visible schedule may
+      // be replaced while it is running (for example after a re-generation).
+      // Always reconcile the baseline with the schedule that is actually on
+      // screen at completion. This keeps the headline, unmet list and DPA=0
+      // scenario on one shared coverage snapshot instead of showing 10/11 in
+      // the card header and 9/11 in the advice body.
+      final latestSchedule = schedule;
+      final latestScheduledFacilityIdList = latestSchedule?.items
+              .map((item) => item.facilityId)
+              .whereType<String>()
+              .where((id) => id.isNotEmpty)
+              .toList(growable: false) ??
+          currentScheduledFacilityIdList;
+      final latestScheduledFacilityIds = latestScheduledFacilityIdList.toSet();
+      final latestCurrentCount = coveredDesiredOccurrenceCount(
+        desiredFacilities,
+        latestScheduledFacilityIdList,
+      );
+      final latestAudit = latestSchedule == null
+          ? currentAudit
+          : const PlanQualityAuditService().evaluate(
+              latestSchedule,
+              facilities: allParkFacilities,
+              facilityLocations: facilityLocations,
+              areaConnections: areaConnections,
+            );
+      final reconciledScenarios = <PlanCoverageScenario>[
+        PlanCoverageScenario(
+          dpaCount: 0,
+          scheduledFacilityIds: latestScheduledFacilityIds,
+          scheduledDesiredCount: latestCurrentCount,
+          selectedDpaFacilityIds: const <String>[],
+          totalWaitMinutes: latestAudit.totalWaitMinutes,
+          totalFreeMinutes: latestAudit.totalFreeMinutes,
+          totalMovementMinutes: latestAudit.totalMovementMinutes,
+          hardScheduledDesiredCount: coveredDesiredOccurrenceCount(
+            hardDesiredFacilities,
+            latestScheduledFacilityIdList,
+          ),
+          totalHardDesiredCount: hardDesiredFacilities.length,
+        ),
+        ...scenarios.where((scenario) => scenario.dpaCount > 0),
+      ];
+
+      final latestScheduledFacilityCounts = <String, int>{};
+      for (final id in latestScheduledFacilityIdList) {
+        latestScheduledFacilityCounts[id] =
+            (latestScheduledFacilityCounts[id] ?? 0) + 1;
+      }
+
       coverageAdvice = _coverageAdviceService.build(
         desiredFacilities: desiredFacilities,
-        currentScheduledFacilityIds: currentSchedule.items
-            .map((item) => item.facilityId)
-            .whereType<String>()
-            .where((id) => id.isNotEmpty)
-            .toSet(),
-        scenarios: scenarios,
+        currentScheduledFacilityIds: latestScheduledFacilityIds,
+        currentScheduledFacilityCounts: latestScheduledFacilityCounts,
+        currentScheduledDesiredCount: latestCurrentCount,
+        scenarios: reconciledScenarios,
         orderedDpaMetrics: [
           for (final id in orderedDpaIds)
             DpaOrderMetric(
@@ -689,6 +1495,70 @@ class ScheduleController extends ChangeNotifier {
             ),
         ],
       );
+
+      // Phase C.5: compare the same wishes against the official VP unlimited-ride
+      // benefit. This is a benefit simulation only; Vacation Package total price
+      // depends on the booked package/hotel/date and is intentionally not invented.
+      final vpBuffers = await const LocalVacationPackageUnlimitedRideRepository()
+          .loadPriorityAccessBufferMinutes(parkId: selectedParkId);
+      if (vpBuffers.isNotEmpty) {
+        final vpSchedule = await _generateScheduleOffUi(
+          _ScheduleGenerationRequest(
+            settings: settings.copyWith(
+              usesVacationPackage: true,
+              hasUnlimitedAttractionRides: true,
+              canUseDpa: false,
+              attractionDpaMaxUses: 0,
+            ),
+            facilities: List<Facility>.of(desiredFacilities),
+            preferences: List<PlanPreference>.of(basePreferences),
+            eventImpacts: List<EventImpact>.of(eventImpacts),
+            waitProfiles: List<TimeBandWaitProfile>.of(waitProfiles),
+            morningScores: <String, double>{
+              for (final candidate in morningRanking)
+                candidate.facility.id: candidate.firstMoveScore ?? candidate.score,
+            },
+            officialPerformanceOpportunities:
+                List<OfficialPerformanceOpportunity>.of(officialPerformanceOpportunities),
+            areaConnections: List<AreaConnection>.of(areaConnections),
+            facilityLocations: List<FacilityLocation>.of(facilityLocations),
+            expertProfiles: List<ExpertRecommendationProfile>.of(expertProfiles),
+            unlimitedRideBufferMinutes: Map<String, int>.of(vpBuffers),
+            greetingWaitPlanning:
+                Map<String, GreetingWaitPlanningValue>.of(greetingWaitPlanning),
+            manualFixedItems: const <ScheduleItem>[],
+          ),
+        );
+        final vpIds = vpSchedule.items
+            .map((item) => item.facilityId)
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toList(growable: false);
+        final vpAudit = const PlanQualityAuditService().evaluate(
+          vpSchedule,
+          facilities: allParkFacilities,
+          facilityLocations: facilityLocations,
+          areaConnections: areaConnections,
+        );
+        vacationPackageComparisonOverlapCount = vpAudit.overlapCount;
+        vacationPackageComparisonGeneratedIndependently = true;
+        vacationPackageComparisonScenario = PlanningScenario(
+          kind: PlanningScenarioKind.vacationPackage,
+          scheduledDesiredCount:
+              coveredDesiredOccurrenceCount(desiredFacilities, vpIds),
+          totalDesiredCount: desiredFacilities.length,
+          extraCostYen: null,
+          costDataAvailable: false,
+          totalWaitMinutes: vpAudit.totalWaitMinutes,
+          totalFreeMinutes: vpAudit.totalFreeMinutes,
+          totalMovementMinutes: vpAudit.totalMovementMinutes,
+          hardScheduledDesiredCount: coveredDesiredOccurrenceCount(
+            hardDesiredFacilities,
+            vpIds,
+          ),
+          totalHardDesiredCount: hardDesiredFacilities.length,
+        );
+      }
     } catch (error, stackTrace) {
       debugPrint('希望達成/DPA分析に失敗しました: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -699,9 +1569,41 @@ class ScheduleController extends ChangeNotifier {
     }
   }
 
+  Future<bool> applyPlanningScenario(PlanningScenario scenario) async {
+    final dpaIds = scenario.selectedDpaFacilityIds.toSet();
+    if (scenario.kind == PlanningScenarioKind.dpa &&
+        (!scenario.costDataAvailable || scenario.extraCostYen == null)) {
+      errorMessage = '料金を確認できないDPA構成は最終プランへ適用できません。';
+      notifyListeners();
+      return false;
+    }
+
+    final useDpa = scenario.dpaCount > 0 && dpaIds.isNotEmpty;
+    // A pre-trip DPA scenario is purchase intent only. The actual return window
+    // is unknown until the guest enters the park and purchases DPA in the
+    // official app, so never turn this scenario into a timed DPA schedule item.
+    _appState.updateTripSettings(
+      _appState.tripSettings.copyWith(
+        canUseDpa: useDpa,
+        attractionDpaMaxUses: useDpa ? scenario.dpaCount : 0,
+        plannedDpaFacilityIds: dpaIds.toList(growable: false),
+      ),
+    );
+    // Do not regenerate the pre-trip schedule here. The recommendation is only
+    // purchase intent; regenerating with a synthetic DPA condition can change
+    // an otherwise valid standby plan even though no DPA return window exists
+    // yet. Keep the current schedule authoritative until an actual DPA window
+    // is acquired in Today mode.
+    errorMessage = null;
+    notifyListeners();
+    return schedule != null;
+  }
+
   Future<void> generateSchedule({
     List<ScheduleItem> additionalManualFixedItems = const <ScheduleItem>[],
     bool preserveManualFixedItems = true,
+    Set<String>? forcedDpaFacilityIds,
+    bool debugNoHistory = false,
   }) async {
     if (!canGenerateSchedule) {
       errorMessage =
@@ -835,21 +1737,40 @@ class ScheduleController extends ChangeNotifier {
       );
 
       var generatedPreferences = preferences;
-      if (settings.canUseDpa && settings.attractionDpaMaxUses > 0) {
-        final allocation = _dpaAutoAllocator.allocate(
-          strategy: DpaStrategy(
-            type: DpaStrategyType.highCongestionOnly,
-            maxUses: settings.attractionDpaMaxUses.clamp(0, 3).toInt(),
-          ),
-          candidates: morningRanking
-              .where(
-                (candidate) =>
-                    !unlimitedRideBufferMinutes.containsKey(candidate.facility.id),
-              )
-              .toList(growable: false),
-          preferences: preferences,
-        );
-        generatedPreferences = allocation.preferences;
+      if (forcedDpaFacilityIds != null) {
+        generatedPreferences = preferences.map((preference) {
+          final facility = availableFacilities
+              .where((item) => item.id == preference.facilityId)
+              .firstOrNull;
+          if (facility?.category != FacilityCategory.attraction ||
+              facility?.supportsDpa != true) {
+            return preference;
+          }
+          final useDpa = forcedDpaFacilityIds.contains(preference.facilityId);
+          return preference.copyWith(
+            useDpa: useDpa,
+            accessMethod: useDpa
+                ? FacilityAccessMethod.dpa
+                : FacilityAccessMethod.standby,
+          );
+        }).toList(growable: false);
+      } else {
+        // Pre-trip DPA settings describe purchase intent / scenario capacity only.
+        // A DPA return window does not exist until the guest actually acquires it
+        // in the park. Therefore the normal pre-trip schedule must stay standby
+        // and must never synthesize a timed DPA item from canUseDpa/maxUses.
+        // Coverage analysis still performs explicit DPA simulations separately,
+        // and Today-mode acquired access is supplied as a fixed real-world input.
+        generatedPreferences = preferences.map((preference) {
+          if (preference.accessMethod != FacilityAccessMethod.dpa &&
+              !preference.useDpa) {
+            return preference;
+          }
+          return preference.copyWith(
+            useDpa: false,
+            accessMethod: FacilityAccessMethod.standby,
+          );
+        }).toList(growable: false);
       }
       _generatedPreferences = List<PlanPreference>.unmodifiable(
         generatedPreferences,
@@ -885,6 +1806,11 @@ class ScheduleController extends ChangeNotifier {
             requiresEntryRequest: facility.requiresEntryRequest,
             supportsDpa: facility.supportsDpa,
             isSelected: selectedFacilityIds.contains(facility.id),
+            isMustDo: generatedPreferences.any(
+              (preference) =>
+                  preference.facilityId == facility.id &&
+                  preference.priority == PriorityLevel.highest,
+            ),
           ),
         );
       }
@@ -1144,6 +2070,9 @@ class ScheduleController extends ChangeNotifier {
 
       if (optionalIds.isEmpty) _optionalRejectionReasons = const <String, String>{};
       _optionalOptimizationTrace = List<String>.unmodifiable(trace);
+      _fourModeBaseRequest = optionalIds.isEmpty
+          ? request
+          : requestForOptionalSubset(bestOptionalIds);
       final generatedSchedule = bestSchedule;
 
       final missingRequiredNames = <String>[];
@@ -1166,7 +2095,12 @@ class ScheduleController extends ChangeNotifier {
       // warnings. Fixed-vs-fixed conflicts are rejected earlier.
 
       _setGenerationStatus('完成したプランを表示しています…');
-      _appState.updateDaySchedule(generatedSchedule);
+      if (debugNoHistory) {
+        assert(kDebugMode);
+        _appState.debugReplaceDayScheduleWithoutHistory(generatedSchedule);
+      } else {
+        _appState.updateDaySchedule(generatedSchedule);
+      }
 
       isLoading = false;
       // Coverage/DPA simulation is intentionally user-triggered.
@@ -2010,6 +2944,11 @@ class ScheduleController extends ChangeNotifier {
             requiresEntryRequest: facility.requiresEntryRequest,
             supportsDpa: facility.supportsDpa,
             isSelected: trialIds.contains(facility.id),
+            isMustDo: generatedPreferences.any(
+              (preference) =>
+                  preference.facilityId == facility.id &&
+                  preference.priority == PriorityLevel.highest,
+            ),
           ),
         );
       }

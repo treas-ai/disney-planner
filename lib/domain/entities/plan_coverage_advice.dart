@@ -4,12 +4,22 @@ class PlanCoverageScenario {
     required this.scheduledFacilityIds,
     required this.scheduledDesiredCount,
     required this.selectedDpaFacilityIds,
+    this.totalWaitMinutes,
+    this.totalFreeMinutes,
+    this.totalMovementMinutes,
+    this.hardScheduledDesiredCount,
+    this.totalHardDesiredCount,
   });
 
   final int dpaCount;
   final Set<String> scheduledFacilityIds;
   final int scheduledDesiredCount;
   final List<String> selectedDpaFacilityIds;
+  final int? totalWaitMinutes;
+  final int? totalFreeMinutes;
+  final int? totalMovementMinutes;
+  final int? hardScheduledDesiredCount;
+  final int? totalHardDesiredCount;
 }
 
 class UnmetPlanFacilityAdvice {

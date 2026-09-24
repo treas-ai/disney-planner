@@ -10,9 +10,13 @@ import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/loading_view.dart';
 import '../../core/widgets/scroll_time_picker.dart';
 import '../../data/local/data_freshness_service.dart';
+import '../../data/local/planner_experience_preferences.dart';
 import '../../domain/entities/data_freshness_info.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/entities/planning_scenario.dart';
+import '../../domain/enums/preferred_time.dart';
 import '../../domain/services/entry_prediction_service.dart';
+import '../onboarding/onboarding_screen.dart';
 import '../share/share_center_screen.dart';
 import 'settings_controller.dart';
 
@@ -293,6 +297,8 @@ class _MobileSettingsLayout extends StatelessWidget {
             settings: settings,
             onHappyEntryChanged: controller.updateHappyEntry,
             onAttractionDpaMaxUsesChanged: controller.updateAttractionDpaMaxUses,
+            onPlanningBudgetModeChanged: controller.updatePlanningBudgetMode,
+            onMaxExtraBudgetYenChanged: controller.updateMaxExtraBudgetYen,
             onSingleRiderChanged: controller.updateSingleRider,
             onVacationPackageChanged: controller.updateVacationPackage,
             onUnlimitedAttractionRidesChanged:
@@ -309,6 +315,13 @@ class _MobileSettingsLayout extends StatelessWidget {
             onBreakfastChanged: controller.updateBreakfast,
             onLunchChanged: controller.updateLunch,
             onDinnerChanged: controller.updateDinner,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _FreeTimeSettingsCard(
+            settings: settings,
+            onEnabledChanged: controller.updateFreeTimeEnabled,
+            onTargetMinutesChanged: controller.updateFreeTimeTargetMinutes,
+            onPreferredTimeChanged: controller.updateFreeTimePreferredTime,
           ),
           const SizedBox(height: AppSpacing.sm),
           _ExpandableSettingsSection(
@@ -403,6 +416,15 @@ class _DesktopSettingsLayout extends StatelessWidget {
                         onLunchChanged: controller.updateLunch,
                         onDinnerChanged: controller.updateDinner,
                       ),
+                      const SizedBox(height: AppSpacing.sm),
+                      _FreeTimeSettingsCard(
+                        settings: settings,
+                        onEnabledChanged: controller.updateFreeTimeEnabled,
+                        onTargetMinutesChanged:
+                            controller.updateFreeTimeTargetMinutes,
+                        onPreferredTimeChanged:
+                            controller.updateFreeTimePreferredTime,
+                      ),
                     ],
                   ),
                 ),
@@ -414,6 +436,8 @@ class _DesktopSettingsLayout extends StatelessWidget {
                         settings: settings,
                         onHappyEntryChanged: controller.updateHappyEntry,
                         onAttractionDpaMaxUsesChanged: controller.updateAttractionDpaMaxUses,
+                        onPlanningBudgetModeChanged: controller.updatePlanningBudgetMode,
+                        onMaxExtraBudgetYenChanged: controller.updateMaxExtraBudgetYen,
                         onSingleRiderChanged: controller.updateSingleRider,
                         onVacationPackageChanged:
                             controller.updateVacationPackage,
@@ -1342,6 +1366,8 @@ class _ServiceSettingsCard extends StatelessWidget {
     required this.settings,
     required this.onHappyEntryChanged,
     required this.onAttractionDpaMaxUsesChanged,
+    required this.onPlanningBudgetModeChanged,
+    required this.onMaxExtraBudgetYenChanged,
     required this.onSingleRiderChanged,
     required this.onVacationPackageChanged,
     required this.onUnlimitedAttractionRidesChanged,
@@ -1354,6 +1380,8 @@ class _ServiceSettingsCard extends StatelessWidget {
   final TripSettings settings;
   final ValueChanged<bool> onHappyEntryChanged;
   final ValueChanged<int> onAttractionDpaMaxUsesChanged;
+  final ValueChanged<PlanningBudgetMode> onPlanningBudgetModeChanged;
+  final ValueChanged<int> onMaxExtraBudgetYenChanged;
   final ValueChanged<bool> onSingleRiderChanged;
   final ValueChanged<bool> onVacationPackageChanged;
   final ValueChanged<bool> onUnlimitedAttractionRidesChanged;
@@ -1386,7 +1414,7 @@ class _ServiceSettingsCard extends StatelessWidget {
             initialValue: settings.attractionDpaMaxUses,
             decoration: const InputDecoration(
               labelText: 'アトラクションDPA',
-              helperText: 'AIが自動配分してよい上限です。ショーDPAは別扱いです。',
+              helperText: 'プラン作成時に自動配分してよい上限です。ショーDPAは別扱いです。',
               prefixIcon: Icon(Icons.bolt),
               border: OutlineInputBorder(),
             ),
@@ -1402,6 +1430,46 @@ class _ServiceSettingsCard extends StatelessWidget {
               }
             },
           ),
+          const SizedBox(height: AppSpacing.sm),
+          DropdownButtonFormField<PlanningBudgetMode>(
+            initialValue: settings.planningBudgetMode,
+            decoration: const InputDecoration(
+              labelText: '追加料金の考え方',
+              helperText: 'DPAシナリオ比較で使います。やりたいこと自体は変えません。',
+              prefixIcon: Icon(Icons.payments_outlined),
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: PlanningBudgetMode.noExtraCost, child: Text('追加料金なし')),
+              DropdownMenuItem(value: PlanningBudgetMode.lowCost, child: Text('なるべく安く')),
+              DropdownMenuItem(value: PlanningBudgetMode.maxExtraBudget, child: Text('追加予算を決める')),
+              DropdownMenuItem(value: PlanningBudgetMode.fulfillmentFirst, child: Text('達成・時間を優先')),
+            ],
+            onChanged: (value) {
+              if (value != null) onPlanningBudgetModeChanged(value);
+            },
+          ),
+          if (settings.planningBudgetMode == PlanningBudgetMode.maxExtraBudget) ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              initialValue: settings.maxExtraBudgetYen,
+              decoration: const InputDecoration(
+                labelText: '追加予算（グループ合計）',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 2000, child: Text('2,000円まで')),
+                DropdownMenuItem(value: 3000, child: Text('3,000円まで')),
+                DropdownMenuItem(value: 5000, child: Text('5,000円まで')),
+                DropdownMenuItem(value: 10000, child: Text('10,000円まで')),
+                DropdownMenuItem(value: 20000, child: Text('20,000円まで')),
+              ],
+              onChanged: (value) {
+                if (value != null) onMaxExtraBudgetYenChanged(value);
+              },
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
           _CompactSwitchTile(
             title: 'シングルライダー',
             subtitle: '同行者と別れて空席を利用し、待ち時間を短縮します',
@@ -1510,6 +1578,93 @@ class _MealSettingsCard extends StatelessWidget {
 }
 
 
+class _FreeTimeSettingsCard extends StatelessWidget {
+  const _FreeTimeSettingsCard({
+    required this.settings,
+    required this.onEnabledChanged,
+    required this.onTargetMinutesChanged,
+    required this.onPreferredTimeChanged,
+  });
+
+  final TripSettings settings;
+  final ValueChanged<bool> onEnabledChanged;
+  final ValueChanged<int> onTargetMinutesChanged;
+  final ValueChanged<PreferredTime> onPreferredTimeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final preference = settings.freeTimePreference;
+    final selectedMinutes = switch (preference.targetMinutes) {
+      30 => 30,
+      90 => 90,
+      _ => 60,
+    };
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SettingsCardHeader(
+            title: '自由に動ける時間',
+            subtitle: '予定を詰めすぎず、当日に使える余白を残します',
+            icon: Icons.explore_outlined,
+          ),
+          const SizedBox(height: 4),
+          _CompactSwitchTile(
+            title: '自由時間を残したい',
+            subtitle: '遅れの吸収、休憩、買い物、写真、寄り道などに使えます',
+            icon: Icons.schedule_outlined,
+            value: preference.enabled,
+            onChanged: onEnabledChanged,
+          ),
+          if (preference.enabled) ...[
+            const SizedBox(height: AppSpacing.sm),
+            DropdownButtonFormField<int>(
+              initialValue: selectedMinutes,
+              decoration: const InputDecoration(
+                labelText: 'どのくらい残す？',
+                helperText: 'できるだけ、まとまった自由時間として確保します。',
+                prefixIcon: Icon(Icons.hourglass_empty_outlined),
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 30, child: Text('30分くらい')),
+                DropdownMenuItem(value: 60, child: Text('60分くらい')),
+                DropdownMenuItem(value: 90, child: Text('90分くらい')),
+              ],
+              onChanged: (value) {
+                if (value != null) onTargetMinutesChanged(value);
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            DropdownButtonFormField<PreferredTime>(
+              initialValue: preference.preferredTime,
+              decoration: const InputDecoration(
+                labelText: 'いつ残す？',
+                helperText: '指定しなければ、一日の中で残しやすい場所を選びます。',
+                prefixIcon: Icon(Icons.access_time_outlined),
+                border: OutlineInputBorder(),
+              ),
+              items: PreferredTime.values
+                  .map(
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text(value.label),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) {
+                if (value != null) onPreferredTimeChanged(value);
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+
 class _ConditionSettingsCard extends StatelessWidget {
   const _ConditionSettingsCard({
     required this.settings,
@@ -1529,7 +1684,7 @@ class _ConditionSettingsCard extends StatelessWidget {
         children: [
           const _SettingsCardHeader(
             title: '優先条件',
-            subtitle: '該当する条件をAIの候補選びへ反映します',
+            subtitle: '該当する条件をプラン候補の選定へ反映します',
             icon: Icons.tune_outlined,
           ),
           const SizedBox(height: 4),
@@ -1987,12 +2142,18 @@ class _BackupRestoreCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           TextButton.icon(
             onPressed: () async {
-              await controller.resetOnboarding();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('次回起動時に初回案内を表示します。')),
-                );
-              }
+              await Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => OnboardingScreen(
+                    onCompleted: (mode) async {
+                      await const PlannerExperiencePreferences().saveMode(mode);
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ),
+              );
             },
             icon: const Icon(Icons.help_outline),
             label: const Text('初回案内をもう一度表示'),

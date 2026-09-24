@@ -1,13 +1,19 @@
+import '../enums/preferred_time.dart';
+import '../enums/wait_tolerance.dart';
+import '../enums/wish_importance.dart';
+
 class WishItemState {
   const WishItemState({
     required this.itemId,
     this.selected = false,
     this.completed = false,
-    this.priority = 3,
+    this.priority = 2,
     this.targetCount = 1,
     this.completedCount = 0,
     this.visitCount = 0,
     this.repeatAllowed = false,
+    this.preferredTime = PreferredTime.anytime,
+    this.waitTolerance = WaitTolerance.any,
   });
 
   final String itemId;
@@ -20,8 +26,19 @@ class WishItemState {
   final int completedCount;
   final int visitCount;
   final bool repeatAllowed;
+  final PreferredTime preferredTime;
+  final WaitTolerance waitTolerance;
 
   int get remainingCount => (targetCount - completedCount).clamp(0, targetCount);
+
+  /// Beginner-facing three-level wish meaning. Keep legacy numeric priority
+  /// for storage compatibility and map it into a stable product concept here.
+  WishImportance get importance {
+    if (priority >= 5) return WishImportance.mustDo;
+    if (priority <= 2) return WishImportance.optional;
+    return WishImportance.normal;
+  }
+
   bool get isFulfilled => completed || remainingCount == 0;
 
   factory WishItemState.fromJson(Map<String, dynamic> json) {
@@ -36,6 +53,14 @@ class WishItemState {
           .clamp(0, 999),
       visitCount: (json['visitCount'] as int? ?? 0).clamp(0, 999),
       repeatAllowed: json['repeatAllowed'] as bool? ?? false,
+      preferredTime: PreferredTime.values.firstWhere(
+        (value) => value.name == json['preferredTime'],
+        orElse: () => PreferredTime.anytime,
+      ),
+      waitTolerance: WaitTolerance.values.firstWhere(
+        (value) => value.name == json['waitTolerance'],
+        orElse: () => WaitTolerance.any,
+      ),
     );
   }
 
@@ -49,6 +74,8 @@ class WishItemState {
       'completedCount': completedCount,
       'visitCount': visitCount,
       'repeatAllowed': repeatAllowed,
+      'preferredTime': preferredTime.name,
+      'waitTolerance': waitTolerance.name,
     };
   }
 
@@ -60,6 +87,8 @@ class WishItemState {
     int? completedCount,
     int? visitCount,
     bool? repeatAllowed,
+    PreferredTime? preferredTime,
+    WaitTolerance? waitTolerance,
   }) {
     return WishItemState(
       itemId: itemId,
@@ -70,6 +99,8 @@ class WishItemState {
       completedCount: (completedCount ?? this.completedCount).clamp(0, 999),
       visitCount: (visitCount ?? this.visitCount).clamp(0, 999),
       repeatAllowed: repeatAllowed ?? this.repeatAllowed,
+      preferredTime: preferredTime ?? this.preferredTime,
+      waitTolerance: waitTolerance ?? this.waitTolerance,
     );
   }
 }

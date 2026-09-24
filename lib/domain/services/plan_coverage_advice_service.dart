@@ -17,39 +17,61 @@ class PlanCoverageAdviceService {
   PlanCoverageAdvice build({
     required List<Facility> desiredFacilities,
     required Set<String> currentScheduledFacilityIds,
+    Map<String, int>? currentScheduledFacilityCounts,
+    required int currentScheduledDesiredCount,
     required List<PlanCoverageScenario> scenarios,
     required List<DpaOrderMetric> orderedDpaMetrics,
   }) {
-    final desiredIds = desiredFacilities.map((facility) => facility.id).toSet();
-    final currentCount = desiredIds.intersection(currentScheduledFacilityIds).length;
+    final currentCount = currentScheduledDesiredCount.clamp(0, desiredFacilities.length);
 
     int? minimumDpaCountForAll;
     for (final scenario in scenarios) {
       final covered = scenario.scheduledDesiredCount;
-      if (covered == desiredIds.length) {
+      if (covered >= desiredFacilities.length) {
         minimumDpaCountForAll = scenario.dpaCount;
         break;
       }
     }
 
-    final unmet = <UnmetPlanFacilityAdvice>[];
+    final requestedCounts = <String, int>{};
+    final facilityById = <String, Facility>{};
     for (final facility in desiredFacilities) {
-      if (currentScheduledFacilityIds.contains(facility.id)) continue;
+      requestedCounts[facility.id] = (requestedCounts[facility.id] ?? 0) + 1;
+      facilityById.putIfAbsent(facility.id, () => facility);
+    }
+    final scheduledCounts = currentScheduledFacilityCounts ??
+        {for (final id in currentScheduledFacilityIds) id: 1};
+
+    final unmet = <UnmetPlanFacilityAdvice>[];
+    for (final entry in requestedCounts.entries) {
+      final facility = facilityById[entry.key]!;
+      final requestedCount = entry.value;
+      final scheduledCount = scheduledCounts[facility.id] ?? 0;
+      if (scheduledCount >= requestedCount) continue;
+      final missingCount = requestedCount - scheduledCount;
 
       int? rescuedAt;
-      for (final scenario in scenarios) {
-        if (scenario.dpaCount <= 0) continue;
-        if (scenario.scheduledFacilityIds.contains(facility.id)) {
-          rescuedAt = scenario.dpaCount;
-          break;
+      // Scenario facility IDs are sets and therefore cannot prove that an
+      // additional occurrence of an already-scheduled repeat wish was rescued.
+      // Only attach a rescue stage when the facility is currently absent.
+      if (scheduledCount == 0) {
+        for (final scenario in scenarios) {
+          if (scenario.dpaCount <= 0) continue;
+          if (scenario.scheduledFacilityIds.contains(facility.id)) {
+            rescuedAt = scenario.dpaCount;
+            break;
+          }
         }
       }
 
+      final partialPrefix = requestedCount > 1
+          ? '$requestedCount回希望のうち$scheduledCount回達成、あと$missingCount回です。'
+          : '';
       final reason = rescuedAt != null
-          ? '現在の通常待機中心プランでは未採用ですが、DPAを$rescuedAt個まで使うシミュレーションではプランに入ります。'
+          ? '$partialPrefix現在の通常待機中心プランでは希望回数を満たしていませんが、DPAを$rescuedAt個まで使うシミュレーションでは改善します。'
           : facility.supportsDpa
-              ? '現在の固定予定・移動・待ち時間を含む一日最適化では未採用です。DPAを増やしても今回のシミュレーション上は採用されませんでした。'
-              : '現在の固定予定・移動・待ち時間を含む一日最適化では未採用です。この施設自体はアトラクションDPA対象ではありません。';
+              ? '$partialPrefix現在の固定予定・移動・待ち時間を含む一日最適化では希望回数を満たせません。DPAを増やしても今回のシミュレーション上は全回数を満たしませんでした。'
+              : '$partialPrefix現在の固定予定・移動・待ち時間を含む一日最適化では希望回数を満たせません。この施設自体はアトラクションDPA対象ではありません。';
 
       unmet.add(
         UnmetPlanFacilityAdvice(
@@ -62,7 +84,6 @@ class PlanCoverageAdviceService {
       );
     }
 
-    final facilityById = {for (final facility in desiredFacilities) facility.id: facility};
     final unmetIds = unmet.map((item) => item.facilityId).toSet();
     final order = <DpaAcquisitionAdvice>[];
     for (final metric in orderedDpaMetrics) {

@@ -1,3 +1,5 @@
+import 'free_time_preference.dart';
+import 'planning_scenario.dart';
 enum ScheduleOptimizationMode {
   balanced,
   minimumWait,
@@ -37,6 +39,10 @@ class TripSettings {
     required this.isRainy,
     required this.hasChildren,
     this.scheduleOptimizationMode = ScheduleOptimizationMode.balanced,
+    this.freeTimePreference = const FreeTimePreference(),
+    this.planningBudgetMode = PlanningBudgetMode.lowCost,
+    this.maxExtraBudgetYen = 5000,
+    this.plannedDpaFacilityIds = const <String>[],
   });
 
   factory TripSettings.initial() => const TripSettings(
@@ -108,6 +114,17 @@ class TripSettings {
       (mode) => mode.name == (json['scheduleOptimizationMode'] as String? ?? 'balanced'),
       orElse: () => ScheduleOptimizationMode.balanced,
     ),
+    freeTimePreference: FreeTimePreference.fromJson(
+      json['freeTimePreference'] as Map<String, dynamic>?,
+    ),
+    planningBudgetMode: PlanningBudgetMode.values.firstWhere(
+      (mode) => mode.name == (json['planningBudgetMode'] as String? ?? 'lowCost'),
+      orElse: () => PlanningBudgetMode.lowCost,
+    ),
+    maxExtraBudgetYen: json['maxExtraBudgetYen'] as int? ?? 5000,
+    plannedDpaFacilityIds: (json['plannedDpaFacilityIds'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<String>()
+        .toList(growable: false),
   );
 
   final String parkId;
@@ -142,6 +159,11 @@ class TripSettings {
   final bool isRainy;
   final bool hasChildren;
   final ScheduleOptimizationMode scheduleOptimizationMode;
+  final FreeTimePreference freeTimePreference;
+  final PlanningBudgetMode planningBudgetMode;
+  final int maxExtraBudgetYen;
+  /// DPAの事前購入候補。利用時刻が確定した取得済みDPAではない。
+  final List<String> plannedDpaFacilityIds;
 
   DateTime? get visitDate {
     if (visitDateIso.isEmpty) return null;
@@ -202,6 +224,10 @@ class TripSettings {
     'isRainy': isRainy,
     'hasChildren': hasChildren,
     'scheduleOptimizationMode': scheduleOptimizationMode.name,
+    'freeTimePreference': freeTimePreference.toJson(),
+    'planningBudgetMode': planningBudgetMode.name,
+    'maxExtraBudgetYen': maxExtraBudgetYen,
+    'plannedDpaFacilityIds': plannedDpaFacilityIds,
   };
 
   TripSettings copyWith({
@@ -235,6 +261,10 @@ class TripSettings {
     bool? isRainy,
     bool? hasChildren,
     ScheduleOptimizationMode? scheduleOptimizationMode,
+    FreeTimePreference? freeTimePreference,
+    PlanningBudgetMode? planningBudgetMode,
+    int? maxExtraBudgetYen,
+    List<String>? plannedDpaFacilityIds,
   }) {
     final resolvedMaxUses = attractionDpaMaxUses ??
         (canUseDpa == false
@@ -286,6 +316,10 @@ class TripSettings {
       isRainy: isRainy ?? this.isRainy,
       hasChildren: hasChildren ?? this.hasChildren,
       scheduleOptimizationMode: scheduleOptimizationMode ?? this.scheduleOptimizationMode,
+      freeTimePreference: freeTimePreference ?? this.freeTimePreference,
+      planningBudgetMode: planningBudgetMode ?? this.planningBudgetMode,
+      maxExtraBudgetYen: maxExtraBudgetYen ?? this.maxExtraBudgetYen,
+      plannedDpaFacilityIds: plannedDpaFacilityIds ?? this.plannedDpaFacilityIds,
     );
   }
 }

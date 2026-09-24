@@ -2,6 +2,7 @@ enum WaitTolerance {
   short('短め：15分まで', 15),
   medium('標準：30分まで', 30),
   long('長め：60分まで', 60),
+  veryLong('かなり待てる：90分まで', 90),
   any('気にしない', null);
 
   const WaitTolerance(this.label, this.maxMinutes);

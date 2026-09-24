@@ -117,7 +117,7 @@ class _SelectedFacilitySummaryCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           if (selectedFacilities.isEmpty)
             Text(
-              'まだ候補はありません。AI質問から、やりたいことを選びましょう。',
+              'まだ候補はありません。「やりたいこと」から行きたいものを選びましょう。',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

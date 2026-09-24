@@ -104,22 +104,49 @@ class ScheduleValidator {
       }
     }
 
-    final scheduledFacilityIds = items
-        .map((item) => item.facilityId)
-        .whereType<String>()
-        .toSet();
+    // Desired facilities may intentionally contain the same facility more than
+    // once when the user asks for repeat rides. Validate occurrences rather
+    // than unique IDs so exports and the coverage headline tell the same story.
+    final desiredCounts = <String, int>{};
+    final desiredFacilityById = <String, Facility>{};
     for (final facility in facilities) {
       final preference = preferenceById[facility.id];
       if (preference?.isExcluded == true) continue;
-      if (!scheduledFacilityIds.contains(facility.id)) {
-        issues.add(
-          ScheduleValidationIssue(
-            code: 'desired_facility_missing',
-            severity: ScheduleValidationSeverity.warning,
-            message: '今回は「${facility.name}」をプランに入れられませんでした。予定は「やりたいこと」に残しています。',
-          ),
-        );
-      }
+      desiredCounts[facility.id] = (desiredCounts[facility.id] ?? 0) + 1;
+      desiredFacilityById[facility.id] = facility;
+    }
+
+    final scheduledCounts = <String, int>{};
+    for (final item in items) {
+      final facilityId = item.facilityId;
+      if (facilityId == null || !desiredCounts.containsKey(facilityId)) continue;
+      scheduledCounts[facilityId] = (scheduledCounts[facilityId] ?? 0) + 1;
+    }
+
+    for (final entry in desiredCounts.entries) {
+      final requested = entry.value;
+      final achieved = (scheduledCounts[entry.key] ?? 0).clamp(0, requested);
+      if (achieved >= requested) continue;
+
+      final facility = desiredFacilityById[entry.key]!;
+      final preference = preferenceById[entry.key];
+      final isMustDo = preference?.priority.name == 'highest';
+      final message = requested > 1 && achieved > 0
+          ? '「${facility.name}」は$requested回希望のうち$achieved回達成しました。あと${requested - achieved}回分はプランに入れられませんでした。予定は「やりたいこと」に残しています。'
+          : isMustDo
+              ? '「絶対行きたい」に指定した「${facility.name}」を配置できませんでした。公演時刻・固定予定・営業時間などの競合を確認してください。予定は「やりたいこと」に残しています。'
+              : requested > 1
+                  ? '今回は「${facility.name}」を$requested回ともプランに入れられませんでした。予定は「やりたいこと」に残しています。'
+                  : '今回は「${facility.name}」をプランに入れられませんでした。予定は「やりたいこと」に残しています。';
+      issues.add(
+        ScheduleValidationIssue(
+          code: achieved > 0
+              ? 'desired_facility_occurrence_partial'
+              : 'desired_facility_missing',
+          severity: ScheduleValidationSeverity.warning,
+          message: message,
+        ),
+      );
     }
 
     if (issues.isEmpty) {

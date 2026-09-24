@@ -39,7 +39,7 @@ class _ScheduleSummaryCard extends StatelessWidget {
             const _ScheduleEmptyMessage(
               icon: Icons.auto_awesome_outlined,
               title: 'プラン未生成',
-              message: '候補確認まで進むと、AIが一日の予定を組み立てます。',
+              message: '候補確認まで進むと、一日の予定を組み立てます。',
             )
           else if (!scheduleMatchesPark)
             const _ScheduleEmptyMessage(

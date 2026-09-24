@@ -7,6 +7,7 @@ import 'trip_settings.dart';
 import 'time_band_wait_profile.dart';
 import 'weather_snapshot.dart';
 import 'today_access_result.dart';
+import 'today_execution_record.dart';
 import 'live_pass_status.dart';
 import '../enums/fatigue_level.dart';
 
@@ -27,6 +28,9 @@ class ScheduleRecalculationRequest {
     this.waitProfiles = const <TimeBandWaitProfile>[],
     this.releasedFacilityIds = const <String>{},
     this.todayAccessResults = const <TodayAccessResult>[],
+    this.executedFacilityIds = const <String>{},
+    this.todayExecutionRecords = const <TodayExecutionRecord>[],
+    this.currentFacilityId,
     this.breakDurationMinutes,
   });
 
@@ -47,6 +51,17 @@ class ScheduleRecalculationRequest {
 
   /// 当日に実際に取得・当選した結果。事前の固定予定と区別して再計算する。
   final List<TodayAccessResult> todayAccessResults;
+
+  /// Facilities already completed or explicitly skipped by the guest today.
+  final Set<String> executedFacilityIds;
+
+  /// Actual completed/skipped occurrences with their recorded time.
+  /// Used to distinguish elapsed schedule slots from actions that really happened.
+  final List<TodayExecutionRecord> todayExecutionRecords;
+
+  /// Explicit current position selected in Today. When null, replanning falls
+  /// back to the latest preserved facility for backward compatibility.
+  final String? currentFacilityId;
 
   /// Optional user-requested rest inserted into the live plan.
   /// The service treats it as a fixed anchor and replans only around it.

@@ -4,8 +4,13 @@ import 'package:flutter/material.dart';
 import '../../app/dependency/service_locator.dart';
 import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_card.dart';
 import '../../domain/entities/wish_item.dart';
+import '../../domain/entities/wish_item_state.dart';
 import '../../domain/enums/wish_item_category.dart';
+import '../../domain/enums/preferred_time.dart';
+import '../../domain/enums/wait_tolerance.dart';
+import '../../domain/enums/wish_importance.dart';
 import 'guided_planning_controller.dart';
 import 'wish_list_controller.dart';
 
@@ -13,10 +18,12 @@ class WishListScreen extends StatefulWidget {
   const WishListScreen({
     super.key,
     required this.onCandidateReviewPressed,
+    required this.onSettingsPressed,
     required this.onFlowContinueAvailabilityChanged,
   });
 
   final VoidCallback onCandidateReviewPressed;
+  final VoidCallback onSettingsPressed;
   final ValueChanged<bool> onFlowContinueAvailabilityChanged;
 
   @override
@@ -26,7 +33,7 @@ class WishListScreen extends StatefulWidget {
 class WishListScreenState extends State<WishListScreen> {
   WishListController? _wishController;
   GuidedPlanningController? _chatController;
-  bool _showList = false;
+  bool _showList = true;
   bool _isApplyingGuidedResult = false;
   bool _showGuidedProcessing = false;
   int _guidedApplyRequestId = 0;
@@ -35,8 +42,8 @@ class WishListScreenState extends State<WishListScreen> {
   GuidedPlanningController get chatController => _chatController!;
 
   void _notifyFlowContinueAvailability() {
-    // AI質問の完了だけでは候補確認へ進ませません。
-    // 「候補を作成」で質問結果をWishへ反映し、一覧へ移動した後、
+    // 希望整理の完了だけでは候補確認へ進ませません。
+    // 「候補を作成」で整理結果をWishへ反映し、一覧へ移動した後、
     // または利用者が一覧選択モードを明示的に開いた場合だけ有効化します。
     widget.onFlowContinueAvailabilityChanged(_showList);
   }
@@ -157,7 +164,7 @@ class WishListScreenState extends State<WishListScreen> {
     }
     chatController.restart(clearWishSelection: true);
     setState(() {
-      _showList = false;
+      _showList = true;
     });
     _notifyFlowContinueAvailability();
     // リセット結果は画面状態で確認できるため、成功通知は表示しません。
@@ -172,6 +179,17 @@ class WishListScreenState extends State<WishListScreen> {
       builder: (context, child) {
         if (wishController.isLoading) {
           return const Center(child: CircularProgressIndicator());
+        }
+
+        final hasPark = appState.tripSettings.parkId == 'tokyo_disneyland' ||
+            appState.tripSettings.parkId == 'tokyo_disneysea';
+        if (!hasPark) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              widget.onFlowContinueAvailabilityChanged(false);
+            }
+          });
+          return _ParkRequiredView(onSettingsPressed: widget.onSettingsPressed);
         }
 
         return Column(
@@ -216,6 +234,57 @@ class WishListScreenState extends State<WishListScreen> {
   }
 }
 
+class _ParkRequiredView extends StatelessWidget {
+  const _ParkRequiredView({required this.onSettingsPressed});
+
+  final VoidCallback onSettingsPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: AppCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.map_outlined, size: 42, color: colors.primary),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'まずパークを選んでください',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'ランドまたはシーを選ぶと、そのパークの施設や体験を選べます。',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: onSettingsPressed,
+                    icon: const Icon(Icons.settings_outlined),
+                    label: const Text('旅行設定でパークを選ぶ'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ModeSwitcher extends StatelessWidget {
   const _ModeSwitcher({
     required this.showList,
@@ -248,12 +317,12 @@ class _ModeSwitcher extends StatelessWidget {
               ? OutlinedButton.icon(
                   onPressed: onWizardPressed,
                   icon: const Icon(Icons.auto_awesome_outlined),
-                  label: const Text('AI質問'),
+                  label: const Text('希望整理（任意）'),
                 )
               : FilledButton.tonalIcon(
                   onPressed: onWizardPressed,
                   icon: const Icon(Icons.auto_awesome),
-                  label: const Text('AI質問'),
+                  label: const Text('希望整理（任意）'),
                 );
           final listButton = showList
               ? FilledButton.tonalIcon(
@@ -895,7 +964,7 @@ class _WelcomeStartCard extends StatelessWidget {
                       const SizedBox(width: AppSpacing.xs),
                       Flexible(
                         child: Text(
-                          'AI旅行コンシェルジュに相談する',
+                          '希望をもう少し整理する',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context)
@@ -921,9 +990,9 @@ class _WelcomeStartCard extends StatelessWidget {
                     width: double.infinity,
                     height: 40,
                     child: FilledButton.icon(
-                      onPressed: () => controller.answer('AI質問を始める'),
+                      onPressed: () => controller.answer('希望整理を始める'),
                       icon: const Icon(Icons.auto_awesome, size: 18),
-                      label: const Text('AI質問を始める'),
+                      label: const Text('希望整理を始める'),
                     ),
                   ),
                 ],
@@ -960,7 +1029,7 @@ class _WelcomeStartCard extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'AI旅行コンシェルジュに相談する',
+                    '希望をもう少し整理する',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
@@ -999,9 +1068,9 @@ class _WelcomeStartCard extends StatelessWidget {
                     width: double.infinity,
                     height: 48,
                     child: FilledButton.icon(
-                      onPressed: () => controller.answer('AI質問を始める'),
+                      onPressed: () => controller.answer('希望整理を始める'),
                       icon: const Icon(Icons.auto_awesome),
-                      label: const Text('AI質問を始める'),
+                      label: const Text('希望整理を始める'),
                     ),
                   ),
                 ],
@@ -1397,7 +1466,7 @@ class _GuidedCompletionCard extends StatelessWidget {
                       )
                     : const Icon(Icons.auto_awesome),
                 label: Text(
-                  isApplying ? 'AI候補を作成中…' : 'この回答でAI候補を作成',
+                  isApplying ? '候補を整理中…' : 'この内容で候補を整理',
                 ),
               ),
             ),
@@ -1421,7 +1490,7 @@ class _GuidedCompletionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      '回答内容からAI候補を作成します',
+                      '回答内容から候補を整理します',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
@@ -1449,8 +1518,8 @@ class _GuidedCompletionCard extends StatelessWidget {
                             : const Icon(Icons.auto_awesome),
                         label: Text(
                           isApplying
-                              ? 'AI候補を作成中…'
-                              : 'この回答でAI候補を作成',
+                              ? '候補を整理中…'
+                              : 'この内容で候補を整理',
                         ),
                       ),
                     ),
@@ -1584,6 +1653,52 @@ class _CompactWishListState extends State<_CompactWishList> {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('すべて'),
+                  selected: controller.categoryFilter == null,
+                  onSelected: (_) => controller.setCategory(null),
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: const Text('乗りたい'),
+                  selected: controller.categoryFilter == WishItemCategory.attraction,
+                  onSelected: (_) => controller.setCategory(WishItemCategory.attraction),
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: const Text('ショー・パレード'),
+                  selected: controller.categoryFilter == WishItemCategory.entertainment,
+                  onSelected: (_) => controller.setCategory(WishItemCategory.entertainment),
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: const Text('会いたい'),
+                  selected: controller.categoryFilter == WishItemCategory.greeting,
+                  onSelected: (_) => controller.setCategory(WishItemCategory.greeting),
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: const Text('レストラン'),
+                  selected: controller.categoryFilter == WishItemCategory.restaurant,
+                  onSelected: (_) => controller.setCategory(WishItemCategory.restaurant),
+                ),
+                const SizedBox(width: 10),
+                FilterChip(
+                  label: const Text('選択済みのみ'),
+                  selected: controller.selectedOnly,
+                  onSelected: controller.setSelectedOnly,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         Expanded(
           child: groups.isEmpty
               ? const Center(child: Text('現在表示できる項目はありません。'))
@@ -1647,6 +1762,7 @@ class _CompactWishListState extends State<_CompactWishList> {
                                   for (final item in group.items)
                                     _WishItemRow(
                                       item: item,
+                                      repeatable: controller.supportsRepeatCount(item),
                                       onShowDetails: () =>
                                           _showDetails(context, item),
                                     ),
@@ -1800,15 +1916,23 @@ class _ClearWishGroupButton extends StatelessWidget {
 }
 
 class _WishItemRow extends StatelessWidget {
-  const _WishItemRow({required this.item, required this.onShowDetails});
+  const _WishItemRow({
+    required this.item,
+    required this.repeatable,
+    required this.onShowDetails,
+  });
 
   final WishItem item;
+  final bool repeatable;
   final VoidCallback onShowDetails;
 
   @override
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     final state = appState.wishStateFor(item.id);
+    final importance = state.importance;
+    final isMust = importance == WishImportance.mustDo;
+    final isOptional = importance == WishImportance.optional;
 
     return CheckboxListTile(
       dense: true,
@@ -1823,10 +1947,98 @@ class _WishItemRow extends StatelessWidget {
         icon: const Icon(Icons.info_outline),
       ),
       title: Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        _CompactWishListState.compactSubtitle(item),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _CompactWishListState.compactSubtitle(item),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (state.selected) ...[
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilterChip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: Icon(
+                    isMust ? Icons.star : Icons.star_border,
+                    size: 16,
+                  ),
+                  label: const Text('絶対行きたい'),
+                  selected: isMust,
+                  onSelected: (selected) => appState.updateWishImportance(
+                    item.id,
+                    selected ? WishImportance.mustDo : WishImportance.optional,
+                  ),
+                ),
+                FilterChip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
+                  label: const Text('できれば'),
+                  selected: isOptional,
+                  onSelected: (selected) => appState.updateWishImportance(
+                    item.id,
+                    selected ? WishImportance.optional : WishImportance.normal,
+                  ),
+                ),
+                if (repeatable)
+                  _WishRepeatCountControl(
+                    count: state.targetCount,
+                    onChanged: (count) =>
+                        appState.updateWishTargetCount(item.id, count),
+                  ),
+                ActionChip(
+                  avatar: const Icon(Icons.tune, size: 16),
+                  label: Text(_wishConditionLabel(state)),
+                  onPressed: () => _showWishConditions(context, item.id),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _WishRepeatCountControl extends StatelessWidget {
+  const _WishRepeatCountControl({required this.count, required this.onChanged});
+
+  final int count;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: '希望回数を減らす',
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            padding: EdgeInsets.zero,
+            onPressed: count > 1 ? () => onChanged(count - 1) : null,
+            icon: const Icon(Icons.remove, size: 16),
+          ),
+          Text('$count回', style: Theme.of(context).textTheme.labelMedium),
+          IconButton(
+            tooltip: '希望回数を増やす',
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            padding: EdgeInsets.zero,
+            onPressed: count < 5 ? () => onChanged(count + 1) : null,
+            icon: const Icon(Icons.add, size: 16),
+          ),
+        ],
       ),
     );
   }
@@ -1856,6 +2068,71 @@ class _WishGroup {
   final String title;
   final IconData icon;
   final List<WishItem> items;
+}
+
+
+String _wishConditionLabel(WishItemState state) {
+  final parts = <String>[];
+  if (state.preferredTime != PreferredTime.anytime) {
+    parts.add(state.preferredTime.label);
+  }
+  final maxWait = state.waitTolerance.maxMinutes;
+  if (maxWait != null) {
+    parts.add('待ち$maxWait分まで');
+  }
+  return parts.isEmpty ? '詳細条件' : parts.join('・');
+}
+
+
+Future<void> _showWishConditions(BuildContext context, String itemId) async {
+  final appState = AppStateScope.of(context);
+  var preferredTime = appState.wishStateFor(itemId).preferredTime;
+  var waitTolerance = appState.wishStateFor(itemId).waitTolerance;
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (context, setSheetState) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg + MediaQuery.viewInsetsOf(context).bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('詳細条件（任意）', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 4),
+              const Text('設定しなくてもプランは作れます。必要な希望だけ指定してください。'),
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<PreferredTime>(
+                initialValue: preferredTime,
+                decoration: const InputDecoration(labelText: '希望時間帯', border: OutlineInputBorder()),
+                items: PreferredTime.values.map((value) => DropdownMenuItem(value: value, child: Text(value.label))).toList(),
+                onChanged: (value) { if (value != null) setSheetState(() => preferredTime = value); },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<WaitTolerance>(
+                initialValue: waitTolerance,
+                decoration: const InputDecoration(labelText: '待ち時間の目安', helperText: '「できれば」と組み合わせると、予想待ち時間が目安以内の時だけ候補に残します。\n'
+                    '通常・絶対行きたいでは、目安を超えても希望自体は残します。', border: OutlineInputBorder()),
+                items: WaitTolerance.values.map((value) => DropdownMenuItem(value: value, child: Text(value.label))).toList(),
+                onChanged: (value) { if (value != null) setSheetState(() => waitTolerance = value); },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton(
+                onPressed: () {
+                  appState.updateWishPreferredTime(itemId, preferredTime);
+                  appState.updateWishWaitTolerance(itemId, waitTolerance);
+                  Navigator.of(sheetContext).pop();
+                },
+                child: const Text('この条件を使う'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 void _showDetails(BuildContext context, WishItem item) {

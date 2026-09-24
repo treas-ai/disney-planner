@@ -15,8 +15,10 @@ import '../../domain/entities/live_operating_status.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/entities/today_access_result.dart';
+import '../../domain/entities/today_execution_record.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
+import '../../domain/enums/schedule_item_type.dart';
 import '../../domain/enums/today_access_kind.dart';
 import '../../domain/enums/today_access_status.dart';
 import '../assistant/assistant_controller.dart';
@@ -372,10 +374,56 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
   }
 
   Future<void> _openTodayAccessInput() async {
-    await Navigator.of(context).push<void>(
+    final appState = AppStateScope.of(context);
+    final before = <String, String>{
+      for (final result in appState.todayAccessResults)
+        result.key: '${result.status.name}|${result.time}',
+    };
+
+    final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const TodayAccessInputScreen()),
     );
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    if (changed == true) {
+      final acquiredDpaWithFixedTime = appState.todayAccessResults.where((result) {
+        return result.kind == TodayAccessKind.attractionDpa &&
+            result.status == TodayAccessStatus.acquired &&
+            result.fixesTime;
+      }).toList(growable: false);
+      final changedAcquiredDpa = acquiredDpaWithFixedTime.where((result) {
+        return before[result.key] != '${result.status.name}|${result.time}';
+      }).toList(growable: false);
+
+      var verificationAction = 'access-result';
+      var verificationDetail = 'actual access result saved';
+      // The existing Today settings screen is the authoritative input path.
+      // If it currently contains an acquired attraction DPA with a fixed time,
+      // every replan from this screen must preserve/verify that DPA even when
+      // the DPA row itself was not edited in this visit.
+      if (acquiredDpaWithFixedTime.isNotEmpty) {
+        verificationAction = 'acquired-dpa';
+        final changedKeys = changedAcquiredDpa.map((result) => result.key).toSet();
+        verificationDetail = acquiredDpaWithFixedTime.map((result) {
+          Facility? facility;
+          for (final value in appState.selectedFacilities) {
+            if (value.id == result.facilityId) {
+              facility = value;
+              break;
+            }
+          }
+          final label = facility?.name ?? result.facilityId;
+          final state = changedKeys.contains(result.key) ? 'updated' : 'saved';
+          return '$label @ ${result.time} ($state)';
+        }).join(' / ');
+      }
+
+      await _previewAndApplyRecalculation(
+        successMessage: '取得したDPAなどの実時間を固定し、残り予定を再最適化しました。',
+        verificationAction: verificationAction,
+        verificationDetail: verificationDetail,
+      );
+    }
   }
 
   Future<void> _suspendFacilityForToday(Facility facility) async {
@@ -863,6 +911,8 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
               onAccessResultsPressed: _openTodayAccessInput,
               isCalculating: recalculationController?.isCalculating == true,
               canUndo: recalculationController?.canUndo == true,
+              scheduleController: _scheduleController!,
+              recalculationController: recalculationController!,
             );
           }
 
@@ -884,6 +934,8 @@ class _TodayPlanScreenState extends State<TodayPlanScreen> {
             onAccessResultsPressed: _openTodayAccessInput,
             isCalculating: recalculationController?.isCalculating == true,
             canUndo: recalculationController?.canUndo == true,
+            scheduleController: _scheduleController!,
+            recalculationController: recalculationController!,
           );
         },
       ),
@@ -910,6 +962,8 @@ class _MobileTodayLayout extends StatelessWidget {
     required this.onAccessResultsPressed,
     required this.isCalculating,
     required this.canUndo,
+    required this.scheduleController,
+    required this.recalculationController,
   });
 
   final LiveController controller;
@@ -930,7 +984,8 @@ class _MobileTodayLayout extends StatelessWidget {
   final VoidCallback onAccessResultsPressed;
   final bool isCalculating;
   final bool canUndo;
-
+  final ScheduleController scheduleController;
+  final ScheduleRecalculationController recalculationController;
 
   @override
   Widget build(BuildContext context) {
@@ -961,6 +1016,11 @@ class _MobileTodayLayout extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _TodayAccessResultsCard(
             onEditPressed: onAccessResultsPressed,
+            onRecalculatePressed: onRecalculatePressed,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _TodayCurrentPositionCard(
+            recalculationController: recalculationController,
             onRecalculatePressed: onRecalculatePressed,
           ),
           if (snapshot.isLiveMode) ...[
@@ -998,6 +1058,123 @@ class _MobileTodayLayout extends StatelessWidget {
   }
 }
 
+
+class _TodayCurrentPositionCard extends StatelessWidget {
+  const _TodayCurrentPositionCard({
+    required this.recalculationController,
+    required this.onRecalculatePressed,
+  });
+
+  final ScheduleRecalculationController recalculationController;
+  final VoidCallback onRecalculatePressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = AppStateScope.of(context);
+    final facilities = appState
+        .selectedFacilitiesForPark(appState.tripSettings.parkId)
+        .toList(growable: false)
+      ..sort((a, b) => a.name.compareTo(b.name));
+    Facility? current;
+    for (final facility in facilities) {
+      if (facility.id == recalculationController.currentFacilityId) {
+        current = facility;
+        break;
+      }
+    }
+
+    Future<void> choose() async {
+      final selected = await showModalBottomSheet<String?>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        builder: (sheetContext) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * 0.72,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.my_location_outlined),
+                  title: const Text('現在地を選択'),
+                  subtitle: const Text('次の再最適化で、ここを移動の起点として使います。'),
+                  trailing: IconButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.auto_awesome_outlined),
+                  title: const Text('自動推定に戻す'),
+                  onTap: () => Navigator.of(sheetContext).pop('__auto__'),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: facilities.length,
+                    itemBuilder: (context, index) {
+                      final facility = facilities[index];
+                      return ListTile(
+                        title: Text(facility.name),
+                        trailing: facility.id == current?.id
+                            ? const Icon(Icons.check)
+                            : null,
+                        onTap: () => Navigator.of(sheetContext).pop(facility.id),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (!context.mounted || selected == null) return;
+      recalculationController.setCurrentFacility(
+        selected == '__auto__' ? null : selected,
+      );
+    }
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.my_location_outlined, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '現在地',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+              TextButton(onPressed: choose, child: const Text('変更')),
+            ],
+          ),
+          Text(
+            current == null
+                ? '自動推定中。必要なら現在いる施設を指定できます。'
+                : '${current.name} を次の再計画の起点にします。',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (current != null) ...[
+            const SizedBox(height: 9),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: onRecalculatePressed,
+                icon: const Icon(Icons.route_outlined, size: 18),
+                label: const Text('現在地を反映して残りを再最適化'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 class _TodayAccessResultsCard extends StatelessWidget {
   const _TodayAccessResultsCard({
@@ -1103,6 +1280,8 @@ class _DesktopTodayLayout extends StatelessWidget {
     required this.onAccessResultsPressed,
     required this.isCalculating,
     required this.canUndo,
+    required this.scheduleController,
+    required this.recalculationController,
   });
 
   final LiveController controller;
@@ -1123,6 +1302,8 @@ class _DesktopTodayLayout extends StatelessWidget {
   final VoidCallback onAccessResultsPressed;
   final bool isCalculating;
   final bool canUndo;
+  final ScheduleController scheduleController;
+  final ScheduleRecalculationController recalculationController;
 
   @override
   Widget build(BuildContext context) {
@@ -1152,6 +1333,11 @@ class _DesktopTodayLayout extends StatelessWidget {
                 const SizedBox(height: AppSpacing.sm),
                 _TodayAccessResultsCard(
                   onEditPressed: onAccessResultsPressed,
+                  onRecalculatePressed: onRecalculatePressed,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _TodayCurrentPositionCard(
+                  recalculationController: recalculationController,
                   onRecalculatePressed: onRecalculatePressed,
                 ),
                 if (snapshot.isLiveMode) ...[
@@ -2673,15 +2859,24 @@ class _TodayScheduleContentState extends State<_TodayScheduleContent> {
         .toList(growable: false)
       ..sort((left, right) => left.name.compareTo(right.name));
 
+    final appState = AppStateScope.of(context);
+    bool isRecordedDone(ScheduleItem item) =>
+        appState.todayExecutionRecordFor(item.id) != null;
     final completedItems = schedule.items
         .where((item) =>
-            _scheduleStatus(item, snapshot.now, snapshot.visitPhase) == _TodayScheduleStatus.completed)
+            isRecordedDone(item) ||
+            _scheduleStatus(item, snapshot.now, snapshot.visitPhase) ==
+                _TodayScheduleStatus.completed)
         .toList(growable: false);
     final remainingItems = schedule.items
         .where((item) =>
-            _scheduleStatus(item, snapshot.now, snapshot.visitPhase) != _TodayScheduleStatus.completed)
+            !isRecordedDone(item) &&
+            _scheduleStatus(item, snapshot.now, snapshot.visitPhase) !=
+                _TodayScheduleStatus.completed)
         .toList(growable: false);
-    final displayedItems = _showCompleted ? schedule.items : remainingItems;
+    final displayedItems = _showCompleted
+        ? schedule.items
+        : remainingItems;
     final provisionalCount = remainingItems
         .where(_isProvisionalScheduleItem)
         .length;
@@ -2961,6 +3156,7 @@ class _TodayScheduleContentState extends State<_TodayScheduleContent> {
                 visitPhase: snapshot.visitPhase,
                 allowLiveEdit: snapshot.isLiveMode,
                 simulationEnabled: controller.simulationEnabled,
+                liveController: controller,
                 isLast: index == displayedItems.length - 1,
                 repeatRideLoading: _loadingRepeatFacilityId ==
                     controller.facilityById(displayedItems[index].facilityId)?.id,
@@ -3168,6 +3364,7 @@ class _TodayScheduleItemCard extends StatefulWidget {
     required this.visitPhase,
     required this.allowLiveEdit,
     required this.simulationEnabled,
+    required this.liveController,
     required this.isLast,
     required this.repeatRideLoading,
     required this.operatingStatus,
@@ -3186,6 +3383,7 @@ class _TodayScheduleItemCard extends StatefulWidget {
   final LiveVisitPhase visitPhase;
   final bool allowLiveEdit;
   final bool simulationEnabled;
+  final LiveController liveController;
   final bool isLast;
   final bool repeatRideLoading;
   final LiveOperatingStatus? operatingStatus;
@@ -3231,9 +3429,60 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
         facility.category == FacilityCategory.greeting;
   }
 
+  Future<void> _recordExecution(TodayExecutionStatus status) async {
+    final appState = AppStateScope.of(context);
+    final facilityId = item.facilityId;
+    if (facilityId != null) {
+      final sameFacilityCount = appState.daySchedule?.items
+              .where((value) => value.facilityId == facilityId)
+              .length ??
+          0;
+      if (sameFacilityCount > 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('同じ施設が複数回ある予定は、回数を保った再計画対応を次段階で行います。'),
+          ),
+        );
+        return;
+      }
+    }
+    final label = status == TodayExecutionStatus.completed ? '完了' : 'スキップ';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('$labelとして記録しますか？'),
+        content: Text('${item.title}を$labelとして記録し、残り予定の再計画では再挿入しません。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(label),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    widget.liveController.recordExecution(
+      TodayExecutionRecord(
+        scheduleItemId: item.id,
+        facilityId: facilityId,
+        status: status,
+        recordedAt: widget.now,
+      ),
+    );
+    if (!mounted) return;
+    widget.onRecalculatePressed();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final status = _scheduleStatus(item, widget.now, widget.visitPhase);
+    final executionRecord = widget.liveController.executionRecordFor(item.id);
+    final status = executionRecord != null
+        ? _TodayScheduleStatus.completed
+        : _scheduleStatus(item, widget.now, widget.visitPhase);
 
     final statusStyle = _statusStyle(status);
 
@@ -3341,6 +3590,19 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                             foregroundColor: statusStyle.foregroundColor,
                             backgroundColor: statusStyle.backgroundColor,
                           ),
+                          if (executionRecord != null)
+                            _TodaySmallBadge(
+                              icon: executionRecord.status ==
+                                      TodayExecutionStatus.completed
+                                  ? Icons.task_alt
+                                  : Icons.skip_next_outlined,
+                              label: executionRecord.status ==
+                                      TodayExecutionStatus.completed
+                                  ? '実績：完了'
+                                  : '実績：スキップ',
+                              foregroundColor: colorScheme.onSurfaceVariant,
+                              backgroundColor: colorScheme.surfaceContainerLow,
+                            ),
                           if (_hasOperatingDisruption)
                             _TodaySmallBadge(
                               icon: Icons.warning_amber_outlined,
@@ -3444,6 +3706,32 @@ class _TodayScheduleItemCardState extends State<_TodayScheduleItemCard> {
                                 widget.facility!,
                               ),
                       child: const Text('保留して再最適化'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (widget.allowLiveEdit &&
+                executionRecord == null &&
+                item.type != ScheduleItemType.entry &&
+                item.type != ScheduleItemType.exit) ...[
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 6,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () =>
+                          _recordExecution(TodayExecutionStatus.skipped),
+                      icon: const Icon(Icons.skip_next_outlined, size: 17),
+                      label: const Text('スキップ'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () =>
+                          _recordExecution(TodayExecutionStatus.completed),
+                      icon: const Icon(Icons.task_alt, size: 17),
+                      label: const Text('完了'),
                     ),
                   ],
                 ),

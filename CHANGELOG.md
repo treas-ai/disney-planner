@@ -1,3 +1,449 @@
+# v7.6.0-dev.69a-a
+
+- Fix `flutter analyze` compile failure in the dev.69a Phase F debug gate by importing `ScheduleItemType`.
+- No optimizer or Today replanning behavior changes.
+
+# v7.6.0-dev.69a
+
+- Phase F actual-completion replanning now resolves flexible-meal conflicts with authoritative acquired Today access before applying the legacy elapsed-item preservation rule.
+- Keeps acquired DPA/confirmed Today access fixed while releasing the conflicting flexible meal for replanning, including when both source slots are already earlier than the actual completion boundary.
+- Early/late completion DEBUG Gate now directly checks acquired-DPA conflicts = 0, global overlaps = 0, and exit time maintained.
+- No ScheduleEngine optimization weights changed.
+
+# v7.6.0-dev.69
+
+- Phase F: completed occurrences now use the actual recorded completion time as the live replanning boundary.
+- When an occurrence is completed early, the remaining plan can reuse the newly available time instead of protecting the old in-progress slot.
+- When completion is late, schedule slots after the completed occurrence that merely elapsed are released rather than assumed completed.
+- ScheduleRecalculationRequest now carries occurrence-level Today execution records in addition to facility exclusion IDs.
+- Phase F DEBUG self-check now covers early (-10 min) and late (+10 min) completion while protecting acquired fixed DPA and overlap-free output.
+
+## v7.6.0-dev.68b-a
+- Fix debug Phase F execution gate analyzer issues: nullable accessMethod handling and required flow-control braces.
+- No scheduling or Today behavior changes.
+
+## v7.6.0-dev.68b
+
+- Phase F: DEBUG self-contained execution-status Gateを追加。完了／スキップをそれぞれ独立シミュレーションし、再挿入防止・実績保持・固定DPA維持・重複0・Undo復元を検証します。
+- 総合GateとAI解析情報に `PHASE F EXECUTION STATUS` を統合し、未実行はCHECK、矛盾はFAILとして扱います。
+- Gateはシミュレーション専用状態を使い、本番の当日実績を変更しません。
+- Today UI、ScheduleEngine重み、Phase D/E、既存DPA境界の仕様は変更していません。
+
+## v7.6.0-dev.68a
+
+- Phase F: 完了／スキップを開発用の当日シミュレーションでも操作可能にしました。
+- シミュレーション中の実績は LiveController 内だけに保持し、実際の来園日の永続実績を汚さないよう分離しました。
+- 当日再計画はシミュレーション実績も `executedFacilityIds` として扱い、完了／スキップ済み施設を再挿入しません。
+- 実来園日では従来どおり AppState の永続実績を使用します。
+- Phase G で Today の情報量・小さい説明文字・操作階層をまとめて整理する方針は維持します。
+
+
+## v7.6.0-dev.68
+- Added Phase F Today execution records for explicit 完了 / スキップ actions on live schedule items.
+- Execution records persist per visit day and are shown as actual-result badges; recorded items are removed from the active remaining list.
+- Live replanning excludes facilities explicitly completed or skipped so they are not silently reinserted.
+- Added a safety guard for same-facility multi-occurrence schedules; occurrence-aware repeat completion is deferred rather than collapsing repeat intent.
+- Existing DPA fixed-time, overlap prevention, Undo, Phase D, and optimizer weights are unchanged.
+
+## v7.6.0-dev.67
+
+- Phase E: scheduled-item explanations now expose an explicit reason category and deterministic evidence.
+- Reason categories are only assigned from observable plan facts or ScheduleEngine reason text; unsupported optimizer motives are not inferred.
+- Plan Review shows the category in the beginner summary and the evidence behind `詳しく見る`.
+- Comprehensive Gate verifies supported categories and non-empty evidence for every scheduled-item explanation.
+- Schedule generation, optimizer weights, Phase D application, and Today replanning are unchanged.
+
+# Changelog
+
+## v7.6.0-dev.66a
+- Fixed two Dart `unnecessary_brace_in_string_interps` analyzer infos in the Phase E unmet-wish beginner summaries.
+- No explanation semantics, UI behavior, optimizer weights, Phase D, or Today scheduling behavior changed.
+
+# v7.6.0-dev.66
+
+- Phase E beginner explanation UI: added a compact plan-feature summary with achieved wishes, hard-wish coverage, and largest free-time block.
+- Replaced repeated long per-item text in the default view with short deterministic reasons; full source/optimizer reasons remain available under “詳しく見る”.
+- Added Phase E Gate checks for non-empty feature/detail explanations and concise beginner-facing reasons.
+- No ScheduleEngine weights, Phase D scenario generation/application, or Today replanning behavior changed.
+
+# v7.6.0-dev.65
+
+- Phase E explanation foundation: added deterministic “なぜこのプラン？” UI derived from current schedule/settings/wishes.
+- Added scheduled-item and unmet-wish explanations without changing ScheduleEngine weights.
+- Added Phase E comprehensive Gate checks for current-schedule references, actually-unmet occurrences, and non-empty deterministic reasons.
+
+## v7.6.0-dev.64b
+- Fixed Today replanning when an acquired fixed-time DPA overlaps a flexible meal block: the acquired Today access is now an authoritative anchor even if the pre-trip preference itself was not fixed.
+- A non-confirmed breakfast/lunch/dinner block that conflicts with that authoritative Today access is released into the normal replanning pipeline so it can move before/after the fixed access when feasible instead of remaining overlapped.
+- Confirmed meal reservations remain protected; this change does not move confirmed fixed-time meals.
+- Kept Phase D scenario application, optimizer weights, PRE-TRIP/TODAY separation, and Undo semantics unchanged.
+
+# v7.6.0-dev.64a
+
+- Phase D application evidence is now preserved in the DEBUG registry so a Plan Review application remains visible to a separately-created Debug Mode controller.
+- Today self-check now prints the exact overlapping schedule-item pair(s) and time ranges when overlap count is non-zero.
+- No optimizer weights or Today replanning behavior changed; this patch makes the dev.64 application/overlap failure diagnosable before changing scheduling logic.
+
+## v7.6.0-dev.64
+- Phase D scenario application now applies the exact already-compared schedule snapshot instead of regenerating it.
+- Added application evidence for selected mode, expected-vs-actual metrics, hard-wish coverage, and overlap safety.
+- Comprehensive Gate reports Phase D application evidence when available.
+- No optimizer weight changes.
+
+## v7.6.0-dev.63e
+
+- Phase D comparison dialog content is now vertically scrollable within a viewport-relative maximum height, preventing bottom overflow on shorter Windows app windows.
+- Dialog actions remain outside the scroll area so Cancel / final-plan creation controls stay reachable while all four scenario cards can be reviewed.
+- No scenario generation, ScheduleEngine weights, Today, DPA, or VP behavior changed.
+
+## v7.6.0-dev.63d
+
+- Phase D comparison UI: restored-plan sessions now reconstruct the four-mode base request before opening the final-plan comparison dialog.
+- The reconstruction regenerates the current mode without adding an Undo/history entry, then produces the four immutable scenario summaries.
+- Fixes the dev.63c case where Comprehensive Gate could PASS but the normal Plan Review dialog showed “comparison data could not be generated” after controller recreation.
+
+## v7.6.0-dev.63c
+- Phase D comparison dialog now receives an immutable 4-scenario snapshot directly from the controller after generation; it no longer relies on DEBUG state or a later controller rebuild.
+- If all four scenario metrics cannot be generated, the dialog shows an explicit comparison-data error instead of silently falling back to description-only cards.
+- No ScheduleEngine weights, Today, DPA, or VP behavior changed.
+
+# v7.6.0-dev.63b
+- Fixed Phase D comparison metrics missing in the normal final-plan dialog: the dialog now generates the same independent four-mode summaries on demand when they are not already available.
+- Normal Plan Review no longer depends on opening/running DEBUG first to populate Phase D comparison data.
+- Keeps the dev.63a decision-point placement and identical-result labeling; no ScheduleEngine weights, Today, DPA, or VP behavior changes.
+
+# v7.6.0-dev.63a
+- Phase D comparison UI moved into the final optimization-mode selection dialog so it is visible at the decision point.
+- Each mode shows achieved wishes, hard coverage, wait, movement, free time, and largest free block.
+- Identical balanced/low-movement results are labeled explicitly.
+- Removed the hidden/awkward duplicate comparison card from the left analysis column.
+- No ScheduleEngine, optimizer weight, Today, DPA, or VP behavior changes.
+
+## v7.6.0-dev.63
+
+- Phase D comparison UI: Plan Review now shows the four existing optimization scenarios side by side using the same wish/hard-wish basis.
+- Each scenario shows achieved wishes, hard wishes, wait, movement, total free time, and largest contiguous free block.
+- When another mode produces the same quality result as balanced, the UI explicitly says so instead of implying a different plan.
+- This patch is comparison-only: scenario application remains intentionally disabled. No ScheduleEngine behavior or optimizer weights changed.
+
+## v7.6.0-dev.62
+
+- Phase D foundation: existing four optimization modes are now captured as independent, typed scenario summaries using the same wish/hard-wish basis.
+- Added comprehensive Gate checks for exactly four independent scenarios, shared occurrence-based coverage denominators, and zero overlaps.
+- Scenario selection/application UI is intentionally not enabled yet; this patch establishes comparison data and regression boundaries first.
+- No optimizer weights, ScheduleEngine behavior, Today replan, DPA/VP semantics, or Phase C/C.5 comparison logic changed.
+
+## v7.6.0-dev.61
+
+- Plan Review の「通常プラン / 個別DPA / VP」比較に、通常プランからの差分を文章で読む「通常プランから何が変わる？」要約を追加。
+- 希望達成数、待ち時間、移動時間、自由時間を同じ比較データから説明し、個別DPAは確定している追加料金も併記。
+- VP総額は予約条件依存のため引き続き推測せず、体験価値の差だけを説明。
+- ScheduleEngine、最適化重み、Today再計画、DPA/VPシミュレーション本体は変更なし。
+
+## v7.6.0-dev.60
+
+- Fixed DPA/VP comparison movement metrics: scenario audits now receive the same facility-location and area-connection context as the normal Plan Review quality audit.
+- Strengthened the comprehensive VP gate with a semantic movement check: a VP scenario achieving multiple wishes must not report zero movement.
+- No optimizer weights, Today replan behavior, or DPA/VP access semantics changed.
+
+## v7.6.0-dev.59a
+- Fix Dart analyze lint `unnecessary_brace_in_string_interps` in comparison UI delta label.
+- No planner, DPA/VP comparison, Today, or optimization behavior changes.
+
+## v7.6.0-dev.59
+- Phase C.5 の比較UIを「通常プラン / 個別DPA / VP乗り放題」の3列カードへ整理し、同一wish基準で達成数・Hard達成・待ち・移動・自由時間・費用表示を比較可能にした。
+- 通常プランとの差分を各指標に表示。DPAは確認済み追加料金のみ、VP総額は引き続き推測しない。
+- DPA/VPシナリオへ移動時間とHard coverageを伝播し、比較指標をScheduleEngine実測値から構成。
+- 総合GateへVP比較指標（Hard/wait/movement/free）の完全性チェックを追加。最適化重み・Today再計画・DPA境界は変更なし。
+
+## v7.6.0-dev.58a
+- 総合Gateを自己完結化し、Plan Reviewを事前に開いていない場合でも同じPRE-TRIPスケジュールからVP乗り放題比較を自動生成するよう修正。
+- VP比較キャッシュ未生成を製品FAILとして扱っていたdev.58の回帰を修正。VP独立生成・同一Wish coverage・重複0の実データを生成後にGate判定する。
+- VP/DPA比較モデル・ScheduleEngine・通常UIの仕様変更はなし。
+
+## v7.6.0-dev.58
+- Phase C.5 VP比較を詳細化。公式のアトラクション利用券4タイプ（施設・時間指定あり／施設指定あり・時間指定なし／施設・時間指定なし／乗り放題）を比較モデルへ追加。
+- 現在の入力だけで安全に数値化できる「乗り放題」のみ独立ScheduleEngine試算を継続し、予約施設・時間・枚数が必要な券種は推測せず「予約内容確定後に試算」と表示。
+- 総合Gateへ VP独立生成、同一wish coverage、時間重複、4券種モデル、総額非捏造の検査を追加。
+- VP公式仕様スナップショット日を 2026-09-23 として表示。
+
+## v7.6.0-dev.57
+- Phase C.5 の基盤として、同一wish条件で「個別DPA候補」と「バケーションパッケージ乗り放題」の体験価値比較を追加。
+- VP比較は既存の公式対象施設マスタとScheduleEngineを使い、達成数・待ち時間・自由時間を独立シミュレーションする。
+- VP総額はホテル・日程・プラン等で変動するため固定価格を捏造せず、DPAの追加料金とVP総額を直接比較しない。
+- PRE-TRIP DPA候補とTODAY取得済みDPAの境界、およびdev.56dの自己完結総合Gateは維持。
+
+## v7.6.0-dev.56c-a
+- `lib/app/main_shell.dart` の DEBUG ナビゲーション項目に残っていた不要な `const` を削除し、`unnecessary_const` lint を解消。
+- 独立デバッグモード、総合Gate、Today/DPA、4モードの挙動には変更なし。
+
+## v7.6.0-dev.56c
+- DEBUG専用の独立「デバッグ」画面を追加し、通常の当日ガイドから解析UIを完全撤去。
+- 総合Gate / Today Replan Verification / 4モードGate / DPA境界 / AI解析コピーを統合デバッグコンソールへ集約。
+- デバッグ画面とナビゲーション項目は `kDebugMode` のときだけ表示。
+- 総合Gateが4モードの CHECK を FAIL に誤変換しないよう、PASS / CHECK / FAIL の伝播を修正。
+- 総合Gate実行時、必要ならPRE-TRIPプランを生成してから4モード検証を実行する導線に統一。
+- Today再計画の実測証拠は引き続き推測でPASSにせず、未実行時はCHECK。
+
+## v7.6.0-dev.56b
+- DEBUG解析類を「本日の予定」最下部の「解析・デバッグ」コンソールへ集約。
+- 総合Gate、Today Replan Verification、4モードGate、現在のToday品質、AI解析情報コピーを1か所から確認可能にした。
+- AI解析コピーは `Source: Today / Debug Console` / `Context: TODAY` を明示し、PRE-TRIPの4モード結果を参照値として分離。
+- Plan Review側のGate実行・コピーUIを撤去し、通常のプラン品質表示に専念。
+- Gate判定ロジック・Today再計画・DPAスケジューリング・最適化重みは変更していない。
+
+## v7.6.0-dev.55a - 2026-09-23
+
+- 4-mode Gate now compares wish coverage before objective metrics, matching the planner priority: hard wishes -> total wish coverage -> wait/movement/free-time objective.
+- Added minimumWait diagnostic output so different-coverage plans are not falsely failed by raw wait-minute comparison.
+- Added DEBUG-only "AI解析情報をコピー" for Plan Review 4-mode results; screenshots are no longer required for this Gate.
+- Today Replan Verification keeps its existing copy action.
+
+## v7.6.0-dev.54a - Today DPA acquisition verification flow
+
+## v7.6.0-dev.54b — Existing Today settings are authoritative for acquired DPA
+
+- Fixed the Today replan verification path so the existing 「当日の取得結果」 input remains the single authoritative DPA acquisition UI.
+- A saved acquired attraction DPA with a fixed time now makes the replan action `acquired-dpa` even when that DPA row was not newly edited in the current visit.
+- Verification detail distinguishes an updated DPA from an already-saved DPA, and the existing authoritative-time gates validate the resulting schedule.
+- No optimizer weighting or pre-trip DPA behavior changed.
+
+- Distinguish an actually acquired attraction DPA with a fixed return time from generic Today access-result edits.
+- Emit `Action: acquired-dpa` and the facility/time in Today Replan Verification when a DPA acquisition is newly saved or changed.
+- Verify after recalculation that every acquired attraction DPA remains scheduled as DPA at the exact entered start time.
+- Keep generic DPA/MO/entry-result edits on the existing `access-result` verification path.
+- This patch changes diagnostics/flow identification only; it does not fabricate pre-trip DPA times or change optimizer weights.
+
+## v7.6.0-dev.54 - acquired DPA authoritative-time flow
+- Today access-result input now reports whether anything changed; returning from the main Today access editor automatically opens the existing remaining-day recalculation flow.
+- Actual acquired/won DPA times remain authoritative fixed times through `effectivePlanPreferencesForToday` and `ScheduleRecalculationService`; no pre-trip candidate time is invented.
+- DEBUG ANALYSIS now prints acquired DPA fixed times and fails when an acquired DPA is missing from the DPA schedule at its recorded time.
+- Added behavior coverage for matching and mismatching acquired-DPA fixed times.
+- Optimizer weights and pre-trip scenario selection behavior are unchanged.
+
+## v7.6.0-dev.53 - DEBUG semantic gates
+
+- DEBUG ANALYSIS now treats optional-only misses as INFO instead of a generic coverage WARN.
+- Hard-wish coverage is reported independently so 9/11 can be healthy when the remaining two occurrences are optional/conditional.
+- Runtime platform detection is separated from the end-to-end Windows runtime gate.
+- An empty pre-trip DPA purchase-candidate list is now a valid PASS state rather than an automatic CHECK.
+- Version/build/debug identifiers remain sourced from AppVersion.
+
+# v7.6.0-dev.52
+- Unified Beam Search の必須カバレッジを「通常/絶対行きたい」と「できれば」で分離。条件付きの「できれば」が成立しないだけで Beam Search 全体が失敗し、通常希望まで落ちる回帰を修正。
+- Beam Search のカバレッジ判定を施設ID集合ではなく希望回数ベースへ変更。同一施設2回希望の 1/2 を完全達成と誤判定しない。
+- Beam Search 中は未成立の optional wish を hard anchor にせず、hard wish の配置を妨げないよう修正。
+- hard wish の全日最適化後に既存 backfill を再実行し、optional wish は待ち時間条件を満たす場合だけ空きへ戻せる構成にした。
+- DEBUG解析基盤は継続利用し、代表ケースで Splash 復帰・Baymax条件見送り・DPA未取得0件を確認する。
+
+# v7.6.0-dev.51
+- DEBUG ANALYSISを診断強化。CHECK理由をPendingとして明示し、未達希望名・総自由時間・回帰監視WARNを出力。
+- 未達がある状態で自由時間が120分以上残る場合、最適化回帰の調査ヒントを自動出力。
+- 追加候補DEBUGの古いdev.48a固定識別子をAppVersion連動へ変更。
+- DEBUG IDもAppVersion連動とし、バージョン更新時の識別子陳腐化を防止。
+
+## v7.6.0-dev.50 - Pre-trip DPA schedule boundary
+- Fixed the remaining DPA state leak detected by DEBUG ANALYSIS: a purchase candidate can no longer become a timed DPA item in the normal pre-trip schedule.
+- `canUseDpa` / `attractionDpaMaxUses` remain available for DPA scenario analysis, but normal schedule generation now clears synthetic DPA access unless an explicit acquired/fixed path supplies it.
+- Kept DPA scenario comparison separate so users can still compare the benefit of buying DPA without pretending a return window is already known.
+- Advanced DEBUG ANALYSIS to dev.50; its unacquired-DPA consistency check is the runtime Gate for this fix.
+
+# v7.6.0-dev.49
+- Added a DEBUG-only AI analysis report appended to the AI evaluation export. It reports the authoritative app version/build/debug ID, major feature flags, current planning settings, DPA candidate/acquired/scheduled counts, occurrence coverage, and PASS/FAIL/CHECK integrity gates.
+- Added an explicit integrity failure when a DPA is scheduled even though no matching acquired DPA exists. This makes the current pre-trip DPA leak visible without manually reading the full schedule.
+- Centralized the current development identity through `AppVersion` as v7.6.0-dev.49 / build 76049 and uses it in the debug analysis output.
+- Added a regression test proving the debug analyzer detects an unacquired DPA scheduled at a concrete time.
+- This patch is diagnostic only: it intentionally does not hide or repair the currently detected DPA scheduling inconsistency. The report should show FAIL until that behavior is fixed.
+
+# v7.6.0-dev.48a
+- DPA購入候補の保存時に事前プランを再生成しないよう修正。実際のDPA利用時間が未確定の段階では、現在の通常待機プランをそのまま維持する。
+- dev.48で購入候補保存時に通常待機で全日再生成した結果、代表ケースが9/11から8/11へ回帰した問題を解消する。
+- 購入候補は `TripSettings.plannedDpaFacilityIds` に保存するだけとし、実際の利用時間取得後にToday側で固定・再最適化する責務分離を維持。
+- 確認ダイアログを「プランを作る」ではなく「購入候補として保存」に変更し、現在の事前プランを変更しないことを明示。
+
+# v7.6.0-dev.48
+- 事前DPAシナリオと取得済みDPAを分離。事前候補を適用しても仮のDPA利用時刻を最終プランへ固定しない。
+- 選択したDPA施設IDは `TripSettings.plannedDpaFacilityIds` に購入候補として保存。
+- 事前プランは通常待機で再生成し、当日は実際に取得した利用時間を固定して再最適化する前提へ変更。
+- Plan Reviewの文言を「DPA構成」から「購入候補」中心へ変更。
+
+## v7.6.0-dev.47 - Apply recommended budget/DPA scenario to the final plan
+- Added a beginner-facing `このDPA構成でプランを作る` action to the budget recommendation card, with a confirmation that names the DPA actually purchased and the whole-party extra cost.
+- Applying a scenario now persists the matching DPA-use count in TripSettings and regenerates the whole day with the scenario's exact DPA facility IDs fixed, instead of merely re-running the automatic allocator and hoping it chooses the same facilities.
+- The no-extra-cost scenario explicitly regenerates with DPA disabled.
+- The applied schedule is still a fresh whole-day optimization, so the UI tells the user to confirm final occurrence coverage/times after regeneration rather than treating the simulation as a guaranteed final result.
+- Unknown/unpriced DPA scenarios remain blocked from final-plan application.
+- Existing Wishes 2.0 semantics, four optimization modes, optimizer weights, Today logic, occurrence-based coverage, and intentional-free-time behavior are unchanged.
+
+## v7.6.0-dev.46c - Analyze cleanup after scenario overflow fix
+- Removed the unused `emphasized` parameter from `_AdvicePill`, resolving the analyzer warning introduced while restructuring the DPA scenario UI.
+- Keeps the dev.46b multi-line scenario card overflow fix unchanged.
+- No scenario selection, DPA pricing, optimizer, Wishes 2.0, Today, or schedule-generation logic changes.
+
+## v7.6.0-dev.46b - DPA scenario overflow fix
+- Replaced the single-line DPA scenario pills with full-width multi-line summary cards so long facility names and scenario metrics can wrap without horizontal overflow.
+- Kept achievement count, price, wait time, free time, budget status, and the actual purchased DPA facility visible while separating them into readable lines.
+- No changes to scenario selection, DPA pricing, optimizer weights, Wishes 2.0, Today, or schedule generation logic.
+
+## v7.6.0-dev.46a - Analyze cleanup
+- Removed two unnecessary braces in string interpolation reported by `flutter analyze` in the budget-scenario summary UI.
+- No scenario selection, DPA pricing, optimizer, Wishes 2.0, Today, or schedule-generation behavior changed.
+
+## v7.6.0-dev.46 - Budget scenario selection
+- Connected the persisted budget intent to scenario selection: no-extra-cost keeps DPA=0, low-cost chooses the cheapest priced scenario that improves occurrence coverage, capped budget chooses the best coverage within the group-total cap, and fulfillment-first prioritizes coverage then wait time.
+- Scenario labels now name the facilities whose DPA is actually purchased. This distinguishes the DPA target from a different wish that may be rescued indirectly by the freed schedule time.
+- Changed unmet-wish wording from `DPA N個で採用` to `DPA N個構成で採用` so it no longer implies that the rescued facility itself is necessarily the purchased DPA.
+- Added a beginner-facing budget recommendation summary under the DPA scenario comparison. Unknown/unpriced scenarios are never auto-selected.
+- Added behavior tests for all four budget modes. Existing optimizer weights, DPA allocation order, Wishes 2.0, Today, occurrence coverage, and four optimization modes are unchanged.
+
+## v7.6.0-dev.45a - Analyze cleanup
+- Removed the unused `_coverageCount` helper introduced with the dev.45 scenario comparison UI.
+- Removed the duplicate `plan_quality_audit_service.dart` import in `schedule_controller.dart`.
+- No scenario logic, DPA pricing, optimizer weights, wish semantics, Today behavior, or scheduling behavior changed.
+
+## v7.6.0-dev.45 - Budget input and DPA scenario comparison
+- Connected the dev.44 scenario foundation to a date-aware official DPA attraction price catalog for Tokyo Disneyland / Tokyo DisneySea. Unknown or out-of-period prices remain unavailable instead of being guessed.
+- Added persisted beginner budget intent: no extra cost, low cost, maximum extra budget, or fulfillment/time first, plus a group-total budget when a cap is selected.
+- DPA scenario comparison now carries occurrence coverage, whole-party extra cost, total wait minutes, and total free minutes from each simulated schedule.
+- Added date gates for limited-period DPA entries such as Haunted Mansion and Indiana Jones Adventure.
+- Price snapshot is based on the Tokyo Disney Resort official DPA page checked for the 2026-09-22 implementation; live sale availability still belongs to the official app.
+- Vacation Package monetary comparison remains intentionally deferred because package totals must be compared as aligned packages, not as a fake per-attraction price.
+- Existing optimizer weights, four optimization modes, Wishes 2.0 semantics, Today behavior, and DPA allocation order are unchanged.
+
+## v7.6.0-dev.44 - DPA / budget scenario foundation
+- Added a shared `PlanningScenario` layer that keeps user wish intent separate from execution choices such as no-extra-cost, DPA, and future Vacation Package scenarios.
+- Reuses the existing occurrence-based DPA coverage simulations (for example 9/11 -> 10/11) instead of falling back to facility-ID set coverage.
+- Added beginner budget modes as domain vocabulary: no extra cost, low cost, maximum extra budget, and fulfillment-first. They are foundation only in this build and do not change the current settings UI.
+- Monetary comparison is deliberately marked not ready until date-valid official DPA / Vacation Package price data is supplied. No price is guessed or hard-coded in this foundation.
+- Added tests for DPA=0 / DPA=1 scenario conversion, occurrence coverage, and the no-invented-price guard.
+- No optimizer weights, WishPlanningIntent semantics, four optimization modes, Today behavior, DPA allocation order, or intentional-free-time scoring were changed.
+
+## v7.6.0-dev.43 - Optional by default
+- New wish items now start as `できれば` (optional) instead of normal importance.
+- Turning off `絶対行きたい` returns the wish to `できれば`, matching the new beginner default.
+- Existing persisted wishes keep their stored importance; legacy JSON without a priority field still falls back to the previous normal importance for compatibility.
+- Includes the dev.42a missing `WishItemState` import fix, so this patch is cumulative over dev.42.
+- No optimizer weights, conditional-wish runtime rules, occurrence coverage, DPA allocation, intentional free time, or four optimization modes were changed.
+
+## v7.6.0-dev.42 - Wishes 2.0 finalization
+- Finalized the shared wish-intent merge semantics for importance, repeat count, preferred time, and wait tolerance before the DPA/budget phase.
+- A higher-priority duplicate wish with default `いつでも` / `気にしない` no longer erases an explicit condition already attached to the same facility; an explicit higher-priority condition still wins a real conflict.
+- The beginner wish list now shows the active condition directly on the chip (for example `午前・待ち60分まで`) instead of only `条件あり`, while keeping the stable editing order from dev.41a.
+- ScheduleEngine and Today continue to consume the same PlanPreference path. Conditional-wish runtime rules, occurrence coverage, DPA allocation, intentional free time, optimizer weights, and the four optimization modes were not changed.
+- Added behavior tests for duplicate-facility condition merging and updated the DEBUG implementation identifier.
+
+## v7.6.0-dev.41a - Stable wish editing order
+- Fixed the wish list UX so changing `できれば` / `絶対行きたい` no longer re-sorts the list and moves the row away while the user is still editing it.
+- Wish importance still flows into planning exactly as before; only browsing order was decoupled from priority. Search-result relevance ordering is preserved, with name ordering as the stable fallback.
+- No optimizer weights, conditional-wish runtime rules, occurrence coverage, DPA allocation, intentional free time, or four optimization modes were changed.
+
+## v7.6.0-dev.41 - Conditional wish runtime
+- Completed the beginner-facing wish-condition path for attractions without changing default wishes: preferred time continues through the shared WishPlanningIntent, and wait tolerance now uses the schedule-time wait estimate instead of a stale facility master value.
+- Added a 90-minute wait option for realistic high-demand attraction conditions while preserving all existing stored enum names and defaults.
+- `できれば` + a wait limit is treated as a real condition: an attraction above the limit is deferred behind better candidates and omitted if no qualifying placement is found. Normal and `絶対行きたい` wishes remain in the plan search even when the wait guideline is exceeded.
+- Backfill uses the same resolved attraction wait condition so an optional wish cannot bypass its condition when inserted into a later gap.
+- Existing behavior is unchanged when wait tolerance is `気にしない`; optimizer weights, DPA allocation, occurrence coverage, intentional free time, and four optimization modes are otherwise unchanged.
+- Added persistence coverage for the new 90-minute conditional wait option.
+
+## v7.6.0-dev.40 - Beginner intentional free-time UI
+- Added a beginner-facing Travel Settings card for deliberate free time: one simple toggle, 30/60/90-minute targets, and optional morning/afternoon/evening/anytime placement.
+- Enabling the setting defaults to a 60-minute contiguous target; changing the target keeps the minimum protected block aligned with that choice.
+- The UI writes only to the existing persisted FreeTimePreference introduced in dev.38/dev.39, so ScheduleEngine and Today continue to share the same intent without a second settings model.
+- Existing behavior remains unchanged while the setting is off; optimizer weights, wish occurrence coverage, DPA allocation, and four optimization modes are unchanged.
+
+## v7.6.0-dev.39 - Intentional free-time connection
+- Connected persisted FreeTimePreference to ScheduleEngine without changing the default planner path when the preference is disabled.
+- A qualifying generated flexible block is promoted to an explicit intentional free-time block, honoring minimum block length and preferred time band; targetMinutes is treated as a goal, with the best available qualifying block retained when the full target is not achievable.
+- Today replanning now protects intentional free-time blocks as user intent instead of treating them as disposable incidental breaks.
+- Existing optimizer weights, wish occurrence coverage, DPA allocation, and four optimization modes are unchanged.
+
+## v7.6.0-dev.38a - Shared planning intent test enum hotfix
+- Fixed the new WishPlanningIntentResolver regression test to use the existing WishItemCategory.entertainment enum instead of the nonexistent WishItemCategory.show.
+- Production planner behavior, optimizer weights, occurrence coverage, and the four optimization modes are unchanged.
+
+## v7.6.0-dev.38 - Shared planning intent foundation
+- Added a planner-facing WishPlanningIntent boundary so wish meaning is resolved separately from DPA/VP/access-method execution choices.
+- Wish selection now uses the shared resolver for importance, repeat count, preferred time, and wait tolerance before syncing PlanPreference.
+- Added persisted FreeTimePreference to TripSettings for future intentional free-time scheduling; it is intentionally not scored by ScheduleEngine yet, so current optimizer behavior remains unchanged.
+- Added regression coverage for legacy TripSettings loading, free-time intent persistence, repeat count, and wish intent resolution.
+- Kept r36a occurrence coverage behavior and the existing four optimization modes unchanged.
+
+## v7.6.0-dev.37 - Wish conditions foundation
+- 希望の「通常／できれば／絶対行きたい／回数」に任意の希望時間帯・待ち時間条件を統合。
+- 初心者は選択だけで完了でき、詳細条件は必要な希望だけ開く二層UI。
+- 条件はWishItemStateへ永続化し、候補確定時にPlanPreferenceへ同期。既存ScheduleEngineのpreferredTime / waitTolerance評価を利用する。
+- r36aの回数ベース未達検証を維持。optimizer重み・既存4モードは変更なし。
+
+## v7.6.0-dev.34 - Phase B final check
+
+- Added beginner-facing quick filters for attractions, shows/parades, greetings, restaurants, and selected wishes only.
+- Kept wish selection, must-do star, and repeat count state independent from search/filter display state.
+- Made coverage advice/export keep partially unmet repeat wishes visible (for example, 2 requested / 1 scheduled).
+- Added a behavioral test for partially unmet repeat wishes.
+- Updated the debug implementation id for Phase B final verification.
+
+## v7.6.0-dev.33 - Unmet occurrence display
+
+- The "プランに入らなかった希望" list now uses the same occurrence-based counting as the coverage headline and DPA baseline.
+- Partial repeat wishes are shown explicitly, for example "2回のうち1回達成・あと1回", instead of disappearing merely because the facility appears once.
+- Kept ScheduleEngine and DPA simulation behavior unchanged; this patch is limited to making unmet-wish presentation consistent with the already-correct r32 coverage count.
+
+## v7.6.0-dev.32 - Coverage baseline consistency
+
+- Unified the visible current coverage count, DPA=0 baseline, and debug export on occurrence-based counting.
+- Repeat wishes now consume one scheduled occurrence per requested occurrence instead of letting one scheduled facility satisfy every repeated wish in the headline/debug count.
+- Kept DPA simulation logic unchanged; this patch fixes the comparison baseline shown to the user.
+
+## v7.6.0-dev.31 - DPA coverage occurrence consistency
+
+- DPA coverage now counts desired occurrences, not only unique facility IDs, so repeat wishes such as the same attraction twice are evaluated correctly.
+- The DPA=0 scenario uses the finalized visible schedule with occurrence-aware counting.
+- `minimumDpaCountForAll` is reported only when a simulated scenario actually reaches the full requested occurrence count; 10/11 can no longer be labeled as all wishes achieved.
+- Added a regression test for duplicate/repeat wishes.
+
+## v7.6.0-dev.30 - Coverage advice consistency
+
+- DPA advice now reconciles its DPA=0 baseline with the latest visible schedule before publishing results.
+- The coverage headline uses the same live achieved-count shown at the top of the card, preventing 10/11 vs 9/11 contradictions.
+- Updated debug implementation identifier to v7.6.0-dev.30.
+
+## v7.6.0-dev.29 - Coverage advice performance
+
+- DPA coverage advice now reuses the currently displayed schedule as the DPA=0 baseline instead of regenerating the full day.
+- DPA simulations stop immediately once all desired facilities are covered, avoiding unnecessary Beam Search runs and long-lived loading indicators.
+- Updated the debug implementation identifier for the current v7.6 development line.
+
+## v7.6.0-dev.28 - Must-do performance anchors / September Halloween schedule fix
+
+- 「★ 絶対行きたい」の公式公演は、通常希望のスコア加点ではなく全日最適化前の固定アンカーとして確保するよう変更。
+- エントリー受付未当選の公演は従来どおり当選扱いせず、must-do固定アンカーの対象外。
+- 2026年9月のTDLハロウィーン公演時刻がperformance_schedulesに欠落していたため、ヴィランズ・ハロウィーンとナイトハイ・ハロウィーンを公式月間スケジュールに合わせて補完。
+- must-doを物理的に配置できない場合は、通常希望より強い警告文を表示。
+- デバッグの古い「主軸が1件でも外れる」説明をv7.6の優先順位に合わせて更新。
+- must-do公式公演の固定配置に対する回帰テストを追加。
+
+## v7.6.0-dev.24 - Flexible local wish search
+
+- やりたいこと検索をローカルの共通検索エンジンへ変更。大文字/小文字、ひらがな/カタカナ、空白・中黒・ハイフン等の表記差を吸収。
+- 日本語名称のローマ字検索に対応し、`biggusanda-` / `biggusannda-` / `biggusandaa` などの一般的な入力揺れでも検索可能にした。
+- 名称だけでなく、カテゴリ、説明、施設属性、メニュー等の特徴タグ、検索専用の英語別名を対象にした。
+- Big Thunder / Baymax / Pooh / Soaring 等、分かりやすい代表英語名・短縮入力を検索専用aliasとして追加。表示名は変更しない。
+- ScheduleEngine / Today再計画 / 最適化ロジックは変更なし。
+
+## v7.6.0-dev.23 - Wish flow prerequisite guard / AI wording cleanup
+
+- `やりたいこと` はランド/シー未選択時に希望整理・一覧を表示せず、旅行設定への明確な導線を表示。
+- パーク選択後は施設一覧を主導線にし、希望整理は任意の補助機能として扱う。
+- 下部フロー、ホーム、候補確認などに残っていた主要な `AI候補` / `AI質問` 表現を製品方針に合わせて整理。
+- ScheduleEngine / Today再計画 / 最適化ロジックは変更なし。
+
+
+
+## v7.6.0 development - r19
+
+- 「初回案内をもう一度表示」を旅行設定の従来位置に常設したまま、押したその場で初回案内を開くよう変更。
+- 初回案内の最後で初心者／詳細モードを選び直すと、その選択を保存して旅行設定へ戻る。アプリ再起動は不要。
+- 初回起動時のオンボーディング動作やプラン生成ロジックは変更しない。
 
 ## v7.6.0 - flexible wish warning after park-exit hard gate (r15)
 
@@ -1935,3 +2381,78 @@ dart run tool/audit_wish_data.dart
 - Reset attraction DPA default to "do not use" for a fresh/unconfigured trip.
 - Hide fabricated park/time/party badges on Home until visit date and park are configured.
 - Reuse the internal blank day when adding the first new visit date instead of creating a second day.
+
+## v7.6.0-dev.25 - Wish discovery UX / search tag model
+- Separated factual facility attributes from curated semantic search tags; numeric thrill level no longer automatically means `絶叫`.
+- Added conservative semantic tags for representative thrill attractions in both Tokyo Disneyland and Tokyo DisneySea.
+- Added event/season search tags (Halloween, Christmas, summer, anniversary) while preserving date-based availability as the source of truth.
+- Added deterministic relevance scoring so name/alias matches rank ahead of descriptive/tag matches.
+- Added quick category chips, selected-only filtering, and an optional ★ "絶対行きたい" action after selection.
+- Simplified search UI wording; advanced input tolerance remains an implementation detail.
+
+## v7.6.0-dev.26 - Logical event deduplication in wish discovery
+- Collapsed duplicate user-facing wishes when a seasonal event pack and the facility master describe the same park event.
+- Kept underlying facility/event records intact for scheduling; deduplication applies only to discovery/selection display.
+- Prefer the richer seasonal event-pack entry by default, while preserving an already-selected duplicate as the visible representative.
+- Keep same-name events in different parks independent.
+
+## v7.6.0-dev.27 - Wish repeat count
+- Added an optional 1-5 desired visit count for selected attractions and greetings.
+- Kept the default interaction at one tap / one visit; repeat controls appear only after selection.
+- Connected wish target counts to repeated facility occurrences used by the existing planning engine.
+- Reducing a desired count removes surplus repeated occurrences without deleting the shared preference while one remains.
+- Added the visible optional "絶対行きたい" star control alongside repeat count.
+- Fixed-time entertainment, restaurants, food, goods, and seasonal event wishes remain single-count in this flow.
+
+
+## v7.6.0-dev.35 - Wish intent foundation / Phase B-B.5 consolidation
+- Consolidated the pending Phase B final-check changes instead of requiring the separate r34 patch.
+- Added beginner-facing three-level wish meaning while preserving the existing numeric priority storage: normal wish, optional `できれば`, and must-do `絶対行きたい`.
+- Kept the default interaction simple: selecting an item remains enough; priority chips appear only for selected wishes.
+- Made `できれば` and `絶対行きたい` mutually exclusive and reversible to the normal wish state.
+- Propagated the three-level meaning into PlanPreference priority so optional wishes reach the planning engine as lower-priority candidates instead of being promoted to the same level as normal wishes.
+- Kept repeat counts independent from wish importance; requesting multiple visits does not imply multiple DPA purchases.
+- Included the r34 category/selected-only discovery controls and occurrence-aware unmet/DPA reporting so the same area is not immediately reworked again in the next phase.
+- Added compatibility coverage for mapping legacy stored numeric wish priority into the new three-level product meaning.
+- This patch intentionally does not change optimizer weights or formal v7.6.0 tagging.
+
+## v7.6.0-dev.55
+- DEBUG専用の4最適化モード自動比較Gateを追加。
+- 現在の生成条件をスナップショットとして再利用し、通常プランを変更せず balanced / minimumWait / minimumWalking / compactSchedule を同条件で生成・比較する。
+- 待ち時間重視、移動少なめ、まとまった自由時間重視が balanced に対して目的方向へ動いているかを機械判定する。
+- 全モードの時間重複と、モード間に実際の品質差が出たかもDEBUG表示する。
+
+
+## v7.6.0-dev.55b
+- Unified 4-mode Gate desired/hard occurrence denominators with the normal Plan Review DEBUG analysis by using the same required-wish occurrence source.
+- Added an explicit diagnostic when balanced and minimum-walking produce identical quality for the current input; identical output is INFO, not a forced failure.
+- Added the coverage basis to AI analysis output so denominator mismatches are visible without screenshots.
+- Kept optimizer weights and production scheduling behavior unchanged; this patch only corrects/clarifies DEBUG diagnostics.
+- AI analysis copy remains a single clipboard payload; repeated paste blocks therefore indicate repeated paste/copy action rather than report concatenation.
+
+
+## v7.6.0-dev.56
+- Finalized pre-trip DPA scenario semantics: scenario cards now explicitly say they are estimates, not acquired return windows.
+- Kept purchase intent separate from authoritative Today acquired-DPA scheduling; pre-trip scenario display never claims a simulated time is confirmed.
+- Refreshed the attraction DPA price snapshot against the Tokyo Disney Resort official DPA guide on 2026-09-23 and exposed the verification date in the UI.
+- Added regression tests for representative TDL DPA prices and date-limited Haunted Mansion eligibility.
+- No optimizer weights or Today acquired-DPA scheduling behavior changed.
+
+
+## v7.6.0-dev.56a
+- Added a DEBUG Comprehensive Gate that aggregates PRE-TRIP, TODAY, and optimization regression evidence without mixing their validation contexts.
+- PRE-TRIP debug analysis no longer treats Today acquired-DPA fixed times as authoritative for the pre-trip schedule; those results are reported as isolated Today state.
+- Added an in-memory DEBUG registry for the latest Today Replan verification so Plan Review can include real Today runtime evidence in the comprehensive result.
+- Comprehensive Gate automatically runs the coverage-aware 4-mode Gate, checks hard-wish coverage/current overlaps/pre-trip fabricated DPA absence, and reports Today as CHECK until actual Today runtime evidence exists in the current app session.
+- Added one-copy Comprehensive Gate AI payload. Production scheduling and optimizer weights are unchanged.
+
+## v7.6.0-dev.56d
+- Made the independent Debug Mode Comprehensive Gate self-contained: one run now regenerates a fresh PRE-TRIP reference, executes the 4-mode gate, restores the user's TODAY schedule, then runs a simulated TODAY replan + Undo verification.
+- Separated PRE-TRIP quality reporting from the current TODAY schedule so the debug label cannot silently show Today metrics as pre-trip metrics.
+- Added a DEBUG-only no-history schedule restore path so regression verification does not create a user Undo entry or leave the generated PRE-TRIP reference as the active Today schedule.
+- Added unified orchestration output to the AI analysis copy payload. Existing production optimizer weights and Today behavior are unchanged.
+
+## v7.6.0-dev.70 — Phase F completion candidate
+- Today に明示的な現在地入力を追加し、再計画の currentFacility / route pickup 起点へ接続。
+- 当日の fresh な実待ち時間を条件付き希望へ適用。通常/できればは上限超過時に今回の再計画から見送り、高優先度は警告付きで候補維持。
+- 既存の DPA 固定、完了/スキップ、実績時刻、Undo の境界は変更しない。

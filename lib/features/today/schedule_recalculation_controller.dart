@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../app/state/app_state.dart';
 import '../../core/debug/debug_verification_report.dart';
+import '../../core/debug/debug_gate_registry.dart';
 import '../../data/repositories/crowd_factor_repository_impl.dart';
 import '../../domain/entities/live_operating_status.dart';
 import '../../domain/entities/schedule_recalculation_request.dart';
@@ -10,6 +11,9 @@ import '../../domain/entities/weather_snapshot.dart';
 import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/enums/schedule_item_type.dart';
+import '../../domain/enums/facility_access_method.dart';
+import '../../domain/enums/today_access_kind.dart';
+import '../../domain/enums/today_access_status.dart';
 import '../../domain/enums/live_weather_condition.dart';
 import '../../domain/services/schedule_recalculation_service.dart';
 import '../live/live_controller.dart';
@@ -37,6 +41,7 @@ class ScheduleRecalculationController extends ChangeNotifier {
   bool? _lastUndoRestored;
   bool _lastUndoAvailableAfterApply = false;
   String? _verificationReport;
+  String? _currentFacilityId;
 
   bool get isCalculating => _isCalculating;
   String? get errorMessage => _errorMessage;
@@ -47,6 +52,13 @@ class ScheduleRecalculationController extends ChangeNotifier {
       ? _liveController.canUndoSimulationSchedule
       : _appState.canUndoScheduleChange;
   Set<String> get suspendedFacilityIds => _liveController.suspendedFacilityIds;
+  String? get currentFacilityId => _currentFacilityId;
+
+  void setCurrentFacility(String? facilityId) {
+    if (_currentFacilityId == facilityId) return;
+    _currentFacilityId = facilityId;
+    notifyListeners();
+  }
 
   bool isSuspended(String facilityId) {
     return _liveController.isFacilitySuspended(facilityId);
@@ -129,6 +141,9 @@ class ScheduleRecalculationController extends ChangeNotifier {
           waitProfiles: waitProfiles,
           releasedFacilityIds: _appState.releasedFacilityIdsForToday,
           todayAccessResults: _appState.todayAccessResults,
+          executedFacilityIds: _liveController.executionExcludedFacilityIds,
+          todayExecutionRecords: _liveController.executionRecords,
+          currentFacilityId: _currentFacilityId,
           breakDurationMinutes: breakDurationMinutes,
         ),
         simulatedWaitMinutesByFacilityId:
@@ -160,6 +175,7 @@ class ScheduleRecalculationController extends ChangeNotifier {
     }
     _lastUndoAvailableAfterApply = canUndo;
     _verificationReport = _buildVerificationReport(undoRestored: null);
+    DebugGateRegistry.lastTodayReplanReport = _verificationReport;
     _pendingResult = null;
     notifyListeners();
   }
@@ -180,6 +196,7 @@ class ScheduleRecalculationController extends ChangeNotifier {
     _verificationReport = _buildVerificationReport(
       undoRestored: _lastUndoRestored,
     );
+    DebugGateRegistry.lastTodayReplanReport = _verificationReport;
     notifyListeners();
   }
 
@@ -201,7 +218,8 @@ class ScheduleRecalculationController extends ChangeNotifier {
       return duration == requestedBreakMinutes && start >= now;
     }).toList(growable: false);
 
-    final overlaps = _overlapCount(after);
+    final overlapDetails = _overlapDetails(after);
+    final overlaps = overlapDetails.length;
     final beforeExit = _exitText(before);
     final afterExit = _exitText(after);
     final exitMaintained = beforeExit == afterExit;
@@ -209,6 +227,30 @@ class ScheduleRecalculationController extends ChangeNotifier {
     final breakValid = !isBreakAction || matchingBreakItems.length == 1;
     final undoWasRun = undoRestored != null;
     final undoOk = undoRestored == true;
+    final isAcquiredDpaAction = _lastVerificationAction == 'acquired-dpa';
+    final acquiredDpaWithTime = _appState.todayAccessResults.where((result) =>
+        result.kind == TodayAccessKind.attractionDpa &&
+        result.status == TodayAccessStatus.acquired &&
+        result.fixesTime).toList(growable: false);
+    final dpaMismatches = <String>[];
+    for (final result in acquiredDpaWithTime) {
+      final matched = after.items.any((item) =>
+          item.facilityId == result.facilityId &&
+          item.accessMethod == FacilityAccessMethod.dpa &&
+          item.startTimeLabel == result.time);
+      if (!matched) {
+        dpaMismatches.add('${result.facilityId} acquired=${result.time}');
+      }
+    }
+    final acquiredDpaAuthoritative =
+        acquiredDpaWithTime.isNotEmpty && dpaMismatches.isEmpty;
+    final acquiredDpaFacilityIds = acquiredDpaWithTime
+        .map((result) => result.facilityId)
+        .toSet();
+    final acquiredDpaConflictDetails = _overlapDetails(
+      after,
+      requiredFacilityIds: acquiredDpaFacilityIds,
+    );
 
     final lines = <String>[
       if (_lastVerificationDetail != null)
@@ -221,6 +263,17 @@ class ScheduleRecalculationController extends ChangeNotifier {
       'After exit: $afterExit',
       'Added break blocks: ${addedBreakItems.length}',
       'Overlaps after: $overlaps',
+      if (overlapDetails.isNotEmpty)
+        ...overlapDetails.map((detail) => 'Overlap detail: $detail'),
+      if (isAcquiredDpaAction)
+        'Acquired DPA fixed times: ${acquiredDpaWithTime.isEmpty ? 'NONE' : acquiredDpaWithTime.map((result) => '${result.facilityId}=${result.time}').join(', ')}',
+      if (isAcquiredDpaAction)
+        'Scheduled acquired DPA matches: ${dpaMismatches.isEmpty && acquiredDpaWithTime.isNotEmpty ? 'YES' : 'NO'}',
+      if (isAcquiredDpaAction)
+        'Acquired DPA conflicts after: ${acquiredDpaConflictDetails.length}',
+      if (isAcquiredDpaAction && acquiredDpaConflictDetails.isNotEmpty)
+        ...acquiredDpaConflictDetails
+            .map((detail) => 'Acquired DPA conflict detail: $detail'),
     ];
     if (matchingBreakItems.length == 1) {
       final item = matchingBreakItems.single;
@@ -256,6 +309,28 @@ class ScheduleRecalculationController extends ChangeNotifier {
             status: breakValid
                 ? DebugVerificationGateStatus.pass
                 : DebugVerificationGateStatus.check,
+          ),
+        if (isAcquiredDpaAction)
+          DebugVerificationGate(
+            name: 'Acquired DPA fixed time maintained',
+            status: acquiredDpaAuthoritative
+                ? DebugVerificationGateStatus.pass
+                : DebugVerificationGateStatus.check,
+            detail: acquiredDpaWithTime.isEmpty
+                ? 'no acquired DPA with fixed time found'
+                : dpaMismatches.isEmpty
+                    ? acquiredDpaWithTime
+                        .map((result) => '${result.facilityId} ${result.time}')
+                        .join(' / ')
+                    : dpaMismatches.join(' / '),
+          ),
+        if (isAcquiredDpaAction)
+          DebugVerificationGate(
+            name: 'No conflicts with acquired DPA after',
+            status: acquiredDpaConflictDetails.isEmpty
+                ? DebugVerificationGateStatus.pass
+                : DebugVerificationGateStatus.check,
+            detail: '${acquiredDpaConflictDetails.length} conflict(s)',
           ),
         DebugVerificationGate(
           name: 'No overlaps after',
@@ -304,7 +379,10 @@ class ScheduleRecalculationController extends ChangeNotifier {
 
   int _endMinutes(ScheduleItem item) => item.endHour * 60 + item.endMinute;
 
-  int _overlapCount(DaySchedule schedule) {
+  List<String> _overlapDetails(
+    DaySchedule schedule, {
+    Set<String>? requiredFacilityIds,
+  }) {
     final items = schedule.items.where((item) {
       if (item.type == ScheduleItemType.entry ||
           item.type == ScheduleItemType.exit) {
@@ -316,14 +394,31 @@ class ScheduleRecalculationController extends ChangeNotifier {
       ..sort((a, b) =>
           (a.startHour * 60 + a.startMinute)
               .compareTo(b.startHour * 60 + b.startMinute));
-    var overlaps = 0;
-    for (var i = 1; i < items.length; i++) {
-      final previousEnd = items[i - 1].endHour * 60 + items[i - 1].endMinute;
-      final currentStart = items[i].startHour * 60 + items[i].startMinute;
-      if (currentStart < previousEnd) overlaps++;
+    final details = <String>[];
+    for (var i = 0; i < items.length; i++) {
+      final left = items[i];
+      final leftStart = left.startHour * 60 + left.startMinute;
+      final leftEnd = left.endHour * 60 + left.endMinute;
+      for (var j = i + 1; j < items.length; j++) {
+        final right = items[j];
+        final rightStart = right.startHour * 60 + right.startMinute;
+        if (rightStart >= leftEnd) break;
+        final rightEnd = right.endHour * 60 + right.endMinute;
+        if (rightEnd <= leftStart) continue;
+        if (requiredFacilityIds != null &&
+            !requiredFacilityIds.contains(left.facilityId) &&
+            !requiredFacilityIds.contains(right.facilityId)) {
+          continue;
+        }
+        details.add(
+          '${left.title} ${left.timeRangeLabel} <-> '
+          '${right.title} ${right.timeRangeLabel}',
+        );
+      }
     }
-    return overlaps;
+    return details;
   }
+
 
   String _exitText(DaySchedule schedule) {
     for (final item in schedule.items.reversed) {

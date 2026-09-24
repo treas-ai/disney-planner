@@ -7,6 +7,7 @@ class OfficialPerformanceOpportunity {
     this.requiresEntryRequest = false,
     this.supportsDpa = false,
     this.isSelected = false,
+    this.isMustDo = false,
   });
 
   final String facilityId;
@@ -16,6 +17,7 @@ class OfficialPerformanceOpportunity {
   final bool requiresEntryRequest;
   final bool supportsDpa;
   final bool isSelected;
+  final bool isMustDo;
 
   String get startLabel {
     final hour = (startMinutes ~/ 60).toString().padLeft(2, '0');

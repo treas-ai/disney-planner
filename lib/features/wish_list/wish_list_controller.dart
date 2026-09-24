@@ -1,16 +1,19 @@
 import 'package:flutter/foundation.dart';
 
 import '../../app/state/app_state.dart';
+import '../../core/utils/flexible_search.dart';
+import '../../core/utils/wish_search_metadata.dart';
 import '../../data/repositories/wish_event_pack_repository_impl.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/wish_event_pack.dart';
 import '../../domain/entities/wish_item.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/dining_location_type.dart';
-import '../../domain/enums/priority_level.dart';
 import '../../domain/enums/wish_item_category.dart';
 import '../../domain/repositories/facility_repository.dart';
 import '../../domain/repositories/wish_event_pack_repository.dart';
+import '../../domain/services/wish_display_deduplicator.dart';
+import '../../domain/services/wish_planning_intent_resolver.dart';
 
 class WishListController extends ChangeNotifier {
   WishListController({
@@ -33,6 +36,7 @@ class WishListController extends ChangeNotifier {
   WishItemCategory? categoryFilter;
   bool freeDrinkOnly = false;
   String query = '';
+  bool selectedOnly = false;
 
   /// Wish の表示判定は「今日」ではなく来園日を優先する。
   DateTime get effectiveDate =>
@@ -59,42 +63,84 @@ class WishListController extends ChangeNotifier {
 
   List<WishItem> get visibleItems {
     final parkId = appState.tripSettings.parkId;
-    final items = allItems
-        .where((item) {
-          if (item.parkId != parkId) {
-            return false;
-          }
-          if (categoryFilter != null && item.category != categoryFilter) {
-            return false;
-          }
-          if (freeDrinkOnly && !item.freeDrinkEligible) {
-            return false;
-          }
-          final normalized = query.trim().toLowerCase();
-          if (normalized.isNotEmpty) {
-            final target =
-                '${item.name} ${item.venueNames.join(' ')} '
-                        '${item.description ?? ''}'
-                    .toLowerCase();
-            if (!target.contains(normalized)) {
-              return false;
-            }
-          }
-          return true;
-        })
-        .toList(growable: false);
+    final filtered = allItems.where((item) {
+      if (item.parkId != parkId) {
+        return false;
+      }
+      if (categoryFilter != null && item.category != categoryFilter) {
+        return false;
+      }
+      if (selectedOnly && !appState.wishStateFor(item.id).selected) return false;
+      if (freeDrinkOnly && !item.freeDrinkEligible) {
+        return false;
+      }
+      if (query.trim().isNotEmpty &&
+          !FlexibleSearch.matches(query, _searchFieldsFor(item))) {
+        return false;
+      }
+      return true;
+    });
 
+    // Seasonal packs and the facility master can describe the same logical
+    // event. Keep both records for scheduling, but show one selectable row.
+    final selectedIds = <String>{
+      for (final item in filtered)
+        if (appState.wishStateFor(item.id).selected) item.id,
+    };
+    final items = WishDisplayDeduplicator.deduplicate(
+      filtered,
+      selectedIds: selectedIds,
+    );
+
+    // Keep the visible list position stable while the user edits importance.
+    // Importance affects planning, not browsing order: re-sorting here made a row
+    // jump as soon as `できれば` / `絶対行きたい` was toggled, forcing the
+    // user to chase the same item before setting repeat count or conditions.
     items.sort((left, right) {
-      final leftState = appState.wishStateFor(left.id);
-      final rightState = appState.wishStateFor(right.id);
-      final priorityCompare = rightState.priority.compareTo(leftState.priority);
-      if (priorityCompare != 0) {
-        return priorityCompare;
+      if (query.trim().isNotEmpty) {
+        final byScore = FlexibleSearch.score(query, _searchFieldsFor(right))
+            .compareTo(FlexibleSearch.score(query, _searchFieldsFor(left)));
+        if (byScore != 0) return byScore;
       }
       return left.name.compareTo(right.name);
     });
     return items;
   }
+
+
+  Iterable<String?> _searchFieldsFor(WishItem item) sync* {
+    yield item.name;
+    yield item.category.label;
+    yield* WishSearchMetadata.aliasesFor(item.name);
+    yield* WishSearchMetadata.semanticTagsFor(item.name);
+    yield* WishSearchMetadata.eventTagsFor(item.eventPackId);
+    yield item.description;
+    yield* item.venueNames;
+
+    for (final facilityId in item.venueFacilityIds) {
+      final facility = _facilityById[facilityId];
+      if (facility == null) continue;
+      yield facility.name;
+      yield facility.category.label;
+      yield facility.description;
+      yield facility.targetAge;
+      yield facility.rideType;
+      yield facility.representativeMenu;
+      yield facility.popcornFlavor;
+      yield facility.menuNote;
+      yield facility.showName;
+      if (facility.isIndoor) yield '屋内 室内 indoor';
+      if (facility.supportsDpa) yield 'DPA ディズニープレミアアクセス premier access';
+      if (facility.supportsPriorityPass) yield 'プライオリティパス priority pass';
+      if (facility.supportsSingleRider) yield 'シングルライダー single rider';
+      if ((facility.thrillLevel ?? 0) >= 3) yield 'スリル thrill';
+      yield* WishSearchMetadata.semanticTagsFor(facility.name);
+      if (facility.isWaterRide) yield '水濡れ ウォーター water';
+      if (facility.isDarkRide) yield 'ダークライド dark ride';
+      if (facility.isSeasonal) yield '季節限定 期間限定 seasonal';
+    }
+  }
+
 
   Future<void> load() async {
     isLoading = true;
@@ -144,6 +190,11 @@ class WishListController extends ChangeNotifier {
 
   void setCategory(WishItemCategory? value) {
     categoryFilter = value;
+    notifyListeners();
+  }
+
+  void setSelectedOnly(bool value) {
+    selectedOnly = value;
     notifyListeners();
   }
 
@@ -216,30 +267,62 @@ class WishListController extends ChangeNotifier {
         })
         .toList(growable: false);
 
-    final facilityIds = selected
-        .expand((item) => item.venueFacilityIds)
-        .where((id) => id.isNotEmpty)
-        .toSet();
+    final intents = const WishPlanningIntentResolver().resolve(
+      items: selected,
+      stateFor: appState.wishStateFor,
+    );
 
     var added = 0;
-    for (final facilityId in facilityIds) {
+    for (final intent in intents) {
+      final facilityId = intent.facilityId;
       final facility = await facilityRepository.getFacilityById(facilityId);
       if (facility == null ||
           facility.parkId != appState.tripSettings.parkId ||
           !facility.canAddToPlanAt(effectiveDate)) {
         continue;
       }
-      if (!appState.isFacilitySelected(facilityId)) {
+      final targetCount = intent.targetCount;
+      final existingCount = appState.selectedFacilities
+          .where((value) => value.id == facilityId)
+          .length;
+      if (existingCount == 0) {
         appState.addFacility(facility);
         added++;
       }
+      for (var occurrence = existingCount == 0 ? 1 : existingCount;
+          occurrence < targetCount;
+          occurrence++) {
+        appState.addFacilityRepeat(facility);
+        added++;
+      }
+      while (appState.selectedFacilities
+              .where((value) => value.id == facilityId)
+              .length > targetCount) {
+        appState.removeOneFacilityOccurrence(facilityId);
+      }
       appState.updatePreferencePriority(
         facilityId: facilityId,
-        priority: PriorityLevel.high,
+        priority: intent.planPriority,
+      );
+      appState.updatePreferencePreferredTime(
+        facilityId: facilityId,
+        preferredTime: intent.preferredTime,
+      );
+      appState.updatePreferenceWaitTolerance(
+        facilityId: facilityId,
+        waitTolerance: intent.waitTolerance,
       );
     }
 
     return added;
+  }
+
+  bool supportsRepeatCount(WishItem item) => _supportsRepeatCount(item);
+
+  bool _supportsRepeatCount(WishItem item) {
+    return item.venueFacilityIds.length == 1 &&
+        (item.category == WishItemCategory.attraction ||
+            item.category == WishItemCategory.greeting);
   }
 
   bool _isSelectableOnEffectiveDate(WishItem item) {

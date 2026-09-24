@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/constants/app_version.dart';
 
 import '../../app/state/app_state_scope.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/debug/debug_analysis_report.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/empty_state.dart';
@@ -12,10 +14,15 @@ import '../../domain/entities/day_schedule.dart';
 import '../../domain/entities/facility.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/plan_coverage_advice.dart';
+import '../../domain/entities/planning_scenario.dart';
+import '../../domain/entities/phase_d_scenario_summary.dart';
+import '../../domain/entities/vacation_package_comparison.dart';
 import '../../domain/entities/schedule_item.dart';
 import '../../domain/entities/schedule_validation_issue.dart';
 import '../../domain/entities/trip_settings.dart';
 import '../../domain/services/plan_text_exporter.dart';
+import '../../domain/services/planning_scenario_service.dart';
+import '../../domain/services/official_dpa_price_catalog.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/enums/lottery_fallback_action.dart';
@@ -127,22 +134,36 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     final controller = _controller;
     if (controller == null || controller.schedule == null) return;
     final appState = AppStateScope.of(context);
+
+    // Build the four Phase D scenarios first and pass that immutable snapshot
+    // directly to the dialog. The normal UI must not depend on DEBUG state or
+    // on a later controller notification to refresh already-open dialog data.
+    final scenarios = await controller.preparePhaseDScenariosForUi();
+    if (!mounted) return;
+
     final selectedMode = await _showOptimizationModeDialog(
       appState.tripSettings.scheduleOptimizationMode,
       finalizingWishes: true,
+      scenarios: scenarios,
     );
     if (!mounted || selectedMode == null) return;
-    if (selectedMode != appState.tripSettings.scheduleOptimizationMode) {
-      appState.updateTripSettings(
-        appState.tripSettings.copyWith(scheduleOptimizationMode: selectedMode),
-      );
-    }
-    await controller.generateSchedule(preserveManualFixedItems: false);
+    final applied = await controller.applyPhaseDScenario(selectedMode);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          applied
+              ? '${_optimizationModeLabel(selectedMode)}の比較済みプランをそのまま適用しました。'
+              : '選択したプランを適用できませんでした。デバッグのPhase D Application Gateを確認してください。',
+        ),
+      ),
+    );
   }
 
   Future<ScheduleOptimizationMode?> _showOptimizationModeDialog(
     ScheduleOptimizationMode initialMode, {
     bool finalizingWishes = false,
+    List<PhaseDScenarioSummary> scenarios = const <PhaseDScenarioSummary>[],
   }) {
     var selectedMode = initialMode;
     return showDialog<ScheduleOptimizationMode>(
@@ -152,22 +173,89 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
           title: Text(finalizingWishes ? '最終プランの組み方を選ぶ' : 'プランの組み方を選ぶ'),
           content: SizedBox(
             width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: ScheduleOptimizationMode.values.map((mode) {
-                final isSelected = mode == selectedMode;
-                return ListTile(
-                  onTap: () => setDialogState(() => selectedMode = mode),
-                  leading: Icon(
-                    isSelected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.62,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                if (scenarios.length != ScheduleOptimizationMode.values.length)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      '比較データを生成できませんでした。プランを再生成してから、もう一度お試しください。',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
-                  title: Text(_optimizationModeLabel(mode)),
-                  subtitle: Text(_optimizationModeDescription(mode)),
-                  contentPadding: EdgeInsets.zero,
+                ...ScheduleOptimizationMode.values.map((mode) {
+                final isSelected = mode == selectedMode;
+                final scenario = scenarios
+                    .where((item) => item.mode == mode)
+                    .firstOrNull;
+                final balanced = scenarios
+                    .where((item) =>
+                        item.mode == ScheduleOptimizationMode.balanced)
+                    .firstOrNull;
+                final sameAsBalanced = scenario != null &&
+                    balanced != null &&
+                    mode != ScheduleOptimizationMode.balanced &&
+                    _samePhaseDScenarioResult(scenario, balanced);
+                final metrics = scenario == null
+                    ? null
+                    : '希望 ${scenario.achievedDesiredCount}/${scenario.totalDesiredCount}  ・  '
+                        '★ ${scenario.hardAchievedCount}/${scenario.totalHardDesiredCount}  ・  '
+                        '待ち ${scenario.totalWaitMinutes}分  ・  '
+                        '移動 ${scenario.totalMovementMinutes}分  ・  '
+                        '自由 ${scenario.totalFreeMinutes}分  ・  '
+                        '最大連続 ${scenario.largestFreeBlockMinutes}分';
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    onTap: () => setDialogState(() => selectedMode = mode),
+                    leading: Icon(
+                      isSelected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                    ),
+                    title: Row(
+                      children: [
+                        Expanded(child: Text(_optimizationModeLabel(mode))),
+                        if (sameAsBalanced)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: Text(
+                              '今回はバランス重視と同じ結果',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ),
+                      ],
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_optimizationModeDescription(mode)),
+                          if (metrics != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              metrics,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  ),
                 );
-              }).toList(growable: false),
+                  }),
+                  ],
+                ),
+              ),
             ),
           ),
           actions: [
@@ -204,6 +292,18 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
           '短い空白を減らし、追加予定を入れやすいまとまった自由時間を残します。',
       };
 
+  bool _samePhaseDScenarioResult(
+    PhaseDScenarioSummary a,
+    PhaseDScenarioSummary b,
+  ) =>
+      a.achievedDesiredCount == b.achievedDesiredCount &&
+      a.hardAchievedCount == b.hardAchievedCount &&
+      a.totalWaitMinutes == b.totalWaitMinutes &&
+      a.totalMovementMinutes == b.totalMovementMinutes &&
+      a.totalFreeMinutes == b.totalFreeMinutes &&
+      a.largestFreeBlockMinutes == b.largestFreeBlockMinutes;
+
+
   Future<void> _removeOptionalAddition(Facility facility) async {
     final controller = _controller;
     if (controller == null) return;
@@ -225,18 +325,19 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
             .whereType<String>()
             .toList(growable: false) ??
         const <String>[];
-    final requiredScheduled = required
-        .where((facility) => scheduledIds.contains(facility.id))
-        .length;
+    final requiredScheduled = controller.coveredDesiredOccurrenceCount(
+      required,
+      scheduledIds,
+    );
     final buffer = StringBuffer();
     buffer.writeln();
     buffer.writeln('【DEBUG: 追加候補・全日再最適化の内部判定】');
-    buffer.writeln('DEBUG実装識別：v7.5.22 quality-gate-r3');
+    buffer.writeln('DEBUG実装識別：${AppVersion.displayName} optimization-trace');
     buffer.writeln('この節はデバッグビルド専用です。通常利用者向けの説明ではありません。');
     buffer.writeln('主軸（やりたいこと）：$requiredScheduled/${required.length}件をスケジュール内で確認');
     buffer.writeln('追加候補：${adopted.length}/${optional.length}件採用、${rejected.length}件見送り');
     buffer.writeln('探索ルール：現在の主軸${required.length}件の維持を優先し、追加候補は採用数が最大になる組み合わせを大きい組み合わせから探索します。各試行では主軸と選択中の追加候補を同列にして全日再最適化します。');
-    buffer.writeln('採用ガード：主軸が1件でも外れる、または試した追加候補が実際のスケジュールに入らない結果は不採用です。成立した最大件数の組み合わせを採用します。');
+    buffer.writeln('採用ガード：固定予定・「絶対行きたい」を最優先し、通常のやりたいことは成立可能な範囲で維持します。追加候補は主軸を不必要に崩さない最大件数の組み合わせを採用します。');
     buffer.writeln('注意：画面上に2時間などの自由時間があっても、その2時間の好きな位置にショーを置けるわけではありません。ショーは実際の公演開始時刻へ固定され、その前後の移動も必要です。');
     buffer.writeln('そのため自由時間が十分に見えても、公演時刻へ合わせて一日全体を並べ替えた結果、元のやりたいことが1件でも外れる場合は見送ります。以下の探索履歴で、実際に外れた主軸と追加候補の配置時刻を確認できます。');
     if (optional.isEmpty) {
@@ -320,6 +421,52 @@ class _PlanReviewScreenState extends State<PlanReviewScreen> {
     }
     if (kDebugMode) {
       evaluationText += _buildDebugOptimizationTrace(controller);
+      final required = controller.requiredFacilitiesForCurrentPark;
+      final scheduledIds = schedule.items
+          .map((item) => item.facilityId)
+          .whereType<String>()
+          .toList(growable: false);
+      final achieved = controller.coveredDesiredOccurrenceCount(
+        required,
+        scheduledIds,
+      );
+      final scheduledCounts = <String, int>{};
+      for (final id in scheduledIds) {
+        scheduledCounts[id] = (scheduledCounts[id] ?? 0) + 1;
+      }
+      final seenRequired = <String, int>{};
+      final unachievedWishLabels = <String>[];
+      final unachievedHardWishLabels = <String>[];
+      final unachievedOptionalWishLabels = <String>[];
+      for (final facility in required) {
+        final occurrence = (seenRequired[facility.id] ?? 0) + 1;
+        seenRequired[facility.id] = occurrence;
+        if ((scheduledCounts[facility.id] ?? 0) >= occurrence) continue;
+        final label = occurrence == 1 ? facility.name : '${facility.name} #$occurrence';
+        unachievedWishLabels.add(label);
+        final preference = controller.preferenceByFacilityId(facility.id);
+        if (preference != null && preference.priority.value <= 2) {
+          unachievedOptionalWishLabels.add(label);
+        } else {
+          unachievedHardWishLabels.add(label);
+        }
+      }
+      final debugAnalysis = DebugAnalysisReporter.build(
+        settings: appState.tripSettings,
+        schedule: schedule,
+        todayAccessResults: appState.todayAccessResults,
+        desiredOccurrenceCount: required.length,
+        achievedOccurrenceCount: achieved,
+        unachievedWishLabels: unachievedWishLabels,
+        unachievedHardWishLabels: unachievedHardWishLabels,
+        unachievedOptionalWishLabels: unachievedOptionalWishLabels,
+        totalFreeMinutes: audit?.totalFreeMinutes,
+        fourModeGateReport: controller.fourModeGateReport,
+      );
+      if (controller.fourModeGateReport != null) {
+        evaluationText += '\n${controller.fourModeGateReport}\n';
+      }
+      evaluationText += '\n${debugAnalysis.text}';
     }
 
     await showDialog<void>(
@@ -461,6 +608,8 @@ class _MobilePlanReviewLayout extends StatelessWidget {
           if (controller.schedule != null) ...[
             const SizedBox(height: AppSpacing.sm),
             _PlanCoverageAdviceCard(controller: controller),
+            const SizedBox(height: AppSpacing.sm),
+            _PlanExplanationCard(controller: controller),
             if (kDebugMode) ...[
               const SizedBox(height: AppSpacing.sm),
               _PlanQualityCard(controller: controller),
@@ -544,6 +693,8 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
                 if (controller.schedule != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _PlanCoverageAdviceCard(controller: controller),
+                  const SizedBox(height: AppSpacing.sm),
+                  _PlanExplanationCard(controller: controller),
                   if (kDebugMode) ...[
                     const SizedBox(height: AppSpacing.sm),
                     _PlanQualityCard(controller: controller),
@@ -606,6 +757,172 @@ class _DesktopPlanReviewLayout extends StatelessWidget {
   }
 }
 
+
+class _PlanExplanationCard extends StatelessWidget {
+  const _PlanExplanationCard({required this.controller});
+
+  final ScheduleController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final explanation = controller.planExplanation;
+    if (explanation == null) return const SizedBox.shrink();
+    final colors = Theme.of(context).colorScheme;
+    final highlights = explanation.items.take(3).toList(growable: false);
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline, size: 20, color: colors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'なぜこのプラン？',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            explanation.featureSummary,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            explanation.modeSummary,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          if (highlights.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              '主な理由',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 5),
+            for (final item in highlights)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Text(
+                  '・【${item.category.label}】${item.title}：${item.reason}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+          ],
+          if (explanation.unmetWishes.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '入らなかった希望',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 5),
+            for (final item in explanation.unmetWishes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Text(
+                  '・${item.title}${item.requestedCount > 1 ? '（${item.requestedCount}回希望 / ${item.scheduledCount}回採用）' : ''}：${item.reason}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+          ],
+          const SizedBox(height: 2),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 4),
+              dense: true,
+              title: Text(
+                '詳しく見る（予定 ${explanation.items.length}件）',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              children: [
+                for (final item in explanation.items)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${item.timeRange}  ${item.title}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            '【${item.category.label}】${item.detailReason}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                          Text(
+                            '根拠: ${item.evidence}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (explanation.unmetWishes.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '未採用の詳しい理由',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  for (final item in explanation.unmetWishes)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${item.title}：${item.detailReason}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+          Text(
+            '説明は現在の設定・希望・生成済みプランから作成しています。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _PlanQualityCard extends StatelessWidget {
   const _PlanQualityCard({required this.controller});
@@ -678,6 +995,11 @@ class _PlanQualityCard extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           ..._buildOutsideParkDebugRows(context),
+          const SizedBox(height: 8),
+          Text(
+            'DEBUG解析・Gateは「本日の予定」最下部の「解析・デバッグ」に集約しました。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
           const SizedBox(height: 4),
           Text(
             'この表示は品質評価です。追加候補の可否は空き時間の単純差し引きではなく、引き続き一日全体の再最適化で判定します。',
@@ -697,14 +1019,44 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final advice = controller.coverageAdvice;
+    final scenarioSet = advice == null
+        ? null
+        : const PlanningScenarioService().fromCoverageAdvice(
+            advice,
+            visitDate: controller.tripSettings.visitDate,
+            numberOfPeople: controller.tripSettings.numberOfPeople,
+          );
     final colorScheme = Theme.of(context).colorScheme;
     final required = controller.requiredFacilitiesForCurrentPark;
     final scheduledIds = controller.schedule?.items
             .map((item) => item.facilityId)
             .whereType<String>()
-            .toSet() ??
-        const <String>{};
-    final achieved = required.where((facility) => scheduledIds.contains(facility.id)).length;
+            .toList(growable: false) ??
+        const <String>[];
+    final achieved = controller.coveredDesiredOccurrenceCount(
+      required,
+      scheduledIds,
+    );
+    final requestedCountById = <String, int>{};
+    final facilityById = <String, Facility>{};
+    for (final facility in required) {
+      requestedCountById.update(
+        facility.id,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+      facilityById[facility.id] = facility;
+    }
+    final scheduledCountById = <String, int>{};
+    for (final id in scheduledIds) {
+      scheduledCountById.update(id, (count) => count + 1, ifAbsent: () => 1);
+    }
+    final undercoveredIds = requestedCountById.keys
+        .where(
+          (id) =>
+              (scheduledCountById[id] ?? 0) < (requestedCountById[id] ?? 0),
+        )
+        .toList(growable: false);
 
     return AppCard(
       child: Column(
@@ -767,8 +1119,8 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
           ],
           if (advice != null) ...[
             const SizedBox(height: 12),
-            _CoverageHeadline(advice: advice),
-            if (advice.unmetFacilities.isNotEmpty) ...[
+            _CoverageHeadline(advice: advice, currentScheduledCount: achieved),
+            if (undercoveredIds.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
                 'プランに入らなかった希望',
@@ -777,39 +1129,76 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              for (final item in advice.unmetFacilities) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  margin: const EdgeInsets.only(bottom: 7),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              for (final facilityId in undercoveredIds) ...[
+                Builder(
+                  builder: (context) {
+                    final facility = facilityById[facilityId]!;
+                    final requested = requestedCountById[facilityId] ?? 1;
+                    final scheduled = scheduledCountById[facilityId] ?? 0;
+                    final missing = requested - scheduled;
+                    final matchingAdvice = advice.unmetFacilities
+                        .where((item) => item.facilityId == facilityId)
+                        .firstOrNull;
+                    final occurrenceText = requested > 1
+                        ? '$requested回のうち$scheduled回達成・あと$missing回'
+                        : '未達成';
+                    final reason = scheduled > 0
+                        ? '希望回数の一部だけがプランに入っています。残り$missing回分は、現在の固定予定・移動・待ち時間を含む一日最適化では配置できませんでした。'
+                        : matchingAdvice?.reason ??
+                            '現在の固定予定・移動・待ち時間を含む一日最適化では未採用です。';
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.only(bottom: 7),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              item.name,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      facility.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      occurrenceText,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: colorScheme.primary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                              if (matchingAdvice?.firstRescuedAtDpaCount != null)
+                                _AdvicePill(
+                                  label:
+                                      'DPA ${matchingAdvice!.firstRescuedAtDpaCount}個構成で採用',
+                                  icon: Icons.confirmation_number_outlined,
+                                ),
+                            ],
                           ),
-                          if (item.firstRescuedAtDpaCount != null)
-                            _AdvicePill(
-                              label: 'DPA ${item.firstRescuedAtDpaCount}個で採用',
-                              icon: Icons.confirmation_number_outlined,
-                            ),
+                          const SizedBox(height: 4),
+                          Text(reason, style: Theme.of(context).textTheme.bodySmall),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(item.reason, style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ],
             ],
@@ -821,20 +1210,50 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
+            Column(
               children: [
                 for (final scenario in advice.scenarios)
-                  _AdvicePill(
-                    icon: scenario.dpaCount == 0
-                        ? Icons.directions_walk_outlined
-                        : Icons.confirmation_number_outlined,
-                    label: 'DPA ${scenario.dpaCount}個：${_coverageCount(scenario)}/${advice.totalDesiredCount}',
-                    emphasized: advice.minimumDpaCountForAll == scenario.dpaCount,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: _DpaScenarioSummaryCard(
+                      source: scenario,
+                      advice: advice,
+                      scenarioSet: scenarioSet,
+                      budgetMode: controller.tripSettings.planningBudgetMode,
+                      maxBudgetYen: controller.tripSettings.maxExtraBudgetYen,
+                      facilityById: facilityById,
+                      emphasized:
+                          advice.minimumDpaCountForAll == scenario.dpaCount,
+                    ),
                   ),
               ],
             ),
+            if (scenarioSet != null) ...[
+              const SizedBox(height: 10),
+              _ScenarioRecommendation(
+                controller: controller,
+                scenarioSet: scenarioSet,
+                budgetMode: controller.tripSettings.planningBudgetMode,
+                maxBudgetYen: controller.tripSettings.maxExtraBudgetYen,
+                facilityById: facilityById,
+              ),
+            ],
+            if (controller.vacationPackageComparisonScenario != null) ...[
+              const SizedBox(height: 10),
+              _VacationPackageComparisonCard(
+                scenario: controller.vacationPackageComparisonScenario!,
+                baseline: scenarioSet?.scenarios
+                    .where((item) => item.kind == PlanningScenarioKind.noExtraCost)
+                    .firstOrNull,
+                dpaRecommendation: scenarioSet == null
+                    ? null
+                    : const PlanningScenarioService().recommend(
+                        scenarioSet,
+                        budgetMode: controller.tripSettings.planningBudgetMode,
+                        maxExtraBudgetYen: controller.tripSettings.maxExtraBudgetYen,
+                      ),
+              ),
+            ],
             if (advice.dpaAcquisitionOrder.isNotEmpty) ...[
               const SizedBox(height: 12),
               Row(
@@ -906,14 +1325,540 @@ class _PlanCoverageAdviceCard extends StatelessWidget {
     );
   }
 
-  static int _coverageCount(PlanCoverageScenario scenario) {
-    return scenario.scheduledDesiredCount;
-  }
-
   static List<DpaAcquisitionAdvice> _visibleDpaOrder(PlanCoverageAdvice advice) {
     final targetCount = advice.minimumDpaCountForAll ?? advice.simulatedMaxDpaCount;
     if (targetCount <= 0) return const <DpaAcquisitionAdvice>[];
     return advice.dpaAcquisitionOrder.take(targetCount).toList(growable: false);
+  }
+}
+
+class _VacationPackageComparisonCard extends StatelessWidget {
+  const _VacationPackageComparisonCard({
+    required this.scenario,
+    required this.baseline,
+    required this.dpaRecommendation,
+  });
+
+  final PlanningScenario scenario;
+  final PlanningScenario? baseline;
+  final PlanningScenario? dpaRecommendation;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.secondaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('通常プラン / 個別DPA / VP 比較',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        Text(
+          '同じ「やりたいこと」を基準に、体験価値の差を比較します。VP総額は予約条件で変わるため推測しません。',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+        ),
+        const SizedBox(height: 10),
+        LayoutBuilder(builder: (context, constraints) {
+          final cardWidth = constraints.maxWidth >= 720
+              ? (constraints.maxWidth - 16) / 3
+              : constraints.maxWidth;
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              SizedBox(
+                width: cardWidth,
+                child: _ComparisonScenarioTile(
+                  title: '通常プラン',
+                  scenario: baseline,
+                  baseline: baseline,
+                  costText: '追加料金なし',
+                ),
+              ),
+              SizedBox(
+                width: cardWidth,
+                child: _ComparisonScenarioTile(
+                  title: '個別DPA',
+                  scenario: dpaRecommendation,
+                  baseline: baseline,
+                  costText: _dpaCostText(dpaRecommendation),
+                ),
+              ),
+              SizedBox(
+                width: cardWidth,
+                child: _ComparisonScenarioTile(
+                  title: 'VP 乗り放題',
+                  scenario: scenario,
+                  baseline: baseline,
+                  costText: 'VP総額は予約条件で変動',
+                ),
+              ),
+            ],
+          );
+        }),
+        const SizedBox(height: 10),
+        _ComparisonDifferenceSummary(
+          baseline: baseline,
+          dpa: dpaRecommendation,
+          vacationPackage: scenario,
+        ),
+        const SizedBox(height: 10),
+        Text('VPアトラクション利用券のタイプ',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        ...VacationPackageComparisonCatalog.attractionOptions.map((option) =>
+          Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Text(
+              '・${option.label}：${option.usageSummary}${option.canSimulateFromCurrentSettings ? '（現在の設定で試算）' : '（予約内容確定後に試算）'}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'VPはホテル宿泊・パークチケット等を含む旅行商品です。現在は乗り放題だけを数値試算し、施設・時間・枚数が予約内容に依存する利用券は推測しません。公式情報確認日：${VacationPackageComparisonCatalog.officialSnapshotDate}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+        ),
+      ]),
+    );
+  }
+
+  static String _dpaCostText(PlanningScenario? dpa) {
+    if (dpa == null) return '候補なし';
+    if (dpa.costDataAvailable && dpa.extraCostYen != null) {
+      return '${dpa.extraCostYen}円';
+    }
+    return '料金未確認';
+  }
+}
+
+
+class _ComparisonDifferenceSummary extends StatelessWidget {
+  const _ComparisonDifferenceSummary({
+    required this.baseline,
+    required this.dpa,
+    required this.vacationPackage,
+  });
+
+  final PlanningScenario? baseline;
+  final PlanningScenario? dpa;
+  final PlanningScenario vacationPackage;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = baseline;
+    if (base == null) return const SizedBox.shrink();
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colors.surface.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('通常プランから何が変わる？',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 5),
+        Text(
+          _summary('個別DPA', dpa, base, includeCost: true),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 3),
+        Text(
+          _summary('VP乗り放題', vacationPackage, base, includeCost: false),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'VP総額は予約条件で変わるため、価格差ではなく体験価値の差だけを表示しています。',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+        ),
+      ]),
+    );
+  }
+
+  static String _summary(
+    String label,
+    PlanningScenario? scenario,
+    PlanningScenario base, {
+    required bool includeCost,
+  }) {
+    if (scenario == null) return '$label：比較データなし';
+    final parts = <String>[];
+    final achieved = scenario.scheduledDesiredCount - base.scheduledDesiredCount;
+    if (achieved != 0) {
+      parts.add('希望 ${_signed(achieved)}件');
+    } else {
+      parts.add('希望達成数は同じ');
+    }
+    final wait = _savedMinutes(base.totalWaitMinutes, scenario.totalWaitMinutes);
+    if (wait != null && wait != 0) {
+      parts.add(wait > 0 ? '待ち時間 $wait分短縮' : '待ち時間 ${-wait}分増加');
+    }
+    final movement = _savedMinutes(base.totalMovementMinutes, scenario.totalMovementMinutes);
+    if (movement != null && movement != 0) {
+      parts.add(movement > 0 ? '移動 $movement分短縮' : '移動 ${-movement}分増加');
+    }
+    final free = _difference(scenario.totalFreeMinutes, base.totalFreeMinutes);
+    if (free != null && free != 0) {
+      parts.add(free > 0 ? '自由時間 $free分増加' : '自由時間 ${-free}分減少');
+    }
+    if (includeCost && scenario.costDataAvailable && scenario.extraCostYen != null) {
+      parts.add('追加${scenario.extraCostYen}円');
+    }
+    return '$label：${parts.join(' / ')}';
+  }
+
+  static int? _savedMinutes(int? base, int? value) {
+    if (base == null || value == null) return null;
+    return base - value;
+  }
+
+  static int? _difference(int? value, int? base) {
+    if (base == null || value == null) return null;
+    return value - base;
+  }
+
+  static String _signed(int value) => value > 0 ? '+$value' : '$value';
+}
+
+class _ComparisonScenarioTile extends StatelessWidget {
+  const _ComparisonScenarioTile({
+    required this.title,
+    required this.scenario,
+    required this.baseline,
+    required this.costText,
+  });
+
+  final String title;
+  final PlanningScenario? scenario;
+  final PlanningScenario? baseline;
+  final String costText;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final item = scenario;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colors.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: item == null
+          ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              Text('比較データなし', style: Theme.of(context).textTheme.bodySmall),
+            ])
+          : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 7),
+              _metric(context, '達成', '${item.scheduledDesiredCount}/${item.totalDesiredCount}',
+                  _delta(item.scheduledDesiredCount, baseline?.scheduledDesiredCount, suffix: '件')),
+              _metric(context, '★/Hard', _hardText(item), _hardDelta(item, baseline)),
+              _metric(context, '待ち', _minutes(item.totalWaitMinutes),
+                  _inverseDelta(item.totalWaitMinutes, baseline?.totalWaitMinutes)),
+              _metric(context, '移動', _minutes(item.totalMovementMinutes),
+                  _inverseDelta(item.totalMovementMinutes, baseline?.totalMovementMinutes)),
+              _metric(context, '自由', _minutes(item.totalFreeMinutes),
+                  _delta(item.totalFreeMinutes, baseline?.totalFreeMinutes, suffix: '分')),
+              const Divider(height: 14),
+              Text(costText, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+            ]),
+    );
+  }
+
+  Widget _metric(BuildContext context, String label, String value, String? delta) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Row(children: [
+        SizedBox(width: 42, child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+        Expanded(child: Text(value, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700))),
+        if (delta != null)
+          Text(delta, style: Theme.of(context).textTheme.labelSmall),
+      ]),
+    );
+  }
+
+  static String _minutes(int? value) => value == null ? '—' : '$value分';
+
+  static String _hardText(PlanningScenario item) {
+    final achieved = item.hardScheduledDesiredCount;
+    final total = item.totalHardDesiredCount;
+    return achieved == null || total == null ? '—' : '$achieved/$total';
+  }
+
+  static String? _hardDelta(PlanningScenario item, PlanningScenario? baseline) {
+    return _delta(item.hardScheduledDesiredCount, baseline?.hardScheduledDesiredCount, suffix: '件');
+  }
+
+  static String? _delta(int? value, int? base, {required String suffix}) {
+    if (value == null || base == null || value == base) return null;
+    final diff = value - base;
+    return '${diff > 0 ? '+' : ''}$diff$suffix';
+  }
+
+  static String? _inverseDelta(int? value, int? base) {
+    if (value == null || base == null || value == base) return null;
+    final saved = base - value;
+    return saved > 0 ? '-$saved分' : '+${-saved}分';
+  }
+}
+
+class _DpaScenarioSummaryCard extends StatelessWidget {
+  const _DpaScenarioSummaryCard({
+    required this.source,
+    required this.advice,
+    required this.scenarioSet,
+    required this.budgetMode,
+    required this.maxBudgetYen,
+    required this.facilityById,
+    required this.emphasized,
+  });
+
+  final PlanCoverageScenario source;
+  final PlanCoverageAdvice advice;
+  final PlanningScenarioSet? scenarioSet;
+  final PlanningBudgetMode budgetMode;
+  final int maxBudgetYen;
+  final Map<String, Facility> facilityById;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final scenario = scenarioSet?.scenarios
+        .where((item) => item.dpaCount == source.dpaCount)
+        .firstOrNull;
+    final costAvailable =
+        scenario?.costDataAvailable == true && scenario?.extraCostYen != null;
+    final costText = costAvailable
+        ? '${scenario!.extraCostYen}円'
+        : source.dpaCount == 0
+            ? '0円'
+            : '料金未確認';
+    final statusLabels = <String>[];
+    if (costAvailable &&
+        budgetMode == PlanningBudgetMode.maxExtraBudget &&
+        scenario!.extraCostYen! > maxBudgetYen) {
+      statusLabels.add('予算超過');
+    }
+    if (costAvailable &&
+        budgetMode == PlanningBudgetMode.noExtraCost &&
+        scenario!.extraCostYen! > 0) {
+      statusLabels.add('設定対象外');
+    }
+    final dpaNames = source.selectedDpaFacilityIds
+        .map((id) => facilityById[id]?.name ?? id)
+        .join('、');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: emphasized
+            ? colors.primaryContainer
+            : colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            source.dpaCount == 0
+                ? Icons.directions_walk_outlined
+                : Icons.confirmation_number_outlined,
+            size: 16,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DPA ${source.dpaCount}個の事前試算  ${source.scheduledDesiredCount}/${advice.totalDesiredCount}達成',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight:
+                            emphasized ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    costText,
+                    if (source.totalWaitMinutes != null)
+                      '待ち${source.totalWaitMinutes}分',
+                    if (source.totalFreeMinutes != null)
+                      '自由${source.totalFreeMinutes}分',
+                    ...statusLabels,
+                  ].join(' ・ '),
+                  softWrap: true,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                if (dpaNames.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '購入候補：$dpaNames',
+                    softWrap: true,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScenarioRecommendation extends StatelessWidget {
+  const _ScenarioRecommendation({
+    required this.controller,
+    required this.scenarioSet,
+    required this.budgetMode,
+    required this.maxBudgetYen,
+    required this.facilityById,
+  });
+
+  final ScheduleController controller;
+  final PlanningScenarioSet scenarioSet;
+  final PlanningBudgetMode budgetMode;
+  final int maxBudgetYen;
+  final Map<String, Facility> facilityById;
+
+  @override
+  Widget build(BuildContext context) {
+    final service = const PlanningScenarioService();
+    final selected = service.recommend(
+      scenarioSet,
+      budgetMode: budgetMode,
+      maxExtraBudgetYen: maxBudgetYen,
+    );
+    if (selected == null) return const SizedBox.shrink();
+    final baseline = scenarioSet.scenarios.firstOrNull;
+    final cost = selected.extraCostYen ?? 0;
+    final improved = baseline != null &&
+        selected.scheduledDesiredCount > baseline.scheduledDesiredCount;
+    final dpaNames = selected.selectedDpaFacilityIds
+        .map((id) => facilityById[id]?.name ?? id)
+        .join('、');
+    final modeLabel = switch (budgetMode) {
+      PlanningBudgetMode.noExtraCost => '追加料金なし',
+      PlanningBudgetMode.lowCost => 'なるべく安く',
+      PlanningBudgetMode.maxExtraBudget => '追加予算 $maxBudgetYen円まで',
+      PlanningBudgetMode.fulfillmentFirst => '達成・時間を優先',
+    };
+    final detail = selected.dpaCount == 0
+        ? '現在の設定では追加料金なしのプランを基準にします。'
+        : '$cost円で ${selected.scheduledDesiredCount}/${selected.totalDesiredCount}件。'
+            '${improved ? '追加料金なしより希望達成数が増えます。' : '希望達成数は追加料金なしと同じです。'}'
+            '${dpaNames.isEmpty ? '' : ' 購入するDPA：$dpaNames。'}';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('予算設定からの候補：$modeLabel',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          Text(detail, style: Theme.of(context).textTheme.bodySmall),
+          if (!scenarioSet.costComparisonReady)
+            Text('料金未確認のシナリオは自動候補にしません。',
+                style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 4),
+          Text(
+            '事前試算です。DPAは入園後に購入し、利用時間と発行状況は当日の公式アプリで確定します。'
+            'この試算の時刻を取得済みDPAとして予定へ固定しません。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '料金スナップショット確認日: ${OfficialDpaPriceCatalog.verifiedOn}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: controller.isLoading
+                  ? null
+                  : () async {
+                      final dpaText = dpaNames.isEmpty
+                          ? 'DPAは購入しません。'
+                          : '購入するDPA：$dpaNames\n追加料金：$cost円';
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: const Text('DPA購入候補として保存しますか？'),
+                          content: Text(
+                            '$dpaText\n\n'
+                            'これは入園後に購入を試すDPA候補です。利用時刻はまだ確定しません。\n'
+                            '現在の事前プランは変更しません。'
+                            '当日は実際に取得できた利用時間を入力して組み直します。',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(false),
+                              child: const Text('キャンセル'),
+                            ),
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(true),
+                              child: const Text('購入候補として保存'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed != true || !context.mounted) return;
+                      final applied =
+                          await controller.applyPlanningScenario(selected);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            applied
+                                ? (selected.dpaCount == 0
+                                    ? 'DPA購入候補を解除しました。現在の事前プランは変更していません。'
+                                    : 'DPA購入候補を保存しました。利用時刻は当日取得後に確定します。')
+                                : controller.errorMessage ??
+                                    'DPA構成をプランへ反映できませんでした。',
+                          ),
+                        ),
+                      );
+                    },
+              icon: const Icon(Icons.check_circle_outline),
+              label: Text(
+                selected.dpaCount == 0
+                    ? '追加料金なしでプランを作る'
+                    : 'このDPAを購入候補にする',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1122,20 +2067,24 @@ class _PlanAdditionImpactCard extends StatelessWidget {
 }
 
 class _CoverageHeadline extends StatelessWidget {
-  const _CoverageHeadline({required this.advice});
+  const _CoverageHeadline({
+    required this.advice,
+    required this.currentScheduledCount,
+  });
 
   final PlanCoverageAdvice advice;
+  final int currentScheduledCount;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final all = advice.allDesiredScheduled;
+    final all = currentScheduledCount >= advice.totalDesiredCount;
     final minimum = advice.minimumDpaCountForAll;
     final message = all
         ? '現在のプランで「やりたいこと」${advice.totalDesiredCount}/${advice.totalDesiredCount}件を体験できます。'
         : minimum != null
-            ? '現在は${advice.currentScheduledCount}/${advice.totalDesiredCount}件。シミュレーション上、DPAを最少$minimum個使うと全件を組み込めます。'
-            : '現在は${advice.currentScheduledCount}/${advice.totalDesiredCount}件。DPAを最大${advice.simulatedMaxDpaCount}個まで試しても全件達成にはなりません。';
+            ? '現在は$currentScheduledCount/${advice.totalDesiredCount}件。シミュレーション上、DPAを最少$minimum個使うと全件を組み込めます。'
+            : '現在は$currentScheduledCount/${advice.totalDesiredCount}件。DPAを最大${advice.simulatedMaxDpaCount}個まで試しても全件達成にはなりません。';
 
     return Container(
       width: double.infinity,
@@ -1159,22 +2108,17 @@ class _AdvicePill extends StatelessWidget {
   const _AdvicePill({
     required this.label,
     required this.icon,
-    this.emphasized = false,
   });
 
   final String label;
   final IconData icon;
-  final bool emphasized;
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: emphasized
-            ? colorScheme.primaryContainer
-            : colorScheme.surfaceContainerHighest,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -1182,7 +2126,13 @@ class _AdvicePill extends StatelessWidget {
         children: [
           Icon(icon, size: 14),
           const SizedBox(width: 4),
-          Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: emphasized ? FontWeight.w700 : FontWeight.w500)),
+          Text(
+            label,
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );

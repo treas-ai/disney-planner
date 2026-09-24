@@ -4,6 +4,8 @@ import '../../app/state/app_state.dart';
 import '../../app/dependency/service_locator.dart';
 import '../../data/local/onboarding_preferences.dart';
 import '../../domain/entities/trip_settings.dart';
+import '../../domain/entities/planning_scenario.dart';
+import '../../domain/enums/preferred_time.dart';
 import '../../domain/enums/live_data_source_type.dart';
 
 class SettingsController extends ChangeNotifier {
@@ -21,16 +23,19 @@ class SettingsController extends ChangeNotifier {
     return _appState.tripSettings;
   }
 
+  TripSettings get newVisitDayDefaults => _appState.newVisitDayDefaults;
+
   AppState get appState => _appState;
 
   List<String> get visitDayIds => _appState.visitDayIds;
   String get activeVisitDayId => _appState.activeVisitDayId;
 
   Future<void> addVisitDay(DateTime date) {
-    final nextPark = settings.parkId == 'tokyo_disneyland'
-        ? 'tokyo_disneysea'
-        : 'tokyo_disneyland';
-    return _appState.addVisitDay(date: date, parkId: nextPark);
+    return _appState.addVisitDay(date: date);
+  }
+
+  void updateNewVisitDayDefaults(TripSettings settings) {
+    _appState.updateNewVisitDayDefaults(settings);
   }
 
   Future<void> switchVisitDay(String dayId) => _appState.switchVisitDay(dayId);
@@ -127,6 +132,16 @@ class SettingsController extends ChangeNotifier {
     _appState.updateTripSettings(settings.copyWith(hasHappyEntry: value));
   }
 
+  void updatePlanningBudgetMode(PlanningBudgetMode mode) {
+    _appState.updateTripSettings(settings.copyWith(planningBudgetMode: mode));
+  }
+
+  void updateMaxExtraBudgetYen(int value) {
+    _appState.updateTripSettings(
+      settings.copyWith(maxExtraBudgetYen: value.clamp(0, 50000).toInt()),
+    );
+  }
+
   void updateAttractionDpaMaxUses(int value) {
     final safeValue = value.clamp(0, 3).toInt();
     _appState.updateTripSettings(
@@ -202,6 +217,47 @@ class SettingsController extends ChangeNotifier {
 
   void updateDinner(bool value) {
     _appState.updateTripSettings(settings.copyWith(wantsDinner: value));
+  }
+
+  void updateFreeTimeEnabled(bool value) {
+    final current = settings.freeTimePreference;
+    _appState.updateTripSettings(
+      settings.copyWith(
+        freeTimePreference: current.copyWith(
+          enabled: value,
+          targetMinutes: value && current.targetMinutes <= 0
+              ? 60
+              : current.targetMinutes,
+          minimumBlockMinutes: value && current.targetMinutes <= 0
+              ? 60
+              : current.minimumBlockMinutes,
+        ),
+      ),
+    );
+  }
+
+  void updateFreeTimeTargetMinutes(int minutes) {
+    final safeMinutes = minutes.clamp(30, 90).toInt();
+    _appState.updateTripSettings(
+      settings.copyWith(
+        freeTimePreference: settings.freeTimePreference.copyWith(
+          enabled: true,
+          targetMinutes: safeMinutes,
+          minimumBlockMinutes: safeMinutes,
+        ),
+      ),
+    );
+  }
+
+  void updateFreeTimePreferredTime(PreferredTime value) {
+    _appState.updateTripSettings(
+      settings.copyWith(
+        freeTimePreference: settings.freeTimePreference.copyWith(
+          enabled: true,
+          preferredTime: value,
+        ),
+      ),
+    );
   }
 
   void updateRainy(bool value) {

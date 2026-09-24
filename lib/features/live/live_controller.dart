@@ -10,6 +10,7 @@ import '../../domain/entities/live_operating_status.dart';
 import '../../domain/entities/live_wait_time.dart';
 import '../../domain/entities/plan_preference.dart';
 import '../../domain/entities/schedule_item.dart';
+import '../../domain/entities/today_execution_record.dart';
 import '../../domain/enums/facility_access_method.dart';
 import '../../domain/enums/facility_category.dart';
 import '../../domain/services/schedule_engine.dart';
@@ -51,6 +52,8 @@ class LiveController extends ChangeNotifier {
   final List<DaySchedule> _simulationUndoHistory = <DaySchedule>[];
   final Set<String> _simulationSuspendedFacilityIds = <String>{};
   final Map<String, int> _simulationWaitMinutesByFacilityId = <String, int>{};
+  final Map<String, TodayExecutionRecord> _simulationExecutionRecordsByItemId =
+      <String, TodayExecutionRecord>{};
 
   bool get simulationEnabled => _simulationEnabled;
 
@@ -79,6 +82,31 @@ class LiveController extends ChangeNotifier {
 
   Map<String, int> get simulationWaitMinutesByFacilityId =>
       Map<String, int>.unmodifiable(_simulationWaitMinutesByFacilityId);
+
+  Set<String> get executionExcludedFacilityIds => _simulationEnabled
+      ? _simulationExecutionRecordsByItemId.values
+          .map((record) => record.facilityId)
+          .whereType<String>()
+          .toSet()
+      : _appState.todayExecutionExcludedFacilityIds;
+
+  List<TodayExecutionRecord> get executionRecords => _simulationEnabled
+      ? List<TodayExecutionRecord>.unmodifiable(_simulationExecutionRecordsByItemId.values)
+      : _appState.todayExecutionRecords;
+
+  TodayExecutionRecord? executionRecordFor(String scheduleItemId) =>
+      _simulationEnabled
+          ? _simulationExecutionRecordsByItemId[scheduleItemId]
+          : _appState.todayExecutionRecordFor(scheduleItemId);
+
+  void recordExecution(TodayExecutionRecord record) {
+    if (_simulationEnabled) {
+      _simulationExecutionRecordsByItemId[record.scheduleItemId] = record;
+      notifyListeners();
+      return;
+    }
+    _appState.recordTodayExecution(record);
+  }
 
   bool get canUndoSimulationSchedule =>
       _simulationEnabled && _simulationUndoHistory.isNotEmpty;
@@ -142,6 +170,7 @@ class LiveController extends ChangeNotifier {
     _simulationUndoHistory.clear();
     _simulationSuspendedFacilityIds.clear();
     _simulationWaitMinutesByFacilityId.clear();
+    _simulationExecutionRecordsByItemId.clear();
     _reloadPredictions();
     notifyListeners();
   }
@@ -154,6 +183,7 @@ class LiveController extends ChangeNotifier {
     _simulationUndoHistory.clear();
     _simulationSuspendedFacilityIds.clear();
     _simulationWaitMinutesByFacilityId.clear();
+    _simulationExecutionRecordsByItemId.clear();
     _reloadPredictions();
     notifyListeners();
   }

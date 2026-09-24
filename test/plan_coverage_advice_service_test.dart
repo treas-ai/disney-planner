@@ -16,6 +16,7 @@ void main() {
     final advice = service.build(
       desiredFacilities: [beauty, pooh, thunder],
       currentScheduledFacilityIds: {'pooh', 'thunder'},
+      currentScheduledDesiredCount: 2,
       scenarios: const [
         PlanCoverageScenario(
           dpaCount: 0,
@@ -54,6 +55,7 @@ void main() {
     final advice = service.build(
       desiredFacilities: [beauty, greeting],
       currentScheduledFacilityIds: {'beauty'},
+      currentScheduledDesiredCount: 1,
       scenarios: const [
         PlanCoverageScenario(
           dpaCount: 0,
@@ -77,6 +79,62 @@ void main() {
     expect(advice.unmetFacilities.single.facilityId, 'mickey');
     expect(advice.unmetFacilities.single.firstRescuedAtDpaCount, isNull);
   });
+  test('同一施設を2回希望した場合はDPA 1個で1回しか入らなくても全件達成にしない', () {
+    final beauty = _facility('beauty', '美女と野獣', supportsDpa: true);
+    final pooh = _facility('pooh', 'プーさん', supportsDpa: true);
+
+    final advice = service.build(
+      desiredFacilities: [beauty, beauty, pooh],
+      currentScheduledFacilityIds: {'beauty', 'pooh'},
+      currentScheduledDesiredCount: 2,
+      scenarios: const [
+        PlanCoverageScenario(
+          dpaCount: 0,
+          scheduledFacilityIds: {'beauty', 'pooh'},
+          scheduledDesiredCount: 2,
+          selectedDpaFacilityIds: [],
+        ),
+        PlanCoverageScenario(
+          dpaCount: 1,
+          scheduledFacilityIds: {'beauty', 'pooh'},
+          scheduledDesiredCount: 2,
+          selectedDpaFacilityIds: ['beauty'],
+        ),
+      ],
+      orderedDpaMetrics: const [
+        DpaOrderMetric(facilityId: 'beauty', estimatedSavedMinutes: 60),
+      ],
+    );
+
+    expect(advice.totalDesiredCount, 3);
+    expect(advice.currentScheduledCount, 2);
+    expect(advice.minimumDpaCountForAll, isNull);
+  });
+
+  test('同一施設の希望回数が一部未達なら未採用一覧にも残す', () {
+    final baymax = _facility('baymax', 'ベイマックス', supportsDpa: true);
+
+    final advice = service.build(
+      desiredFacilities: [baymax, baymax],
+      currentScheduledFacilityIds: {'baymax'},
+      currentScheduledFacilityCounts: const {'baymax': 1},
+      currentScheduledDesiredCount: 1,
+      scenarios: const [
+        PlanCoverageScenario(
+          dpaCount: 0,
+          scheduledFacilityIds: {'baymax'},
+          scheduledDesiredCount: 1,
+          selectedDpaFacilityIds: [],
+        ),
+      ],
+      orderedDpaMetrics: const [],
+    );
+
+    expect(advice.unmetFacilities, hasLength(1));
+    expect(advice.unmetFacilities.single.facilityId, 'baymax');
+    expect(advice.unmetFacilities.single.reason, contains('2回希望のうち1回達成、あと1回'));
+  });
+
 }
 
 Facility _facility(

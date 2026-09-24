@@ -39,7 +39,7 @@ enum GuidedPlanningDebugPreset {
   seasonalFood('フード／季節限定重視'),
   characters('キャラクター重視'),
   balanced('バランス'),
-  aiChoice('AIおまかせ'),
+  aiChoice('おまかせ'),
   allIn('全部入り');
 
   const GuidedPlanningDebugPreset(this.label);
@@ -86,7 +86,7 @@ class GuidedPlanningController extends ChangeNotifier {
 
   String get question => switch (step) {
     GuidedPlanningStep.welcome =>
-      'AI旅行コンシェルジュが、$parkNameでの希望を順番に整理します。',
+      '$parkNameでの希望を順番に整理します。',
     GuidedPlanningStep.mainFocus => '今日は何を一番楽しみたいですか？',
     GuidedPlanningStep.focusDetail => _focusDetailQuestion,
     GuidedPlanningStep.secondaryExperience => _secondaryQuestion,
@@ -104,7 +104,7 @@ class GuidedPlanningController extends ChangeNotifier {
     GuidedPlanningFocus.characters => 'キャラクター体験で何を重視しますか？',
     GuidedPlanningFocus.food => 'フード・ドリンクで何を重視しますか？',
     GuidedPlanningFocus.balanced => 'バランスの中でも、少し多めに入れたいものはありますか？',
-    GuidedPlanningFocus.aiChoice => 'AIがおすすめを選ぶとき、避けたい傾向はありますか？',
+    GuidedPlanningFocus.aiChoice => 'おまかせで選ぶとき、避けたい傾向はありますか？',
     null => '好みをもう少し教えてください。',
   };
 
@@ -138,14 +138,14 @@ class GuidedPlanningController extends ChangeNotifier {
   };
 
   List<String> get options => switch (step) {
-    GuidedPlanningStep.welcome => const ['AI質問を始める'],
+    GuidedPlanningStep.welcome => const ['希望整理を始める'],
     GuidedPlanningStep.mainFocus => const [
       'アトラクション',
       'ショー・パレード',
       'キャラクター',
       'フード・ドリンク',
       'バランスよく',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningStep.focusDetail => _focusDetailOptions,
     GuidedPlanningStep.secondaryExperience => _secondaryOptions,
@@ -155,20 +155,20 @@ class GuidedPlanningController extends ChangeNotifier {
       '季節限定を優先',
       '休憩として少し',
       '最低限でよい',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningStep.freeDrinkPreference => const [
       '積極的に活用したい',
       '休憩時に使いたい',
       '対象の限定ドリンクを優先',
       '特に重視しない',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningStep.characterInterest => const [
       '優先したい',
       '時間が合えば',
       '今回は重視しない',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningStep.seasonalPreference => const [
       '積極的に入れたい',
@@ -176,7 +176,7 @@ class GuidedPlanningController extends ChangeNotifier {
       'フードだけ',
       'ショーだけ',
       '今回は重視しない',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningStep.completed => const [],
   };
@@ -188,7 +188,7 @@ class GuidedPlanningController extends ChangeNotifier {
       'キャラクター',
       'ゆったり楽しめるもの',
       '人気施設を中心に',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningFocus.entertainment => const [
       'パレード',
@@ -196,21 +196,21 @@ class GuidedPlanningController extends ChangeNotifier {
       '季節イベント',
       '夜のショー',
       'キャラクター中心',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningFocus.characters => const [
       'グリーティング',
       'キャラクターのショー',
       'キャラクター系アトラクション',
       '写真を楽しみたい',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningFocus.food => const [
       '季節限定メニュー',
       '食べ歩き',
       'レストラン',
       'ドリンク・スイーツ',
-      'AIにおまかせ',
+      'おまかせ',
     ],
     GuidedPlanningFocus.balanced => const [
       'アトラクションを少し多め',
@@ -225,7 +225,7 @@ class GuidedPlanningController extends ChangeNotifier {
       '屋外中心は控えめ',
       '特にない',
     ],
-    null => const ['AIにおまかせ'],
+    null => const ['おまかせ'],
   };
 
   List<String> get _secondaryOptions => switch (primaryFocus) {
@@ -264,13 +264,13 @@ class GuidedPlanningController extends ChangeNotifier {
   };
 
   String optionDescription(String option) => switch (option) {
-    'AI質問を始める' => '大きな希望から順番に絞り込みます',
+    '希望整理を始める' => '大きな希望から順番に絞り込みます',
     'アトラクション' => '乗り物を中心に一日の満足度を高める',
     'ショー・パレード' => '公演時刻を軸に一日の流れを組み立てる',
     'キャラクター' => '会う・見る・写真を撮る体験を優先',
     'フード・ドリンク' => '食事・限定メニュー・休憩を重視',
     'バランスよく' => '複数カテゴリを無理なく組み合わせる',
-    'AIにおまかせ' => '混雑や移動を見てAIが配分する',
+    'おまかせ' => '混雑や移動を見て自動で配分する',
     'スリル・絶叫' => '刺激の強いアトラクションを優先',
     '物語・世界観' => '演出や没入感を重視',
     'ゆったり楽しめるもの' => '負担が少ない体験を中心にする',
@@ -302,7 +302,7 @@ class GuidedPlanningController extends ChangeNotifier {
   };
 
   IconData optionIcon(String option) => switch (option) {
-    'AI質問を始める' || 'AIにおまかせ' => Icons.auto_awesome_rounded,
+    '希望整理を始める' || 'おまかせ' => Icons.auto_awesome_rounded,
     'アトラクション' ||
     'スリル・絶叫' ||
     '物語・世界観' ||
@@ -535,7 +535,7 @@ class GuidedPlanningController extends ChangeNotifier {
         WishItemCategory.juice,
         WishItemCategory.dessert,
       });
-    } else if (answer == 'AIにおまかせ') {
+    } else if (answer == 'おまかせ') {
       preferredCategories.addAll({
         WishItemCategory.food,
         WishItemCategory.specialDrink,
@@ -552,7 +552,7 @@ class GuidedPlanningController extends ChangeNotifier {
     preferredCategories.remove(WishItemCategory.greeting);
     if (answer == '優先したい' || answer == '時間が合えば') {
       preferredCategories.add(WishItemCategory.greeting);
-    } else if (answer == 'AIにおまかせ' && wantsBalancedPlan) {
+    } else if (answer == 'おまかせ' && wantsBalancedPlan) {
       preferredCategories.add(WishItemCategory.greeting);
     }
   }
@@ -562,7 +562,7 @@ class GuidedPlanningController extends ChangeNotifier {
     wantsSeasonalEntertainment = false;
     wantsSeasonalGoods = false;
 
-    if (answer == '積極的に入れたい' || answer == 'AIにおまかせ') {
+    if (answer == '積極的に入れたい' || answer == 'おまかせ') {
       wantsSeasonalMenus = true;
       wantsSeasonalEntertainment = true;
     } else if (answer == '時間が合えば') {
@@ -872,7 +872,7 @@ class GuidedPlanningController extends ChangeNotifier {
     GuidedPlanningFocus.characters => 'キャラクター',
     GuidedPlanningFocus.food => 'フード・ドリンク',
     GuidedPlanningFocus.balanced => 'バランス',
-    GuidedPlanningFocus.aiChoice => 'AIおまかせ',
+    GuidedPlanningFocus.aiChoice => 'おまかせ',
   };
 
   String get summary {
@@ -934,18 +934,18 @@ class GuidedPlanningController extends ChangeNotifier {
           'バランスよく',
           '完全にバランス',
           '両方バランスよく',
-          'AIにおまかせ',
+          'おまかせ',
           '時間が合えば',
-          'AIにおまかせ',
+          'おまかせ',
         ]);
       case GuidedPlanningDebugPreset.aiChoice:
         _runDebugAnswers([
-          'AIにおまかせ',
+          'おまかせ',
           '特にない',
           '待ち時間が短い方を優先',
-          'AIにおまかせ',
-          'AIにおまかせ',
-          'AIにおまかせ',
+          'おまかせ',
+          'おまかせ',
+          'おまかせ',
         ]);
       case GuidedPlanningDebugPreset.allIn:
         _runDebugAnswers([
@@ -967,7 +967,7 @@ class GuidedPlanningController extends ChangeNotifier {
       answerWithoutNotify(answers[index]);
       if (index == 3 &&
           step == GuidedPlanningStep.freeDrinkPreference) {
-        answerWithoutNotify('AIにおまかせ');
+        answerWithoutNotify('おまかせ');
       }
     }
   }

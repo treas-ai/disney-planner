@@ -17,6 +17,7 @@ import '../enums/facility_category.dart';
 import '../enums/fixed_time_status.dart';
 import '../enums/lottery_fallback_action.dart';
 import '../enums/preferred_time.dart';
+import '../enums/priority_level.dart';
 import '../enums/schedule_item_type.dart';
 import '../enums/wait_time_band.dart';
 import 'event_impact_engine.dart';
@@ -139,6 +140,15 @@ class ScheduleEngine {
       exitMinutes: exitMinutes,
       targetDate: visitDate,
     );
+
+    final mustDoPerformanceFacilityIds = _addMustDoOfficialPerformanceAnchors(
+      items: items,
+      opportunities: officialPerformanceOpportunities,
+      entryMinutes: entryEndMinutes,
+      exitMinutes: exitMinutes,
+      alreadyFixedFacilityIds: fixedPerformanceFacilityIds,
+    );
+    fixedPerformanceFacilityIds.addAll(mustDoPerformanceFacilityIds);
 
     final fixedAccessFacilityIds = _addFixedAccessFacilities(
       items: items,
@@ -449,6 +459,14 @@ class ScheduleEngine {
         settings: settings,
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
       );
+      final resolvedWaitDecision = _evaluateResolvedAttractionWaitTolerance(
+        facility: facility,
+        preference: preference,
+        waitEstimate: finalWaitEstimate,
+      );
+      if (resolvedWaitDecision.shouldSkip) {
+        continue;
+      }
 
       if (finalDurationMinutes != durationMinutes) {
         final refitStart = _findAvailableStart(
@@ -497,7 +515,7 @@ class ScheduleEngine {
             currentAreaId: facilityEntryAreaId,
             durationMinutes: finalDurationMinutes,
             scheduledStartMinutes: finalStartMinutes,
-            waitDecision: waitDecision,
+            waitDecision: resolvedWaitDecision,
             waitTimingReason: effectiveDecisionReason,
             waitProfiles: waitProfiles,
             settings: settings,
@@ -602,6 +620,25 @@ class ScheduleEngine {
       greetingWaitPlanning: greetingWaitPlanning,
     );
 
+    // The Beam Search protects hard wishes first. Re-run the existing gap
+    // fitter afterwards so optional/conditional wishes can still be added when
+    // their own wait condition and the remaining day genuinely allow them.
+    _backfillUnscheduledWishFacilities(
+      items: items,
+      facilities: operationalFacilities,
+      regularFacilities: optimizedFacilities,
+      preferences: preferences,
+      waitProfiles: waitProfiles,
+      settings: settings,
+      entryMinutes: entryEndMinutes,
+      exitMinutes: exitMinutes,
+      eventImpacts: eventImpacts,
+      areaConnections: areaConnections,
+      facilityLocationById: facilityLocationById,
+      unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+      greetingWaitPlanning: greetingWaitPlanning,
+    );
+
     // Make long unused periods explicit instead of silently leaving multi-hour
     // holes in the generated day. These are flexible blocks, not invented
     // show times: actual shows/parades are still scheduled only when a
@@ -619,6 +656,11 @@ class ScheduleEngine {
       areaConnections: areaConnections,
       settings: settings,
       unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
+    );
+
+    _applyIntentionalFreeTimePreference(
+      items: items,
+      settings: settings,
     );
 
     // Desired exit time is a soft constraint only for candidates that have
@@ -742,6 +784,59 @@ class ScheduleEngine {
         ),
       );
       added.add(facility.id);
+    }
+    return added;
+  }
+
+  Set<String> _addMustDoOfficialPerformanceAnchors({
+    required List<ScheduleItem> items,
+    required List<OfficialPerformanceOpportunity> opportunities,
+    required int entryMinutes,
+    required int exitMinutes,
+    required Set<String> alreadyFixedFacilityIds,
+  }) {
+    final added = <String>{};
+    final mustDoFacilityIds = opportunities
+        .where((option) => option.isSelected && option.isMustDo)
+        .map((option) => option.facilityId)
+        .toSet();
+
+    for (final facilityId in mustDoFacilityIds) {
+      if (alreadyFixedFacilityIds.contains(facilityId)) continue;
+      final candidates = opportunities
+          .where((option) =>
+              option.facilityId == facilityId &&
+              option.isSelected &&
+              option.isMustDo &&
+              !option.requiresEntryRequest &&
+              option.startMinutes >= entryMinutes &&
+              option.endMinutes <= exitMinutes)
+          .toList(growable: false)
+        ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
+
+      for (final option in candidates) {
+        final overlapsHardAnchor = items.any((item) {
+          final start = _itemStartMinutes(item);
+          final end = _itemEndMinutes(item);
+          return option.startMinutes < end && option.endMinutes > start;
+        });
+        if (overlapsHardAnchor) continue;
+
+        items.add(_createScheduleItem(
+          id: 'must_do_official_performance_${option.facilityId}',
+          title: option.name,
+          type: ScheduleItemType.facility,
+          startMinutes: option.startMinutes,
+          endMinutes: option.endMinutes,
+          facilityId: option.facilityId,
+          reason: '「絶対行きたい」に指定された公式公演のため、公演時刻を全日最適化の固定条件として確保しました。',
+          note: option.supportsDpa
+              ? 'DPA対象公演ですが、DPA購入済みを仮定せず公演時刻を確保しています。'
+              : '公式公演時刻を固定条件として使用しています。',
+        ));
+        added.add(facilityId);
+        break;
+      }
     }
     return added;
   }
@@ -1136,6 +1231,15 @@ class ScheduleEngine {
           settings: settings,
           unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
         );
+        final resolvedWaitDecision = _evaluateResolvedAttractionWaitTolerance(
+          facility: facility,
+          preference: preference,
+          waitEstimate: wait,
+        );
+        if (resolvedWaitDecision.shouldSkip) {
+          probeStart = start + 10;
+          continue;
+        }
         if (duration != probeDuration) {
           final refit = _findAvailableStart(
             requestedStartMinutes: start,
@@ -2022,18 +2126,53 @@ class ScheduleEngine {
     required Map<String, int> unlimitedRideBufferMinutes,
     required Map<String, GreetingWaitPlanningValue> greetingWaitPlanning,
   }) {
-    final regularIds = regularFacilities.map((facility) => facility.id).toSet();
+    // The unified search is responsible for hard wishes only. Optional
+    // ("できれば") wishes are opportunistic and may legitimately be omitted
+    // when their wait condition is not satisfied. Requiring them as mandatory
+    // full-coverage targets can make the whole Beam Search fail and leave a
+    // normal/must-do wish unscheduled even with large free-time blocks.
+    bool isOptionalWish(Facility facility) {
+      final preference = _findPreference(
+        facilityId: facility.id,
+        preferences: preferences,
+      );
+      final priority = preference?.priority;
+      return priority == PriorityLevel.low || priority == PriorityLevel.lowest;
+    }
 
-    // Do not require the greedy/backfill phase to have already achieved full
-    // coverage. A fixed show can make that phase drop one attraction even when
-    // a different full-day ordering is feasible. The unified search is the
-    // component that should prove or disprove full coverage.
+    final mandatoryRegularFacilities = regularFacilities
+        .where((facility) => !isOptionalWish(facility))
+        .toList(growable: false);
+    final regularIds = mandatoryRegularFacilities
+        .map((facility) => facility.id)
+        .toSet();
+    final allRegularIds = regularFacilities.map((facility) => facility.id).toSet();
+
+    Map<String, int> occurrenceCounts(Iterable<Facility> source) {
+      final counts = <String, int>{};
+      for (final facility in source) {
+        counts[facility.id] = (counts[facility.id] ?? 0) + 1;
+      }
+      return counts;
+    }
+
+    final requiredOccurrenceCounts = occurrenceCounts(mandatoryRegularFacilities);
+
+    // Coverage is occurrence-based. A repeated hard wish must remain repeated;
+    // a set-of-IDs check would incorrectly treat 1/2 as full coverage.
     bool hasFullRegularWishCoverage(List<ScheduleItem> candidate) {
-      final scheduledIds = candidate
-          .map((item) => item.facilityId)
-          .whereType<String>()
-          .toSet();
-      return regularIds.every(scheduledIds.contains);
+      final scheduledCounts = <String, int>{};
+      for (final item in candidate) {
+        final facilityId = item.facilityId;
+        if (facilityId == null || !requiredOccurrenceCounts.containsKey(facilityId)) {
+          continue;
+        }
+        scheduledCounts[facilityId] = (scheduledCounts[facilityId] ?? 0) + 1;
+      }
+      for (final entry in requiredOccurrenceCounts.entries) {
+        if ((scheduledCounts[entry.key] ?? 0) < entry.value) return false;
+      }
+      return true;
     }
 
     bool isFlexibleMeal(ScheduleItem item) {
@@ -2078,22 +2217,32 @@ class ScheduleEngine {
     // template for it instead of returning before Beam Search. The Beam Search
     // recalculates wait, duration, operating hours and movement for every slot,
     // so these placeholder times are never committed as-is.
-    final alreadyRepresentedRegularIds = <String>{
-      if (openingCommittedItem?.facilityId != null)
-        openingCommittedItem!.facilityId!,
-      for (final item in movable)
-        if (item.facilityId != null && regularIds.contains(item.facilityId))
-          item.facilityId!,
-    };
-    for (final facility in regularFacilities) {
-      if (alreadyRepresentedRegularIds.contains(facility.id)) continue;
+    final representedOccurrenceCounts = <String, int>{};
+    void countRepresented(String? facilityId) {
+      if (facilityId == null || !regularIds.contains(facilityId)) return;
+      representedOccurrenceCounts[facilityId] =
+          (representedOccurrenceCounts[facilityId] ?? 0) + 1;
+    }
+    countRepresented(openingCommittedItem?.facilityId);
+    for (final item in movable) {
+      countRepresented(item.facilityId);
+    }
+    final synthesizedOccurrenceCounts = <String, int>{};
+    for (final facility in mandatoryRegularFacilities) {
+      final represented = representedOccurrenceCounts[facility.id] ?? 0;
+      final synthesized = synthesizedOccurrenceCounts[facility.id] ?? 0;
+      final required = requiredOccurrenceCounts[facility.id] ?? 1;
+      if (represented + synthesized >= required) continue;
+      final occurrence = represented + synthesized + 1;
       final preference = _findPreference(
         facilityId: facility.id,
         preferences: preferences,
       );
       movable.add(
         ScheduleItem(
-          id: 'schedule_${facility.id}',
+          id: occurrence == 1
+              ? 'schedule_${facility.id}'
+              : 'schedule_${facility.id}_repeat_$occurrence',
           title: facility.name,
           type: ScheduleItemType.facility,
           startHour: entryMinutes ~/ 60,
@@ -2106,13 +2255,25 @@ class ScheduleEngine {
               preference?.accessMethod ?? FacilityAccessMethod.standby,
         ),
       );
-      alreadyRepresentedRegularIds.add(facility.id);
+      synthesizedOccurrenceCounts[facility.id] = synthesized + 1;
     }
     if (movable.isEmpty) return;
 
     // Genuine anchors plus the opening-strategy commitment. Flexible meals are
     // intentionally excluded here unless they are confirmed reservations.
-    final hardAnchors = items.where((item) => !movable.contains(item)).toList();
+    // Optional wishes are also excluded from anchors: they must never block a
+    // hard wish. They are re-added opportunistically after the hard-wish Beam
+    // Search completes.
+    final hardAnchors = items.where((item) {
+      if (movable.contains(item)) return false;
+      final facilityId = item.facilityId;
+      if (facilityId != null &&
+          allRegularIds.contains(facilityId) &&
+          !regularIds.contains(facilityId)) {
+        return false;
+      }
+      return true;
+    }).toList();
     final facilityById = {for (final facility in facilities) facility.id: facility};
     final templateByKey = <String, ScheduleItem>{for (final item in movable) item.id: item};
     final allKeys = templateByKey.keys.toSet();
@@ -2986,6 +3147,70 @@ class ScheduleEngine {
     );
   }
 
+  void _applyIntentionalFreeTimePreference({
+    required List<ScheduleItem> items,
+    required TripSettings settings,
+  }) {
+    final preference = settings.freeTimePreference;
+    if (!preference.enabled || preference.targetMinutes <= 0) return;
+
+    final candidates = items.where((item) {
+      if (item.type != ScheduleItemType.breakTime ||
+          !item.id.startsWith('flex_open_time_')) {
+        return false;
+      }
+      final start = _itemStartMinutes(item);
+      final end = _itemEndMinutes(item);
+      final duration = end - start;
+      if (duration < preference.minimumBlockMinutes) return false;
+      switch (preference.preferredTime) {
+        case PreferredTime.morning:
+          return start < 12 * 60;
+        case PreferredTime.afternoon:
+          return end > 12 * 60 && start < 17 * 60;
+        case PreferredTime.evening:
+          return end > 17 * 60;
+        case PreferredTime.anytime:
+          return true;
+      }
+    }).toList(growable: false);
+    if (candidates.isEmpty) return;
+
+    candidates.sort((a, b) {
+      final aDuration = _itemEndMinutes(a) - _itemStartMinutes(a);
+      final bDuration = _itemEndMinutes(b) - _itemStartMinutes(b);
+      final aShortfall = preference.targetMinutes > aDuration
+          ? preference.targetMinutes - aDuration
+          : 0;
+      final bShortfall = preference.targetMinutes > bDuration
+          ? preference.targetMinutes - bDuration
+          : 0;
+      final shortfallCompare = aShortfall.compareTo(bShortfall);
+      if (shortfallCompare != 0) return shortfallCompare;
+      return bDuration.compareTo(aDuration);
+    });
+
+    final selected = candidates.first;
+    final index = items.indexOf(selected);
+    if (index < 0) return;
+    final duration = _itemEndMinutes(selected) - _itemStartMinutes(selected);
+    final achieved = duration >= preference.targetMinutes;
+    items[index] = ScheduleItem(
+      id: 'intentional_free_time_${selected.id}',
+      title: '予定を入れない自由時間',
+      type: selected.type,
+      startHour: selected.startHour,
+      startMinute: selected.startMinute,
+      endHour: selected.endHour,
+      endMinute: selected.endMinute,
+      facilityId: selected.facilityId,
+      reason: achieved
+          ? '予定を詰めすぎない設定により、${preference.targetMinutes}分を目安に意図的な自由時間として確保しました。'
+          : '予定を詰めすぎない設定を考慮し、確保できた最長の自由時間を意図的な余白として残しました。',
+      note: '当日は遅れの吸収、休憩、買い物、写真撮影、空いている施設への寄り道などに使えます。',
+    );
+  }
+
   void _addFallbackMeals({
     required List<ScheduleItem> items,
     required TripSettings settings,
@@ -3410,6 +3635,56 @@ class ScheduleEngine {
     );
   }
 
+  _WaitToleranceDecision _evaluateResolvedAttractionWaitTolerance({
+    required Facility facility,
+    required PlanPreference? preference,
+    required _WaitEstimate waitEstimate,
+  }) {
+    if (facility.category != FacilityCategory.attraction || preference == null) {
+      return _evaluateWaitTolerance(
+        facility: facility,
+        preference: preference,
+      );
+    }
+
+    final maxMinutes = preference.waitTolerance.maxMinutes;
+    if (maxMinutes == null) {
+      return _WaitToleranceDecision(
+        shouldSkip: false,
+        waitMinutes: waitEstimate.waitMinutes,
+        effectiveWaitMinutes: waitEstimate.waitMinutes,
+        reason: '待ち時間は気にしない設定です。',
+      );
+    }
+
+    final effectiveWaitMinutes = waitEstimate.isPriorityAccessBuffer
+        ? 0
+        : waitEstimate.waitMinutes;
+    if (effectiveWaitMinutes <= maxMinutes) {
+      return _WaitToleranceDecision(
+        shouldSkip: false,
+        waitMinutes: waitEstimate.waitMinutes,
+        effectiveWaitMinutes: effectiveWaitMinutes,
+        maxMinutes: maxMinutes,
+        reason: '予想待ち時間は希望の目安以内です。',
+      );
+    }
+
+    final exceededMinutes = effectiveWaitMinutes - maxMinutes;
+    final keepWish = _isHighPriority(preference);
+    return _WaitToleranceDecision(
+      shouldSkip: !keepWish,
+      waitMinutes: waitEstimate.waitMinutes,
+      effectiveWaitMinutes: effectiveWaitMinutes,
+      maxMinutes: maxMinutes,
+      exceededMinutes: exceededMinutes,
+      exceededButKept: keepWish,
+      reason: keepWish
+          ? '待ち時間の目安を$exceededMinutes分超えますが、通常または絶対行きたい希望のため候補に残しました。'
+          : '「できれば」の待ち時間条件を$exceededMinutes分超えるため、この時間帯では見送りました。',
+    );
+  }
+
   int _effectiveWaitMinutes({
     required Facility facility,
     required PlanPreference preference,
@@ -3657,6 +3932,11 @@ class ScheduleEngine {
         unlimitedRideBufferMinutes: unlimitedRideBufferMinutes,
         greetingWaitPlanning: greetingWaitPlanning,
       );
+      final conditionalWaitDecision = _evaluateResolvedAttractionWaitTolerance(
+        facility: facility,
+        preference: preference,
+        waitEstimate: currentEstimate,
+      );
       final experienceMinutes = _resolveFacilityDuration(facility);
       final expert = expertRecommendationService.evaluate(
         facility: facility,
@@ -3738,11 +4018,19 @@ class ScheduleEngine {
           waitSpreadMinutes: spreadOpportunity.spreadMinutes,
           cheapWindowCaptureMinutes:
               spreadOpportunity.cheapWindowCaptureMinutes,
+          conditionalWaitSatisfied: !conditionalWaitDecision.shouldSkip,
         ),
       );
     }
 
     scored.sort((a, b) {
+      // A conditional `できれば` wish that is currently above its wait
+      // threshold yields to candidates whose conditions are currently met.
+      // This is an ordering guard, not a change to optimizer score weights.
+      final conditionCompare = (b.conditionalWaitSatisfied ? 1 : 0)
+          .compareTo(a.conditionalWaitSatisfied ? 1 : 0);
+      if (conditionCompare != 0) return conditionCompare;
+
       // Protect the most valuable cheap window first. A facility with a large
       // reliable day-wide wait spread wins only while the current band is
       // actually cheap; once its queue is already near the daily high, the
@@ -5799,6 +6087,7 @@ class _WaitAwareCandidate {
     required this.expertReason,
     required this.waitSpreadMinutes,
     required this.cheapWindowCaptureMinutes,
+    required this.conditionalWaitSatisfied,
   });
 
   final Facility facility;
@@ -5808,6 +6097,7 @@ class _WaitAwareCandidate {
   final String expertReason;
   final int waitSpreadMinutes;
   final int cheapWindowCaptureMinutes;
+  final bool conditionalWaitSatisfied;
 }
 
 class _WaitTimingOpportunity {

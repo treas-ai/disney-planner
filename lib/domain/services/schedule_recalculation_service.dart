@@ -57,6 +57,18 @@ class ScheduleRecalculationService {
             ))
         .toList(growable: false);
 
+    final executionByItemId = {
+      for (final record in request.todayExecutionRecords)
+        record.scheduleItemId: record,
+    };
+    final executedOriginalStarts = alignedCurrentItems
+        .where((item) => executionByItemId.containsKey(item.id))
+        .map(_start)
+        .toList(growable: false);
+    final latestExecutedOriginalStart = executedOriginalStarts.isEmpty
+        ? null
+        : executedOriginalStarts.reduce((a, b) => a > b ? a : b);
+
     final warnings = <String>[];
     final preserved = alignedCurrentItems
         .where((item) {
@@ -67,14 +79,64 @@ class ScheduleRecalculationService {
             return true;
           }
 
-          // Past actions are facts and must never be rewritten.
-          if (end <= nowMinutes) {
-            return true;
+          // An explicitly completed/skipped occurrence is removed from the
+          // remaining plan. Its execution record remains the source of truth.
+          if (executionByItemId.containsKey(item.id)) {
+            return false;
           }
 
           final facilityId = item.facilityId;
+          final facility =
+              facilityId == null ? null : facilityById[facilityId];
+          final preference =
+              facilityId == null ? null : preferenceById[facilityId];
+
+          // An acquired/confirmed Today access result is authoritative even
+          // after its clock time has passed. If the source schedule contains
+          // an impossible overlap with a flexible meal, release that meal
+          // before applying the legacy "elapsed actions are facts" rule.
+          // This keeps actual-completion replanning on the same conflict
+          // resolution path as the normal Today acquired-DPA flow.
+          final isFlexibleMeal =
+              item.type == ScheduleItemType.breakfast ||
+              item.type == ScheduleItemType.lunch ||
+              item.type == ScheduleItemType.dinner;
+          if (isFlexibleMeal &&
+              preference?.fixedTimeStatus != FixedTimeStatus.confirmed &&
+              _conflictsWithAuthoritativeTodayAccess(
+                item: item,
+                alignedItems: alignedCurrentItems,
+                confirmedTodayResultByFacility:
+                    successfulTodayResultByFacility,
+              )) {
+            warnings.add(
+              '${item.title}は取得済みの固定アクセス時刻と重なるため、固定アクセスを優先して再配置します。',
+            );
+            return false;
+          }
+
+          // Without execution records, keep the legacy rule: elapsed actions
+          // are facts. Once an actual occurrence is recorded, elapsed slots
+          // scheduled after that occurrence are not assumed to have happened;
+          // they are released for replanning from the actual recorded time.
+          if (end <= nowMinutes) {
+            if (latestExecutedOriginalStart != null &&
+                start > latestExecutedOriginalStart) {
+              return false;
+            }
+            return true;
+          }
+
           final unavailable = facilityId != null &&
               _isUnavailable(request.operatingStatuses[facilityId]);
+
+          // An acquired/confirmed Today access result is authoritative. Keep
+          // that exact item as an anchor even when its pre-trip preference was
+          // not fixed. Flexible items are moved around this anchor below.
+          if (facilityId != null &&
+              successfulTodayResultByFacility.containsKey(facilityId)) {
+            return true;
+          }
 
           // A currently running activity is normally protected, but a facility
           // that has just gone down must be released so the remaining plan can
@@ -83,17 +145,16 @@ class ScheduleRecalculationService {
             if (item.type == ScheduleItemType.breakTime) {
               return false;
             }
+            if (latestExecutedOriginalStart != null &&
+                start > latestExecutedOriginalStart) {
+              return false;
+            }
             return !unavailable;
           }
 
           if (unavailable) {
             return false;
           }
-
-          final facility =
-              facilityId == null ? null : facilityById[facilityId];
-          final preference =
-              facilityId == null ? null : preferenceById[facilityId];
 
           return _isProtectedFutureItem(
             item: item,
@@ -153,11 +214,16 @@ class ScheduleRecalculationService {
     _appendConfirmedAccessConflictWarnings(
       alignedItems: alignedCurrentItems,
       confirmedTodayResultByFacility: successfulTodayResultByFacility,
+      preferenceById: preferenceById,
       warnings: warnings,
     );
 
     final eligibleFacilities = request.facilities
         .where((facility) {
+          if (request.executedFacilityIds.contains(facility.id)) {
+            warnings.add('${facility.name}は当日の実績で完了・スキップ済みのため再配置しません。');
+            return false;
+          }
           if (preservedFacilityIds.contains(facility.id)) {
             return false;
           }
@@ -177,18 +243,31 @@ class ScheduleRecalculationService {
           }
           final preference = preferenceById[facility.id];
           final liveWait = request.waitTimes[facility.id];
-          // Attractions are not excluded by a fixed 15/30/60-minute user
-          // ceiling. Their live wait is an input to replanning, while the
-          // decision itself is made relative to the attraction's collected
-          // wait history and the rest of the day's constraints.
-          if (facility.category != FacilityCategory.attraction &&
-              preference != null &&
-              liveWait != null &&
-              !preference.waitTolerance.allows(liveWait.waitMinutes)) {
+          final simulatedWait = simulatedWaitMinutesByFacilityId[facility.id];
+          final conditionalWaitMinutes = simulatedWait ??
+              ((liveWait != null && !liveWait.isStaleAt(request.now))
+                  ? liveWait.waitMinutes
+                  : null);
+          // Today uses the same conditional-wish meaning as PRE-TRIP. A fresh
+          // actual (or DEBUG simulated) wait above the user's limit removes a
+          // normal/optional wish from this replan. High/highest wishes remain
+          // candidates and are reported instead of silently disappearing.
+          if (preference != null &&
+              conditionalWaitMinutes != null &&
+              !preference.waitTolerance.allows(conditionalWaitMinutes)) {
+            final protectedPriority = preference.priority.name == 'high' ||
+                preference.priority.name == 'highest';
+            if (!protectedPriority) {
+              warnings.add(
+                '${facility.name}は現在の待ち時間$conditionalWaitMinutes分が条件'
+                '（${preference.waitTolerance.label}）を超えたため、今回は見送ります。',
+              );
+              return false;
+            }
             warnings.add(
-              '${facility.name}は待ち時間${liveWait.waitMinutes}分が許容範囲を超えたため後回し候補から除外しました。',
+              '${facility.name}は現在の待ち時間$conditionalWaitMinutes分が条件を超えていますが、'
+              '優先度が高いため候補に残します。',
             );
-            return false;
           }
           return true;
         })
@@ -208,10 +287,15 @@ class ScheduleRecalculationService {
       simulatedWaitMinutesByFacilityId: simulatedWaitMinutesByFacilityId,
     );
 
-    final currentFacility = _latestFacility(
+    final explicitCurrentFacility =
+        _facilityById(request.facilities, request.currentFacilityId);
+    final currentFacility = explicitCurrentFacility ?? _latestFacility(
       preserved: preserved,
       facilities: request.facilities,
     );
+    if (explicitCurrentFacility != null) {
+      warnings.add('現在地: ${explicitCurrentFacility.name} を起点に再計画します。');
+    }
     final nextFixed = _nextProtectedFuture(
       request: request,
       items: alignedCurrentItems,
@@ -460,9 +544,31 @@ class ScheduleRecalculationService {
     return hour * 60 + minute;
   }
 
+  bool _conflictsWithAuthoritativeTodayAccess({
+    required ScheduleItem item,
+    required List<ScheduleItem> alignedItems,
+    required Map<String, TodayAccessResult> confirmedTodayResultByFacility,
+  }) {
+    for (final fixed in alignedItems) {
+      final facilityId = fixed.facilityId;
+      if (facilityId == null || fixed.id == item.id) continue;
+      if (!confirmedTodayResultByFacility.containsKey(facilityId)) continue;
+      if (_rangesOverlap(
+        _start(item),
+        _end(item),
+        _start(fixed),
+        _end(fixed),
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void _appendConfirmedAccessConflictWarnings({
     required List<ScheduleItem> alignedItems,
     required Map<String, TodayAccessResult> confirmedTodayResultByFacility,
+    required Map<String, PlanPreference> preferenceById,
     required List<String> warnings,
   }) {
     final fixedTodayItems = alignedItems
@@ -475,6 +581,20 @@ class ScheduleRecalculationService {
         if (other.type == ScheduleItemType.entry ||
             other.type == ScheduleItemType.exit ||
             other.type == ScheduleItemType.breakTime) {
+          continue;
+        }
+        final otherPreference = other.facilityId == null
+            ? null
+            : preferenceById[other.facilityId];
+        final otherIsFlexibleMeal =
+            other.type == ScheduleItemType.breakfast ||
+            other.type == ScheduleItemType.lunch ||
+            other.type == ScheduleItemType.dinner;
+        if (otherIsFlexibleMeal &&
+            otherPreference?.fixedTimeStatus != FixedTimeStatus.confirmed) {
+          // Flexible meals are automatically released and replanned around
+          // the authoritative Today access, so no manual-conflict warning is
+          // needed for this pair.
           continue;
         }
         if (!_rangesOverlap(
@@ -589,7 +709,8 @@ class ScheduleRecalculationService {
       return true;
     }
 
-    if (item.id.startsWith('manual_repeat_')) {
+    if (item.id.startsWith('manual_repeat_') ||
+        item.id.startsWith('intentional_free_time_')) {
       return true;
     }
 

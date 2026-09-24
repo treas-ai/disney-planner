@@ -70,7 +70,7 @@ class _HomeHeroCard extends StatelessWidget {
                               Text(
                                 settings.visitDate == null
                                     ? '旅行の準備をはじめましょう'
-                                    : 'AIと一緒に計画中',
+                                    : '旅行プランを準備中',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: colorScheme.onPrimaryContainer,
