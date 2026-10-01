@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-10-01T04:36:42+09:00
+Generated: 2026-10-02T04:48:06+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 33
-- Profile source observations: 30763
+- Profile source observations: 31703
 
 ### 1. Profile missing facilities
 
@@ -52,7 +52,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 41192
+- Profile source observations: 42225
 
 ### 1. Profile missing facilities
 
@@ -66,7 +66,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ### 2b. Low-confidence time bands (<3 samples)
 
-- `tds_aw_a_005` — ビッグシティ・ヴィークル: 昼過ぎ = 1 samples
 - `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
 - `tds_pd_a_002` — ニモ＆フレンズ・シーライダー: 閉園前 = 2 samples
 
