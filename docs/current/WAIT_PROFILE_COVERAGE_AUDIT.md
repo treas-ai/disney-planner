@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-10-03T04:29:42+09:00
+Generated: 2026-10-04T03:09:00+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 33
-- Profile source observations: 32562
+- Profile source observations: 33532
 
 ### 1. Profile missing facilities
 
@@ -46,15 +46,14 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 3. Facility-ID mapping audit
 
 - All mapping targets exist in master facility data.
-- Currently unresolved unmatched entries:
-  - `Haunted Mansion “Holiday Nightmare”	8fce6b54-e3e4-40bb-a574-93c8327c3fab`
+- No currently actionable unmatched entries in the available unmatched file.
 
 ## tokyo_disneysea
 
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 43345
+- Profile source observations: 44398
 
 ### 1. Profile missing facilities
 
