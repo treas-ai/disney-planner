@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-10-05T03:21:27+09:00
+Generated: 2026-10-06T06:36:53+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 33
-- Profile source observations: 34501
+- Profile source observations: 35395
 
 ### 1. Profile missing facilities
 
@@ -25,7 +25,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_goofys_paint_and_play_house` — グーフィーのペイント＆プレイハウス: no usable samples in 閉園前
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: no usable samples in 閉園前
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: no usable samples in 夕食前
-- `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: no usable samples in 開園直後, 夕食前, 夕食後, 閉園前
+- `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: no usable samples in 夕食前, 夕食後, 閉園前
 - `tdl_world_bazaar_omnibus` — オムニバス: no usable samples in 夕食前, 夕食後, 閉園前
 
 ### 2b. Low-confidence time bands (<3 samples)
@@ -38,8 +38,8 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 1 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
-- `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: ショー前後 = 2 samples
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 閉園前 = 1 samples
+- `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: 開園直後 = 1 samples
 - `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: 昼過ぎ = 1 samples
 - `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: ショー前後 = 2 samples
 
@@ -53,7 +53,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 45432
+- Profile source observations: 46473
 
 ### 1. Profile missing facilities
 
@@ -67,7 +67,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ### 2b. Low-confidence time bands (<3 samples)
 
-- `tds_mh_a_001` — ヴェネツィアン・ゴンドラ: 閉園前 = 2 samples
 - `tds_pd_a_002` — ニモ＆フレンズ・シーライダー: 閉園前 = 2 samples
 
 ### 3. Facility-ID mapping audit
