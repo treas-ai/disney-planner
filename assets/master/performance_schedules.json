@@ -1,12 +1,16 @@
 {
   "schemaVersion": 2,
-  "updatedAt": "2026-09-18",
-  "sourceNote": "東京ディズニーリゾート公式の月間ショースケジュールを2026年10月分まで反映。2026年9月のTDLハロウィーン公演時刻を補完。休止日は行を作成しない。",
+  "updatedAt": "2026-10-10",
+  "sourceNote": "2026年10月までの既存データに、公式で日別確認できた11月9日・12日・25日の一部公演と、11月11〜30日のディズニー・クリスマス・グリーティングを追加。未確認日は推測で補完しない。ハロウィーン公演は10月31日まで。",
   "sourceUrls": [
     "https://www.tokyodisneyresort.jp/tdl/show/schedule/944/",
     "https://www.tokyodisneyresort.jp/tds/show/schedule/967/",
     "tokyo_disneyland",
-    "tokyo_disneysea"
+    "tokyo_disneysea",
+    "https://www.tokyodisneyresort.jp/tds/show/schedule/953/",
+    "https://www.tokyodisneyresort.jp/tds/daily/calendar/20261112/",
+    "https://www.tokyodisneyresort.jp/tdl/daily/calendar/20261109/",
+    "https://www.tokyodisneyresort.jp/tdl/daily/calendar/20261125/"
   ],
   "schedules": [
     {
@@ -14064,6 +14068,462 @@
       "date": "2026-10-31",
       "performanceIndex": 1,
       "startTime": "20:55"
+    },
+    {
+      "id": "tdl_world_bazaar_harmony_in_color_20261109_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_harmony_in_color",
+      "date": "2026-11-09",
+      "performanceIndex": 0,
+      "startTime": "14:15"
+    },
+    {
+      "id": "tdl_world_bazaar_electrical_parade_dreamlights_20261109_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_electrical_parade_dreamlights",
+      "date": "2026-11-09",
+      "performanceIndex": 0,
+      "startTime": "18:55"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261111_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-11",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261111_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-11",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_sparkling_jubilee_celebration_20261112_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_sparkling_jubilee_celebration",
+      "date": "2026-11-12",
+      "performanceIndex": 0,
+      "startTime": "10:30"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20261112_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-11-12",
+      "performanceIndex": 0,
+      "startTime": "11:00"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261112_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-12",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20261112_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-11-12",
+      "performanceIndex": 1,
+      "startTime": "12:25"
+    },
+    {
+      "id": "tds_show_dance_the_globe_20261112_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dance_the_globe",
+      "date": "2026-11-12",
+      "performanceIndex": 0,
+      "startTime": "12:50"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20261112_3",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-11-12",
+      "performanceIndex": 2,
+      "startTime": "13:50"
+    },
+    {
+      "id": "tds_show_sparkling_jubilee_celebration_20261112_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_sparkling_jubilee_celebration",
+      "date": "2026-11-12",
+      "performanceIndex": 1,
+      "startTime": "14:00"
+    },
+    {
+      "id": "tds_show_dance_the_globe_20261112_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dance_the_globe",
+      "date": "2026-11-12",
+      "performanceIndex": 1,
+      "startTime": "14:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261112_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-12",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20261112_4",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-11-12",
+      "performanceIndex": 3,
+      "startTime": "15:55"
+    },
+    {
+      "id": "tds_show_dance_the_globe_20261112_3",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dance_the_globe",
+      "date": "2026-11-12",
+      "performanceIndex": 2,
+      "startTime": "16:55"
+    },
+    {
+      "id": "tds_show_dreams_take_flight_20261112_5",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dreams_take_flight",
+      "date": "2026-11-12",
+      "performanceIndex": 4,
+      "startTime": "17:20"
+    },
+    {
+      "id": "tds_show_dance_the_globe_20261112_4",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_dance_the_globe",
+      "date": "2026-11-12",
+      "performanceIndex": 3,
+      "startTime": "18:40"
+    },
+    {
+      "id": "tds_show_believe_sea_of_dreams_20261112_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_believe_sea_of_dreams",
+      "date": "2026-11-12",
+      "performanceIndex": 0,
+      "startTime": "19:30"
+    },
+    {
+      "id": "tds_show_sparkling_jubilee_night_20261112_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_sparkling_jubilee_night",
+      "date": "2026-11-12",
+      "performanceIndex": 0,
+      "startTime": "20:15"
+    },
+    {
+      "id": "tds_show_sparkling_jubilee_night_20261112_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_sparkling_jubilee_night",
+      "date": "2026-11-12",
+      "performanceIndex": 1,
+      "startTime": "20:55"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261113_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-13",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261113_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-13",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261114_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-14",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261114_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-14",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261115_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-15",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261115_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-15",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261116_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-16",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261116_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-16",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261117_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-17",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261117_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-17",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261118_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-18",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261118_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-18",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261119_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-19",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261119_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-19",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261120_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-20",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261120_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-20",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261121_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-21",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261121_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-21",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261122_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-22",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261122_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-22",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261123_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-23",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261123_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-23",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261124_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-24",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261124_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-24",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tdl_world_bazaar_harmony_in_color_20261125_1",
+      "parkId": "tokyo_disneyland",
+      "facilityId": "tdl_world_bazaar_harmony_in_color",
+      "date": "2026-11-25",
+      "performanceIndex": 0,
+      "startTime": "15:25"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261125_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-25",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261125_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-25",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261126_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-26",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261126_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-26",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261127_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-27",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261127_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-27",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261128_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-28",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261128_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-28",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261129_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-29",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261129_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-29",
+      "performanceIndex": 1,
+      "startTime": "15:15"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261130_1",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-30",
+      "performanceIndex": 0,
+      "startTime": "11:35"
+    },
+    {
+      "id": "tds_show_disney_christmas_greeting_2026_20261130_2",
+      "parkId": "tokyo_disneysea",
+      "facilityId": "tds_show_disney_christmas_greeting_2026",
+      "date": "2026-11-30",
+      "performanceIndex": 1,
+      "startTime": "15:15"
     }
   ]
 }
