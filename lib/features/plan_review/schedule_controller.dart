@@ -121,6 +121,26 @@ void _scheduleGenerationIsolateEntry(List<Object?> message) {
 Future<DaySchedule> _generateScheduleOffUi(
   _ScheduleGenerationRequest request,
 ) async {
+  // Web does not support ReceivePort/Isolate.spawn. Native keeps its isolate.
+  if (kIsWeb) {
+    return const ScheduleEngine().generate(
+      settings: request.settings,
+      facilities: request.facilities,
+      preferences: request.preferences,
+      eventImpacts: request.eventImpacts,
+      waitProfiles: request.waitProfiles,
+      morningScores: request.morningScores,
+      officialPerformanceOpportunities:
+          request.officialPerformanceOpportunities,
+      areaConnections: request.areaConnections,
+      facilityLocations: request.facilityLocations,
+      expertProfiles: request.expertProfiles,
+      unlimitedRideBufferMinutes: request.unlimitedRideBufferMinutes,
+      greetingWaitPlanning: request.greetingWaitPlanning,
+      manualFixedItems: request.manualFixedItems,
+      optionalFacilityIds: request.optionalFacilityIds,
+    );
+  }
   final receivePort = ReceivePort();
   final errorPort = ReceivePort();
   final exitPort = ReceivePort();
