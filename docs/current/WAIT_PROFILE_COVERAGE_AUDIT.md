@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-10-15T03:51:09+09:00
+Generated: 2026-10-16T03:36:51+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 33
-- Profile source observations: 43758
+- Profile source observations: 44268
 
 ### 1. Profile missing facilities
 
@@ -20,8 +20,8 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: no usable samples in 夕食前
 - `tdl_tomorrowland_stitch_encounter` — スティッチ・エンカウンター: no usable samples in 閉園前
-- `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
-- `tdl_toontown_donalds_boat` — ドナルドのボート: no usable samples in 昼前, 昼過ぎ, ショー前後, 夕食前, 閉園前
+- `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: no usable samples in 昼前, ショー前後, 夕食前, 閉園前
+- `tdl_toontown_donalds_boat` — ドナルドのボート: no usable samples in 昼前, ショー前後, 夕食前
 - `tdl_toontown_goofys_paint_and_play_house` — グーフィーのペイント＆プレイハウス: no usable samples in 閉園前
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: no usable samples in 閉園前
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: no usable samples in 夕食前
@@ -33,13 +33,16 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 昼前 = 2 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: ショー前後 = 1 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
+- `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 昼過ぎ = 1 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 2 samples
+- `tdl_toontown_donalds_boat` — ドナルドのボート: 昼過ぎ = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 2 samples
+- `tdl_toontown_donalds_boat` — ドナルドのボート: 閉園前 = 1 samples
 - `tdl_toontown_minnies_house` — ミニーの家: 閉園前 = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 閉園前 = 1 samples
-- `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: 昼過ぎ = 1 samples
+- `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: 昼過ぎ = 2 samples
 - `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: ショー前後 = 2 samples
 
 ### 3. Facility-ID mapping audit
@@ -52,7 +55,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 55717
+- Profile source observations: 56251
 
 ### 1. Profile missing facilities
 
