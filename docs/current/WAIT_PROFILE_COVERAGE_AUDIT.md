@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-10-19T02:31:56+09:00
+Generated: 2026-10-20T05:09:26+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 33
-- Profile source observations: 46433
+- Profile source observations: 47101
 
 ### 1. Profile missing facilities
 
@@ -40,7 +40,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 閉園前 = 1 samples
-- `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: 昼過ぎ = 2 samples
 - `tdl_westernland_tom_sawyer_island_rafts` — トムソーヤ島いかだ: ショー前後 = 2 samples
 
 ### 3. Facility-ID mapping audit
@@ -53,7 +52,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 58459
+- Profile source observations: 59091
 
 ### 1. Profile missing facilities
 
