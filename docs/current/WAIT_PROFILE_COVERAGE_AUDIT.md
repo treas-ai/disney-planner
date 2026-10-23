@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-10-23T03:46:20+09:00
+Generated: 2026-10-24T03:41:23+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -8,8 +8,8 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 - Active master attractions: 33
 - Mapped active attractions: 33
-- Generated profiles: 33
-- Profile source observations: 48754
+- Generated profiles: 34
+- Profile source observations: 49427
 
 ### 1. Profile missing facilities
 
@@ -37,7 +37,6 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 昼過ぎ = 1 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 夕食後 = 2 samples
 - `tdl_toontown_donalds_boat` — ドナルドのボート: 閉園前 = 1 samples
-- `tdl_westernland_country_bear_theater` — カントリーベア・シアター: ショー前後 = 2 samples
 - `tdl_westernland_country_bear_theater` — カントリーベア・シアター: 夕食前 = 2 samples
 - `tdl_westernland_mark_twain_riverboat` — 蒸気船マークトウェイン号: 閉園前 = 1 samples
 
@@ -51,7 +50,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 60834
+- Profile source observations: 61412
 
 ### 1. Profile missing facilities
 
