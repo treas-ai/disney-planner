@@ -2,8 +2,8 @@
   "parkId": "tokyo_disneysea",
   "status": "generated",
   "source": "ThemeParks.wiki accumulated history",
-  "sampleCount": 62574,
-  "generatedAt": "2026-10-25T17:49:45.666814Z",
+  "sampleCount": 63096,
+  "generatedAt": "2026-10-26T20:07:45.590440Z",
   "items": [
     {
       "facilityId": "tds_ml_a_004",
@@ -13,25 +13,25 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 30,
-          "sampleCount": 301
+          "sampleCount": 303
         },
         "beforeLunch": {
           "minMinutes": 10,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 132
+          "sampleCount": 136
         },
         "afterLunch": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 444
+          "sampleCount": 452
         },
         "aroundShows": {
-          "minMinutes": 15,
+          "minMinutes": 10,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 276
+          "sampleCount": 279
         },
         "beforeDinner": {
           "minMinutes": 10,
@@ -43,7 +43,7 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 30,
-          "sampleCount": 261
+          "sampleCount": 262
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -53,8 +53,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 1636,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 1654,
       "recentWeekdayRanges": {
         "4": {
           "afterOpening": {
@@ -235,25 +235,25 @@
         "1": {
           "afterOpening": {
             "minMinutes": 10,
-            "typicalMinutes": 25,
+            "typicalMinutes": 15,
             "maxMinutes": 30,
             "sampleCount": 4
           },
           "beforeLunch": {
             "minMinutes": 15,
-            "typicalMinutes": 30,
+            "typicalMinutes": 25,
             "maxMinutes": 40,
             "sampleCount": 4
           },
           "afterLunch": {
-            "minMinutes": 25,
-            "typicalMinutes": 35,
+            "minMinutes": 20,
+            "typicalMinutes": 30,
             "maxMinutes": 40,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 25,
-            "typicalMinutes": 35,
+            "minMinutes": 10,
+            "typicalMinutes": 25,
             "maxMinutes": 40,
             "sampleCount": 4
           },
@@ -265,7 +265,7 @@
           },
           "afterDinner": {
             "minMinutes": 10,
-            "typicalMinutes": 20,
+            "typicalMinutes": 15,
             "maxMinutes": 25,
             "sampleCount": 4
           },
@@ -374,31 +374,31 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 351
+          "sampleCount": 355
         },
         "beforeLunch": {
           "minMinutes": 10,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 167
+          "sampleCount": 168
         },
         "afterLunch": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 566
+          "sampleCount": 572
         },
         "aroundShows": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 394
+          "sampleCount": 399
         },
         "beforeDinner": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 215
+          "sampleCount": 216
         },
         "afterDinner": {
           "minMinutes": 5,
@@ -414,8 +414,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 2093,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 2110,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -639,32 +639,32 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 15,
+            "minMinutes": 10,
             "typicalMinutes": 15,
             "maxMinutes": 15,
             "sampleCount": 4
           },
           "beforeLunch": {
-            "minMinutes": 15,
-            "typicalMinutes": 20,
+            "minMinutes": 5,
+            "typicalMinutes": 15,
             "maxMinutes": 20,
             "sampleCount": 4
           },
           "afterLunch": {
             "minMinutes": 10,
-            "typicalMinutes": 20,
+            "typicalMinutes": 15,
             "maxMinutes": 25,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 15,
-            "typicalMinutes": 20,
-            "maxMinutes": 25,
+            "minMinutes": 10,
+            "typicalMinutes": 15,
+            "maxMinutes": 20,
             "sampleCount": 4
           },
           "beforeDinner": {
-            "minMinutes": 15,
-            "typicalMinutes": 20,
+            "minMinutes": 5,
+            "typicalMinutes": 15,
             "maxMinutes": 20,
             "sampleCount": 4
           },
@@ -735,48 +735,48 @@
           "minMinutes": 70,
           "typicalMinutes": 120,
           "maxMinutes": 160,
-          "sampleCount": 879
+          "sampleCount": 887
         },
         "beforeLunch": {
           "minMinutes": 60,
           "typicalMinutes": 90,
           "maxMinutes": 140,
-          "sampleCount": 408
+          "sampleCount": 412
         },
         "afterLunch": {
           "minMinutes": 70,
           "typicalMinutes": 100,
           "maxMinutes": 140,
-          "sampleCount": 1177
+          "sampleCount": 1185
         },
         "aroundShows": {
           "minMinutes": 80,
           "typicalMinutes": 120,
           "maxMinutes": 160,
-          "sampleCount": 799
+          "sampleCount": 803
         },
         "beforeDinner": {
           "minMinutes": 70,
           "typicalMinutes": 120,
           "maxMinutes": 140,
-          "sampleCount": 397
+          "sampleCount": 400
         },
         "afterDinner": {
           "minMinutes": 50,
           "typicalMinutes": 90,
           "maxMinutes": 120,
-          "sampleCount": 820
+          "sampleCount": 831
         },
         "beforeClosing": {
           "minMinutes": 25,
           "typicalMinutes": 50,
           "maxMinutes": 70,
-          "sampleCount": 274
+          "sampleCount": 276
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 4754,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 4794,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -1001,43 +1001,43 @@
         "1": {
           "afterOpening": {
             "minMinutes": 100,
-            "typicalMinutes": 115,
+            "typicalMinutes": 110,
             "maxMinutes": 120,
             "sampleCount": 4
           },
           "beforeLunch": {
             "minMinutes": 90,
-            "typicalMinutes": 110,
+            "typicalMinutes": 100,
             "maxMinutes": 120,
             "sampleCount": 4
           },
           "afterLunch": {
             "minMinutes": 90,
-            "typicalMinutes": 110,
+            "typicalMinutes": 100,
             "maxMinutes": 120,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 120,
-            "typicalMinutes": 135,
+            "minMinutes": 90,
+            "typicalMinutes": 115,
             "maxMinutes": 140,
             "sampleCount": 4
           },
           "afterDinner": {
             "minMinutes": 60,
-            "typicalMinutes": 80,
+            "typicalMinutes": 70,
             "maxMinutes": 100,
             "sampleCount": 4
           },
           "beforeClosing": {
             "minMinutes": 40,
-            "typicalMinutes": 50,
+            "typicalMinutes": 45,
             "maxMinutes": 60,
             "sampleCount": 4
           },
           "beforeDinner": {
-            "minMinutes": 70,
-            "typicalMinutes": 115,
+            "minMinutes": 80,
+            "typicalMinutes": 100,
             "maxMinutes": 120,
             "sampleCount": 4
           }
@@ -1096,48 +1096,48 @@
           "minMinutes": 60,
           "typicalMinutes": 120,
           "maxMinutes": 180,
-          "sampleCount": 897
+          "sampleCount": 898
         },
         "beforeLunch": {
-          "minMinutes": 100,
+          "minMinutes": 90,
           "typicalMinutes": 140,
           "maxMinutes": 180,
-          "sampleCount": 387
+          "sampleCount": 397
         },
         "afterLunch": {
           "minMinutes": 80,
           "typicalMinutes": 120,
           "maxMinutes": 160,
-          "sampleCount": 1113
+          "sampleCount": 1116
         },
         "aroundShows": {
           "minMinutes": 80,
           "typicalMinutes": 140,
           "maxMinutes": 160,
-          "sampleCount": 787
+          "sampleCount": 788
         },
         "beforeDinner": {
           "minMinutes": 90,
           "typicalMinutes": 120,
           "maxMinutes": 160,
-          "sampleCount": 392
+          "sampleCount": 393
         },
         "afterDinner": {
           "minMinutes": 60,
           "typicalMinutes": 90,
           "maxMinutes": 140,
-          "sampleCount": 724
+          "sampleCount": 731
         },
         "beforeClosing": {
           "minMinutes": 15,
           "typicalMinutes": 40,
           "maxMinutes": 60,
-          "sampleCount": 122
+          "sampleCount": 124
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 4422,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 4447,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -1355,20 +1355,20 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 100,
-            "typicalMinutes": 120,
+            "minMinutes": 90,
+            "typicalMinutes": 105,
             "maxMinutes": 160,
             "sampleCount": 4
           },
           "beforeLunch": {
-            "minMinutes": 140,
-            "typicalMinutes": 175,
+            "minMinutes": 120,
+            "typicalMinutes": 150,
             "maxMinutes": 200,
             "sampleCount": 4
           },
           "afterLunch": {
             "minMinutes": 120,
-            "typicalMinutes": 140,
+            "typicalMinutes": 150,
             "maxMinutes": 160,
             "sampleCount": 4
           },
@@ -1386,15 +1386,15 @@
           },
           "afterDinner": {
             "minMinutes": 80,
-            "typicalMinutes": 95,
+            "typicalMinutes": 90,
             "maxMinutes": 120,
             "sampleCount": 4
           },
           "beforeClosing": {
             "minMinutes": 30,
-            "typicalMinutes": 50,
+            "typicalMinutes": 55,
             "maxMinutes": 60,
-            "sampleCount": 2
+            "sampleCount": 3
           }
         },
         "2": {
@@ -1451,37 +1451,37 @@
           "minMinutes": 10,
           "typicalMinutes": 50,
           "maxMinutes": 80,
-          "sampleCount": 967
+          "sampleCount": 972
         },
         "beforeLunch": {
-          "minMinutes": 30,
+          "minMinutes": 40,
           "typicalMinutes": 50,
           "maxMinutes": 70,
-          "sampleCount": 384
+          "sampleCount": 386
         },
         "afterLunch": {
           "minMinutes": 30,
           "typicalMinutes": 50,
           "maxMinutes": 70,
-          "sampleCount": 1130
+          "sampleCount": 1133
         },
         "aroundShows": {
           "minMinutes": 25,
           "typicalMinutes": 40,
           "maxMinutes": 70,
-          "sampleCount": 794
+          "sampleCount": 797
         },
         "beforeDinner": {
           "minMinutes": 15,
           "typicalMinutes": 40,
           "maxMinutes": 60,
-          "sampleCount": 407
+          "sampleCount": 408
         },
         "afterDinner": {
           "minMinutes": 10,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 822
+          "sampleCount": 827
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -1491,8 +1491,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 4910,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 4929,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -1718,36 +1718,36 @@
           "afterOpening": {
             "minMinutes": 20,
             "typicalMinutes": 35,
-            "maxMinutes": 60,
+            "maxMinutes": 50,
             "sampleCount": 4
           },
           "beforeLunch": {
-            "minMinutes": 60,
-            "typicalMinutes": 65,
+            "minMinutes": 50,
+            "typicalMinutes": 60,
             "maxMinutes": 70,
             "sampleCount": 4
           },
           "afterLunch": {
-            "minMinutes": 50,
-            "typicalMinutes": 60,
+            "minMinutes": 40,
+            "typicalMinutes": 50,
             "maxMinutes": 60,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 50,
-            "typicalMinutes": 55,
+            "minMinutes": 30,
+            "typicalMinutes": 45,
             "maxMinutes": 60,
             "sampleCount": 4
           },
           "beforeDinner": {
-            "minMinutes": 30,
-            "typicalMinutes": 45,
+            "minMinutes": 20,
+            "typicalMinutes": 35,
             "maxMinutes": 50,
             "sampleCount": 4
           },
           "afterDinner": {
             "minMinutes": 15,
-            "typicalMinutes": 25,
+            "typicalMinutes": 20,
             "maxMinutes": 30,
             "sampleCount": 4
           },
@@ -1812,48 +1812,48 @@
           "minMinutes": 100,
           "typicalMinutes": 140,
           "maxMinutes": 180,
-          "sampleCount": 957
+          "sampleCount": 966
         },
         "beforeLunch": {
           "minMinutes": 100,
           "typicalMinutes": 140,
           "maxMinutes": 160,
-          "sampleCount": 391
+          "sampleCount": 393
         },
         "afterLunch": {
           "minMinutes": 100,
           "typicalMinutes": 120,
           "maxMinutes": 160,
-          "sampleCount": 1130
+          "sampleCount": 1138
         },
         "aroundShows": {
           "minMinutes": 100,
           "typicalMinutes": 140,
           "maxMinutes": 160,
-          "sampleCount": 773
+          "sampleCount": 779
         },
         "beforeDinner": {
           "minMinutes": 90,
           "typicalMinutes": 140,
           "maxMinutes": 180,
-          "sampleCount": 400
+          "sampleCount": 403
         },
         "afterDinner": {
           "minMinutes": 60,
           "typicalMinutes": 100,
           "maxMinutes": 140,
-          "sampleCount": 783
+          "sampleCount": 789
         },
         "beforeClosing": {
           "minMinutes": 30,
           "typicalMinutes": 50,
           "maxMinutes": 70,
-          "sampleCount": 112
+          "sampleCount": 113
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 4546,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 4581,
       "recentWeekdayRanges": {
         "3": {
           "beforeLunch": {
@@ -2077,44 +2077,44 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 140,
-            "typicalMinutes": 150,
+            "minMinutes": 120,
+            "typicalMinutes": 135,
             "maxMinutes": 160,
             "sampleCount": 4
           },
           "beforeLunch": {
-            "minMinutes": 120,
-            "typicalMinutes": 140,
+            "minMinutes": 100,
+            "typicalMinutes": 120,
             "maxMinutes": 140,
             "sampleCount": 4
           },
           "afterLunch": {
             "minMinutes": 120,
-            "typicalMinutes": 135,
+            "typicalMinutes": 140,
             "maxMinutes": 140,
             "sampleCount": 4
           },
           "aroundShows": {
             "minMinutes": 120,
-            "typicalMinutes": 150,
+            "typicalMinutes": 145,
             "maxMinutes": 160,
             "sampleCount": 4
           },
           "beforeDinner": {
             "minMinutes": 120,
-            "typicalMinutes": 140,
+            "typicalMinutes": 130,
             "maxMinutes": 160,
             "sampleCount": 4
           },
           "afterDinner": {
             "minMinutes": 100,
-            "typicalMinutes": 115,
+            "typicalMinutes": 105,
             "maxMinutes": 120,
             "sampleCount": 4
           },
           "beforeClosing": {
-            "minMinutes": 40,
-            "typicalMinutes": 70,
+            "minMinutes": 60,
+            "typicalMinutes": 75,
             "maxMinutes": 90,
             "sampleCount": 4
           }
@@ -2173,48 +2173,48 @@
           "minMinutes": 5,
           "typicalMinutes": 40,
           "maxMinutes": 80,
-          "sampleCount": 898
+          "sampleCount": 903
         },
         "beforeLunch": {
           "minMinutes": 30,
           "typicalMinutes": 60,
           "maxMinutes": 90,
-          "sampleCount": 421
+          "sampleCount": 425
         },
         "afterLunch": {
           "minMinutes": 40,
           "typicalMinutes": 70,
           "maxMinutes": 100,
-          "sampleCount": 1176
+          "sampleCount": 1180
         },
         "aroundShows": {
           "minMinutes": 30,
           "typicalMinutes": 70,
           "maxMinutes": 100,
-          "sampleCount": 809
+          "sampleCount": 819
         },
         "beforeDinner": {
           "minMinutes": 30,
           "typicalMinutes": 60,
           "maxMinutes": 100,
-          "sampleCount": 420
+          "sampleCount": 422
         },
         "afterDinner": {
           "minMinutes": 20,
           "typicalMinutes": 40,
           "maxMinutes": 80,
-          "sampleCount": 822
+          "sampleCount": 831
         },
         "beforeClosing": {
           "minMinutes": 5,
           "typicalMinutes": 20,
           "maxMinutes": 40,
-          "sampleCount": 315
+          "sampleCount": 317
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 4861,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 4897,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -2438,44 +2438,44 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 40,
-            "typicalMinutes": 50,
+            "minMinutes": 20,
+            "typicalMinutes": 35,
             "maxMinutes": 50,
             "sampleCount": 4
           },
           "beforeLunch": {
             "minMinutes": 40,
-            "typicalMinutes": 70,
+            "typicalMinutes": 55,
             "maxMinutes": 80,
             "sampleCount": 4
           },
           "afterLunch": {
-            "minMinutes": 60,
-            "typicalMinutes": 80,
+            "minMinutes": 40,
+            "typicalMinutes": 60,
             "maxMinutes": 90,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 70,
-            "typicalMinutes": 90,
+            "minMinutes": 30,
+            "typicalMinutes": 65,
             "maxMinutes": 100,
             "sampleCount": 4
           },
           "afterDinner": {
-            "minMinutes": 30,
-            "typicalMinutes": 60,
+            "minMinutes": 15,
+            "typicalMinutes": 40,
             "maxMinutes": 70,
             "sampleCount": 4
           },
           "beforeClosing": {
-            "minMinutes": 20,
-            "typicalMinutes": 35,
+            "minMinutes": 10,
+            "typicalMinutes": 25,
             "maxMinutes": 40,
             "sampleCount": 4
           },
           "beforeDinner": {
-            "minMinutes": 60,
-            "typicalMinutes": 80,
+            "minMinutes": 30,
+            "typicalMinutes": 55,
             "maxMinutes": 90,
             "sampleCount": 4
           }
@@ -2534,7 +2534,7 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 294
+          "sampleCount": 295
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -2574,8 +2574,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 1380,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 1381,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -2799,8 +2799,8 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 10,
-            "typicalMinutes": 25,
+            "minMinutes": 5,
+            "typicalMinutes": 15,
             "maxMinutes": 30,
             "sampleCount": 4
           },
@@ -2895,48 +2895,48 @@
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 948
+          "sampleCount": 959
         },
         "beforeLunch": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 20,
-          "sampleCount": 432
+          "sampleCount": 437
         },
         "afterLunch": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 1362
+          "sampleCount": 1382
         },
         "aroundShows": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 871
+          "sampleCount": 886
         },
         "beforeDinner": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 412
+          "sampleCount": 419
         },
         "afterDinner": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 20,
-          "sampleCount": 803
+          "sampleCount": 817
         },
         "beforeClosing": {
           "minMinutes": 15,
           "typicalMinutes": 15,
           "maxMinutes": 20,
-          "sampleCount": 417
+          "sampleCount": 424
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 5245,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 5324,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -3160,7 +3160,7 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 20,
+            "minMinutes": 15,
             "typicalMinutes": 20,
             "maxMinutes": 20,
             "sampleCount": 4
@@ -3256,25 +3256,25 @@
           "minMinutes": 5,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 186
+          "sampleCount": 187
         },
         "beforeLunch": {
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 15,
-          "sampleCount": 12
+          "sampleCount": 13
         },
         "afterLunch": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 20,
-          "sampleCount": 120
+          "sampleCount": 121
         },
         "aroundShows": {
           "minMinutes": 5,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 165
+          "sampleCount": 166
         },
         "beforeDinner": {
           "minMinutes": 15,
@@ -3284,9 +3284,9 @@
         },
         "afterDinner": {
           "minMinutes": 5,
-          "typicalMinutes": 20,
+          "typicalMinutes": 15,
           "maxMinutes": 40,
-          "sampleCount": 14
+          "sampleCount": 15
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -3296,8 +3296,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 610,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 615,
       "recentWeekdayRanges": {
         "3": {
           "aroundShows": {
@@ -3503,9 +3503,9 @@
         },
         "1": {
           "aroundShows": {
-            "minMinutes": 20,
-            "typicalMinutes": 30,
-            "maxMinutes": 40,
+            "minMinutes": 5,
+            "typicalMinutes": 20,
+            "maxMinutes": 30,
             "sampleCount": 4
           },
           "beforeDinner": {
@@ -3515,28 +3515,34 @@
             "sampleCount": 4
           },
           "afterOpening": {
-            "minMinutes": 10,
-            "typicalMinutes": 20,
+            "minMinutes": 5,
+            "typicalMinutes": 10,
             "maxMinutes": 20,
-            "sampleCount": 3
+            "sampleCount": 4
           },
           "beforeLunch": {
             "minMinutes": 5,
             "typicalMinutes": 5,
             "maxMinutes": 5,
-            "sampleCount": 2
+            "sampleCount": 3
           },
           "afterLunch": {
-            "minMinutes": 10,
-            "typicalMinutes": 20,
+            "minMinutes": 5,
+            "typicalMinutes": 15,
             "maxMinutes": 20,
-            "sampleCount": 3
+            "sampleCount": 4
           },
           "beforeClosing": {
             "minMinutes": 20,
             "typicalMinutes": 20,
             "maxMinutes": 20,
             "sampleCount": 2
+          },
+          "afterDinner": {
+            "minMinutes": 5,
+            "typicalMinutes": 5,
+            "maxMinutes": 5,
+            "sampleCount": 1
           }
         },
         "2": {
@@ -3593,7 +3599,7 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 283
+          "sampleCount": 284
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -3605,13 +3611,13 @@
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 408
+          "sampleCount": 409
         },
         "aroundShows": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 293
+          "sampleCount": 294
         },
         "beforeDinner": {
           "minMinutes": 10,
@@ -3633,8 +3639,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 1528,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 1531,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -3858,8 +3864,8 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 10,
-            "typicalMinutes": 20,
+            "minMinutes": 5,
+            "typicalMinutes": 10,
             "maxMinutes": 20,
             "sampleCount": 4
           },
@@ -3870,15 +3876,15 @@
             "sampleCount": 4
           },
           "afterLunch": {
-            "minMinutes": 15,
-            "typicalMinutes": 25,
+            "minMinutes": 10,
+            "typicalMinutes": 20,
             "maxMinutes": 25,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 20,
-            "typicalMinutes": 25,
-            "maxMinutes": 30,
+            "minMinutes": 5,
+            "typicalMinutes": 15,
+            "maxMinutes": 25,
             "sampleCount": 4
           },
           "beforeDinner": {
@@ -3954,7 +3960,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 5,
-          "sampleCount": 77
+          "sampleCount": 78
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -3966,25 +3972,25 @@
           "minMinutes": 10,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 442
+          "sampleCount": 448
         },
         "aroundShows": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 387
+          "sampleCount": 391
         },
         "beforeDinner": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 183
+          "sampleCount": 186
         },
         "afterDinner": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 307
+          "sampleCount": 312
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -3994,8 +4000,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 1626,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 1645,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -4233,19 +4239,19 @@
           "aroundShows": {
             "minMinutes": 10,
             "typicalMinutes": 20,
-            "maxMinutes": 25,
+            "maxMinutes": 20,
             "sampleCount": 4
           },
           "beforeDinner": {
             "minMinutes": 15,
-            "typicalMinutes": 25,
+            "typicalMinutes": 20,
             "maxMinutes": 25,
             "sampleCount": 4
           },
           "afterDinner": {
             "minMinutes": 5,
             "typicalMinutes": 15,
-            "maxMinutes": 25,
+            "maxMinutes": 20,
             "sampleCount": 4
           },
           "beforeClosing": {
@@ -4315,7 +4321,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 15,
-          "sampleCount": 125
+          "sampleCount": 126
         },
         "beforeLunch": {
           "minMinutes": 10,
@@ -4355,8 +4361,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 626,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 627,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -4646,25 +4652,25 @@
           "minMinutes": 5,
           "typicalMinutes": 20,
           "maxMinutes": 40,
-          "sampleCount": 491
+          "sampleCount": 498
         },
         "beforeLunch": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 50,
-          "sampleCount": 144
+          "sampleCount": 147
         },
         "afterLunch": {
           "minMinutes": 10,
           "typicalMinutes": 25,
           "maxMinutes": 40,
-          "sampleCount": 370
+          "sampleCount": 379
         },
         "aroundShows": {
           "minMinutes": 15,
-          "typicalMinutes": 25,
+          "typicalMinutes": 20,
           "maxMinutes": 40,
-          "sampleCount": 328
+          "sampleCount": 332
         },
         "beforeDinner": {
           "minMinutes": 10,
@@ -4686,8 +4692,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 1712,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 1735,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -4911,20 +4917,20 @@
             "sampleCount": 4
           },
           "beforeLunch": {
-            "minMinutes": 10,
-            "typicalMinutes": 35,
+            "minMinutes": 25,
+            "typicalMinutes": 30,
             "maxMinutes": 40,
             "sampleCount": 4
           },
           "afterLunch": {
             "minMinutes": 20,
-            "typicalMinutes": 35,
+            "typicalMinutes": 30,
             "maxMinutes": 40,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 20,
-            "typicalMinutes": 30,
+            "minMinutes": 15,
+            "typicalMinutes": 25,
             "maxMinutes": 30,
             "sampleCount": 4
           },
@@ -5001,7 +5007,7 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 30,
-          "sampleCount": 404
+          "sampleCount": 407
         },
         "beforeLunch": {
           "minMinutes": 20,
@@ -5013,25 +5019,25 @@
           "minMinutes": 20,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 477
+          "sampleCount": 485
         },
         "aroundShows": {
           "minMinutes": 20,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 342
+          "sampleCount": 348
         },
         "beforeDinner": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 161
+          "sampleCount": 163
         },
         "afterDinner": {
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 321
+          "sampleCount": 329
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -5041,8 +5047,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 1966,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 1993,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -5362,37 +5368,37 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 353
+          "sampleCount": 361
         },
         "beforeLunch": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 196
+          "sampleCount": 197
         },
         "afterLunch": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 30,
-          "sampleCount": 518
+          "sampleCount": 524
         },
         "aroundShows": {
           "minMinutes": 15,
           "typicalMinutes": 25,
           "maxMinutes": 30,
-          "sampleCount": 364
+          "sampleCount": 369
         },
         "beforeDinner": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 25,
-          "sampleCount": 206
+          "sampleCount": 209
         },
         "afterDinner": {
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 20,
-          "sampleCount": 337
+          "sampleCount": 341
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -5402,8 +5408,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 2016,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 2043,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -5627,8 +5633,8 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 20,
-            "typicalMinutes": 25,
+            "minMinutes": 10,
+            "typicalMinutes": 20,
             "maxMinutes": 30,
             "sampleCount": 4
           },
@@ -5723,31 +5729,31 @@
           "minMinutes": 15,
           "typicalMinutes": 50,
           "maxMinutes": 80,
-          "sampleCount": 958
+          "sampleCount": 968
         },
         "beforeLunch": {
           "minMinutes": 30,
           "typicalMinutes": 50,
           "maxMinutes": 80,
-          "sampleCount": 390
+          "sampleCount": 391
         },
         "afterLunch": {
           "minMinutes": 30,
           "typicalMinutes": 50,
           "maxMinutes": 70,
-          "sampleCount": 1184
+          "sampleCount": 1191
         },
         "aroundShows": {
           "minMinutes": 25,
           "typicalMinutes": 40,
           "maxMinutes": 70,
-          "sampleCount": 813
+          "sampleCount": 817
         },
         "beforeDinner": {
           "minMinutes": 20,
           "typicalMinutes": 40,
           "maxMinutes": 60,
-          "sampleCount": 418
+          "sampleCount": 420
         },
         "afterDinner": {
           "minMinutes": 10,
@@ -5759,12 +5765,12 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 25,
-          "sampleCount": 419
+          "sampleCount": 420
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 5001,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 5026,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -5988,32 +5994,32 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 50,
-            "typicalMinutes": 55,
+            "minMinutes": 40,
+            "typicalMinutes": 50,
             "maxMinutes": 60,
             "sampleCount": 4
           },
           "beforeLunch": {
             "minMinutes": 30,
-            "typicalMinutes": 60,
+            "typicalMinutes": 50,
             "maxMinutes": 70,
             "sampleCount": 4
           },
           "afterLunch": {
-            "minMinutes": 40,
-            "typicalMinutes": 75,
+            "minMinutes": 30,
+            "typicalMinutes": 55,
             "maxMinutes": 90,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 40,
-            "typicalMinutes": 60,
+            "minMinutes": 20,
+            "typicalMinutes": 40,
             "maxMinutes": 70,
             "sampleCount": 4
           },
           "beforeDinner": {
-            "minMinutes": 40,
-            "typicalMinutes": 50,
+            "minMinutes": 10,
+            "typicalMinutes": 30,
             "maxMinutes": 60,
             "sampleCount": 4
           },
@@ -6025,7 +6031,7 @@
           },
           "beforeClosing": {
             "minMinutes": 5,
-            "typicalMinutes": 20,
+            "typicalMinutes": 10,
             "maxMinutes": 25,
             "sampleCount": 4
           }
@@ -6084,48 +6090,48 @@
           "minMinutes": 10,
           "typicalMinutes": 30,
           "maxMinutes": 50,
-          "sampleCount": 504
+          "sampleCount": 511
         },
         "beforeLunch": {
           "minMinutes": 25,
           "typicalMinutes": 40,
           "maxMinutes": 50,
-          "sampleCount": 155
+          "sampleCount": 160
         },
         "afterLunch": {
           "minMinutes": 25,
           "typicalMinutes": 40,
           "maxMinutes": 50,
-          "sampleCount": 436
+          "sampleCount": 443
         },
         "aroundShows": {
           "minMinutes": 20,
           "typicalMinutes": 40,
           "maxMinutes": 50,
-          "sampleCount": 248
+          "sampleCount": 256
         },
         "beforeDinner": {
           "minMinutes": 25,
           "typicalMinutes": 40,
           "maxMinutes": 50,
-          "sampleCount": 140
+          "sampleCount": 142
         },
         "afterDinner": {
-          "minMinutes": 20,
+          "minMinutes": 15,
           "typicalMinutes": 30,
           "maxMinutes": 40,
-          "sampleCount": 310
+          "sampleCount": 314
         },
         "beforeClosing": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 138
+          "sampleCount": 140
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 1931,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 1966,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -6350,44 +6356,44 @@
         "1": {
           "afterOpening": {
             "minMinutes": 20,
-            "typicalMinutes": 30,
+            "typicalMinutes": 25,
             "maxMinutes": 40,
             "sampleCount": 4
           },
           "beforeLunch": {
             "minMinutes": 30,
-            "typicalMinutes": 40,
+            "typicalMinutes": 35,
             "maxMinutes": 50,
             "sampleCount": 4
           },
           "afterLunch": {
-            "minMinutes": 40,
-            "typicalMinutes": 50,
+            "minMinutes": 25,
+            "typicalMinutes": 40,
             "maxMinutes": 50,
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 50,
-            "typicalMinutes": 50,
+            "minMinutes": 25,
+            "typicalMinutes": 40,
             "maxMinutes": 50,
             "sampleCount": 4
           },
           "beforeDinner": {
-            "minMinutes": 30,
-            "typicalMinutes": 45,
+            "minMinutes": 20,
+            "typicalMinutes": 35,
             "maxMinutes": 50,
             "sampleCount": 4
           },
           "afterDinner": {
-            "minMinutes": 20,
-            "typicalMinutes": 30,
+            "minMinutes": 15,
+            "typicalMinutes": 25,
             "maxMinutes": 30,
             "sampleCount": 4
           },
           "beforeClosing": {
-            "minMinutes": 15,
-            "typicalMinutes": 20,
-            "maxMinutes": 25,
+            "minMinutes": 10,
+            "typicalMinutes": 15,
+            "maxMinutes": 20,
             "sampleCount": 4
           }
         },
@@ -6445,48 +6451,48 @@
           "minMinutes": 80,
           "typicalMinutes": 140,
           "maxMinutes": 200,
-          "sampleCount": 784
+          "sampleCount": 795
         },
         "beforeLunch": {
           "minMinutes": 120,
           "typicalMinutes": 160,
           "maxMinutes": 180,
-          "sampleCount": 384
+          "sampleCount": 386
         },
         "afterLunch": {
           "minMinutes": 100,
           "typicalMinutes": 140,
           "maxMinutes": 180,
-          "sampleCount": 1126
+          "sampleCount": 1131
         },
         "aroundShows": {
           "minMinutes": 100,
           "typicalMinutes": 140,
           "maxMinutes": 180,
-          "sampleCount": 835
+          "sampleCount": 837
         },
         "beforeDinner": {
           "minMinutes": 80,
           "typicalMinutes": 120,
           "maxMinutes": 160,
-          "sampleCount": 396
+          "sampleCount": 397
         },
         "afterDinner": {
           "minMinutes": 50,
           "typicalMinutes": 90,
           "maxMinutes": 120,
-          "sampleCount": 843
+          "sampleCount": 852
         },
         "beforeClosing": {
-          "minMinutes": 20,
+          "minMinutes": 15,
           "typicalMinutes": 40,
           "maxMinutes": 60,
-          "sampleCount": 247
+          "sampleCount": 251
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 4615,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 4649,
       "recentWeekdayRanges": {
         "4": {
           "afterOpening": {
@@ -6666,9 +6672,9 @@
         },
         "1": {
           "afterOpening": {
-            "minMinutes": 140,
-            "typicalMinutes": 160,
-            "maxMinutes": 180,
+            "minMinutes": 120,
+            "typicalMinutes": 140,
+            "maxMinutes": 160,
             "sampleCount": 4
           },
           "beforeLunch": {
@@ -6684,26 +6690,26 @@
             "sampleCount": 4
           },
           "aroundShows": {
-            "minMinutes": 140,
-            "typicalMinutes": 155,
+            "minMinutes": 120,
+            "typicalMinutes": 140,
             "maxMinutes": 160,
             "sampleCount": 4
           },
           "beforeDinner": {
             "minMinutes": 100,
-            "typicalMinutes": 120,
+            "typicalMinutes": 110,
             "maxMinutes": 140,
             "sampleCount": 4
           },
           "afterDinner": {
-            "minMinutes": 80,
-            "typicalMinutes": 100,
+            "minMinutes": 50,
+            "typicalMinutes": 75,
             "maxMinutes": 120,
             "sampleCount": 4
           },
           "beforeClosing": {
-            "minMinutes": 25,
-            "typicalMinutes": 40,
+            "minMinutes": 20,
+            "typicalMinutes": 35,
             "maxMinutes": 50,
             "sampleCount": 4
           }
@@ -6806,37 +6812,37 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 315
+          "sampleCount": 324
         },
         "beforeLunch": {
           "minMinutes": 10,
-          "typicalMinutes": 20,
+          "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 160
+          "sampleCount": 162
         },
         "afterLunch": {
           "minMinutes": 10,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 451
+          "sampleCount": 459
         },
         "aroundShows": {
           "minMinutes": 10,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 320
+          "sampleCount": 323
         },
         "beforeDinner": {
           "minMinutes": 10,
           "typicalMinutes": 15,
           "maxMinutes": 20,
-          "sampleCount": 158
+          "sampleCount": 161
         },
         "afterDinner": {
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 15,
-          "sampleCount": 245
+          "sampleCount": 248
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -6846,8 +6852,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 1661,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 1689,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -7060,7 +7066,7 @@
           },
           "beforeLunch": {
             "minMinutes": 15,
-            "typicalMinutes": 25,
+            "typicalMinutes": 20,
             "maxMinutes": 25,
             "sampleCount": 4
           },
@@ -7084,7 +7090,7 @@
           },
           "afterDinner": {
             "minMinutes": 5,
-            "typicalMinutes": 15,
+            "typicalMinutes": 10,
             "maxMinutes": 15,
             "sampleCount": 4
           },
@@ -7149,13 +7155,13 @@
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 238
+          "sampleCount": 242
         },
         "beforeLunch": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 40,
-          "sampleCount": 62
+          "sampleCount": 63
         },
         "afterLunch": {
           "minMinutes": 15,
@@ -7167,13 +7173,13 @@
           "minMinutes": 15,
           "typicalMinutes": 30,
           "maxMinutes": 50,
-          "sampleCount": 142
+          "sampleCount": 143
         },
         "beforeDinner": {
           "minMinutes": 15,
           "typicalMinutes": 20,
           "maxMinutes": 40,
-          "sampleCount": 83
+          "sampleCount": 84
         },
         "afterDinner": {
           "minMinutes": 15,
@@ -7189,8 +7195,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 788,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 795,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -7404,7 +7410,7 @@
           "beforeLunch": {
             "minMinutes": 15,
             "typicalMinutes": 20,
-            "maxMinutes": 40,
+            "maxMinutes": 20,
             "sampleCount": 4
           },
           "afterLunch": {
@@ -7428,7 +7434,7 @@
           "beforeDinner": {
             "minMinutes": 15,
             "typicalMinutes": 20,
-            "maxMinutes": 30,
+            "maxMinutes": 20,
             "sampleCount": 4
           }
         },
@@ -7480,13 +7486,13 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 98
+          "sampleCount": 101
         },
         "beforeLunch": {
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 54
+          "sampleCount": 56
         },
         "afterLunch": {
           "minMinutes": 5,
@@ -7498,7 +7504,7 @@
           "minMinutes": 10,
           "typicalMinutes": 15,
           "maxMinutes": 25,
-          "sampleCount": 154
+          "sampleCount": 159
         },
         "beforeDinner": {
           "minMinutes": 5,
@@ -7510,7 +7516,7 @@
           "minMinutes": 5,
           "typicalMinutes": 10,
           "maxMinutes": 20,
-          "sampleCount": 114
+          "sampleCount": 116
         },
         "beforeClosing": {
           "minMinutes": 5,
@@ -7520,8 +7526,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 722,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 734,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -7746,7 +7752,7 @@
           },
           "aroundShows": {
             "minMinutes": 10,
-            "typicalMinutes": 20,
+            "typicalMinutes": 15,
             "maxMinutes": 20,
             "sampleCount": 4
           },
@@ -7829,7 +7835,7 @@
           "minMinutes": 5,
           "typicalMinutes": 15,
           "maxMinutes": 15,
-          "sampleCount": 76
+          "sampleCount": 77
         },
         "beforeLunch": {
           "minMinutes": 15,
@@ -7839,15 +7845,15 @@
         },
         "afterLunch": {
           "minMinutes": 15,
-          "typicalMinutes": 25,
+          "typicalMinutes": 20,
           "maxMinutes": 30,
-          "sampleCount": 59
+          "sampleCount": 61
         },
         "aroundShows": {
           "minMinutes": 15,
           "typicalMinutes": 30,
           "maxMinutes": 30,
-          "sampleCount": 50
+          "sampleCount": 52
         },
         "beforeDinner": {
           "minMinutes": 15,
@@ -7869,8 +7875,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 207,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 212,
       "recentWeekdayRanges": {
         "3": {
           "afterOpening": {
@@ -8028,16 +8034,16 @@
             "sampleCount": 2
           },
           "afterLunch": {
-            "minMinutes": 20,
-            "typicalMinutes": 30,
+            "minMinutes": 15,
+            "typicalMinutes": 20,
             "maxMinutes": 30,
-            "sampleCount": 2
+            "sampleCount": 3
           },
           "aroundShows": {
             "minMinutes": 30,
             "typicalMinutes": 30,
             "maxMinutes": 30,
-            "sampleCount": 1
+            "sampleCount": 2
           },
           "afterDinner": {
             "minMinutes": 15,
@@ -8088,7 +8094,7 @@
           "minMinutes": 5,
           "typicalMinutes": 5,
           "maxMinutes": 10,
-          "sampleCount": 35
+          "sampleCount": 36
         },
         "afterLunch": {
           "minMinutes": 5,
@@ -8122,8 +8128,8 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive, ThemeParks.wiki GitHub history",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
-      "sampleCount": 381,
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
+      "sampleCount": 382,
       "recentWeekdayRanges": {
         "3": {
           "aroundShows": {
@@ -8338,7 +8344,7 @@
             "minMinutes": 5,
             "typicalMinutes": 5,
             "maxMinutes": 5,
-            "sampleCount": 3
+            "sampleCount": 4
           },
           "afterLunch": {
             "minMinutes": 5,
@@ -8435,7 +8441,7 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
       "sampleCount": 534,
       "recentWeekdayRanges": {
         "3": {
@@ -8790,7 +8796,7 @@
         }
       },
       "source": "ThemeParks.wiki GitHub monthly archive",
-      "calculatedAt": "2026-10-25T17:49:42.033653Z",
+      "calculatedAt": "2026-10-26T20:07:42.068466Z",
       "sampleCount": 2803,
       "recentWeekdayRanges": {
         "3": {
