@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-10-29T04:50:42+09:00
+Generated: 2026-10-30T04:50:14+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 34
-- Profile source observations: 52119
+- Profile source observations: 52635
 
 ### 1. Profile missing facilities
 
@@ -49,7 +49,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 64220
+- Profile source observations: 64796
 
 ### 1. Profile missing facilities
 
