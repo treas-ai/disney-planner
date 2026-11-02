@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-11-02T04:10:01+09:00
+Generated: 2026-11-03T07:53:00+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 34
-- Profile source observations: 54341
+- Profile source observations: 55006
 
 ### 1. Profile missing facilities
 
@@ -29,8 +29,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ### 2b. Low-confidence time bands (<3 samples)
 
-- `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 昼前 = 2 samples
-- `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: ショー前後 = 1 samples
+- `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: ショー前後 = 2 samples
 - `tdl_adventureland_tiki_room` — 魅惑のチキルーム：スティッチ・プレゼンツ“アロハ・エ・コモ・マイ！”: 閉園前 = 1 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 昼過ぎ = 1 samples
 - `tdl_toontown_chip_and_dales_treehouse` — チップとデールのツリーハウス: 夕食後 = 2 samples
@@ -49,7 +48,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 66496
+- Profile source observations: 67189
 
 ### 1. Profile missing facilities
 
@@ -63,7 +62,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 
 ### 2b. Low-confidence time bands (<3 samples)
 
-- `tds_pd_a_002` — ニモ＆フレンズ・シーライダー: 閉園前 = 2 samples
+- None in available raw history.
 
 ### 3. Facility-ID mapping audit
 
