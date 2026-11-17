@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-11-17T08:30:17+09:00
+Generated: 2026-11-18T07:37:28+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
@@ -9,7 +9,7 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions: 33
 - Mapped active attractions: 33
 - Generated profiles: 34
-- Profile source observations: 62968
+- Profile source observations: 63254
 
 ### 1. Profile missing facilities
 
@@ -40,14 +40,15 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 ### 3. Facility-ID mapping audit
 
 - All mapping targets exist in master facility data.
-- No currently actionable unmatched entries in the available unmatched file.
+- Currently unresolved unmatched entries:
+  - `Haunted Mansion “Holiday Nightmare”	8fce6b54-e3e4-40bb-a574-93c8327c3fab`
 
 ## tokyo_disneysea
 
 - Active master attractions: 29
 - Mapped active attractions: 27
 - Generated profiles: 26
-- Profile source observations: 75970
+- Profile source observations: 76305
 
 ### 1. Profile missing facilities
 
@@ -69,7 +70,8 @@ This report does not invent facility IDs. Mapping issues are reported for manual
 - Active master attractions without a ThemeParks.wiki mapping (may be intentional if the source has no standby wait):
   - `tds_aw_a_006` — ディズニーシー・トランジットスチーマーライン（アメリカンウォーターフロント）
   - `tds_lrd_a_003` — ディズニーシー・トランジットスチーマーライン（ロストリバーデルタ）
-- No currently actionable unmatched entries in the available unmatched file.
+- Currently unresolved unmatched entries:
+  - `The Leonardo Challenge	44df35ec-28cb-4465-9ae1-95a4d6445a82`
 
 ## Interpretation
 
