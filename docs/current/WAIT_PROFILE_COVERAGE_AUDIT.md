@@ -1,6 +1,6 @@
 # Wait Profile Coverage Audit
 
-Generated: 2026-11-22T05:39:53+09:00
+Generated: 2026-11-23T05:49:52+09:00
 
 This report does not invent facility IDs. Mapping issues are reported for manual verification.
 
